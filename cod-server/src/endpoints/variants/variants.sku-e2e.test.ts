@@ -19,6 +19,7 @@ import type { AppDb } from "@/db";
 import { createVariant, updateVariant } from "./queries";
 import { ConflictError } from "@/lib/errors/classes";
 import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
+import { first } from "../../../../cod-shared/db/client";
 
 let db: AppDb;
 let rawD1: D1Database;
@@ -110,7 +111,7 @@ describe("variant SKU uniqueness — friendly 409 instead of raw 500", () => {
     expect((caught as ConflictError).context).toMatchObject({ sku: "SKU-A" });
     // v2 kept its original SKU
     const row = await db.select().from(schema.productVariants)
-      .where((await import("drizzle-orm")).eq(schema.productVariants.id, v2)).then((rows) => rows[0]);
+      .where((await import("drizzle-orm")).eq(schema.productVariants.id, v2)).then(first);
     expect(row?.sku).toBe("SKU-B");
   });
 

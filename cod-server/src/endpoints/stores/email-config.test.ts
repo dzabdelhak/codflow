@@ -29,7 +29,8 @@ vi.mock("../../../../cod-shared/queries/email-config");
 function appWithUser(user: Record<string, unknown> | null) {
   const app = new OpenAPIHono<AppContext>({ defaultHook: openApiValidationHook });
   app.use("*", async (c, next) => {
-    c.env = { DB: {} } as any;
+    c.env = {} as any;
+    c.set("db", {} as any);
     if (user) c.set("user", user as any);
     await next();
   });

@@ -54,7 +54,8 @@ describe("POST /api/delivery-companies/:id/reconcile-orders", () => {
     vi.clearAllMocks();
     app = new OpenAPIHono<AppContext>({ defaultHook: openApiValidationHook });
     app.use("*", async (c, next) => {
-      c.env = { DB: {} } as any;
+      c.env = {} as any;
+      c.set("db", {} as any);
       c.set("user", {
         id: "admin_1",
         email: "admin@example.com",
@@ -108,7 +109,8 @@ describe("POST /api/delivery-companies/:id/test-connection", () => {
     vi.clearAllMocks();
     app = new OpenAPIHono<AppContext>({ defaultHook: openApiValidationHook });
     app.use("*", async (c, next) => {
-      c.env = { DB: {} } as any;
+      c.env = {} as any;
+      c.set("db", {} as any);
       c.set("user", {
         id: "admin_1",
         email: "admin@example.com",

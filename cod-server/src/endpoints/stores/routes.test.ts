@@ -26,6 +26,7 @@ const NOW = new Date().toISOString();
 
 function storeRow(overrides: Record<string, any> = {}) {
   return {
+    merchantId: "test-merchant",
     id: "store_1",
     name: "My Shop",
     domain: null,
@@ -66,6 +67,7 @@ function storeRow(overrides: Record<string, any> = {}) {
 
 function pixelConfigRow(overrides: Record<string, any> = {}) {
   return {
+    merchantId: "test-merchant",
     id: "pix_1",
     storeId: "store_1",
     pixelId: "1234567890123456",

@@ -57,7 +57,8 @@ function orderBody(overrides: Record<string, unknown> = {}) {
 function makeApp() {
   const app = new OpenAPIHono<AppContext>({ defaultHook: openApiValidationHook });
   app.use("*", async (c, next) => {
-    c.env = { DB: {} } as any;
+    c.env = {} as any;
+    c.set("db", {} as any);
     c.set("storeId", "store-1");
     await next();
   });

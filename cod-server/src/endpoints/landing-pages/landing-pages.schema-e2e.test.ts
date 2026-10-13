@@ -13,6 +13,7 @@ import { eq } from "drizzle-orm";
 import * as schema from "@/db/schema";
 import type { AppDb } from "@/db";
 import { landingPages, landingPageImages } from "@/db/schema";
+import { first } from "../../../../cod-shared/db/client";
 
 let db: AppDb;
 let rawD1: D1Database;
@@ -47,7 +48,7 @@ describe("Slice 1 — landing pages schema on real D1", () => {
       createdAt: NOW(), updatedAt: NOW(),
     });
 
-    const row = await db.select().from(landingPages).where(eq(landingPages.id, "lp-1")).then((rows) => rows[0]);
+    const row = await db.select().from(landingPages).where(eq(landingPages.id, "lp-1")).then(first);
     expect(row).toMatchObject({
       id: "lp-1",
       slug: "lp-abcdefgh",
@@ -117,7 +118,7 @@ describe("Slice 1 — landing pages schema on real D1", () => {
     });
 
     const order = await db.select().from(schema.orders)
-      .where(eq(schema.orders.id, "ord-lp-s3")).then((rows) => rows[0]);
+      .where(eq(schema.orders.id, "ord-lp-s3")).then(first);
     expect(order?.landingPageId).toBe("lp-3");
 
     // Attributed history blocks LP delete (the app layer refuses; the FK
@@ -141,7 +142,7 @@ describe("Slice 1 — landing pages schema on real D1", () => {
     });
 
     const order = await db.select().from(schema.orders)
-      .where(eq(schema.orders.id, "ord-lp-s4")).then((rows) => rows[0]);
+      .where(eq(schema.orders.id, "ord-lp-s4")).then(first);
     expect(order?.landingPageId).toBeNull();
   });
 });

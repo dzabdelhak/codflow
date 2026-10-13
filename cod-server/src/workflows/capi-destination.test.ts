@@ -42,6 +42,7 @@ import { createTestD1, type TestD1 } from "@/test-utils/d1";
 import * as schema from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { CodCapiWorkflow } from "./capi";
+import { first } from "../../../cod-shared/db/client";
 
 let harness: TestD1;
 const NOW = () => new Date().toISOString();
@@ -328,7 +329,7 @@ describe("the CAPI Workflow's destination", () => {
       .select()
       .from(schema.capiEventLog)
       .where(eq(schema.capiEventLog.orderId, orderId))
-      .then((rows) => rows[0]);
+      .then(first);
     expect(row).toMatchObject({ status: "sent", pixelId: "6666666666" });
   });
 
@@ -347,7 +348,7 @@ describe("the CAPI Workflow's destination", () => {
       .select()
       .from(schema.capiEventLog)
       .where(eq(schema.capiEventLog.orderId, orderId))
-      .then((rows) => rows[0]);
+      .then(first);
     expect(row).toMatchObject({ status: "skipped", pixelId: "6767676767" });
   });
 

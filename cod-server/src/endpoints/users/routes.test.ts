@@ -3,6 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
+import { rowsOf } from "@/test-utils/mock-db";
 import { OpenAPIHono } from "@hono/zod-openapi";
 import type { AppContext } from "@/types";
 import { errorHandler } from "@/middleware/error";
@@ -38,6 +39,7 @@ const NOW = new Date().toISOString();
 
 function userRow(overrides: Record<string, any> = {}) {
   return {
+    merchantId: "test-merchant",
     id: "a1b2c3d4e5f6a7b8a1b2c3d4e5f6a7b8",
     name: "Ahmed Benali",
     email: "staff@example.com",
@@ -122,9 +124,7 @@ describe("Users routes (OpenAPIHono)", () => {
     it("creates a user and returns one-time apiKey and tempPassword", async () => {
       mockDb.select.mockReturnValue({
         from: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            get: vi.fn().mockResolvedValue(undefined),
-          }),
+          where: vi.fn().mockReturnValue(rowsOf(vi.fn().mockResolvedValue(undefined))),
         }),
       });
       const created = userRow({ id: "new_user_001" });
@@ -153,9 +153,7 @@ describe("Users routes (OpenAPIHono)", () => {
     it("returns 409 DUPLICATE_EMAIL when email already exists", async () => {
       mockDb.select.mockReturnValue({
         from: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            get: vi.fn().mockResolvedValue({ id: "existing_user" }),
-          }),
+          where: vi.fn().mockReturnValue(rowsOf(vi.fn().mockResolvedValue({ id: "existing_user" }))),
         }),
       });
 

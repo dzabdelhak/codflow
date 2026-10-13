@@ -6,12 +6,21 @@ Decided (Oct 13): `merchants` table (name, store limit) with a merchant id on `u
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] A seeded merchant signs in and sees only their own stores in the header dropdown
-- [ ] "Create store" in the dropdown creates a store with its subdomain and legal pages, then switches to it
-- [ ] Creating a store beyond the merchant's plan limit is refused with a clear message; the plan check is one replaceable seam
-- [ ] Switching channel changes every screen's data; the active channel's name is always visible
-- [ ] An API call for a channel the merchant does not own is refused server-side
-- [ ] Sessions and rate limits live in Redis and survive a restart of any app server
-- [ ] Auth and dashboard API tests for the touched routes run on PostgreSQL
+- [x] A seeded merchant signs in and sees only their own stores in the header dropdown
+- [x] "Create store" in the dropdown creates a store with its subdomain and legal pages, then switches to it
+- [x] Creating a store beyond the merchant's plan limit is refused with a clear message; the plan check is one replaceable seam
+- [x] Switching channel changes every screen's data; the active channel's name is always visible
+- [x] An API call for a channel the merchant does not own is refused server-side
+- [x] Sessions and rate limits live in Redis and survive a restart of any app server
+- [x] Auth and dashboard API tests for the touched routes run on PostgreSQL
+
+## Comments
+
+Oct 13 — done (commits 2c5afd7, 711a665, ff47ff0 and the test-port commit).
+All 30 parked dashboard test files run on PostgreSQL. Found on the way and
+fixed for every caller: the READ COMMITTED oversell in all three guarded stock
+writes (FOR UPDATE, with a deterministic test), scalar MAX → GREATEST, the
+EXISTS flag kept as 0/1 for the API contract, single-row reads typed
+`T | undefined` again (`first`/`one`).

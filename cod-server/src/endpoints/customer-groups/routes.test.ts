@@ -3,6 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
+import { rowsOf } from "@/test-utils/mock-db";
 import { OpenAPIHono } from "@hono/zod-openapi";
 import type { AppContext } from "@/types";
 import { errorHandler } from "@/middleware/error";
@@ -31,6 +32,7 @@ const NOW = new Date().toISOString();
 
 function groupRow(overrides: Record<string, any> = {}) {
   return {
+    storeId: "test-store",
     id: "grp_123",
     name: "VIP Customers",
     description: "High value customers",
@@ -281,9 +283,7 @@ describe("Customer Groups routes (OpenAPIHono)", () => {
       vi.mocked(queries.getGroupById).mockResolvedValue(groupRow());
       mockDb.select.mockReturnValue({
         from: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            get: vi.fn().mockResolvedValue({ id: "cust_123" }),
-          }),
+          where: vi.fn().mockReturnValue(rowsOf(vi.fn().mockResolvedValue({ id: "cust_123" }))),
         }),
       });
       vi.mocked(queries.addMember).mockResolvedValue(undefined);

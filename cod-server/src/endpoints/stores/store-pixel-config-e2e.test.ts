@@ -20,6 +20,7 @@ import { openApiValidationHook } from "@/openapi/validation-hook";
 import { createTestD1, type TestD1 } from "@/test-utils/d1";
 import * as schema from "@/db/schema";
 import storesRouter from "./routes";
+import { first } from "../../../../cod-shared/db/client";
 
 const dbModule = vi.hoisted(() => ({ getDb: vi.fn() }));
 vi.mock("@/db", () => dbModule);
@@ -81,7 +82,7 @@ function save(body: Record<string, unknown>) {
 }
 
 async function storedRow() {
-  return harness.db.select().from(schema.storePixelConfig).then((rows) => rows[0]);
+  return harness.db.select().from(schema.storePixelConfig).then(first);
 }
 
 async function read() {

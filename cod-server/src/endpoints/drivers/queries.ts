@@ -10,6 +10,7 @@ import { drivers, orders } from "@/db/schema";
 import { getDb } from "@/db";
 import { ConflictError } from "@/lib/errors/classes";
 import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
+import { first } from "../../../../cod-shared/db/client";
 
 export {
   getAllDrivers,
@@ -42,7 +43,7 @@ export async function deleteDriver(db: Database, driverId: string) {
         or(eq(orders.status, "assigned"), eq(orders.status, "out_for_delivery")),
       ),
     )
-    .then((rows) => rows[0]);
+    .then(first);
 
   if (activeOrders && activeOrders.count > 0) {
     throw new ConflictError(

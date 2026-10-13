@@ -17,6 +17,7 @@ import { openApiValidationHook } from "@/openapi/validation-hook";
 import { createTestD1, type TestD1 } from "@/test-utils/d1";
 import * as schema from "@/db/schema";
 import landingPagesRouter from "./routes";
+import { first } from "../../../../cod-shared/db/client";
 
 let harness: TestD1;
 let app: OpenAPIHono<AppContext>;
@@ -140,7 +141,7 @@ describe("PUT /landing-pages/:id/tracking", () => {
     const res = await put(id, VALID);
 
     expect(res.status).toBe(200);
-    const stored = await harness.db.select().from(schema.landingPagePixelConfig).then((rows) => rows[0]);
+    const stored = await harness.db.select().from(schema.landingPagePixelConfig).then(first);
     expect(stored).toMatchObject({
       landingPageId: id,
       pixelId: "1234567890",
@@ -165,7 +166,7 @@ describe("PUT /landing-pages/:id/tracking", () => {
     const res = await put(id, { pixelId: "1234567890", conversionEvent: "Purchase" });
 
     expect(res.status).toBe(400);
-    expect(await harness.db.select().from(schema.landingPagePixelConfig).then((rows) => rows[0])).toBeUndefined();
+    expect(await harness.db.select().from(schema.landingPagePixelConfig).then(first)).toBeUndefined();
   });
 
   it("accepts an update with no token and keeps the stored one", async () => {
@@ -177,7 +178,7 @@ describe("PUT /landing-pages/:id/tracking", () => {
     const res = await put(id, { pixelId: "9999999999", conversionEvent: "Lead" });
 
     expect(res.status).toBe(200);
-    const stored = await harness.db.select().from(schema.landingPagePixelConfig).then((rows) => rows[0]);
+    const stored = await harness.db.select().from(schema.landingPagePixelConfig).then(first);
     expect(stored).toMatchObject({
       pixelId: "9999999999",
       conversionEvent: "Lead",
@@ -205,7 +206,7 @@ describe("PUT /landing-pages/:id/tracking", () => {
     const res = await put("lp-nope", VALID);
 
     expect(res.status).toBe(404);
-    expect(await harness.db.select().from(schema.landingPagePixelConfig).then((rows) => rows[0])).toBeUndefined();
+    expect(await harness.db.select().from(schema.landingPagePixelConfig).then(first)).toBeUndefined();
   });
 
   it("refuses test mode without a test event code", async () => {
@@ -224,7 +225,7 @@ describe("PUT /landing-pages/:id/tracking", () => {
     const res = await put(id, { ...VALID, testMode: true, testEventCode: "TEST123" });
 
     expect(res.status).toBe(200);
-    expect(await harness.db.select().from(schema.landingPagePixelConfig).then((rows) => rows[0])).toMatchObject({
+    expect(await harness.db.select().from(schema.landingPagePixelConfig).then(first)).toMatchObject({
       testMode: true,
       testEventCode: "TEST123",
     });
@@ -239,7 +240,7 @@ describe("DELETE /landing-pages/:id/tracking", () => {
     const res = await app.request(`/landing-pages/${id}/tracking`, { method: "DELETE" });
 
     expect(res.status).toBe(200);
-    expect(await harness.db.select().from(schema.landingPagePixelConfig).then((rows) => rows[0])).toBeUndefined();
+    expect(await harness.db.select().from(schema.landingPagePixelConfig).then(first)).toBeUndefined();
   });
 
   it("succeeds on a page that never had one", async () => {

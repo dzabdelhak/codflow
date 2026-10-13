@@ -20,6 +20,7 @@ import { eq } from "drizzle-orm";
 import * as schema from "@/db/schema";
 import type { AppDb } from "@/db";
 import { updateOrder } from "../../../../cod-shared/queries/orders";
+import { first } from "../../../../cod-shared/db/client";
 
 let db: AppDb;
 
@@ -87,11 +88,11 @@ async function seedOrder(customerId: string, customerName: string, phone: string
 }
 
 async function getOrder(id: string) {
-  return db.select().from(schema.orders).where(eq(schema.orders.id, id)).then((rows) => rows[0]);
+  return db.select().from(schema.orders).where(eq(schema.orders.id, id)).then(first);
 }
 
 async function getCustomer(id: string) {
-  return db.select().from(schema.customers).where(eq(schema.customers.id, id)).then((rows) => rows[0]);
+  return db.select().from(schema.customers).where(eq(schema.customers.id, id)).then(first);
 }
 
 describe("updateOrder — customer sync (real D1)", () => {

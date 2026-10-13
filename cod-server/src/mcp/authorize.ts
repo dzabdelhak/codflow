@@ -106,6 +106,7 @@ export function csrfTokensMatch(a: string | null, b: string): boolean {
 // ─── Consent + error pages (server-rendered, no external assets) ─────────────
 
 import { LOGO_FOR_DARK_BG, LOGO_FOR_LIGHT_BG } from "./brand";
+import { first } from "../../../cod-shared/db/client";
 
 function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (ch) => {
@@ -497,7 +498,7 @@ async function loadUser(db: ReturnType<typeof getDb>, userId: string) {
     })
     .from(users)
     .where(eq(users.id, userId))
-    .then((rows) => rows[0]);
+    .then(first);
 }
 
 async function loadUserScopes(db: ReturnType<typeof getDb>, userId: string): Promise<string[]> {

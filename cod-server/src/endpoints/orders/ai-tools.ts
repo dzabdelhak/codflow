@@ -11,6 +11,7 @@ import {
 } from "./validation";
 import { getDb } from "@/db";
 import { toolOutput, timestampSchema } from "@/lib/tool-output-schema";
+import { first } from "../../../../cod-shared/db/client";
 
 /**
  * Layer-2 validation schemas, hoisted to module level and exported so the MCP
@@ -350,13 +351,13 @@ export const getOrderTools = (db: ReturnType<typeof getDb>) => ({
           .select({ id: customers.id })
           .from(customers)
           .where(eq(customers.id, parsed.data.customerId))
-          .then((rows) => rows[0]);
+          .then(first);
 
         if (!existingCustomer) {
           const [wilayaRow, communeRow] = await Promise.all([
-            db.select({ nameAr: wilayas.nameAr }).from(wilayas).where(eq(wilayas.id, parsed.data.wilayaId)).then((rows) => rows[0]),
+            db.select({ nameAr: wilayas.nameAr }).from(wilayas).where(eq(wilayas.id, parsed.data.wilayaId)).then(first),
             parsed.data.communeId
-              ? db.select({ nameAr: communes.nameAr }).from(communes).where(eq(communes.id, parsed.data.communeId)).then((rows) => rows[0])
+              ? db.select({ nameAr: communes.nameAr }).from(communes).where(eq(communes.id, parsed.data.communeId)).then(first)
               : Promise.resolve(null),
           ]);
           await db.insert(customers).values({
@@ -565,7 +566,7 @@ export const getOrderTools = (db: ReturnType<typeof getDb>) => ({
         const { drivers } = await import("@/db/schema");
         const { eq } = await import("drizzle-orm");
         const driver = await db.select({ id: drivers.id, firstName: drivers.firstName, lastName: drivers.lastName })
-          .from(drivers).where(eq(drivers.id, parsed.data.driverId)).then((rows) => rows[0]);
+          .from(drivers).where(eq(drivers.id, parsed.data.driverId)).then(first);
         if (!driver) {
           return { success: false, error: `Driver not found with ID: ${parsed.data.driverId}` };
         }

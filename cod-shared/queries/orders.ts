@@ -38,6 +38,7 @@ const driversAlias = aliasedTable(drivers, "d");
 
 import { safeLikeTerm } from "./search";
 import { getCustomerByPhone, updateCustomer, type UpdateCustomerData } from "./customers";
+import { first } from "../db/client";
 
 export interface OrderFilters {
   status?: (typeof orders.$inferSelect)["status"] | "all";
@@ -122,7 +123,7 @@ export async function getAllOrders(db: AppDb, filters: OrderFilters = {}) {
       driverName: sql<
         string | null
       >`CASE WHEN ${driversAlias.firstName} IS NOT NULL THEN ${driversAlias.firstName} || ' ' || ${driversAlias.lastName} ELSE NULL END`,
-      hasReview: sql<number>`EXISTS (SELECT 1 FROM reviews WHERE reviews.order_id = orders.id)`,
+      hasReview: sql<number>`(EXISTS (SELECT 1 FROM reviews WHERE reviews.order_id = orders.id))::int`,
       lastUpdatedBy: sql<
         string | null
       >`(SELECT by FROM order_status_history WHERE order_id = orders.id ORDER BY timestamp DESC LIMIT 1)`,
@@ -154,7 +155,7 @@ export async function getOrderById(db: AppDb, orderId: string) {
     .leftJoin(driversAlias, eq(orders.driverId, driversAlias.id))
     .leftJoin(companyShipments, eq(companyShipments.orderId, orders.id))
     .where(eq(orders.id, orderId))
-    .then((rows) => rows[0]);
+    .then(first);
 
   if (!order) return null;
 
@@ -233,7 +234,7 @@ export async function createOrder(
       .select({ trackInventory: products.trackInventory })
       .from(products)
       .where(eq(products.id, item.productId))
-      .then((rows) => rows[0]);
+      .then(first);
 
     if (!productRow?.trackInventory) continue;
 
@@ -242,6 +243,8 @@ export async function createOrder(
     // stock is insufficient (or a concurrent writer already took it), the
     // subselects return NULL, the movement insert violates NOT NULL, and the
     // ENTIRE batch rolls back — no oversell floor, no lost-update race.
+    // FOR UPDATE makes the guard wait for a concurrent order and re-check the
+    // committed stock (PostgreSQL READ COMMITTED; D1 batches were serial).
     if (item.variantId) {
       statements.push(
         db.insert(stockMovements).values({
@@ -250,8 +253,8 @@ export async function createOrder(
           variantId: item.variantId,
           type: "ORDER_DEDUCTED",
           delta: -qty,
-          qtyBefore: sql`(SELECT inventory FROM product_variants WHERE id = ${item.variantId} AND inventory >= ${qty})`,
-          qtyAfter: sql`(SELECT inventory - ${qty} FROM product_variants WHERE id = ${item.variantId} AND inventory >= ${qty})`,
+          qtyBefore: sql`(SELECT inventory FROM product_variants WHERE id = ${item.variantId} AND inventory >= ${qty} FOR UPDATE)`,
+          qtyAfter: sql`(SELECT inventory - ${qty} FROM product_variants WHERE id = ${item.variantId} AND inventory >= ${qty} FOR UPDATE)`,
           reason: null,
           reference: orderData.id ?? null,
           createdBy: actor?.id ?? "system",
@@ -281,8 +284,8 @@ export async function createOrder(
           variantId: null,
           type: "ORDER_DEDUCTED",
           delta: -qty,
-          qtyBefore: sql`(SELECT inventory FROM products WHERE id = ${item.productId} AND inventory >= ${qty})`,
-          qtyAfter: sql`(SELECT inventory - ${qty} FROM products WHERE id = ${item.productId} AND inventory >= ${qty})`,
+          qtyBefore: sql`(SELECT inventory FROM products WHERE id = ${item.productId} AND inventory >= ${qty} FOR UPDATE)`,
+          qtyAfter: sql`(SELECT inventory - ${qty} FROM products WHERE id = ${item.productId} AND inventory >= ${qty} FOR UPDATE)`,
           reason: null,
           reference: orderData.id ?? null,
           createdBy: actor?.id ?? "system",
@@ -325,7 +328,7 @@ export async function updateOrderStatus(
 ) {
   const now = new Date().toISOString();
 
-  const order = await db.select().from(orders).where(eq(orders.id, orderId)).then((rows) => rows[0]);
+  const order = await db.select().from(orders).where(eq(orders.id, orderId)).then(first);
 
   const statements: BatchStatement[] = [
     db
@@ -369,7 +372,7 @@ export async function updateOrderStatus(
       db
         .update(customers)
         .set({
-          totalSpent: sql`MAX(0, ${customers.totalSpent} - ${order?.price ?? 0})`,
+          totalSpent: sql`GREATEST(0, ${customers.totalSpent} - ${order?.price ?? 0})`,
         })
         .where(eq(customers.id, order?.customerId ?? "")),
     );
@@ -396,7 +399,7 @@ export async function updateOrderStatus(
         .select({ trackInventory: products.trackInventory })
         .from(products)
         .where(eq(products.id, op.productId))
-        .then((rows) => rows[0]);
+        .then(first);
 
       if (!productRow?.trackInventory) continue;
 
@@ -405,7 +408,7 @@ export async function updateOrderStatus(
           .select({ inventory: productVariants.inventory })
           .from(productVariants)
           .where(eq(productVariants.id, op.variantId))
-          .then((rows) => rows[0]);
+          .then(first);
 
         const qtyBefore = variantRow?.inventory ?? 0;
         const qtyAfter = qtyBefore + remaining;
@@ -438,7 +441,7 @@ export async function updateOrderStatus(
           .select({ inventory: products.inventory })
           .from(products)
           .where(eq(products.id, op.productId))
-          .then((rows) => rows[0]);
+          .then(first);
 
         const qtyBefore = productInventoryRow?.inventory ?? 0;
         const qtyAfter = qtyBefore + remaining;
@@ -531,7 +534,7 @@ export async function updateOrder(
     })
     .from(orders)
     .where(eq(orders.id, orderId))
-    .then((rows) => rows[0]);
+    .then(first);
 
   const patch: Record<string, unknown> = {
     updatedAt: new Date().toISOString(),
@@ -601,7 +604,7 @@ export async function setOrderProductReturn(
     .select()
     .from(orderProducts)
     .where(and(eq(orderProducts.id, productLineId), eq(orderProducts.orderId, orderId)))
-    .then((rows) => rows[0]);
+    .then(first);
 
   if (!line) {
     throw new Error(`Order line ${productLineId} not found on order ${orderId}`);
@@ -621,7 +624,7 @@ export async function setOrderProductReturn(
       .select({ trackInventory: products.trackInventory })
       .from(products)
       .where(eq(products.id, line.productId))
-      .then((rows) => rows[0]);
+      .then(first);
 
     if (productRow?.trackInventory) {
       if (line.variantId) {
@@ -629,7 +632,7 @@ export async function setOrderProductReturn(
           .select({ inventory: productVariants.inventory })
           .from(productVariants)
           .where(eq(productVariants.id, line.variantId))
-          .then((rows) => rows[0]);
+          .then(first);
 
         const qtyBefore = variantRow?.inventory ?? 0;
         const qtyAfter = Math.max(0, qtyBefore + delta);
@@ -663,7 +666,7 @@ export async function setOrderProductReturn(
           .select({ inventory: products.inventory })
           .from(products)
           .where(eq(products.id, line.productId))
-          .then((rows) => rows[0]);
+          .then(first);
 
         const qtyBefore = productInventoryRow?.inventory ?? 0;
         const qtyAfter = Math.max(0, qtyBefore + delta);
@@ -723,7 +726,7 @@ export async function assignDriver(db: AppDb, orderId: string, driverId: string)
     .select({ wilayaId: orders.wilayaId, status: orders.status })
     .from(orders)
     .where(eq(orders.id, orderId))
-    .then((rows) => rows[0]);
+    .then(first);
 
   let driverFee = 0;
   if (order?.wilayaId) {
@@ -736,7 +739,7 @@ export async function assignDriver(db: AppDb, orderId: string, driverId: string)
           eq(driverCompensations.wilayaId, order.wilayaId),
         ),
       )
-      .then((rows) => rows[0]);
+      .then(first);
 
     if (comp) {
       driverFee = comp.feePerDelivery;
@@ -767,7 +770,7 @@ export async function unassignDriver(db: AppDb, orderId: string) {
     .select({ status: orders.status })
     .from(orders)
     .where(eq(orders.id, orderId))
-    .then((rows) => rows[0]);
+    .then(first);
 
   const shouldRollbackStatus = order?.status === "assigned";
 
@@ -850,7 +853,7 @@ export async function deleteOrder(db: AppDb, orderId: string) {
   const now = new Date().toISOString();
 
   // Get order details first to update customer stats
-  const order = await db.select().from(orders).where(eq(orders.id, orderId)).then((rows) => rows[0]);
+  const order = await db.select().from(orders).where(eq(orders.id, orderId)).then(first);
 
   // Get order products to restore inventory
   const orderProductsList = await db
@@ -873,11 +876,11 @@ export async function deleteOrder(db: AppDb, orderId: string) {
       db
         .update(customers)
         .set({
-          totalOrders: sql`MAX(0, ${customers.totalOrders} - 1)`,
+          totalOrders: sql`GREATEST(0, ${customers.totalOrders} - 1)`,
           ...(spendAlreadyRolledBack
             ? {}
             : {
-                totalSpent: sql`MAX(0, ${customers.totalSpent} - ${order.price ?? 0})`,
+                totalSpent: sql`GREATEST(0, ${customers.totalSpent} - ${order.price ?? 0})`,
               }),
         })
         .where(eq(customers.id, order.customerId)),
@@ -895,9 +898,9 @@ export async function deleteOrder(db: AppDb, orderId: string) {
       db
         .update(drivers)
         .set({
-          totalDelivered: sql`MAX(0, ${drivers.totalDelivered} - 1)`,
-          totalEarnings: sql`MAX(0, ${drivers.totalEarnings} - ${order.driverFee ?? 0})`,
-          pendingCash: sql`MAX(0, ${drivers.pendingCash} - ${order.codAmount ?? 0})`,
+          totalDelivered: sql`GREATEST(0, ${drivers.totalDelivered} - 1)`,
+          totalEarnings: sql`GREATEST(0, ${drivers.totalEarnings} - ${order.driverFee ?? 0})`,
+          pendingCash: sql`GREATEST(0, ${drivers.pendingCash} - ${order.codAmount ?? 0})`,
           updatedAt: now,
         })
         .where(eq(drivers.id, order.driverId)),
@@ -913,7 +916,7 @@ export async function deleteOrder(db: AppDb, orderId: string) {
       .select({ trackInventory: products.trackInventory })
       .from(products)
       .where(eq(products.id, op.productId))
-      .then((rows) => rows[0]);
+      .then(first);
 
     if (!productRow?.trackInventory) continue; // Product doesn't track inventory
 
@@ -923,7 +926,7 @@ export async function deleteOrder(db: AppDb, orderId: string) {
         .select({ inventory: productVariants.inventory })
         .from(productVariants)
         .where(eq(productVariants.id, op.variantId))
-        .then((rows) => rows[0]);
+        .then(first);
 
       const qtyBefore = variantRow?.inventory ?? 0;
       const qtyAfter = qtyBefore + remaining;
@@ -957,7 +960,7 @@ export async function deleteOrder(db: AppDb, orderId: string) {
         .select({ inventory: products.inventory })
         .from(products)
         .where(eq(products.id, op.productId))
-        .then((rows) => rows[0]);
+        .then(first);
 
       const qtyBefore = productInventoryRow?.inventory ?? 0;
       const qtyAfter = qtyBefore + remaining;
@@ -1062,7 +1065,7 @@ async function resolveRestockLines(
       .select({ trackInventory: products.trackInventory })
       .from(products)
       .where(eq(products.id, op.productId))
-      .then((rows) => rows[0]);
+      .then(first);
 
     if (!productRow?.trackInventory) continue;
 
@@ -1086,7 +1089,7 @@ async function readCurrentInventories(
       .select({ inventory: line.variantId ? productVariants.inventory : products.inventory })
       .from(line.variantId ? productVariants : products)
       .where(eq(line.variantId ? productVariants.id : products.id, line.variantId ?? line.productId))
-      .then((rows) => rows[0]);
+      .then(first);
     resolved.push({ ...line, qtyBefore: row?.inventory ?? 0 });
   }
   return resolved;
@@ -1159,7 +1162,7 @@ export async function updateOrderStatusWebhook(
 ): Promise<{ updated: boolean }> {
   const now = new Date().toISOString();
 
-  const order = await db.select().from(orders).where(eq(orders.id, orderId)).then((rows) => rows[0]);
+  const order = await db.select().from(orders).where(eq(orders.id, orderId)).then(first);
 
   if (!order) return { updated: false };
 
@@ -1208,7 +1211,7 @@ export async function updateOrderStatusWebhook(
       db
         .update(customers)
         .set({
-          totalSpent: sql`MAX(0, ${customers.totalSpent} - ${order.price ?? 0})`,
+          totalSpent: sql`GREATEST(0, ${customers.totalSpent} - ${order.price ?? 0})`,
         })
         .where(eq(customers.id, order.customerId)),
     );

@@ -42,7 +42,8 @@ function orderBody(overrides: Record<string, unknown> = {}) {
 function makeApp(workflow?: { create: ReturnType<typeof vi.fn> }) {
   const app = new OpenAPIHono<AppContext>({ defaultHook: openApiValidationHook });
   app.use("*", async (c, next) => {
-    c.env = { DB: {}, ...(workflow ? { CAPI_WORKFLOW: workflow } : {}) } as any;
+    c.env = { ...(workflow ? { CAPI_WORKFLOW: workflow } : {}) } as any;
+    c.set("db", {} as any);
     c.set("storeId", "store-1");
     await next();
   });

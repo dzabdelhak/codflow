@@ -22,6 +22,7 @@ import { openApiValidationHook } from "@/openapi/validation-hook";
 import * as schema from "@/db/schema";
 import type { AppDb } from "@/db";
 import storeRouter from "./routes";
+import { first } from "../../../../cod-shared/db/client";
 
 const registry: TestDb[] = [];
 let db: AppDb;
@@ -58,7 +59,8 @@ const uid = (p: string) => `${p}-${crypto.randomUUID().slice(0, 8)}`;
 function makeApp() {
   const app = new OpenAPIHono<AppContext>({ defaultHook: openApiValidationHook });
   app.use("*", async (c, next) => {
-    c.env = { DB: {} } as any;
+    c.env = {} as any;
+    c.set("db", {} as any);
     c.set("storeId", storeId);
     await next();
   });
@@ -431,7 +433,7 @@ describe("POST /store/cart/validate — bounds", () => {
       .select({ inventory: schema.products.inventory })
       .from(schema.products)
       .where(eq(schema.products.id, id))
-      .then((rows) => rows[0]);
+      .then(first);
     expect(after!.inventory).toBe(10); // no stock reserved
     expect(await db.select().from(schema.orders)).toHaveLength(0);
   });

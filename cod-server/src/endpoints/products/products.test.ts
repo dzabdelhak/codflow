@@ -17,6 +17,7 @@ import {
 } from "./validation";
 import { getProductById, deleteProduct, createProduct } from "./queries";
 import { makeMockDb, f, a, productRow, NOW } from "@/test-utils/mock-db";
+import { first } from "../../../../cod-shared/db/client";
 
 // ─── Validation ────────────────────────────────────────────────────────────────
 
@@ -246,7 +247,7 @@ describe("getProductById", () => {
     // products.get → categories.get → variants.all → images.all
     const db = makeMockDb([
       f(productRow({ category_id: "cat_1" })),
-      f({ id: "cat_1", name: "ملابس" }),  // productCategories.then((rows) => rows[0])
+      f({ id: "cat_1", name: "ملابس" }),  // productCategories.then(first)
       a([]),                               // productVariants
       a([]),                               // productImages
     ]);

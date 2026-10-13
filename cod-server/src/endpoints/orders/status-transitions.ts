@@ -15,6 +15,7 @@ import { logActivity, ACTIONS } from "@/lib/activity";
 import { NotFoundError, BusinessLogicError, ValidationError } from "@/lib/errors/classes";
 import { ERROR_CODES, ERROR_CATEGORIES } from "../../../../cod-shared/errors/codes";
 import { shouldTriggerCapiPurchase, shouldTriggerCapiConfirmed, getCapiWorkflowId } from "@/workflows/capi-helpers";
+import { first } from "../../../../cod-shared/db/client";
 
 /**
  * PATCH /orders/:id/status
@@ -170,7 +171,7 @@ export async function assignDriver(c: Context<AppContext>) {
     .select({ id: drivers.id })
     .from(drivers)
     .where(eq(drivers.id, validated.driverId))
-    .then((rows) => rows[0]);
+    .then(first);
 
   if (!driver) {
     throw new NotFoundError("Driver", validated.driverId);

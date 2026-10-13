@@ -30,6 +30,7 @@ export type {
 // ─── Adjust Stock ─────────────────────────────────────────────────────────────
 
 import type { StockMovementRow } from "../../../../cod-shared/queries/stock";
+import { first } from "../../../../cod-shared/db/client";
 
 type BatchStatement = Parameters<AppDb["batch"]>[0][number];
 
@@ -83,7 +84,7 @@ export async function adjustStock(
       .select({ name: products.name })
       .from(products)
       .where(eq(products.id, productId))
-      .then((rows) => rows[0]);
+      .then(first);
 
     throw new BusinessLogicError(
       `Insufficient stock for ${productRow?.name ?? "product"}. Available: ${qtyBefore}, Required: ${Math.abs(delta)}`,
@@ -106,8 +107,8 @@ export async function adjustStock(
   // the ledger row can never diverge from the applied change.
   const guard =
     variantId !== null
-      ? sql`FROM ${productVariants} WHERE ${productVariants.id} = ${variantId} AND ${productVariants.inventory} + ${delta} >= 0`
-      : sql`FROM ${products} WHERE ${products.id} = ${productId} AND ${products.inventory} + ${delta} >= 0`;
+      ? sql`FROM ${productVariants} WHERE ${productVariants.id} = ${variantId} AND ${productVariants.inventory} + ${delta} >= 0 FOR UPDATE`
+      : sql`FROM ${products} WHERE ${products.id} = ${productId} AND ${products.inventory} + ${delta} >= 0 FOR UPDATE`;
   const inventoryColumn =
     variantId !== null ? productVariants.inventory : products.inventory;
 

@@ -5,6 +5,17 @@ import * as schema from "./schema";
 
 type BatchItem = PromiseLike<unknown>;
 
+/** The first row, or undefined — D1's `.get()`: `await query.then(first)`. */
+export function first<T>(rows: T[]): T | undefined {
+  return rows[0];
+}
+
+/** The one row a write's `returning()` must give back; throws when it did not. */
+export function one<T>(rows: T[]): T {
+  if (rows.length === 0) throw new Error("Expected the write to return a row");
+  return rows[0];
+}
+
 let savepoints = 0;
 
 /**

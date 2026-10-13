@@ -30,6 +30,7 @@ import type { AppDb } from "../db/client";
 import { storePixelConfig, landingPagePixelConfig } from "../db/schema";
 import { eq } from "drizzle-orm";
 import type { ConversionEvent } from "./pixel-config";
+import { first } from "../db/client";
 
 export type { ConversionEvent };
 
@@ -170,7 +171,7 @@ export async function resolveTrackingConfig(
     .select()
     .from(storePixelConfig)
     .where(eq(storePixelConfig.storeId, ctx.storeId))
-    .then((rows) => rows[0]);
+    .then(first);
 
   if (!storeRow) return null;
 
@@ -182,7 +183,7 @@ export async function resolveTrackingConfig(
           .select()
           .from(landingPagePixelConfig)
           .where(eq(landingPagePixelConfig.landingPageId, ctx.landingPageId))
-          .then((rows) => rows[0])
+          .then(first)
       : undefined;
 
   return effectiveTrackingFrom(storeRow, pageRow);

@@ -15,6 +15,7 @@ import * as schema from "@/db/schema";
 import type { AppDb } from "@/db";
 import { createStoreOrder, findOrCreateCustomer } from "../../../../cod-shared/queries/store";
 import { findPublishedLandingPageIdBySlug } from "../../../../cod-shared/queries/landing-pages";
+import { first } from "../../../../cod-shared/db/client";
 
 let db: AppDb;
 let rawD1: D1Database;
@@ -102,7 +103,7 @@ describe("Slice 5 — landing page order attribution (real D1)", () => {
     expect(result.price).toBe(5000);
 
     const order = await db.select().from(schema.orders)
-      .where(eq(schema.orders.id, result.id)).then((rows) => rows[0]);
+      .where(eq(schema.orders.id, result.id)).then(first);
     expect(order?.landingPageId).toBe("attr-order-1");
   });
 
@@ -117,7 +118,7 @@ describe("Slice 5 — landing page order attribution (real D1)", () => {
     const result = await placeOrder(productId, null);
     expect(result.price).toBe(5000);
     const order = await db.select().from(schema.orders)
-      .where(eq(schema.orders.id, result.id)).then((rows) => rows[0]);
+      .where(eq(schema.orders.id, result.id)).then(first);
     expect(order?.landingPageId).toBeNull();
   });
 

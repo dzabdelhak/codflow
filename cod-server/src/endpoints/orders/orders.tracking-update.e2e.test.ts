@@ -15,6 +15,7 @@ import { eq } from "drizzle-orm";
 import * as schema from "@/db/schema";
 import type { AppDb } from "@/db";
 import { updateOrderTracking } from "../../../../cod-shared/queries/orders";
+import { first } from "../../../../cod-shared/db/client";
 
 let db: AppDb;
 const registry: TestDb[] = [];
@@ -48,7 +49,7 @@ afterAll(async () => {
 });
 
 async function getOrder(id: string) {
-  return (await db.select().from(schema.orders).where(eq(schema.orders.id, id)).then((rows) => rows[0]))!;
+  return (await db.select().from(schema.orders).where(eq(schema.orders.id, id)).then(first))!;
 }
 
 describe("updateOrderTracking — deliveryType persistence (real D1)", () => {

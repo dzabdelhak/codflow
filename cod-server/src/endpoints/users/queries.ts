@@ -16,6 +16,7 @@ import {
   getUserById,
   rotateApiKey,
 } from "../../../../cod-shared/queries/users";
+import { first } from "../../../../cod-shared/db/client";
 
 export { getAllUsers, getUserById, rotateApiKey };
 
@@ -126,7 +127,7 @@ export async function grantScope(
     .select()
     .from(userScopes)
     .where(and(eq(userScopes.userId, userId), eq(userScopes.scope, scope)))
-    .then((rows) => rows[0]);
+    .then(first);
 
   if (existing) {
     throw new Error("Scope already granted to user");

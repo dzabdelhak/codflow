@@ -27,6 +27,7 @@ import {
   serializeCheckoutFormPolicy,
   type CheckoutFormPolicy,
 } from "../checkout-form/policy";
+import { first } from "../db/client";
 
 export interface StoreCheckoutForm {
   policy: CheckoutFormPolicy;
@@ -48,7 +49,7 @@ export async function getCheckoutFormPolicy(
     .select({ checkoutFormJson: stores.checkoutFormJson, lang: stores.lang })
     .from(stores)
     .where(eq(stores.id, storeId))
-    .then((rows) => rows[0]);
+    .then(first);
 
   return {
     policy: parseCheckoutFormPolicy(row?.checkoutFormJson ?? null),

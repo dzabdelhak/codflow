@@ -1,6 +1,7 @@
 import { eq, and, like, count, isNull } from "drizzle-orm";
 import { productCategories, products } from "../db/schema";
 import type { AppDb } from "../db/client";
+import { first } from "../db/client";
 
 export interface GroupFilters {
   search?: string;
@@ -54,13 +55,13 @@ export async function getAllGroups(db: AppDb, filters?: GroupFilters) {
         eq(products.categoryId, cat.id),
         isNull(products.deletedAt)
       ))
-      .then((rows) => rows[0]);
+      .then(first);
     return { ...cat, productsCount: countRow?.count ?? 0 };
   }));
 }
 
 export async function getGroupById(db: AppDb, id: string) {
-  const cat = await db.select().from(productCategories).where(eq(productCategories.id, id)).then((rows) => rows[0]);
+  const cat = await db.select().from(productCategories).where(eq(productCategories.id, id)).then(first);
   if (!cat) return null;
   const [childrenRows, productsCountRow] = await Promise.all([
     db.select().from(productCategories).where(eq(productCategories.parentId, id)),
@@ -71,7 +72,7 @@ export async function getGroupById(db: AppDb, id: string) {
         eq(products.categoryId, id),
         isNull(products.deletedAt)
       ))
-      .then((rows) => rows[0]),
+      .then(first),
   ]);
   return { ...cat, children: childrenRows, productsCount: productsCountRow?.count ?? 0 };
 }

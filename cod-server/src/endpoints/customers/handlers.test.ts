@@ -92,7 +92,7 @@ describe("Customers Endpoint - Error Scenarios", () => {
 
     it("should return 200 with customer data when customer exists", async () => {
       // Mock successful response
-      vi.mocked(queries.getCustomerById).mockResolvedValue({
+      vi.mocked(queries.getCustomerById).mockResolvedValue({ storeId: "test-store",
         id: "cust_123",
         name: "Ahmed Benali",
         phone: "0551234567",
@@ -128,7 +128,7 @@ describe("Customers Endpoint - Error Scenarios", () => {
   describe("POST /customers", () => {
     it("should return 409 with DUPLICATE_PHONE code when phone number already exists", async () => {
       // Mock getCustomerByPhone to return existing customer
-      vi.mocked(queries.getCustomerByPhone).mockResolvedValue({
+      vi.mocked(queries.getCustomerByPhone).mockResolvedValue({ storeId: "test-store",
         id: "cust_existing",
         name: "Existing Customer",
         phone: "0551234567",
@@ -175,7 +175,7 @@ describe("Customers Endpoint - Error Scenarios", () => {
       vi.mocked(queries.getCustomerByPhone).mockResolvedValue(undefined);
       
       // Mock successful creation
-      vi.mocked(queries.createCustomer).mockResolvedValue({
+      vi.mocked(queries.createCustomer).mockResolvedValue({ storeId: "test-store",
         id: "cust_new",
         name: "Ahmed Benali",
         phone: "0551234567",
@@ -248,7 +248,7 @@ describe("Customers Endpoint - Error Scenarios", () => {
 
     it("should return 409 with DUPLICATE_PHONE code when updating to existing phone", async () => {
       // Mock getCustomerByPhone to return different customer with same phone
-      vi.mocked(queries.getCustomerByPhone).mockResolvedValue({
+      vi.mocked(queries.getCustomerByPhone).mockResolvedValue({ storeId: "test-store",
         id: "cust_other",
         name: "Other Customer",
         phone: "0551234567",
@@ -312,7 +312,7 @@ describe("Customers Endpoint - Error Scenarios", () => {
 
     it("should return 422 with CUSTOMER_HAS_ORDERS code when customer has orders", async () => {
       // Mock getCustomerById to return a customer
-      vi.mocked(queries.getCustomerById).mockResolvedValue({
+      vi.mocked(queries.getCustomerById).mockResolvedValue({ storeId: "test-store",
         id: "cust_123",
         name: "Ahmed Benali",
         phone: "0551234567",
@@ -353,7 +353,7 @@ describe("Customers Endpoint - Error Scenarios", () => {
 
     it("should verify orderCount is included in context when customer has orders", async () => {
       // Mock getCustomerById to return a customer
-      vi.mocked(queries.getCustomerById).mockResolvedValue({
+      vi.mocked(queries.getCustomerById).mockResolvedValue({ storeId: "test-store",
         id: "cust_123",
         name: "Ahmed Benali",
         phone: "0551234567",
@@ -387,7 +387,7 @@ describe("Customers Endpoint - Error Scenarios", () => {
 
     it("should return 200 when customer is deleted successfully (no orders)", async () => {
       // Mock getCustomerById to return a customer with no orders
-      vi.mocked(queries.getCustomerById).mockResolvedValue({
+      vi.mocked(queries.getCustomerById).mockResolvedValue({ storeId: "test-store",
         id: "cust_123",
         name: "Ahmed Benali",
         phone: "0551234567",
@@ -438,7 +438,7 @@ describe("Customers Endpoint - Error Scenarios", () => {
     });
 
     it("should include context field when available", async () => {
-      vi.mocked(queries.getCustomerById).mockResolvedValue({
+      vi.mocked(queries.getCustomerById).mockResolvedValue({ storeId: "test-store",
         id: "cust_123",
         name: "Ahmed Benali",
         phone: "0551234567",

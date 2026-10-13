@@ -17,6 +17,7 @@ import {
   resolveStorefrontWidget,
   serializeWhatsAppWidgetConfig,
 } from "../../../cod-shared/whatsapp-widget/config";
+import { first } from "../../../cod-shared/db/client";
 
 let harness: TestD1;
 const NOW = new Date().toISOString();
@@ -37,7 +38,7 @@ afterAll(async () => {
 });
 
 async function readColumn(): Promise<string | null> {
-  const row = await harness.db.select().from(stores).where(eq(stores.id, STORE_ID)).then((rows) => rows[0]);
+  const row = await harness.db.select().from(stores).where(eq(stores.id, STORE_ID)).then(first);
   return row?.whatsappWidgetJson ?? null;
 }
 

@@ -6,6 +6,7 @@ import * as validation from "./validation";
 import { logActivity, ACTIONS } from "@/lib/activity";
 import { NotFoundError, BusinessLogicError, ConflictError, SystemError } from "@/lib/errors/classes";
 import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
+import { first } from "../../../../cod-shared/db/client";
 
 export async function listProducts(c: Context<AppContext>) {
   const db = c.get("db");
@@ -164,7 +165,7 @@ export async function deleteProduct(c: Context<AppContext>) {
   // Check if product has orders
   const { orderProducts } = await import("@/db/schema");
   const { eq } = await import("drizzle-orm");
-  const ordersWithProduct = await db.select().from(orderProducts).where(eq(orderProducts.productId, id)).then((rows) => rows[0]);
+  const ordersWithProduct = await db.select().from(orderProducts).where(eq(orderProducts.productId, id)).then(first);
   if (ordersWithProduct) {
     throw new BusinessLogicError(
       "Cannot delete product with existing orders",

@@ -34,6 +34,7 @@ import {
   type MetaEventName,
 } from "./capi-helpers";
 import { logCapiEvent } from "@/lib/capi-log";
+import { first } from "../../../cod-shared/db/client";
 
 const SEVEN_DAYS_SECONDS = 7 * 24 * 3600;
 
@@ -96,7 +97,7 @@ export class CodCapiWorkflow extends WorkflowEntrypoint<Env, CodCapiParams> {
         .from(orders)
         .leftJoin(landingPages, eq(orders.landingPageId, landingPages.id))
         .where(eq(orders.id, orderId))
-        .then((rows) => rows[0]);
+        .then(first);
 
       if (!order) throw new NonRetryableError(`Order ${orderId} not found`);
 
@@ -106,11 +107,11 @@ export class CodCapiWorkflow extends WorkflowEntrypoint<Env, CodCapiParams> {
             .select({ name: communes.name, postalCode: communes.postalCode })
             .from(communes)
             .where(eq(communes.id, order.communeId))
-            .then((rows) => rows[0])
+            .then(first)
         : null;
 
       // Single-tenant: one store per database
-      const storeRow = await db.select({ id: stores.id, domain: stores.domain }).from(stores).limit(1).then((rows) => rows[0]);
+      const storeRow = await db.select({ id: stores.id, domain: stores.domain }).from(stores).limit(1).then(first);
       if (!storeRow) throw new NonRetryableError("No store found");
 
       const productRows = await db
@@ -214,7 +215,7 @@ export class CodCapiWorkflow extends WorkflowEntrypoint<Env, CodCapiParams> {
             eq(capiEventLog.eventName, eventName)
           )
         )
-        .then((rows) => rows[0]);
+        .then(first);
 
       if (existing) {
         if (existing.status === "sent") {

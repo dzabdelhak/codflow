@@ -3,6 +3,7 @@
  * (CRUD, lifecycle transitions, carrier dispatch guards, shipment ops).
  */
 
+import { rowsOf } from "@/test-utils/mock-db";
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { OpenAPIHono } from "@hono/zod-openapi";
 import type { AppContext } from "@/types";
@@ -57,10 +58,7 @@ function dbSelectReturning(result: any) {
   return {
     select: vi.fn(() => ({
       from: vi.fn(() => ({
-        where: vi.fn(() => ({
-          get: vi.fn(async () => result),
-          all: vi.fn(async () => (Array.isArray(result) ? result : result ? [result] : [])),
-        })),
+        where: vi.fn(() => rowsOf(() => result)),
       })),
     })),
     insert: vi.fn(() => ({ values: vi.fn(async () => undefined) })),

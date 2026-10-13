@@ -12,6 +12,7 @@ import type { AppDb } from "@/db";
 import { ConflictError } from "@/lib/errors/classes";
 import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
 import * as shared from "../../../../cod-shared/queries/variants";
+import { first } from "../../../../cod-shared/db/client";
 
 export * from "../../../../cod-shared/queries/variants";
 
@@ -46,7 +47,7 @@ async function assertSkuAvailable(
         ? and(eq(productVariants.sku, sku), ne(productVariants.id, excludeVariantId))
         : eq(productVariants.sku, sku),
     )
-    .then((rows) => rows[0]);
+    .then(first);
   if (clash) throw duplicateSkuError(sku);
 }
 

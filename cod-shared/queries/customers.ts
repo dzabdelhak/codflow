@@ -18,6 +18,7 @@ import {
 } from "../db/schema";
 import type { AppDb } from "../db/client";
 import { safeLikeTerm } from "./search";
+import { first } from "../db/client";
 
 export interface CustomerFilters {
   wilayaId?: number;
@@ -114,7 +115,7 @@ export async function getCustomerById(db: AppDb, customerId: string) {
     .select()
     .from(customers)
     .where(eq(customers.id, customerId))
-    .then((rows) => rows[0]);
+    .then(first);
 
   if (!customer) {
     return null;
@@ -138,7 +139,7 @@ export async function getCustomerByPhone(db: AppDb, phone: string) {
     .select()
     .from(customers)
     .where(eq(customers.phone, phone))
-    .then((rows) => rows[0]);
+    .then(first);
 }
 
 export async function createCustomer(db: AppDb, customerData: CreateCustomerData) {
@@ -149,7 +150,7 @@ export async function createCustomer(db: AppDb, customerData: CreateCustomerData
     .select({ nameAr: wilayas.nameAr })
     .from(wilayas)
     .where(eq(wilayas.id, customerData.wilayaId))
-    .then((rows) => rows[0]);
+    .then(first);
 
   let communeName: string | null = null;
   if (customerData.communeId) {
@@ -157,7 +158,7 @@ export async function createCustomer(db: AppDb, customerData: CreateCustomerData
       .select({ nameAr: communes.nameAr })
       .from(communes)
       .where(eq(communes.id, customerData.communeId))
-      .then((rows) => rows[0]);
+      .then(first);
     communeName = communeRow?.nameAr ?? null;
   }
 
@@ -194,7 +195,7 @@ export async function updateCustomer(
       .select({ nameAr: wilayas.nameAr })
       .from(wilayas)
       .where(eq(wilayas.id, updates.wilayaId))
-      .then((rows) => rows[0]);
+      .then(first);
     updateData.wilaya = wilayaRow?.nameAr ?? String(updates.wilayaId);
   }
 
@@ -206,7 +207,7 @@ export async function updateCustomer(
         .select({ nameAr: communes.nameAr })
         .from(communes)
         .where(eq(communes.id, updates.communeId))
-        .then((rows) => rows[0]);
+        .then(first);
       updateData.commune = communeRow?.nameAr ?? null;
     }
   }

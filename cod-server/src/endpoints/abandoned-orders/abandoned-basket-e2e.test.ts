@@ -27,6 +27,7 @@ import {
   listAbandonedOrders,
   getAbandonedOrderStats,
 } from "../../../../cod-shared/queries/abandoned-orders";
+import { first } from "../../../../cod-shared/db/client";
 
 const registry: TestDb[] = [];
 let db: AppDb;
@@ -50,7 +51,8 @@ afterAll(async () => {
 function makeApp() {
   const app = new OpenAPIHono<AppContext>({ defaultHook: openApiValidationHook });
   app.use("*", async (c, next) => {
-    c.env = { DB: {} } as any;
+    c.env = {} as any;
+    c.set("db", {} as any);
     c.set("storeId", "store-1");
     await next();
   });
@@ -98,7 +100,7 @@ async function rowFor(sessionId: string) {
     .select()
     .from(schema.abandonedOrders)
     .where(eq(schema.abandonedOrders.sessionId, sessionId))
-    .then((rows) => rows[0]);
+    .then(first);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

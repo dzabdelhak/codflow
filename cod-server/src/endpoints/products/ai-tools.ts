@@ -9,6 +9,7 @@ import {
 } from "./validation";
 import { getDb } from "@/db";
 import { toolOutput, timestampSchema } from "@/lib/tool-output-schema";
+import { first } from "../../../../cod-shared/db/client";
 
 /**
  * Layer-2 validation schemas, hoisted to module level and exported so the MCP
@@ -435,7 +436,7 @@ export const getProductTools = (db: ReturnType<typeof getDb>) => ({
           .select()
           .from(orderProducts)
           .where(eq(orderProducts.productId, parsed.data.productId))
-          .then((rows) => rows[0]);
+          .then(first);
 
         if (ordersWithProduct) {
           return {

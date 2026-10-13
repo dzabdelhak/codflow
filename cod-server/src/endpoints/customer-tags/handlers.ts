@@ -8,6 +8,7 @@ import * as validation from "./validation";
 import { logActivity, ACTIONS } from "@/lib/activity";
 import { NotFoundError, BusinessLogicError, ConflictError, SystemError } from "@/lib/errors/classes";
 import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
+import { first } from "../../../../cod-shared/db/client";
 
 export async function listTags(c: Context<AppContext>) {
   const db = c.get("db");
@@ -106,7 +107,7 @@ export async function assignTag(c: Context<AppContext>) {
     throw new NotFoundError("customer_tag", tagId);
   }
 
-  const customer = await db.select({ id: customers.id }).from(customers).where(eq(customers.id, customerId)).then((rows) => rows[0]);
+  const customer = await db.select({ id: customers.id }).from(customers).where(eq(customers.id, customerId)).then(first);
   if (!customer) {
     throw new NotFoundError("customer", customerId);
   }

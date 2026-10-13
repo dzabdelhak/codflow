@@ -20,6 +20,7 @@ import {
 } from "@/db/schema";
 import { BusinessLogicError } from "@/lib/errors/classes";
 import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
+import { first } from "../../../../cod-shared/db/client";
 
 type DB = AppDb;
 
@@ -66,14 +67,14 @@ export async function resolveDeliveryFee(
       .select({ shippingProfileId: products.shippingProfileId })
       .from(products)
       .where(eq(products.id, productIds[0]))
-      .then((rows) => rows[0]);
+      .then(first);
 
     if (productRow?.shippingProfileId) {
       const profile = await db
         .select({ id: shippingProfiles.id })
         .from(shippingProfiles)
         .where(eq(shippingProfiles.id, productRow.shippingProfileId))
-        .then((rows) => rows[0]);
+        .then(first);
       if (profile) {
         profileId = profile.id;
       }
@@ -86,7 +87,7 @@ export async function resolveDeliveryFee(
       .select({ id: shippingProfiles.id })
       .from(shippingProfiles)
       .where(eq(shippingProfiles.isDefault, true))
-      .then((rows) => rows[0]);
+      .then(first);
     if (defaultProfile) {
       profileId = defaultProfile.id;
     }
@@ -113,7 +114,7 @@ export async function resolveDeliveryFee(
         eq(shippingRules.wilayaId, wilayaId),
       ),
     )
-    .then((rows) => rows[0]);
+    .then(first);
 
   if (!wilayaRule) {
     throw new BusinessLogicError(
@@ -146,7 +147,7 @@ export async function resolveDeliveryFee(
           eq(shippingRuleCommunes.communeId, communeId),
         ),
       )
-      .then((rows) => rows[0]);
+      .then(first);
 
     if (communeOverride) {
       // NULL = inherit from wilaya rule
@@ -212,7 +213,7 @@ export async function applyFreeShippingOffer(
           eq(offers.status, "active"),
         ),
       )
-      .then((rows) => rows[0]);
+      .then(first);
 
     if (offer) {
       const qty = productQuantities.get(productId) ?? 0;

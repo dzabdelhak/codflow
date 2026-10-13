@@ -16,7 +16,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import pg from "pg";
 import { eq } from "drizzle-orm";
-import { getDb, type AppDb } from "@/db";
+import { getDb, type AppDb } from "../../../cod-shared/db/client";
 import { stores } from "@/db/schema";
 import { runMigrations } from "@/db/migrate";
 import "@/db/scope";
@@ -75,16 +75,20 @@ export interface TestDb {
   storeId: string;
   /** Connection string of this test's database (owner login). */
   url: string;
-  /** Another handle pinned to `storeId` — its own connection, for concurrency tests. */
-  connect(storeId?: string): Promise<AppDb>;
+  /**
+   * Another handle pinned to `storeId` — its own connection, for concurrency
+   * tests. `failWhen` makes every statement it matches fail ("INJECTED FAULT"),
+   * to prove a write rolls back whole.
+   */
+  connect(storeId?: string, opts?: { failWhen?: (sql: string) => boolean }): Promise<AppDb>;
   /** Creates a store (as the platform would) for `merchantId` (default: the test merchant) and returns its id. */
   createStore(id?: string, hostnames?: string[], merchantId?: string): Promise<string>;
   /** Creates a merchant and returns its id. */
   createMerchant(id?: string, storeLimit?: number | null): Promise<string>;
   /**
-   * Sets columns on the test's own store — what single-store tests used to do
-   * by inserting a `stores` row, which request code may no longer do. Any `id`
-   * in `values` is ignored; returns the store id.
+   * Resets the test's own store to a fresh row with these columns — what
+   * single-store tests used to do by deleting and inserting a `stores` row,
+   * which request code may no longer do. Any `id` is ignored; returns the id.
    */
   setStore(values: Partial<typeof stores.$inferInsert>): Promise<string>;
   /** Raw SQL as the platform role (bypasses RLS) — for fixtures and assertions. */
@@ -153,20 +157,33 @@ export async function createTestDb(): Promise<TestDb> {
   await createMerchant(TEST_MERCHANT_ID);
   await createStore(TEST_STORE_ID);
   let queryListener: ((sql: string) => void) | undefined;
-  const connect = async (storeId = TEST_STORE_ID) => {
+  const connect = async (storeId = TEST_STORE_ID, opts: { failWhen?: (sql: string) => boolean } = {}) => {
     const { rows } = await platform.query<{ merchant_id: string }>("select merchant_id from stores where id = $1", [storeId]);
     const client = await open("codflow_app", storeId, rows[0]?.merchant_id ?? TEST_MERCHANT_ID);
     const query = client.query.bind(client) as (...args: unknown[]) => unknown;
     (client as { query: unknown }).query = (...args: unknown[]) => {
       const first = args[0] as string | { text?: string };
-      queryListener?.(typeof first === "string" ? first : first?.text ?? "");
+      const text = typeof first === "string" ? first : first?.text ?? "";
+      queryListener?.(text);
+      if (opts.failWhen?.(text)) return Promise.reject(new Error("INJECTED FAULT"));
       return query(...args);
     };
     return getDb(client);
   };
   const db = await connect();
 
+  /** Columns a fresh store row would take from their defaults (NULL when they have none). */
+  const resettable = (
+    await platform.query<{ column_name: string }>(
+      `select column_name from information_schema.columns
+        where table_name = 'stores' and table_schema = 'public'
+          and column_name not in ('id', 'merchant_id')
+          and (column_default is not null or is_nullable = 'YES')`,
+    )
+  ).rows.map((r) => `"${r.column_name}" = DEFAULT`);
+
   async function setStore(values: Partial<typeof stores.$inferInsert>) {
+    await platform.query(`update stores set ${resettable.join(", ")} where id = $1`, [TEST_STORE_ID]);
     const { id: _ignored, ...columns } = values;
     if (Object.keys(columns).length) await db.update(stores).set(columns).where(eq(stores.id, TEST_STORE_ID));
     return TEST_STORE_ID;

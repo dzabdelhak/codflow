@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { products, productVariants, orderProducts, stockMovements } from "../db/schema";
 import type { AppDb } from "../db/client";
+import { first } from "../db/client";
 
 type BatchStatement = Parameters<AppDb["batch"]>[0][number];
 
@@ -83,7 +84,7 @@ export async function getVariantsByProduct(db: AppDb, productId: string) {
 }
 
 export async function getVariantById(db: AppDb, variantId: string) {
-  const v = await db.select().from(productVariants).where(eq(productVariants.id, variantId)).then((rows) => rows[0]);
+  const v = await db.select().from(productVariants).where(eq(productVariants.id, variantId)).then(first);
   return v ? parseVariant(v) : null;
 }
 
@@ -120,7 +121,7 @@ export async function createVariant(db: AppDb, productId: string, data: CreateVa
       .select({ trackInventory: products.trackInventory })
       .from(products)
       .where(eq(products.id, productId))
-      .then((rows) => rows[0]);
+      .then(first);
     if (productRow?.trackInventory) {
       statements.push(
         buildInventoryMovement(db, {
@@ -166,13 +167,13 @@ export async function updateVariant(db: AppDb, variantId: string, data: UpdateVa
       .select({ productId: productVariants.productId, inventory: productVariants.inventory })
       .from(productVariants)
       .where(eq(productVariants.id, variantId))
-      .then((rows) => rows[0]);
+      .then(first);
     if (variantRow) {
       const productRow = await db
         .select({ trackInventory: products.trackInventory })
         .from(products)
         .where(eq(products.id, variantRow.productId))
-        .then((rows) => rows[0]);
+        .then(first);
       if (productRow?.trackInventory) {
         const qtyBefore = variantRow.inventory;
         const delta = data.inventory - qtyBefore;
@@ -202,7 +203,7 @@ export async function deleteVariant(db: AppDb, variantId: string) {
     .select({ productId: productVariants.productId, inventory: productVariants.inventory })
     .from(productVariants)
     .where(eq(productVariants.id, variantId))
-    .then((rows) => rows[0]);
+    .then(first);
 
   // No ledger surrogate for the deletion: stock_movements.variant_id is
   // ON DELETE cascade, so the variant's scoped movements (including its

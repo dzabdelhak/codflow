@@ -19,6 +19,7 @@ import {
   products,
 } from "../db/schema";
 import type { AppDb } from "../db/client";
+import { first } from "../db/client";
 
 export interface CreateProfileData {
   name: string;
@@ -122,7 +123,7 @@ export async function getProfileById(
     .select()
     .from(shippingProfiles)
     .where(eq(shippingProfiles.id, id))
-    .then((rows) => rows[0]);
+    .then(first);
 
   if (!profile) return null;
 
@@ -177,7 +178,7 @@ export async function getDefaultProfileRules(db: AppDb): Promise<ShippingRule[]>
     .select()
     .from(shippingProfiles)
     .where(eq(shippingProfiles.isDefault, true))
-    .then((rows) => rows[0]);
+    .then(first);
 
   if (!defaultProfile) return [];
 
@@ -251,7 +252,7 @@ export async function deleteProfile(db: AppDb, id: string): Promise<boolean> {
     .select()
     .from(shippingProfiles)
     .where(eq(shippingProfiles.id, id))
-    .then((rows) => rows[0]);
+    .then(first);
 
   if (!existing) return false;
 
@@ -272,7 +273,7 @@ export async function getWilayaRule(
     .where(
       and(eq(shippingRules.profileId, profileId), eq(shippingRules.wilayaId, wilayaId)),
     )
-    .then((rows) => rows[0]);
+    .then(first);
 }
 
 export async function getCommunesWithOverrides(
@@ -361,7 +362,7 @@ export async function setCommuneOverride(
         eq(shippingRuleCommunes.communeId, communeId),
       ),
     )
-    .then((rows) => rows[0]);
+    .then(first);
 
   if (existing) {
     await db
@@ -397,7 +398,7 @@ export async function deleteCommuneOverride(
         eq(shippingRuleCommunes.communeId, communeId),
       ),
     )
-    .then((rows) => rows[0]);
+    .then(first);
 
   if (!existing) return false;
 

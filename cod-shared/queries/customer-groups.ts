@@ -1,6 +1,7 @@
 import { eq, and, like, sql } from "drizzle-orm";
 import { customerGroups, customerGroupMembers, customers } from "../db/schema";
 import type { AppDb } from "../db/client";
+import { first } from "../db/client";
 
 export interface CustomerGroupFilters {
   search?: string;
@@ -45,7 +46,7 @@ export async function getGroupById(db: AppDb, groupId: string) {
     .select()
     .from(customerGroups)
     .where(eq(customerGroups.id, groupId))
-    .then((rows) => rows[0]);
+    .then(first);
 }
 
 export async function getGroupWithMembers(db: AppDb, groupId: string) {
@@ -117,7 +118,7 @@ export async function addMember(db: AppDb, groupId: string, customerId: string) 
     .select({ count: sql<number>`count(*)` })
     .from(customerGroupMembers)
     .where(eq(customerGroupMembers.groupId, groupId))
-    .then((rows) => rows[0]);
+    .then(first);
 
   await db
     .update(customerGroups)
@@ -140,7 +141,7 @@ export async function removeMember(db: AppDb, groupId: string, customerId: strin
     .select({ count: sql<number>`count(*)` })
     .from(customerGroupMembers)
     .where(eq(customerGroupMembers.groupId, groupId))
-    .then((rows) => rows[0]);
+    .then(first);
 
   await db
     .update(customerGroups)

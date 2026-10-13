@@ -20,6 +20,7 @@ import { eq } from "drizzle-orm";
 import * as schema from "@/db/schema";
 import type { AppDb } from "@/db";
 import { getAllOrders, getOrderById } from "../../../../cod-shared/queries/orders";
+import { first } from "../../../../cod-shared/db/client";
 
 const registry: TestDb[] = [];
 let db: AppDb;
@@ -33,12 +34,12 @@ beforeAll(async () => {
     .select({ id: schema.communes.id, nameAr: schema.communes.nameAr })
     .from(schema.communes)
     .where(eq(schema.communes.wilayaId, 16))
-    .then((rows) => rows[0]);
+    .then(first);
   const wilaya = await db
     .select({ nameAr: schema.wilayas.nameAr })
     .from(schema.wilayas)
     .where(eq(schema.wilayas.id, 16))
-    .then((rows) => rows[0]);
+    .then(first);
 
   const now = new Date().toISOString();
   const earlier = "2025-12-01T00:00:00.000Z";

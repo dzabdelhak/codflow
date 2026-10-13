@@ -22,6 +22,7 @@ import {
   type StoreConfigRow,
   type PageConfigRow,
 } from "./tracking-config";
+import { first } from "../db/client";
 
 export interface LandingPageStats {
   views: number;
@@ -194,7 +195,7 @@ export async function getLandingPageStats(db: AppDb, id: string): Promise<Landin
     })
     .from(landingPages)
     .where(eq(landingPages.id, id))
-    .then((rows) => rows[0]);
+    .then(first);
   if (!row) return null;
   return {
     views: Number(row.views),
@@ -220,7 +221,7 @@ export async function getLandingPageById(db: AppDb, id: string) {
     .select()
     .from(landingPages)
     .where(eq(landingPages.id, id))
-    .then((rows) => rows[0]);
+    .then(first);
   if (!row) return null;
 
   const results = await db.batch([
@@ -276,7 +277,7 @@ export async function getLandingPageDetailBySlug(db: AppDb, slug: string) {
     .select()
     .from(landingPages)
     .where(eq(landingPages.slug, slug))
-    .then((rows) => rows[0]);
+    .then(first);
   if (!row) return null;
 
   const results = await db.batch([
@@ -335,7 +336,7 @@ export async function getLandingPageBySlug(db: AppDb, slug: string) {
     .select()
     .from(landingPages)
     .where(eq(landingPages.slug, slug))
-    .then((rows) => rows[0]);
+    .then(first);
   if (!row) return null;
   return getLandingPageById(db, row.id);
 }
@@ -414,7 +415,7 @@ export async function countLandingPageOrders(db: AppDb, id: string): Promise<num
     .select({ c: count() })
     .from(orders)
     .where(eq(orders.landingPageId, id))
-    .then((rows) => rows[0]);
+    .then(first);
   return Number(row?.c ?? 0);
 }
 
@@ -435,7 +436,7 @@ export async function addLandingPageImage(
     .select({ maxPos: sql<number>`MAX(${landingPageImages.position})` })
     .from(landingPageImages)
     .where(eq(landingPageImages.landingPageId, landingPageId))
-    .then((rows) => rows[0]);
+    .then(first);
   const nextPosition = image.position ?? Number(lastRow?.maxPos ?? 0) + 1;
 
   await db.insert(landingPageImages).values({
@@ -476,7 +477,7 @@ export async function getLandingPageImage(
         eq(landingPageImages.landingPageId, landingPageId),
       ),
     )
-    .then((rows) => rows[0]);
+    .then(first);
 }
 
 export async function reorderLandingPageImages(
@@ -533,7 +534,7 @@ export async function findPublishedLandingPageIdBySlug(
     .select({ id: landingPages.id })
     .from(landingPages)
     .where(and(eq(landingPages.slug, slug), eq(landingPages.status, "published")))
-    .then((rows) => rows[0]);
+    .then(first);
   return row?.id ?? null;
 }
 
@@ -556,7 +557,7 @@ export async function duplicateLandingPage(db: AppDb, id: string): Promise<strin
     .select()
     .from(landingPages)
     .where(eq(landingPages.id, id))
-    .then((rows) => rows[0]);
+    .then(first);
   if (!source) return null;
 
   const images = await db
@@ -574,7 +575,7 @@ export async function duplicateLandingPage(db: AppDb, id: string): Promise<strin
     .select()
     .from(landingPagePixelConfig)
     .where(eq(landingPagePixelConfig.landingPageId, id))
-    .then((rows) => rows[0]);
+    .then(first);
 
   const newId = crypto.randomUUID();
   const now = new Date().toISOString();
@@ -641,7 +642,7 @@ export async function countOtherLandingPageImageReferences(
     .select({ c: count() })
     .from(landingPageImages)
     .where(and(eq(landingPageImages.r2Key, r2Key), sql`${landingPageImages.id} <> ${excludeImageId}`))
-    .then((rows) => rows[0]);
+    .then(first);
   return Number(row?.c ?? 0);
 }
 
@@ -650,7 +651,7 @@ export async function slugExists(db: AppDb, slug: string): Promise<boolean> {
     .select({ id: landingPages.id })
     .from(landingPages)
     .where(eq(landingPages.slug, slug))
-    .then((rows) => rows[0]);
+    .then(first);
   return row !== undefined;
 }
 
@@ -685,7 +686,7 @@ export async function resolveStorefrontBaseUrl(
     .select({ domain: stores.domain })
     .from(stores)
     .limit(1)
-    .then((rows) => rows[0]);
+    .then(first);
   if (store?.domain) return `https://${store.domain}`;
   const fallback = (fallbackUrl ?? "").replace(/\/+$/, "");
   return fallback || null;

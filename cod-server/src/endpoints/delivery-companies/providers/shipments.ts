@@ -8,6 +8,7 @@
 import { AppDb } from "@/db";
 import { companyShipments, companyApiLogs } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
+import { first } from "../../../../../cod-shared/db/client";
 
 // ─── Shipments ────────────────────────────────────────────────────────────────
 
@@ -64,7 +65,7 @@ export async function getShipmentByOrder(db: AppDb, orderId: string) {
     .from(companyShipments)
     .where(eq(companyShipments.orderId, orderId))
     .orderBy(desc(companyShipments.createdAt))
-    .then((rows) => rows[0]);
+    .then(first);
 }
 
 // ─── API Logs ─────────────────────────────────────────────────────────────────

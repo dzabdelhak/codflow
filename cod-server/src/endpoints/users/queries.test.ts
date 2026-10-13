@@ -9,6 +9,7 @@
  */
 
 import { describe, it, expect, vi } from "vitest";
+import { rowsOf } from "@/test-utils/mock-db";
 import { createUser } from "./queries";
 
 vi.mock("@/rbac/permissions", () => ({ clearScopeCache: vi.fn() }));
@@ -27,9 +28,7 @@ function makeDb() {
     run: vi.fn(async () => undefined),
     select: vi.fn(() => ({
       from: vi.fn(() => ({
-        where: vi.fn(() => ({
-          get: vi.fn(async () => undefined),
-        })),
+        where: vi.fn(() => (rowsOf(vi.fn(async () => undefined)))),
       })),
     })),
   } as any;

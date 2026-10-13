@@ -23,6 +23,7 @@ import {
   findOrCreateCustomer,
   createStoreOrder,
 } from "../../../../cod-shared/queries/store";
+import { first } from "../../../../cod-shared/db/client";
 
 const registry: TestDb[] = [];
 let db: AppDb;
@@ -137,7 +138,7 @@ describe("createStoreOrder — atomic commit + guarded deduction (BC-2)", () => 
     expect(result.deliveryFee).toBe(400);
     expect(result.orderNumber).toMatch(/^ORD-\d{8}-\d{4}$/);
 
-    const order = await db.select().from(schema.orders).where(eq(schema.orders.id, result.id)).then((rows) => rows[0]);
+    const order = await db.select().from(schema.orders).where(eq(schema.orders.id, result.id)).then(first);
     expect(order).toMatchObject({
       status: "new",
       codAmount: 4900,
@@ -158,11 +159,11 @@ describe("createStoreOrder — atomic commit + guarded deduction (BC-2)", () => 
     expect(history).toHaveLength(1);
     expect(history[0].status).toBe("new");
 
-    const cust = await db.select().from(schema.customers).where(eq(schema.customers.id, customer.id)).then((rows) => rows[0]);
+    const cust = await db.select().from(schema.customers).where(eq(schema.customers.id, customer.id)).then(first);
     expect(cust?.totalOrders).toBe(1);
     expect(cust?.totalSpent).toBe(4500);
 
-    const product = await db.select().from(schema.products).where(eq(schema.products.id, productId)).then((rows) => rows[0]);
+    const product = await db.select().from(schema.products).where(eq(schema.products.id, productId)).then(first);
     expect(product?.inventory).toBe(7);
 
     const movements = await db
@@ -216,10 +217,10 @@ describe("createStoreOrder — atomic commit + guarded deduction (BC-2)", () => 
       .from(schema.stockMovements);
     expect(movementsAfter.length).toBe(movementsBefore.length);
 
-    const product = await db.select().from(schema.products).where(eq(schema.products.id, productId)).then((rows) => rows[0]);
+    const product = await db.select().from(schema.products).where(eq(schema.products.id, productId)).then(first);
     expect(product?.inventory).toBe(1);
 
-    const cust = await db.select().from(schema.customers).where(eq(schema.customers.id, customer.id)).then((rows) => rows[0]);
+    const cust = await db.select().from(schema.customers).where(eq(schema.customers.id, customer.id)).then(first);
     expect(cust?.totalOrders).toBe(0);
     expect(cust?.totalSpent).toBe(0);
   });

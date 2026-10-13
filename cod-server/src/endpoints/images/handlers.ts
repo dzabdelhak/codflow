@@ -5,6 +5,7 @@ import { productImages } from "@/db/schema";
 import { eq, and, asc } from "drizzle-orm";
 import { NotFoundError, ValidationError, SystemError } from "@/lib/errors/classes";
 import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
+import { first } from "../../../../cod-shared/db/client";
 
 const ALLOWED_TYPES = new Set([
   "image/jpeg",
@@ -323,7 +324,7 @@ export async function deleteProductImage(c: Context<AppContext>) {
     .select()
     .from(productImages)
     .where(and(eq(productImages.id, imageId), eq(productImages.productId, productId)))
-    .then((rows) => rows[0]);
+    .then(first);
 
   if (!image) {
     throw new NotFoundError("Image", imageId);

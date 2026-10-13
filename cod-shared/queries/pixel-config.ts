@@ -1,6 +1,7 @@
 import type { AppDb } from "../db/client";
 import { storePixelConfig } from "../db/schema";
 import { eq } from "drizzle-orm";
+import { first } from "../db/client";
 
 export type ConversionEvent = "Purchase" | "Purchase_Confirmed" | "Purchase_Delivered" | "Lead";
 
@@ -10,13 +11,13 @@ export async function getPixelConfig(db: AppDb, storeId?: string) {
       .select()
       .from(storePixelConfig)
       .where(eq(storePixelConfig.storeId, storeId))
-      .then((rows) => rows[0]);
+      .then(first);
   }
   return db
     .select()
     .from(storePixelConfig)
     .limit(1)
-    .then((rows) => rows[0]);
+    .then(first);
 }
 
 export interface UpsertPixelConfigData {
@@ -70,7 +71,7 @@ export async function upsertPixelConfig(
       })
       .where(eq(storePixelConfig.storeId, storeId))
       .returning()
-      .then((rows) => rows[0]);
+      .then(first);
   }
 
   const row = {

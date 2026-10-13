@@ -17,6 +17,7 @@
 import type { AppDb } from "../db/client";
 import { storeTurnstileConfig } from "../db/schema";
 import { eq } from "drizzle-orm";
+import { first, one } from "../db/client";
 
 export interface TurnstileConfig {
   storeId: string;
@@ -41,7 +42,7 @@ export async function getTurnstileConfig(
     })
     .from(storeTurnstileConfig)
     .where(eq(storeTurnstileConfig.storeId, storeId))
-    .then((rows) => rows[0]);
+    .then(first);
   return row;
 }
 
@@ -54,7 +55,7 @@ export async function getTurnstileConfigRaw(
     .select()
     .from(storeTurnstileConfig)
     .where(eq(storeTurnstileConfig.storeId, storeId))
-    .then((rows) => rows[0]);
+    .then(first);
 }
 
 export interface UpsertTurnstileConfigData {
@@ -76,7 +77,7 @@ export async function upsertTurnstileConfig(
     .select({ id: storeTurnstileConfig.id })
     .from(storeTurnstileConfig)
     .where(eq(storeTurnstileConfig.storeId, storeId))
-    .then((rows) => rows[0]);
+    .then(first);
 
   if (existing) {
     const row = await db
@@ -90,7 +91,7 @@ export async function upsertTurnstileConfig(
         createdAt: storeTurnstileConfig.createdAt,
         updatedAt: storeTurnstileConfig.updatedAt,
       })
-      .then((rows) => rows[0]);
+      .then(one);
     return row;
   }
 

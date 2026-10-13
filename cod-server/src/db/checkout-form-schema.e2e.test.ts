@@ -16,6 +16,7 @@ import {
   parseCheckoutFormPolicy,
   serializeCheckoutFormPolicy,
 } from "../../../cod-shared/checkout-form/policy";
+import { first } from "../../../cod-shared/db/client";
 
 let harness: TestD1;
 const NOW = new Date().toISOString();
@@ -46,7 +47,7 @@ afterAll(async () => {
 
 describe("stores.checkout_form_json", () => {
   it("starts NULL, which every existing store reads as today's form", async () => {
-    const row = await harness.db.select().from(stores).where(eq(stores.id, STORE_ID)).then((rows) => rows[0]);
+    const row = await harness.db.select().from(stores).where(eq(stores.id, STORE_ID)).then(first);
     expect(row?.checkoutFormJson).toBeNull();
     expect(parseCheckoutFormPolicy(row?.checkoutFormJson ?? null)).toEqual(
       DEFAULT_CHECKOUT_FORM_POLICY,
@@ -75,7 +76,7 @@ describe("stores.checkout_form_json", () => {
       .set({ checkoutFormJson: serializeCheckoutFormPolicy(policy) })
       .where(eq(stores.id, STORE_ID));
 
-    const row = await harness.db.select().from(stores).where(eq(stores.id, STORE_ID)).then((rows) => rows[0]);
+    const row = await harness.db.select().from(stores).where(eq(stores.id, STORE_ID)).then(first);
     expect(parseCheckoutFormPolicy(row?.checkoutFormJson ?? null)).toEqual(policy);
   });
 
@@ -85,7 +86,7 @@ describe("stores.checkout_form_json", () => {
       .set({ checkoutFormJson: null })
       .where(eq(stores.id, STORE_ID));
 
-    const row = await harness.db.select().from(stores).where(eq(stores.id, STORE_ID)).then((rows) => rows[0]);
+    const row = await harness.db.select().from(stores).where(eq(stores.id, STORE_ID)).then(first);
     expect(row?.checkoutFormJson).toBeNull();
   });
 });
@@ -107,7 +108,7 @@ describe("orders.customer_email / orders.custom_fields_json", () => {
       updatedAt: NOW,
       ...extra,
     });
-    return harness.db.select().from(orders).where(eq(orders.id, id)).then((rows) => rows[0]);
+    return harness.db.select().from(orders).where(eq(orders.id, id)).then(first);
   }
 
   it("accepts an order that carries neither — every order placed before this feature", async () => {
@@ -134,7 +135,7 @@ describe("orders.customer_email / orders.custom_fields_json", () => {
       .set({ checkoutFormJson: serializeCheckoutFormPolicy(DEFAULT_CHECKOUT_FORM_POLICY) })
       .where(eq(stores.id, STORE_ID));
 
-    const after = await harness.db.select().from(orders).where(eq(orders.id, "0003")).then((rows) => rows[0]);
+    const after = await harness.db.select().from(orders).where(eq(orders.id, "0003")).then(first);
     expect(JSON.parse(after!.customFieldsJson!)).toEqual(JSON.parse(snapshot));
   });
 });

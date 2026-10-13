@@ -26,6 +26,7 @@ import {
 } from "../legal/kinds";
 import type { LegalPageKind, PageLocale, StorePageKind } from "../legal/kinds";
 import { legalFactsFrom, renderLegalTemplate } from "../legal/render";
+import { first, one } from "../db/client";
 
 export type StorePageRow = typeof storePages.$inferSelect;
 export type StorePageTranslationRow = typeof storePageTranslations.$inferSelect;
@@ -168,7 +169,7 @@ async function writeTranslation(
       },
     })
     .returning()
-    .then((rows) => rows[0]);
+    .then(one);
 }
 
 /**
@@ -204,10 +205,10 @@ export async function resetTranslationToTemplate(
     .select()
     .from(storePages)
     .where(and(eq(storePages.id, pageId), eq(storePages.storeId, storeId)))
-    .then((rows) => rows[0]);
+    .then(first);
   if (!page || !isLegalKind(page.kind)) return null;
 
-  const store = await db.select({ name: stores.name }).from(stores).where(eq(stores.id, storeId)).then((rows) => rows[0]);
+  const store = await db.select({ name: stores.name }).from(stores).where(eq(stores.id, storeId)).then(first);
   if (!store) return null;
 
   const profile = await getLegalProfile(db, storeId);
@@ -253,7 +254,7 @@ export async function seedStorePages(
   db: AppDb,
   storeId: string,
 ): Promise<{ created: LegalPageKind[] }> {
-  const store = await db.select({ name: stores.name }).from(stores).where(eq(stores.id, storeId)).then((rows) => rows[0]);
+  const store = await db.select({ name: stores.name }).from(stores).where(eq(stores.id, storeId)).then(first);
   if (!store) return { created: [] };
 
   const existingKinds = new Set(
@@ -328,7 +329,7 @@ export async function slugExists(
     .select({ id: storePages.id })
     .from(storePages)
     .where(and(eq(storePages.storeId, storeId), eq(storePages.slug, slug)))
-    .then((rows) => rows[0]);
+    .then(first);
   return row !== undefined && row.id !== excludeId;
 }
 
@@ -366,7 +367,7 @@ export async function getStorePageById(
     .select()
     .from(storePages)
     .where(and(eq(storePages.id, id), eq(storePages.storeId, storeId)))
-    .then((rows) => rows[0]);
+    .then(first);
   if (!page) return null;
 
   const translations = await db
@@ -435,7 +436,7 @@ export async function resolvePublishedPage(
     .select()
     .from(storePages)
     .where(and(eq(storePages.storeId, storeId), eq(storePages.slug, slug)))
-    .then((rows) => rows[0]);
+    .then(first);
   if (!page || page.status !== "published") return null;
 
   const translations = await db
@@ -571,7 +572,7 @@ export async function getLegalProfile(
   db: AppDb,
   storeId: string,
 ): Promise<StoreLegalProfileRow | undefined> {
-  return db.select().from(storeLegalProfile).where(eq(storeLegalProfile.storeId, storeId)).then((rows) => rows[0]);
+  return db.select().from(storeLegalProfile).where(eq(storeLegalProfile.storeId, storeId)).then(first);
 }
 
 /** The subset `/store/config` may expose to the storefront — no RC/NIF. */
@@ -595,7 +596,7 @@ export async function getPublicLegalContact(
     })
     .from(storeLegalProfile)
     .where(eq(storeLegalProfile.storeId, storeId))
-    .then((rows) => rows[0]);
+    .then(first);
   return row ?? null;
 }
 

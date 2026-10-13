@@ -15,6 +15,7 @@ import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
 import { scryptAsync } from "@noble/hashes/scrypt.js";
 import { bytesToHex, randomBytes } from "@noble/hashes/utils.js";
 import { sendInviteEmail } from "./invite-email";
+import { first } from "../../../../cod-shared/db/client";
 
 /**
  * GET /users
@@ -95,7 +96,7 @@ export async function createUser(c: Context<AppContext>) {
   // 4. Check for duplicate email
   const { users: usersTable } = await import("@/db/schema");
   const { eq } = await import("drizzle-orm");
-  const existing = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.email, validated.email)).then((rows) => rows[0]);
+  const existing = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.email, validated.email)).then(first);
   if (existing) {
     throw new ConflictError(
       "A user with this email already exists",

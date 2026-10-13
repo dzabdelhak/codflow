@@ -15,13 +15,14 @@ import type { AppDb } from "../db/client";
 import { landingPagePixelConfig, capiEventLog, orders } from "../db/schema";
 import { eq, desc } from "drizzle-orm";
 import type { ConversionEvent } from "./pixel-config";
+import { first } from "../db/client";
 
 export async function getLandingPageTracking(db: AppDb, landingPageId: string) {
   return db
     .select()
     .from(landingPagePixelConfig)
     .where(eq(landingPagePixelConfig.landingPageId, landingPageId))
-    .then((rows) => rows[0]);
+    .then(first);
 }
 
 export interface UpsertLandingPageTrackingData {
@@ -70,7 +71,7 @@ export async function upsertLandingPageTracking(
       })
       .where(eq(landingPagePixelConfig.landingPageId, landingPageId))
       .returning()
-      .then((rows) => rows[0]);
+      .then(first);
   }
 
   const row = {
@@ -91,7 +92,7 @@ export async function upsertLandingPageTracking(
     .insert(landingPagePixelConfig)
     .values(row)
     .returning()
-    .then((rows) => rows[0]);
+    .then(first);
 }
 
 /** Return the page to the store pixel. */
@@ -130,5 +131,5 @@ export async function lastCapiEventForLandingPage(db: AppDb, landingPageId: stri
     .where(eq(orders.landingPageId, landingPageId))
     .orderBy(desc(capiEventLog.sentAt))
     .limit(1)
-    .then((rows) => rows[0]);
+    .then(first);
 }

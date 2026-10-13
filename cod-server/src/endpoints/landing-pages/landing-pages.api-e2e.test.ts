@@ -22,6 +22,7 @@ import { openApiValidationHook } from "@/openapi/validation-hook";
 import landingPagesRouter from "./routes";
 import * as schema from "@/db/schema";
 import type { AppDb } from "@/db";
+import { first } from "../../../../cod-shared/db/client";
 
 let db: AppDb;
 let rawD1: D1Database;
@@ -181,7 +182,7 @@ describe("Slice 2 — landing pages management API (real D1 + real routes)", () 
     const arch = await app.request(`/api/landing-pages/${id}/archive`, { method: "POST" });
     expect(arch.status).toBe(200);
     const row = await db.select().from(schema.landingPages)
-      .where(eq(schema.landingPages.id, id)).then((rows) => rows[0]);
+      .where(eq(schema.landingPages.id, id)).then(first);
     expect(row?.status).toBe("archived");
   });
 

@@ -14,31 +14,27 @@
  *  4. Toggling it changes nothing else about the store.
  */
 
-import { describe, it, expect, beforeAll, beforeEach, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { createTestDb, type TestDb } from "@/test-utils/pg";
-import { readFileSync, readdirSync } from "node:fs";
-import { resolve } from "node:path";
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import * as schema from "@/db/schema";
 import type { AppDb } from "@/db";
 import { getStoreConfig } from "../../../../cod-shared/queries/store";
 import { updateStore } from "../../../../cod-shared/queries/stores";
 import { updateStoreSchema } from "./validation";
+import { first } from "../../../../cod-shared/db/client";
 
-const registry: TestDb[] = [];
+let harness: TestDb;
+/** The connection of the store seeded last — each store reads through its own. */
 let db: AppDb;
 
 beforeAll(async () => {
-  const harness = await createTestDb();
-  registry.push(harness);
+  harness = await createTestDb();
   db = harness.db;
 });
 
-beforeEach(async () => {
-});
-
 afterAll(async () => {
-  for (const mf of registry) await mf.dispose();
+  await harness?.dispose();
 });
 
 const now = () => new Date().toISOString();
@@ -51,14 +47,16 @@ const uid = () => `store-${crypto.randomUUID().slice(0, 8)}`;
  */
 async function seedLegacyStore() {
   const id = uid();
-  await db.run(sql`
-    INSERT INTO stores (id, name, theme_id, primary_color, accent_color, bg_color,
-                        font_family, lang, currency, currency_symbol,
-                        reviews_enabled, cart_shipping_mode, status, created_at, updated_at)
-    VALUES (${id}, 'Legacy Store', 'theme01', '#7c3aed', '#f59e0b', '#f8f8f8',
-            'Cairo, sans-serif', 'ar', 'DZD', 'دج',
-            1, 'highest', 'active', ${now()}, ${now()})
-  `);
+  await harness.platform.query(
+    `INSERT INTO stores (id, name, merchant_id, theme_id, primary_color, accent_color, bg_color,
+                         font_family, lang, currency, currency_symbol,
+                         reviews_enabled, cart_shipping_mode, status, created_at, updated_at)
+     VALUES ($1, 'Legacy Store', 'test-merchant', 'theme01', '#7c3aed', '#f59e0b', '#f8f8f8',
+             'Cairo, sans-serif', 'ar', 'DZD', 'دج',
+             true, 'highest', 'active', $2, $2)`,
+    [id, now()],
+  );
+  db = await harness.connect(id);
   return id;
 }
 
@@ -69,7 +67,7 @@ describe("cart switch — defaults to off", () => {
     // This is the production case: every existing store predates the column.
     const id = await seedLegacyStore();
 
-    const row = await db.select().from(schema.stores).where(eq(schema.stores.id, id)).then((rows) => rows[0]);
+    const row = await db.select().from(schema.stores).where(eq(schema.stores.id, id)).then(first);
     expect(row!.cartEnabled).toBe(false);
   });
 

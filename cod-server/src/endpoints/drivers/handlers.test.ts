@@ -91,7 +91,7 @@ describe("Drivers Endpoint - Error Scenarios", () => {
 
     it("should return 200 with driver data when driver exists", async () => {
       // Mock successful response
-      vi.mocked(queries.getDriverById).mockResolvedValue({
+      vi.mocked(queries.getDriverById).mockResolvedValue({ storeId: "test-store",
         id: "drv_123",
         firstName: "Ahmed",
         lastName: "Benali",
@@ -210,7 +210,7 @@ describe("Drivers Endpoint - Error Scenarios", () => {
 
     it("should return 409 with DRIVER_HAS_ACTIVE_ORDERS code when driver has active orders", async () => {
       // Mock getDriverById to return a driver
-      vi.mocked(queries.getDriverById).mockResolvedValue({
+      vi.mocked(queries.getDriverById).mockResolvedValue({ storeId: "test-store",
         id: "drv_123",
         firstName: "Ahmed",
         lastName: "Benali",
@@ -254,7 +254,7 @@ describe("Drivers Endpoint - Error Scenarios", () => {
 
     it("should return 200 when driver is successfully deleted", async () => {
       // Mock getDriverById to return a driver
-      vi.mocked(queries.getDriverById).mockResolvedValue({
+      vi.mocked(queries.getDriverById).mockResolvedValue({ storeId: "test-store",
         id: "drv_123",
         firstName: "Ahmed",
         lastName: "Benali",

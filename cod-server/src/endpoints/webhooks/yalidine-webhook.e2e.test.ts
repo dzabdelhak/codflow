@@ -33,6 +33,7 @@ vi.mock("@/workflows/capi-helpers", () => ({
 }));
 
 import { handleYalidineWebhook } from "./handlers";
+import { first } from "../../../../cod-shared/db/client";
 
 let realDb: AppDb;
 let app: Hono<AppContext>;
@@ -132,7 +133,7 @@ async function orderRow() {
     .select()
     .from(schema.orders)
     .where(eq(schema.orders.id, "ord-map-1"))
-    .then((rows) => rows[0]);
+    .then(first);
   return row!;
 }
 
@@ -141,7 +142,7 @@ async function eventRow(eventId: string) {
     .select()
     .from(schema.webhookEvents)
     .where(eq(schema.webhookEvents.eventId, eventId))
-    .then((rows) => rows[0]);
+    .then(first);
 }
 
 describe("handleYalidineWebhook — real D1, real mapper, real order path", () => {
@@ -172,7 +173,7 @@ describe("handleYalidineWebhook — real D1, real mapper, real order path", () =
       .select()
       .from(schema.products)
       .where(eq(schema.products.id, "prod-e2e-2"))
-      .then((rows) => rows[0]);
+      .then(first);
     expect(product!.inventory).toBe(3);
     expect(finalOrder.deliveryAttempts).toBe(0);
 

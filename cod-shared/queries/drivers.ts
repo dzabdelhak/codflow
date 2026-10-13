@@ -13,6 +13,7 @@ import { eq, and, like, or, count, sql, desc, exists, inArray } from "drizzle-or
 import { drivers, driverCompensations, wilayas, orders } from "../db/schema";
 import type { AppDb } from "../db/client";
 import { safeLikeTerm } from "./search";
+import { first } from "../db/client";
 
 export interface DriverFilters {
   wilayaId?: number;
@@ -115,7 +116,7 @@ export async function getDriverCashReconciliation(db: AppDb, driverId: string) {
       .select({ pendingCash: drivers.pendingCash })
       .from(drivers)
       .where(eq(drivers.id, driverId))
-      .then((rows) => rows[0]),
+      .then(first),
     db
       .select({
         total: sql<number>`coalesce(sum(${orders.codAmount}), 0)`,
@@ -129,7 +130,7 @@ export async function getDriverCashReconciliation(db: AppDb, driverId: string) {
           sql`${orders.codPaymentId} IS NULL`,
         ),
       )
-      .then((rows) => rows[0]),
+      .then(first),
   ]);
 
   const pendingCash = Number(driverRow?.pendingCash ?? 0);
@@ -149,7 +150,7 @@ export async function getDriverById(db: AppDb, driverId: string) {
     .select()
     .from(drivers)
     .where(eq(drivers.id, driverId))
-    .then((rows) => rows[0]);
+    .then(first);
 
   if (!driver) return null;
 
@@ -160,7 +161,7 @@ export async function getDriverById(db: AppDb, driverId: string) {
     })
     .from(driverCompensations)
     .where(eq(driverCompensations.driverId, driverId))
-    .then((rows) => rows[0]);
+    .then(first);
 
   const [recentOrders, cashReconciliation] = await Promise.all([
     db
@@ -186,7 +187,7 @@ export async function createDriver(db: AppDb, data: CreateDriverData) {
     .select({ id: drivers.id, phone: drivers.phone })
     .from(drivers)
     .where(eq(drivers.phone, data.phone))
-    .then((rows) => rows[0]);
+    .then(first);
 
   if (existingDriver) {
     throw new Error(`Driver with phone "${data.phone}" already exists`);
@@ -225,7 +226,7 @@ export async function updateDriver(db: AppDb, driverId: string, data: UpdateDriv
       .select({ id: drivers.id, phone: drivers.phone })
       .from(drivers)
       .where(eq(drivers.phone, data.phone))
-      .then((rows) => rows[0]);
+      .then(first);
 
     if (duplicateDriver) {
       throw new Error(`Driver with phone "${data.phone}" already exists`);
@@ -313,7 +314,7 @@ export async function setCompensation(
         eq(driverCompensations.wilayaId, wilayaId),
       ),
     )
-    .then((rows) => rows[0]);
+    .then(first);
 
   if (existing) {
     await db
@@ -340,7 +341,7 @@ export async function setCompensation(
         eq(driverCompensations.wilayaId, wilayaId),
       ),
     )
-    .then((rows) => rows[0]);
+    .then(first);
 }
 
 export async function deleteCompensation(
@@ -357,7 +358,7 @@ export async function deleteCompensation(
         eq(driverCompensations.wilayaId, wilayaId),
       ),
     )
-    .then((rows) => rows[0]);
+    .then(first);
 
   if (!existing) return false;
 

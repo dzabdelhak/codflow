@@ -8,6 +8,7 @@
 import { eq, like, asc, or } from "drizzle-orm";
 import { wilayas, communes } from "../db/schema";
 import type { AppDb } from "../db/client";
+import { first } from "../db/client";
 
 export interface WilayaFilters {
   search?: string;
@@ -26,7 +27,7 @@ export async function getAllWilayas(db: AppDb, filters?: WilayaFilters) {
 }
 
 export async function getWilayaById(db: AppDb, id: number) {
-  return await db.select().from(wilayas).where(eq(wilayas.id, id)).then((rows) => rows[0]);
+  return await db.select().from(wilayas).where(eq(wilayas.id, id)).then(first);
 }
 
 export async function getCommunesByWilaya(db: AppDb, wilayaId: number) {

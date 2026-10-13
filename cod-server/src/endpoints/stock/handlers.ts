@@ -8,6 +8,7 @@ import * as v from "./validation";
 import { logActivity, ACTIONS } from "@/lib/activity";
 import { NotFoundError, BusinessLogicError, ValidationError } from "@/lib/errors/classes";
 import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
+import { first } from "../../../../cod-shared/db/client";
 
 function jsonBody(c: Context<AppContext>): any {
   return (c.req as any).valid?.("json");
@@ -30,7 +31,7 @@ export async function adjustProductStock(c: Context<AppContext>) {
     ...body,
   });
 
-  const productRow = await db.select({ name: products.name }).from(products).where(eq(products.id, productId)).then((rows) => rows[0]);
+  const productRow = await db.select({ name: products.name }).from(products).where(eq(products.id, productId)).then(first);
   await logActivity(db, actor, ACTIONS.STOCK_ADJUSTED, {
     type: "stock",
     id: productId,
@@ -56,7 +57,7 @@ export async function adjustVariantStock(c: Context<AppContext>) {
     ...body,
   });
 
-  const productRow = await db.select({ name: products.name }).from(products).where(eq(products.id, productId)).then((rows) => rows[0]);
+  const productRow = await db.select({ name: products.name }).from(products).where(eq(products.id, productId)).then(first);
   await logActivity(db, actor, ACTIONS.STOCK_ADJUSTED, {
     type: "stock",
     id: productId,

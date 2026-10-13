@@ -83,7 +83,7 @@ describe("Customer Groups Endpoint - Error Scenarios", () => {
 
     it("should return 200 with group data when group exists", async () => {
       // Mock successful response
-      vi.mocked(queries.getGroupById).mockResolvedValue({
+      vi.mocked(queries.getGroupById).mockResolvedValue({ storeId: "test-store",
         id: "grp_123",
         name: "VIP Customers",
         description: "High value customers",
@@ -133,7 +133,7 @@ describe("Customer Groups Endpoint - Error Scenarios", () => {
 
     it("should return 422 with GROUP_HAS_MEMBERS code when group has members", async () => {
       // Mock getGroupById to return a group with members
-      vi.mocked(queries.getGroupById).mockResolvedValue({
+      vi.mocked(queries.getGroupById).mockResolvedValue({ storeId: "test-store",
         id: "grp_123",
         name: "VIP Customers",
         description: "High value customers",
@@ -163,7 +163,7 @@ describe("Customer Groups Endpoint - Error Scenarios", () => {
 
     it("should return 200 when group is deleted successfully (no members)", async () => {
       // Mock getGroupById to return a group with no members
-      vi.mocked(queries.getGroupById).mockResolvedValue({
+      vi.mocked(queries.getGroupById).mockResolvedValue({ storeId: "test-store",
         id: "grp_123",
         name: "Empty Group",
         description: null,
@@ -264,7 +264,7 @@ describe("Customer Groups Endpoint - Error Scenarios", () => {
     });
 
     it("should include context field when available", async () => {
-      vi.mocked(queries.getGroupById).mockResolvedValue({
+      vi.mocked(queries.getGroupById).mockResolvedValue({ storeId: "test-store",
         id: "grp_123",
         name: "VIP Customers",
         description: null,

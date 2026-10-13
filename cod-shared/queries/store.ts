@@ -59,6 +59,7 @@ import {
   serializeCustomFieldAnswers,
   type CustomFieldAnswer,
 } from "../checkout-form/apply";
+import { first } from "../db/client";
 
 export interface StoreOrderData {
   customerName: string;
@@ -110,7 +111,7 @@ export interface StoreOrderData {
 }
 
 export async function getStoreConfig(db: AppDb, storeId: string) {
-  const store = await db.select().from(stores).where(eq(stores.id, storeId)).then((rows) => rows[0]);
+  const store = await db.select().from(stores).where(eq(stores.id, storeId)).then(first);
   if (!store) return null;
   const [tracking, otpRow, turnstileRow, pages, legalContact] = await Promise.all([
     // Which pixel this storefront loads is resolved in one place for every
@@ -122,14 +123,14 @@ export async function getStoreConfig(db: AppDb, storeId: string) {
       .select({ enabled: storeOtpConfig.enabled })
       .from(storeOtpConfig)
       .where(eq(storeOtpConfig.storeId, storeId))
-      .then((rows) => rows[0]),
+      .then(first),
     // Safe projection only — the site key is public by design; the siteverify
     // secret must never reach the storefront payload.
     db
       .select({ enabled: storeTurnstileConfig.enabled, siteKey: storeTurnstileConfig.siteKey })
       .from(storeTurnstileConfig)
       .where(eq(storeTurnstileConfig.storeId, storeId))
-      .then((rows) => rows[0]),
+      .then(first),
     // The footer renders on every page, so its link list rides along here
     // rather than costing a second round trip per page view (plan D6/R7).
     getFooterPages(db, storeId, store.lang as PageLocale),
@@ -270,7 +271,7 @@ export async function getStoreProductByHandle(
     .select()
     .from(products)
     .where(and(...conditions))
-    .then((rows) => rows[0]);
+    .then(first);
 
   if (!product) return null;
 
@@ -280,7 +281,7 @@ export async function getStoreProductByHandle(
           .select()
           .from(productCategories)
           .where(eq(productCategories.id, product.categoryId))
-          .then((rows) => rows[0])
+          .then(first)
       : null,
     db
       .select()
@@ -301,7 +302,7 @@ export async function getStoreProductByHandle(
       })
       .from(reviews)
       .where(and(eq(reviews.productId, product.id), eq(reviews.status, "approved")))
-      .then((rows) => rows[0]),
+      .then(first),
   ]);
 
   const now = new Date().toISOString();
@@ -325,7 +326,7 @@ export async function getStoreProductByHandle(
             .select({ id: products.id, name: products.name })
             .from(products)
             .where(eq(products.id, offer.rewardProductId))
-            .then((rows) => rows[0])
+            .then(first)
         : null;
 
       const rewardVariant = offer.rewardVariantId
@@ -333,7 +334,7 @@ export async function getStoreProductByHandle(
             .select({ id: productVariants.id, variations: productVariants.variations })
             .from(productVariants)
             .where(eq(productVariants.id, offer.rewardVariantId))
-            .then((rows) => rows[0])
+            .then(first)
         : null;
 
       return {
@@ -402,13 +403,13 @@ export async function findOrCreateCustomer(
       .select({ nameAr: wilayas.nameAr })
       .from(wilayas)
       .where(eq(wilayas.id, data.wilayaId))
-      .then((rows) => rows[0]),
+      .then(first),
     data.communeId
       ? db
           .select({ nameAr: communes.nameAr })
           .from(communes)
           .where(eq(communes.id, data.communeId))
-          .then((rows) => rows[0])
+          .then(first)
       : Promise.resolve(null),
   ]);
 
@@ -479,7 +480,7 @@ export async function getShippingRates(db: AppDb) {
     .select()
     .from(shippingProfiles)
     .where(eq(shippingProfiles.isDefault, true))
-    .then((rows) => rows[0]);
+    .then(first);
   if (!profile) return {};
 
   const rules = await db
@@ -518,7 +519,7 @@ export async function selectApplicableOffer(
       .select()
       .from(offers)
       .where(and(eq(offers.id, offerId), baseConditions))
-      .then((rows) => rows[0]);
+      .then(first);
     if (explicit) candidates = [explicit];
     else {
       candidates = await db
@@ -601,8 +602,8 @@ function buildDeductStatements(
 
   const guard =
     variantId !== null
-      ? sql`FROM ${productVariants} WHERE ${productVariants.id} = ${variantId} AND ${productVariants.inventory} >= ${quantity}`
-      : sql`FROM ${products} WHERE ${products.id} = ${productId} AND ${products.inventory} >= ${quantity}`;
+      ? sql`FROM ${productVariants} WHERE ${productVariants.id} = ${variantId} AND ${productVariants.inventory} >= ${quantity} FOR UPDATE`
+      : sql`FROM ${products} WHERE ${products.id} = ${productId} AND ${products.inventory} >= ${quantity} FOR UPDATE`;
   const inventoryColumn =
     variantId !== null ? productVariants.inventory : products.inventory;
 
@@ -948,7 +949,7 @@ export async function findOrderForReview(
     .from(orders)
     .innerJoin(customers, eq(orders.customerId, customers.id))
     .where(eq(orders.orderNumber, orderNumber))
-    .then((rows) => rows[0]);
+    .then(first);
 
   if (!order) return null;
 
@@ -956,7 +957,7 @@ export async function findOrderForReview(
 }
 
 export async function getExistingReviewByOrder(db: AppDb, orderId: string) {
-  return db.select().from(reviews).where(eq(reviews.orderId, orderId)).then((rows) => rows[0]);
+  return db.select().from(reviews).where(eq(reviews.orderId, orderId)).then(first);
 }
 
 export async function createReview(

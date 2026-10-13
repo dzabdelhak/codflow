@@ -17,6 +17,7 @@ import { logActivity, ACTIONS } from "@/lib/activity";
 import { getDeliveryCompanyById } from "@/endpoints/delivery-companies/queries";
 import { NotFoundError, ValidationError, BusinessLogicError } from "@/lib/errors/classes";
 import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
+import { first } from "../../../../cod-shared/db/client";
 
 /**
  * GET /orders
@@ -133,13 +134,13 @@ export async function createOrder(c: Context<AppContext>) {
       .select({ id: customers.id })
       .from(customers)
       .where(eq(customers.id, validated.customerId))
-      .then((rows) => rows[0]);
+      .then(first);
 
     if (!existingCustomer) {
       const [wilayaRow, communeRow] = await Promise.all([
-        db.select({ nameAr: wilayas.nameAr }).from(wilayas).where(eq(wilayas.id, validated.wilayaId)).then((rows) => rows[0]),
+        db.select({ nameAr: wilayas.nameAr }).from(wilayas).where(eq(wilayas.id, validated.wilayaId)).then(first),
         validated.communeId
-          ? db.select({ nameAr: communes.nameAr }).from(communes).where(eq(communes.id, validated.communeId)).then((rows) => rows[0])
+          ? db.select({ nameAr: communes.nameAr }).from(communes).where(eq(communes.id, validated.communeId)).then(first)
           : Promise.resolve(null),
       ]);
 
@@ -284,7 +285,7 @@ export async function updateOrder(c: Context<AppContext>) {
       .select({ id: wilayas.id })
       .from(wilayas)
       .where(eq(wilayas.id, validated.wilayaId))
-      .then((rows) => rows[0]);
+      .then(first);
     if (!wilayaRow) {
       throw new ValidationError("Wilaya not found in reference tables", ERROR_CODES.MISSING_WILAYA_COMMUNE, { orderId, wilayaId: validated.wilayaId });
     }
@@ -294,7 +295,7 @@ export async function updateOrder(c: Context<AppContext>) {
       .select({ id: communes.id, wilayaId: communes.wilayaId })
       .from(communes)
       .where(eq(communes.id, validated.communeId))
-      .then((rows) => rows[0]);
+      .then(first);
     if (!communeRow) {
       throw new ValidationError("Commune not found in reference tables", ERROR_CODES.MISSING_WILAYA_COMMUNE, { orderId, communeId: validated.communeId });
     }

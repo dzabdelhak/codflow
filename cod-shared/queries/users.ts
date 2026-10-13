@@ -9,6 +9,7 @@
 import { eq, and, like, or } from "drizzle-orm";
 import { users, userScopes } from "../db/schema";
 import type { AppDb } from "../db/client";
+import { first } from "../db/client";
 
 export interface UserFilters {
   role?: "admin" | "staff";
@@ -92,7 +93,7 @@ export async function getUserById(db: AppDb, userId: string) {
     .select()
     .from(users)
     .where(eq(users.id, userId))
-    .then((rows) => rows[0]);
+    .then(first);
 
   if (!user) {
     return null;

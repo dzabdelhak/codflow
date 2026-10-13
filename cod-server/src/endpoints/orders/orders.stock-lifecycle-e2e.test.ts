@@ -12,7 +12,7 @@
  *   I5  every multi-write flow is atomic — failure leaves NO partial state
  *   I6  stock_movements ledger deltas sum to the real inventory change
  *
- * Fault injection (makeFaultyDb) wraps the REAL d1 and rejects a chosen
+ * Fault injection (makeFaultyDb) wraps a REAL connection and rejects a chosen
  * write — proving atomicity with real SQL rather than mocks.
  */
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
@@ -30,12 +30,13 @@ import {
   setOrderProductReturn,
   deleteOrder,
 } from "../../../../cod-shared/queries/orders";
+import { first } from "../../../../cod-shared/db/client";
 
 let db: AppDb;
-let rawD1: D1Database;
+let harness: TestDb;
 
 beforeAll(async () => {
-  const harness = await createTestDb();
+  harness = await createTestDb();
   db = harness.db;
   registry.push(harness);
 }, 120_000);
@@ -46,45 +47,11 @@ afterAll(async () => {
   for (const mf of registry) await mf.dispose();
 });
 
-// ─── Fault injection: real D1 + rejection at a chosen write ───────────────────
+// ─── Fault injection: real PostgreSQL + rejection at a chosen write ───────────────────
 
-function makeFaultyDb(failWhen: (sqlText: string) => boolean): AppDb {
-  const poisoned = () => {
-    const stub: Record<string, unknown> = {
-      __sql: "POISONED",
-      bind: () => stub,
-      run: () => Promise.reject(new Error("INJECTED FAULT")),
-      raw: () => Promise.reject(new Error("INJECTED FAULT")),
-      all: () => Promise.reject(new Error("INJECTED FAULT")),
-      get: () => Promise.reject(new Error("INJECTED FAULT")),
-      first: () => Promise.reject(new Error("INJECTED FAULT")),
-    };
-    return stub as unknown as D1PreparedStatement;
-  };
-
-  const faulty = {
-    prepare: (sqlText: string) => {
-      const stmt = rawD1.prepare(sqlText);
-      if (failWhen(sqlText)) return poisoned();
-      (stmt as D1PreparedStatement & { __sql?: string }).__sql = sqlText;
-      return stmt;
-    },
-    batch: (stmts: D1PreparedStatement[]) => {
-      for (const stmt of stmts) {
-        const sqlText = (stmt as D1PreparedStatement & { __sql?: string }).__sql;
-        // Poisoned stmts (prepared while faulting) or a matching statement
-        // fault the whole batch — D1 batches are atomic, mirroring reality.
-        if (sqlText === "POISONED" || (sqlText && failWhen(sqlText))) {
-          return Promise.reject(new Error("INJECTED FAULT"));
-        }
-      }
-      return rawD1.batch(stmts);
-    },
-    exec: (sqlText: string) => rawD1.exec(sqlText),
-    dump: () => rawD1.dump(),
-  } as unknown as D1Database;
-
-  return drizzle(faulty, { schema }) as unknown as AppDb;
+/** A connection to the same store whose statements matching `failWhen` fail. */
+function makeFaultyDb(failWhen: (sqlText: string) => boolean): Promise<AppDb> {
+  return harness.connect(undefined, { failWhen });
 }
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
@@ -153,22 +120,22 @@ async function seedOrder(opts: SeedOrderOpts = {}) {
 
 async function inventoryOf(productId: string) {
   return (await db.select({ inv: schema.products.inventory }).from(schema.products)
-    .where(eq(schema.products.id, productId)).then((rows) => rows[0]))?.inv;
+    .where(eq(schema.products.id, productId)).then(first))?.inv;
 }
 
 async function customerOf(customerId: string) {
   return (await db.select().from(schema.customers)
-    .where(eq(schema.customers.id, customerId)).then((rows) => rows[0]))!;
+    .where(eq(schema.customers.id, customerId)).then(first))!;
 }
 
 async function lineOf(lineId: string) {
   return (await db.select().from(schema.orderProducts)
-    .where(eq(schema.orderProducts.id, lineId)).then((rows) => rows[0]))!;
+    .where(eq(schema.orderProducts.id, lineId)).then(first))!;
 }
 
 async function orderStatus(orderId: string) {
   return (await db.select({ s: schema.orders.status }).from(schema.orders)
-    .where(eq(schema.orders.id, orderId)).then((rows) => rows[0]))?.s;
+    .where(eq(schema.orders.id, orderId)).then(first))?.s;
 }
 
 async function movementsFor(productId: string) {
@@ -272,7 +239,7 @@ describe("stock & customer stats — real D1 lifecycle matrix", () => {
     await updateOrderStatus(db, orderId, "delivered");
 
     const drv = (await db.select().from(schema.drivers)
-      .where(eq(schema.drivers.id, driverId)).then((rows) => rows[0]))!;
+      .where(eq(schema.drivers.id, driverId)).then(first))!;
     expect(drv).toMatchObject({ totalDelivered: 1, totalEarnings: 350, pendingCash: 2600 }); // I4
   });
 
@@ -285,7 +252,7 @@ describe("stock & customer stats — real D1 lifecycle matrix", () => {
 
     expect(res).toEqual({ updated: false });
     const drv = (await db.select().from(schema.drivers)
-      .where(eq(schema.drivers.id, driverId)).then((rows) => rows[0]))!;
+      .where(eq(schema.drivers.id, driverId)).then(first))!;
     expect(drv).toMatchObject({ totalDelivered: 1, totalEarnings: 350, pendingCash: 2600 }); // I4
   });
 
@@ -296,7 +263,7 @@ describe("stock & customer stats — real D1 lifecycle matrix", () => {
 
     expect(await inventoryOf(productId)).toBe(INITIAL_INVENTORY); // I1
     expect(await customerOf(customerId)).toMatchObject({ totalOrders: 0, totalSpent: 0 }); // I2/I3
-    expect(await db.select().from(schema.orders).where(eq(schema.orders.id, orderId)).then((rows) => rows[0])).toBeUndefined();
+    expect(await db.select().from(schema.orders).where(eq(schema.orders.id, orderId)).then(first)).toBeUndefined();
   });
 
   it("T10: cancel THEN delete — customer stats must return to the pre-order baseline", async () => {
@@ -343,7 +310,7 @@ describe("stock & customer stats — real D1 lifecycle matrix", () => {
     }], { id: "u1", name: "A" })).rejects.toThrow();
 
     // Nothing committed: no order, no lines, stats untouched, stock intact
-    expect(await db.select().from(schema.orders).where(eq(schema.orders.id, orderId)).then((rows) => rows[0])).toBeUndefined();
+    expect(await db.select().from(schema.orders).where(eq(schema.orders.id, orderId)).then(first)).toBeUndefined();
     expect(await customerOf(customerId)).toMatchObject({ totalOrders: 0, totalSpent: 0 });
     expect(await inventoryOf(productId)).toBe(1);
     expect(await movementsFor(productId)).toHaveLength(0);
@@ -354,7 +321,7 @@ describe("stock & customer stats — real D1 lifecycle matrix", () => {
   it("T12: manual cancel fault mid-sequence — must leave NO partial state", async () => {
     const { orderId, productId } = await seedOrder();
 
-    const faulty = makeFaultyDb((sql) =>
+    const faulty = await makeFaultyDb((sql) =>
       sql.includes('update "products"') && sql.includes("inventory"),
     );
 
@@ -373,7 +340,7 @@ describe("stock & customer stats — real D1 lifecycle matrix", () => {
     const orderId = `ord-lc-${++seq}`;
     const now = new Date().toISOString();
 
-    const faulty = makeFaultyDb((sql) => sql.includes('insert into "order_products"'));
+    const faulty = await makeFaultyDb((sql) => sql.includes('insert into "order_products"'));
 
     await expect(
       createOrder(faulty, {
@@ -388,14 +355,14 @@ describe("stock & customer stats — real D1 lifecycle matrix", () => {
     ).rejects.toThrow();
 
     // I5: the orders row must not exist without its products/stats.
-    expect(await db.select().from(schema.orders).where(eq(schema.orders.id, orderId)).then((rows) => rows[0])).toBeUndefined();
+    expect(await db.select().from(schema.orders).where(eq(schema.orders.id, orderId)).then(first)).toBeUndefined();
     expect(await customerOf(customerId)).toMatchObject({ totalOrders: 0, totalSpent: 0 });
   });
 
   it("T14: webhook cancel fault — atomic batch leaves NO partial state (control)", async () => {
     const { orderId, productId, customerId } = await seedOrder();
 
-    const faulty = makeFaultyDb((sql) =>
+    const faulty = await makeFaultyDb((sql) =>
       (sql.includes('update "products"') || sql.includes('update "orders"')),
     );
 

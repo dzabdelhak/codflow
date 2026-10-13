@@ -28,6 +28,7 @@ import {
   findOrCreateCustomer,
   getStoreConfig,
 } from "../../../../cod-shared/queries/store";
+import { first } from "../../../../cod-shared/db/client";
 
 const registry: TestDb[] = [];
 let db: AppDb;
@@ -123,7 +124,7 @@ const linesOf = (orderId: string) =>
   db.select().from(schema.orderProducts).where(eq(schema.orderProducts.orderId, orderId));
 
 const inventoryOf = async (productId: string) =>
-  (await db.select().from(schema.products).where(eq(schema.products.id, productId)).then((rows) => rows[0]))!
+  (await db.select().from(schema.products).where(eq(schema.products.id, productId)).then(first))!
     .inventory;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -181,7 +182,7 @@ describe("orders already taken survive the rollback", () => {
       .select()
       .from(schema.orders)
       .where(eq(schema.orders.id, order.id))
-      .then((rows) => rows[0]);
+      .then(first);
 
     await rollback();
 
@@ -189,7 +190,7 @@ describe("orders already taken survive the rollback", () => {
       .select()
       .from(schema.orders)
       .where(eq(schema.orders.id, order.id))
-      .then((rows) => rows[0]);
+      .then(first);
     expect(after).toEqual(before);
     // Goods only, priced from the catalog: 2 × 2400 + 1 × 1000.
     expect(after!.price).toBe(5800);
@@ -214,7 +215,7 @@ describe("orders already taken survive the rollback", () => {
 
     await rollback();
 
-    const row = await db.select().from(schema.orders).where(eq(schema.orders.id, order.id)).then((rows) => rows[0]);
+    const row = await db.select().from(schema.orders).where(eq(schema.orders.id, order.id)).then(first);
     expect(row).toBeDefined();
     expect(row!.status).toBe("new");
     // Products live in order_products, which the dashboard joins — the lines

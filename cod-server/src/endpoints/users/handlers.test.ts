@@ -5,6 +5,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
+import { rowsOf } from "@/test-utils/mock-db";
 import { Hono } from "hono";
 import type { AppContext } from "@/types";
 import { errorHandler } from "@/middleware/error";
@@ -188,7 +189,7 @@ describe("Users Endpoint - Error Scenarios", () => {
 
     it("should return 409 with DUPLICATE_ENTITY code when scope already granted", async () => {
       // Mock getUserById to return a user
-      vi.mocked(queries.getUserById).mockResolvedValue({
+      vi.mocked(queries.getUserById).mockResolvedValue({ merchantId: "test-merchant",
         id: "user_123",
         email: "staff@example.com",
         name: "Staff User",
@@ -282,9 +283,7 @@ describe("Users Endpoint - Error Scenarios", () => {
       // Mock the DB select to return an existing user (duplicate email check)
       mockDb.select = vi.fn().mockReturnValue({
         from: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            get: vi.fn().mockResolvedValue({ id: "existing-id" }),
-          }),
+          where: vi.fn().mockReturnValue(rowsOf(vi.fn().mockResolvedValue({ id: "existing-id" }))),
         }),
       });
 
@@ -311,9 +310,7 @@ describe("Users Endpoint - Error Scenarios", () => {
     it("reports the invite email outcome without ever failing creation", async () => {
       mockDb.select = vi.fn().mockReturnValue({
         from: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            get: vi.fn().mockResolvedValue(undefined),
-          }),
+          where: vi.fn().mockReturnValue(rowsOf(vi.fn().mockResolvedValue(undefined))),
         }),
       });
       vi.mocked(queries.createUser).mockResolvedValue({
@@ -359,9 +356,7 @@ describe("Users Endpoint - Error Scenarios", () => {
     it("still creates the user when the invite email fails", async () => {
       mockDb.select = vi.fn().mockReturnValue({
         from: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            get: vi.fn().mockResolvedValue(undefined),
-          }),
+          where: vi.fn().mockReturnValue(rowsOf(vi.fn().mockResolvedValue(undefined))),
         }),
       });
       vi.mocked(queries.createUser).mockResolvedValue({

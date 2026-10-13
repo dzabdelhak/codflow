@@ -19,6 +19,7 @@ import { resolve } from "node:path";
 import { eq } from "drizzle-orm";
 import * as schema from "@/db/schema";
 import type { AppDb } from "@/db";
+import { first } from "../../../../cod-shared/db/client";
 
 const createShipment = vi.fn();
 
@@ -111,7 +112,7 @@ async function seedOrder(opts: {
     .select({ id: schema.communes.id })
     .from(schema.communes)
     .where(eq(schema.communes.wilayaId, WILAYA))
-    .then((rows) => rows[0]);
+    .then(first);
 
   const orderId = uid("ord");
   await db.insert(schema.orders).values({

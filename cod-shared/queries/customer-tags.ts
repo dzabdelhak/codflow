@@ -1,6 +1,7 @@
 import { eq, and, like, sql } from "drizzle-orm";
 import { customerTags, customerTagAssignments, customers } from "../db/schema";
 import type { AppDb } from "../db/client";
+import { first } from "../db/client";
 
 export interface CustomerTagFilters {
   search?: string;
@@ -43,7 +44,7 @@ export async function getTagById(db: AppDb, tagId: string) {
     .select()
     .from(customerTags)
     .where(eq(customerTags.id, tagId))
-    .then((rows) => rows[0]);
+    .then(first);
 }
 
 export async function getTagWithCustomers(db: AppDb, tagId: string) {
@@ -113,7 +114,7 @@ export async function assignTag(db: AppDb, tagId: string, customerId: string) {
     .select({ count: sql<number>`count(*)` })
     .from(customerTagAssignments)
     .where(eq(customerTagAssignments.tagId, tagId))
-    .then((rows) => rows[0]);
+    .then(first);
 
   await db
     .update(customerTags)
@@ -136,7 +137,7 @@ export async function unassignTag(db: AppDb, tagId: string, customerId: string) 
     .select({ count: sql<number>`count(*)` })
     .from(customerTagAssignments)
     .where(eq(customerTagAssignments.tagId, tagId))
-    .then((rows) => rows[0]);
+    .then(first);
 
   await db
     .update(customerTags)

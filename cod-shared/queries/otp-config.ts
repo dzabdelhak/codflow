@@ -11,6 +11,7 @@
 import type { AppDb } from "../db/client";
 import { storeOtpConfig } from "../db/schema";
 import { eq } from "drizzle-orm";
+import { first, one } from "../db/client";
 
 export interface OtpConfig {
   storeId: string;
@@ -32,7 +33,7 @@ export async function getOtpConfig(db: AppDb, storeId: string): Promise<OtpConfi
     })
     .from(storeOtpConfig)
     .where(eq(storeOtpConfig.storeId, storeId))
-    .then((rows) => rows[0]);
+    .then(first);
   return row;
 }
 
@@ -45,7 +46,7 @@ export async function getOtpConfigRaw(
     .select()
     .from(storeOtpConfig)
     .where(eq(storeOtpConfig.storeId, storeId))
-    .then((rows) => rows[0]);
+    .then(first);
 }
 
 export interface UpsertOtpConfigData {
@@ -67,7 +68,7 @@ export async function upsertOtpConfig(
     .select({ id: storeOtpConfig.id })
     .from(storeOtpConfig)
     .where(eq(storeOtpConfig.storeId, storeId))
-    .then((rows) => rows[0]);
+    .then(first);
 
   if (existing) {
     const row = await db
@@ -81,7 +82,7 @@ export async function upsertOtpConfig(
         createdAt: storeOtpConfig.createdAt,
         updatedAt: storeOtpConfig.updatedAt,
       })
-      .then((rows) => rows[0]);
+      .then(one);
     return row;
   }
 

@@ -37,6 +37,7 @@ export type {
 } from "../../../../cod-shared/queries/shipping-profiles";
 
 import type { ShippingProfileWithRules } from "../../../../cod-shared/queries/shipping-profiles";
+import { first } from "../../../../cod-shared/db/client";
 
 function now() {
   return new Date().toISOString();
@@ -51,7 +52,7 @@ export async function updateProfile(
     .select()
     .from(shippingProfiles)
     .where(eq(shippingProfiles.id, id))
-    .then((rows) => rows[0]);
+    .then(first);
 
   if (!existing) return null;
 
@@ -98,7 +99,7 @@ export async function setProfileRules(
     .select()
     .from(shippingProfiles)
     .where(eq(shippingProfiles.id, profileId))
-    .then((rows) => rows[0]);
+    .then(first);
 
   if (!existing) return null;
 

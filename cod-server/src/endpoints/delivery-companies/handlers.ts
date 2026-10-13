@@ -17,6 +17,7 @@ import { reconcileEcotrackOrders, DEFAULT_MAX_PAGES } from "./providers/ecotrack
 import { NotFoundError, ValidationError, BusinessLogicError, ConflictError, ExternalApiError } from "@/lib/errors/classes";
 import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
 import { syncCarrierGeoNames } from "../../../../cod-shared/queries/carrier-geo";
+import { first } from "../../../../cod-shared/db/client";
 
 /**
  * GET /delivery-companies
@@ -461,7 +462,7 @@ export async function toggleCompanyStopDesk(c: Context<AppContext>) {
         eq(companyStopDesks.code, code),
       )
     )
-    .then((rows) => rows[0]);
+    .then(first);
 
   if (!existing) {
     throw new NotFoundError("Stop desk", `${companyId}/${code}`);
@@ -628,7 +629,7 @@ export async function listWebhookEvents(c: Context<AppContext>) {
       .select({ total: count() })
       .from(webhookEvents)
       .where(where)
-      .then((rows) => rows[0]),
+      .then(first),
   ]);
 
   return c.json(

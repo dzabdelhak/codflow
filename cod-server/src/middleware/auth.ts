@@ -12,6 +12,7 @@ import { getDb } from "@/db";
 import { users, userScopes } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { ERROR_CODES } from "../../../cod-shared/errors/codes";
+import { first } from "../../../cod-shared/db/client";
 
 export async function authMiddleware(c: Context<AppContext>, next: Next) {
   const authHeader = c.req.header("Authorization");
@@ -26,7 +27,7 @@ export async function authMiddleware(c: Context<AppContext>, next: Next) {
   if (bearerMatch) {
     try {
       const payload = await verifySessionJwt(bearerMatch[1], c.env);
-      user = await db.select().from(users).where(eq(users.id, payload.sub)).then((rows) => rows[0]);
+      user = await db.select().from(users).where(eq(users.id, payload.sub)).then(first);
     } catch (err) {
       console.error("[auth] JWT verification failed:", err);
       return c.json({ 
@@ -36,7 +37,7 @@ export async function authMiddleware(c: Context<AppContext>, next: Next) {
       }, 401);
     }
   } else if (apiKey) {
-    user = await db.select().from(users).where(eq(users.apiKey, apiKey)).then((rows) => rows[0]);
+    user = await db.select().from(users).where(eq(users.apiKey, apiKey)).then(first);
   } else {
     return c.json({ 
       error: "Missing authorization", 

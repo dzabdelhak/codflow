@@ -7,7 +7,7 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { drizzle } from "drizzle-orm/d1";
-import type { DrizzleD1Database } from "drizzle-orm/d1";
+import type { AppDb } from "@/db";
 import * as schema from "@/db/schema";
 import { ACTIONS, logActivity } from "@/lib/activity";
 import { listActivityLogs, getUserActivityLogs } from "./handlers";
@@ -29,9 +29,9 @@ function makeMockD1(rows: unknown[] = []) {
 }
 
 // Create properly typed database mock
-function createMockDb(): DrizzleD1Database<typeof schema> & { $client: D1Database } {
+function createMockDb(): AppDb {
   const mockD1 = makeMockD1();
-  return drizzle(mockD1, { schema }) as DrizzleD1Database<typeof schema> & { $client: D1Database };
+  return drizzle(mockD1, { schema }) as unknown as AppDb;
 }
 
 // Mock Hono context
@@ -85,7 +85,7 @@ describe("logActivity", () => {
       insert: () => ({
         values: insertSpy,
       }),
-    } as unknown as DrizzleD1Database<typeof schema> & { $client: D1Database };
+    } as unknown as AppDb;
 
     await expect(
       logActivity(db, staffActor, ACTIONS.ORDER_CREATED, {
@@ -101,7 +101,7 @@ describe("logActivity", () => {
       insert: () => ({
         values: () => Promise.reject(new Error("D1 error")),
       }),
-    } as unknown as DrizzleD1Database<typeof schema> & { $client: D1Database };
+    } as unknown as AppDb;
 
     await expect(
       logActivity(db, adminActor, ACTIONS.USER_CREATED, { type: "user", id: "u1" }),
@@ -117,7 +117,7 @@ describe("logActivity", () => {
           return Promise.resolve(undefined);
         },
       }),
-    } as unknown as DrizzleD1Database<typeof schema> & { $client: D1Database };
+    } as unknown as AppDb;
 
     await logActivity(
       db,
@@ -140,7 +140,7 @@ describe("logActivity", () => {
           return Promise.resolve(undefined);
         },
       }),
-    } as unknown as DrizzleD1Database<typeof schema> & { $client: D1Database };
+    } as unknown as AppDb;
 
     await logActivity(db, staffActor, ACTIONS.PRODUCT_DELETED, { type: "product", id: "p1" });
 
@@ -156,7 +156,7 @@ describe("logActivity", () => {
           return Promise.resolve(undefined);
         },
       }),
-    } as unknown as DrizzleD1Database<typeof schema> & { $client: D1Database };
+    } as unknown as AppDb;
 
     await logActivity(
       db,

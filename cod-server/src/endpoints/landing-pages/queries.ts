@@ -12,6 +12,7 @@ import type { AppDb } from "@/db";
 import { BusinessLogicError, ConflictError, NotFoundError, ValidationError } from "@/lib/errors/classes";
 import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
 import * as shared from "../../../../cod-shared/queries/landing-pages";
+import { first } from "../../../../cod-shared/db/client";
 
 export * from "../../../../cod-shared/queries/landing-pages";
 
@@ -31,7 +32,7 @@ export async function createLandingPage(db: AppDb, data: CreateLandingPageData) 
     .select({ id: products.id })
     .from(products)
     .where(eq(products.id, data.productId))
-    .then((rows) => rows[0]);
+    .then(first);
   if (!product) {
     throw new NotFoundError("Product", data.productId);
   }

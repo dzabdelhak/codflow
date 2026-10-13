@@ -18,13 +18,17 @@ import { eq, sql } from "drizzle-orm";
 import * as schema from "@/db/schema";
 import type { AppDb } from "@/db";
 import { createOrder, updateOrderStatus, deleteOrder } from "../../../../cod-shared/queries/orders";
+import { first } from "../../../../cod-shared/db/client";
 
 let db: AppDb;
-let rawD1: D1Database;
+/** A second connection to the same store: two requests racing, as in production. */
+let otherRequest: AppDb;
+let harness: TestDb;
 
 beforeAll(async () => {
-  const harness = await createTestDb();
+  harness = await createTestDb();
   db = harness.db;
+  otherRequest = await harness.connect();
   registry.push(harness);
 }, 120_000);
 
@@ -94,12 +98,12 @@ describe("P3: dashboard createOrder — oversell guard & race", () => {
 
     expect(res).toBeInstanceOf(Error);
     // Nothing was written: no order, no lines, stats untouched, stock intact
-    expect(await db.select().from(schema.orders).where(eq(schema.orders.id, oid)).then((rows) => rows[0])).toBeUndefined();
+    expect(await db.select().from(schema.orders).where(eq(schema.orders.id, oid)).then(first)).toBeUndefined();
     expect(await db.select().from(schema.orderProducts).where(eq(schema.orderProducts.orderId, oid))).toHaveLength(0);
     expect(await db.select().from(schema.stockMovements).where(eq(schema.stockMovements.productId, productId))).toHaveLength(0);
-    const cust = (await db.select().from(schema.customers).where(eq(schema.customers.id, customerId)).then((rows) => rows[0]))!;
+    const cust = (await db.select().from(schema.customers).where(eq(schema.customers.id, customerId)).then(first))!;
     expect(cust.totalOrders).toBe(0);
-    const inv = (await db.select().from(schema.products).where(eq(schema.products.id, productId)).then((rows) => rows[0]))!;
+    const inv = (await db.select().from(schema.products).where(eq(schema.products.id, productId)).then(first))!;
     expect(inv.inventory).toBe(2);
   });
 
@@ -115,7 +119,7 @@ describe("P3: dashboard createOrder — oversell guard & race", () => {
       createOrder(db, { ...orderInsert(o1, productId, 0, 10000, { customerId: c1 }), orderNumber: `ORD-MI-${seq}-1` }, [{
         id: `op-${seq}a`, orderId: o1, productId, productName: "MI", quantity: 1, pricePerUnit: 10000, lineTotal: 10000, createdAt: now,
       }]),
-      createOrder(db, { ...orderInsert(o2, productId, 0, 10000, { customerId: c2 }), orderNumber: `ORD-MI-${seq}-2` }, [{
+      createOrder(otherRequest, { ...orderInsert(o2, productId, 0, 10000, { customerId: c2 }), orderNumber: `ORD-MI-${seq}-2` }, [{
         id: `op-${seq}b`, orderId: o2, productId, productName: "MI", quantity: 1, pricePerUnit: 10000, lineTotal: 10000, createdAt: now,
       }]),
     ]);
@@ -127,13 +131,37 @@ describe("P3: dashboard createOrder — oversell guard & race", () => {
     expect(fulfilled).toBe(1);
     expect(rejected).toBe(1);
 
-    const inv = (await db.select().from(schema.products).where(eq(schema.products.id, productId)).then((rows) => rows[0]))!;
+    const inv = (await db.select().from(schema.products).where(eq(schema.products.id, productId)).then(first))!;
     const movements = await db.select().from(schema.stockMovements).where(eq(schema.stockMovements.productId, productId));
     expect(inv.inventory).toBe(0);
     expect(movements).toHaveLength(1);
     expect(movements[0].delta).toBe(-1);
     expect(movements[0].qtyBefore).toBe(1);
     expect(movements[0].qtyAfter).toBe(0);
+  });
+});
+
+describe("P3b: the last unit taken by a request that has not committed yet", () => {
+  it("refuses the order once the other request commits — never oversells (PostgreSQL READ COMMITTED)", async () => {
+    const productId = await seedSimpleProduct(1);
+    const customerId = await seedCustomer();
+    const oid = `ord-mi-${++seq}`;
+    const now = NOW();
+
+    // Another request takes the last unit and holds its lock, uncommitted.
+    await harness.platform.query("begin");
+    await harness.platform.query("update products set inventory = 0 where id = $1", [productId]);
+
+    const placing = createOrder(db, { ...orderInsert(oid, productId, 0, 10000, { customerId }), orderNumber: `ORD-MI-${seq}` }, [{
+      id: `op-${seq}`, orderId: oid, productId, productName: "MI", quantity: 1, pricePerUnit: 10000, lineTotal: 10000, createdAt: now,
+    }]).then(() => "placed", () => "refused");
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    await harness.platform.query("commit");
+
+    expect(await placing).toBe("refused");
+    const inv = (await db.select().from(schema.products).where(eq(schema.products.id, productId)).then(first))!;
+    expect(inv.inventory).toBe(0);
+    expect(await db.select().from(schema.stockMovements).where(eq(schema.stockMovements.productId, productId))).toHaveLength(0);
   });
 });
 
@@ -149,13 +177,13 @@ describe("P2: delete delivered order → driver money reconciliation", () => {
     }]);
     await updateOrderStatus(db, oid, "delivered");
 
-    const drvBefore = (await db.select().from(schema.drivers).where(eq(schema.drivers.id, driverId)).then((rows) => rows[0]))!;
+    const drvBefore = (await db.select().from(schema.drivers).where(eq(schema.drivers.id, driverId)).then(first))!;
     expect(drvBefore).toMatchObject({ totalDelivered: 1, totalEarnings: 500, pendingCash: 10500 });
 
     await deleteOrder(db, oid);
 
     // FIXED: the driver ledger reconciles — no phantom cash, no ghost credit
-    const drvAfter = (await db.select().from(schema.drivers).where(eq(schema.drivers.id, driverId)).then((rows) => rows[0]))!;
+    const drvAfter = (await db.select().from(schema.drivers).where(eq(schema.drivers.id, driverId)).then(first))!;
     expect(drvAfter).toMatchObject({ totalDelivered: 0, totalEarnings: 0, pendingCash: 0 });
   });
 
@@ -174,7 +202,7 @@ describe("P2: delete delivered order → driver money reconciliation", () => {
 
     await deleteOrder(db, oid);
 
-    const drvAfter = (await db.select().from(schema.drivers).where(eq(schema.drivers.id, driverId)).then((rows) => rows[0]))!;
+    const drvAfter = (await db.select().from(schema.drivers).where(eq(schema.drivers.id, driverId)).then(first))!;
     // Counters stay — the money really moved; the payment row stays reconciled
     expect(drvAfter).toMatchObject({ totalDelivered: 1, totalEarnings: 500, pendingCash: 10500 });
   });
@@ -199,9 +227,9 @@ describe("P4: driver settlement atomicity (real createDriverPayment)", () => {
     );
 
     expect(res.amount).toBe(10500);
-    const drv = (await db.select().from(schema.drivers).where(eq(schema.drivers.id, driverId)).then((rows) => rows[0]))!;
+    const drv = (await db.select().from(schema.drivers).where(eq(schema.drivers.id, driverId)).then(first))!;
     expect(drv).toMatchObject({ pendingCash: 0, totalPaid: 10500, totalEarnings: 500 });
-    const order = (await db.select().from(schema.orders).where(eq(schema.orders.id, oid)).then((rows) => rows[0]))!;
+    const order = (await db.select().from(schema.orders).where(eq(schema.orders.id, oid)).then(first))!;
     expect(order.codPaymentId).toBe(res.id);
     const payments = await db.select().from(schema.driverPayments);
     expect(payments.filter((p) => p.driverId === driverId)).toHaveLength(1);
@@ -254,12 +282,12 @@ describe("P1: storefront price forging (server-authoritative pricing)", () => {
 
     // And the customer stats inherited the real price, not the forged one
     const cust = (await db.select().from(schema.customers)
-      .where(eq(schema.customers.id, typeof customerId === "string" ? customerId : (customerId as any).id)).then((rows) => rows[0]))!;
+      .where(eq(schema.customers.id, typeof customerId === "string" ? customerId : (customerId as any).id)).then(first))!;
     expect(Number(cust.totalSpent)).toBe(50000);
 
     // The line too
     const line = (await db.select().from(schema.orderProducts)
-      .where(eq(schema.orderProducts.orderId, forged!.id)).then((rows) => rows[0]))!;
+      .where(eq(schema.orderProducts.orderId, forged!.id)).then(first))!;
     expect(line.pricePerUnit).toBe(50000);
     expect(line.lineTotal).toBe(50000);
   });

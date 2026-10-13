@@ -29,6 +29,7 @@ import {
 import { stores, orders } from "../../../../cod-shared/db/schema";
 import { eq } from "drizzle-orm";
 import type { PageLocale } from "../../../../cod-shared/legal/kinds";
+import { first } from "../../../../cod-shared/db/client";
 
 export async function getStoreConfig(c: Context<AppContext>) {
   const storeId = c.get("storeId")!;
@@ -146,7 +147,7 @@ export async function getStoreOrderTracking(c: Context<AppContext>) {
     .select({ id: orders.id, landingPageId: orders.landingPageId })
     .from(orders)
     .where(eq(orders.id, orderId))
-    .then((rows) => rows[0]);
+    .then(first);
   if (!order) throw new NotFoundError("Order", orderId);
 
   const config = await resolveTrackingConfig(db, {
@@ -183,7 +184,7 @@ export async function getStorePage(c: Context<AppContext>) {
   const storeId = c.get("storeId")!;
   const slug = c.req.param("slug")!;
 
-  const storeRow = await db.select({ lang: stores.lang }).from(stores).where(eq(stores.id, storeId)).then((rows) => rows[0]);
+  const storeRow = await db.select({ lang: stores.lang }).from(stores).where(eq(stores.id, storeId)).then(first);
   if (!storeRow) throw new NotFoundError("Store", storeId);
 
   const page = await queries.resolvePublishedPage(db, storeId, slug, storeRow.lang as PageLocale);
@@ -398,7 +399,7 @@ export async function createStoreOrder(c: Context<AppContext>) {
             .select({ domain: stores.domain })
             .from(stores)
             .where(eq(stores.id, storeId))
-            .then((rows) => rows[0]);
+            .then(first);
         }
 
         // The landing page the ad pointed at, when this order came from one —
@@ -517,7 +518,7 @@ export async function validateCart(c: Context<AppContext>) {
         .select({ freeShippingThreshold: stores.freeShippingThreshold })
         .from(stores)
         .where(eq(stores.id, storeId))
-        .then((rows) => rows[0])
+        .then(first)
     : undefined;
   const threshold = store?.freeShippingThreshold ?? null;
   const thresholdActive = threshold != null && threshold > 0;

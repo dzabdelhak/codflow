@@ -22,6 +22,7 @@ import {
   WIDGET_TEXT_FIELDS,
   parseWhatsAppWidgetConfig,
 } from "../../../../cod-shared/whatsapp-widget/config";
+import { first } from "../../../../cod-shared/db/client";
 
 let harness: TestD1;
 let app: OpenAPIHono<AppContext>;
@@ -100,7 +101,7 @@ async function storedColumn(): Promise<string | null> {
     .select({ json: schema.stores.whatsappWidgetJson })
     .from(schema.stores)
     .where(eq(schema.stores.id, STORE_ID))
-    .then((rows) => rows[0]);
+    .then(first);
   return row?.json ?? null;
 }
 

@@ -17,6 +17,7 @@ import { eq } from "drizzle-orm";
 import * as schema from "@/db/schema";
 import type { AppDb } from "@/db";
 import { deleteOrder } from "../../../../cod-shared/queries/orders";
+import { first } from "../../../../cod-shared/db/client";
 
 let db: AppDb;
 
@@ -91,9 +92,9 @@ describe("deleteOrder — real D1 (E2E)", () => {
 
     await deleteOrder(db, "ord-e2e-del-1");
 
-    expect(await db.select().from(schema.orders).where(eq(schema.orders.id, "ord-e2e-del-1")).then((rows) => rows[0])).toBeUndefined();
+    expect(await db.select().from(schema.orders).where(eq(schema.orders.id, "ord-e2e-del-1")).then(first)).toBeUndefined();
 
-    expect(await db.select().from(schema.orders).where(eq(schema.orders.id, "ord-e2e-del-1")).then((rows) => rows[0])).toBeUndefined();
+    expect(await db.select().from(schema.orders).where(eq(schema.orders.id, "ord-e2e-del-1")).then(first)).toBeUndefined();
     expect(await db.select().from(schema.orderProducts).where(eq(schema.orderProducts.orderId, "ord-e2e-del-1"))).toHaveLength(0);
     expect(await db.select().from(schema.companyShipments).where(eq(schema.companyShipments.orderId, "ord-e2e-del-1"))).toHaveLength(0);
     expect(await db.select().from(schema.orderStatusHistory).where(eq(schema.orderStatusHistory.orderId, "ord-e2e-del-1"))).toHaveLength(0);
@@ -106,6 +107,6 @@ describe("deleteOrder — real D1 (E2E)", () => {
 
     await deleteOrder(db, "ord-e2e-del-2");
 
-    expect(await db.select().from(schema.orders).where(eq(schema.orders.id, "ord-e2e-del-2")).then((rows) => rows[0])).toBeUndefined();
+    expect(await db.select().from(schema.orders).where(eq(schema.orders.id, "ord-e2e-del-2")).then(first)).toBeUndefined();
   });
 });

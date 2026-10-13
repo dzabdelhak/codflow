@@ -12,6 +12,7 @@
 import { eq, sql } from "drizzle-orm";
 import { carrierWilayas, carrierCommunes, wilayas, communes } from "../db/schema";
 import type { AppDb } from "../db/client";
+import { first } from "../db/client";
 
 export interface CarrierGeoSyncResult {
   wilayasMatched: number;
@@ -81,7 +82,7 @@ export async function resolveCarrierWilayaName(
     .where(
       sql`${carrierWilayas.carrierCode} = ${carrierCode} AND ${carrierWilayas.wilayaId} = ${wilayaId}`,
     )
-    .then((rows) => rows[0]);
+    .then(first);
   return row?.carrierName ?? null;
 }
 
@@ -97,7 +98,7 @@ export async function resolveCarrierCommuneName(
     .where(
       sql`${carrierCommunes.carrierCode} = ${carrierCode} AND ${carrierCommunes.communeId} = ${communeId}`,
     )
-    .then((rows) => rows[0]);
+    .then(first);
   return row?.carrierName ?? null;
 }
 

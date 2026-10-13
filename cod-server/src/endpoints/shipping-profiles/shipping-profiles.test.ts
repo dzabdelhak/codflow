@@ -17,6 +17,7 @@ import {
 } from "./validation";
 import { getProfileById, createProfile, deleteProfile, setProfileRules } from "./queries";
 import { makeMockDb, f, a, shippingProfileRow, NOW } from "@/test-utils/mock-db";
+import { first } from "../../../../cod-shared/db/client";
 
 // ─── createProfileSchema ───────────────────────────────────────────────────────
 
@@ -221,7 +222,7 @@ describe("setProfileRules", () => {
     //    - Promise.all[rules.all, products.all] → entries 3, 4
     const db = makeMockDb([
       f(shippingProfileRow()),  // existing check
-      f(shippingProfileRow()),  // getProfileById → profile.then((rows) => rows[0])
+      f(shippingProfileRow()),  // getProfileById → profile.then(first)
       a([]),                    // getProfileById → rules (Promise.all[0])
       a([]),                    // getProfileById → products (Promise.all[1])
     ]);
@@ -235,7 +236,7 @@ describe("setProfileRules", () => {
   it("inserts all rules including zero-price (homeEnabled/stopDeskEnabled control availability)", async () => {
     const db = makeMockDb([
       f(shippingProfileRow()),  // existing check
-      f(shippingProfileRow()),  // getProfileById → profile.then((rows) => rows[0])
+      f(shippingProfileRow()),  // getProfileById → profile.then(first)
       a([]),                    // rules (Promise.all[0])
       a([]),                    // products (Promise.all[1])
     ]);

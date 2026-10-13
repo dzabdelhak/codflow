@@ -10,6 +10,7 @@ import { customers, orders } from "@/db/schema";
 import { getDb } from "@/db";
 import { BusinessLogicError } from "@/lib/errors/classes";
 import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
+import { first } from "../../../../cod-shared/db/client";
 
 export {
   getAllCustomers,
@@ -32,7 +33,7 @@ export async function deleteCustomer(db: Database, customerId: string) {
     .select({ count: count() })
     .from(orders)
     .where(eq(orders.customerId, customerId))
-    .then((rows) => rows[0]);
+    .then(first);
 
   const orderCount = customerOrders?.count || 0;
 

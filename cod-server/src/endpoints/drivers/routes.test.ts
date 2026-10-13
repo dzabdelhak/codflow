@@ -41,6 +41,7 @@ const NOW = new Date().toISOString();
 
 function driverRow(overrides: Record<string, any> = {}) {
   return {
+    storeId: "test-store",
     id: "drv_123",
     firstName: "Mohamed",
     lastName: "Amiri",
@@ -367,7 +368,7 @@ describe("Drivers routes (OpenAPIHono)", () => {
   describe("PUT /api/drivers/:id/compensations/:wilayaId", () => {
     it("upserts a compensation successfully", async () => {
       vi.mocked(queries.getDriverById).mockResolvedValue(driverRow());
-      vi.mocked(queries.setCompensation).mockResolvedValue({
+      vi.mocked(queries.setCompensation).mockResolvedValue({ storeId: "test-store",
         id: "comp_1",
         driverId: "drv_123",
         wilayaId: 16,

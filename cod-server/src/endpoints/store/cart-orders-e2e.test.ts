@@ -23,6 +23,7 @@ import {
   findOrCreateCustomer,
 } from "../../../../cod-shared/queries/store";
 import { CartValidationError } from "../../../../cod-shared/queries/cart";
+import { first } from "../../../../cod-shared/db/client";
 
 const registry: TestDb[] = [];
 let db: AppDb;
@@ -136,7 +137,7 @@ const linesOf = (orderId: string) =>
   db.select().from(schema.orderProducts).where(eq(schema.orderProducts.orderId, orderId));
 
 const inventoryOf = async (productId: string) =>
-  (await db.select().from(schema.products).where(eq(schema.products.id, productId)).then((rows) => rows[0]))!
+  (await db.select().from(schema.products).where(eq(schema.products.id, productId)).then(first))!
     .inventory;
 
 const variantInventoryOf = async (variantId: string) =>
@@ -145,7 +146,7 @@ const variantInventoryOf = async (variantId: string) =>
       .select()
       .from(schema.productVariants)
       .where(eq(schema.productVariants.id, variantId))
-      .then((rows) => rows[0])
+      .then(first)
   )!.inventory;
 
 // ─── Multi-product baskets ────────────────────────────────────────────────────
@@ -185,7 +186,7 @@ describe("createStoreOrder — multi-product basket", () => {
       items: [{ productId: a, productName: "P", quantity: 2 }],
     });
 
-    const row = await db.select().from(schema.orders).where(eq(schema.orders.id, order.id)).then((rows) => rows[0]);
+    const row = await db.select().from(schema.orders).where(eq(schema.orders.id, order.id)).then(first);
     expect(row).toMatchObject({ price: 2000, deliveryFee: 600, codAmount: 2600 });
   });
 
@@ -319,7 +320,7 @@ describe("createStoreOrder — a basket is all or nothing", () => {
       .select()
       .from(schema.customers)
       .where(eq(schema.customers.id, customer.id))
-      .then((rows) => rows[0]);
+      .then(first);
     expect(after).toMatchObject({ totalOrders: 0, totalSpent: 0 });
   });
 

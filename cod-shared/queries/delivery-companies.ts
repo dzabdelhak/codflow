@@ -7,6 +7,7 @@
 import { eq, and, like, desc, count, notInArray } from "drizzle-orm";
 import { deliveryCompanies, orders } from "../db/schema";
 import type { AppDb } from "../db/client";
+import { first } from "../db/client";
 
 export interface DeliveryCompanyFilters {
   active?: boolean;
@@ -92,7 +93,7 @@ export async function getDeliveryCompanyById(db: AppDb, id: string) {
     .select()
     .from(deliveryCompanies)
     .where(eq(deliveryCompanies.id, id))
-    .then((rows) => rows[0]);
+    .then(first);
   return row ? sanitize(row) : null;
 }
 
@@ -101,7 +102,7 @@ export async function getDeliveryCompanyByCode(db: AppDb, code: string) {
     .select()
     .from(deliveryCompanies)
     .where(eq(deliveryCompanies.code, code))
-    .then((rows) => rows[0]);
+    .then(first);
 }
 
 /**
@@ -113,7 +114,7 @@ export async function getDeliveryCompanyRaw(db: AppDb, id: string) {
     .select()
     .from(deliveryCompanies)
     .where(eq(deliveryCompanies.id, id))
-    .then((rows) => rows[0]);
+    .then(first);
 }
 
 export async function createDeliveryCompany(
@@ -180,7 +181,7 @@ export async function deleteDeliveryCompany(db: AppDb, id: string) {
         notInArray(orders.status, ["delivered", "returned", "cancelled"]),
       ),
     )
-    .then((rows) => rows[0]);
+    .then(first);
 
   if (liveOrders && liveOrders.count > 0) {
     throw new Error(

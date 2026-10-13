@@ -109,7 +109,7 @@ export async function createDriverPayment(
       db
         .update(drivers)
         .set({
-          pendingCash: sql`MAX(0, ${drivers.pendingCash} - ${codTotal})`,
+          pendingCash: sql`GREATEST(0, ${drivers.pendingCash} - ${codTotal})`,
           totalPaid: sql`${drivers.totalPaid} + ${codTotal}`,
           updatedAt: now,
         })

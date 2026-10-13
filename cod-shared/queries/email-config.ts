@@ -11,6 +11,7 @@
 import type { AppDb } from "../db/client";
 import { storeEmailConfig } from "../db/schema";
 import { eq } from "drizzle-orm";
+import { first, one } from "../db/client";
 
 export interface EmailConfig {
   storeId: string;
@@ -34,7 +35,7 @@ export async function getEmailConfig(db: AppDb, storeId: string): Promise<EmailC
     })
     .from(storeEmailConfig)
     .where(eq(storeEmailConfig.storeId, storeId))
-    .then((rows) => rows[0]);
+    .then(first);
   return row;
 }
 
@@ -47,7 +48,7 @@ export async function getEmailConfigRaw(
     .select()
     .from(storeEmailConfig)
     .where(eq(storeEmailConfig.storeId, storeId))
-    .then((rows) => rows[0]);
+    .then(first);
 }
 
 export interface UpsertEmailConfigData {
@@ -72,7 +73,7 @@ export async function upsertEmailConfig(
     .select({ id: storeEmailConfig.id })
     .from(storeEmailConfig)
     .where(eq(storeEmailConfig.storeId, storeId))
-    .then((rows) => rows[0]);
+    .then(first);
 
   if (existing) {
     const row = await db
@@ -87,7 +88,7 @@ export async function upsertEmailConfig(
         createdAt: storeEmailConfig.createdAt,
         updatedAt: storeEmailConfig.updatedAt,
       })
-      .then((rows) => rows[0]);
+      .then(one);
     return row;
   }
 

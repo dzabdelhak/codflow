@@ -1,6 +1,7 @@
 import { eq, and, desc, sql } from "drizzle-orm";
 import { reviews, products } from "../db/schema";
 import type { AppDb } from "../db/client";
+import { first } from "../db/client";
 
 export type ReviewStatus = "pending" | "approved" | "rejected";
 
@@ -62,7 +63,7 @@ export async function getReviewById(db: AppDb, id: string) {
     .select()
     .from(reviews)
     .where(eq(reviews.id, id))
-    .then((rows) => rows[0]);
+    .then(first);
 }
 
 export async function updateReviewStatus(
@@ -75,7 +76,7 @@ export async function updateReviewStatus(
     .update(reviews)
     .set({ status, updatedAt: now })
     .where(eq(reviews.id, id));
-  return db.select().from(reviews).where(eq(reviews.id, id)).then((rows) => rows[0]);
+  return db.select().from(reviews).where(eq(reviews.id, id)).then(first);
 }
 
 export async function deleteReview(db: AppDb, id: string) {

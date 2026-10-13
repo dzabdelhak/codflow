@@ -19,6 +19,7 @@ import { storeAuthMiddleware } from "@/middleware/storeAuth";
 import storeRouter from "../store/routes";
 import * as schema from "@/db/schema";
 import type { AppDb } from "@/db";
+import { first } from "../../../../cod-shared/db/client";
 
 let db: AppDb;
 let rawD1: D1Database;
@@ -180,7 +181,7 @@ describe("Slice 4 — public GET /store/landing-pages/{slug} (real D1 + store au
     );
 
     const row = await db.select().from(schema.landingPages)
-      .where(eq(schema.landingPages.slug, "counted-page")).then((rows) => rows[0]);
+      .where(eq(schema.landingPages.slug, "counted-page")).then(first);
     expect(row?.views).toBe(25);
   });
 

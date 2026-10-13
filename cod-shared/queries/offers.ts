@@ -1,6 +1,7 @@
 import { eq, desc } from "drizzle-orm";
 import { offers, products, productVariants } from "../db/schema";
 import type { AppDb } from "../db/client";
+import { first } from "../db/client";
 
 export type OfferDiscountType = "free" | "free_shipping";
 export type OfferStatus = "active" | "inactive";
@@ -42,13 +43,13 @@ async function resolveOfferDetail(
       .select({ id: products.id, name: products.name, handle: products.handle })
       .from(products)
       .where(eq(products.id, offer.triggerProductId))
-      .then((rows) => rows[0]),
+      .then(first),
     offer.rewardProductId
       ? db
           .select({ id: products.id, name: products.name, handle: products.handle })
           .from(products)
           .where(eq(products.id, offer.rewardProductId))
-          .then((rows) => rows[0])
+          .then(first)
       : Promise.resolve(null),
   ]);
 
@@ -58,14 +59,14 @@ async function resolveOfferDetail(
           .select({ id: productVariants.id, variations: productVariants.variations })
           .from(productVariants)
           .where(eq(productVariants.id, offer.triggerVariantId))
-          .then((rows) => rows[0])
+          .then(first)
       : Promise.resolve(null),
     offer.rewardVariantId
       ? db
           .select({ id: productVariants.id, variations: productVariants.variations })
           .from(productVariants)
           .where(eq(productVariants.id, offer.rewardVariantId))
-          .then((rows) => rows[0])
+          .then(first)
       : Promise.resolve(null),
   ]);
 
@@ -115,7 +116,7 @@ export async function getOfferById(db: AppDb, id: string) {
     .select()
     .from(offers)
     .where(eq(offers.id, id))
-    .then((rows) => rows[0]);
+    .then(first);
 
   if (!offer) return null;
   return resolveOfferDetail(db, offer);

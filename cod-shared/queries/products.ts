@@ -3,6 +3,7 @@ import { products, productCategories, productVariants, productImages, reviews, s
 import type { AppDb } from "../db/client";
 import { sanitizeRichText, toPlainText } from "../lib/rich-text";
 import { safeLikeTerm } from "./search";
+import { first } from "../db/client";
 
 type BatchStatement = Parameters<AppDb["batch"]>[0][number];
 
@@ -107,16 +108,16 @@ export async function deriveDescriptionPlain(
 }
 
 async function buildProductDetail(db: AppDb, productId: string) {
-  const product = await db.select().from(products).where(and(eq(products.id, productId), isNull(products.deletedAt))).then((rows) => rows[0]);
+  const product = await db.select().from(products).where(and(eq(products.id, productId), isNull(products.deletedAt))).then(first);
   if (!product) return null;
 
   const [category, variants, images, totalInventoryRow] = await Promise.all([
     product.categoryId
-      ? db.select().from(productCategories).where(eq(productCategories.id, product.categoryId)).then((rows) => rows[0])
+      ? db.select().from(productCategories).where(eq(productCategories.id, product.categoryId)).then(first)
       : Promise.resolve(null),
     db.select().from(productVariants).where(eq(productVariants.productId, productId)).orderBy(productVariants.position),
     db.select().from(productImages).where(eq(productImages.productId, productId)).orderBy(productImages.position),
-    db.select({ total: sum(productVariants.inventory) }).from(productVariants).where(eq(productVariants.productId, productId)).then((rows) => rows[0]),
+    db.select({ total: sum(productVariants.inventory) }).from(productVariants).where(eq(productVariants.productId, productId)).then(first),
   ]);
 
   const variantOptions = product.variantOptions ? JSON.parse(product.variantOptions) : null;
@@ -285,7 +286,7 @@ export async function updateProduct(db: AppDb, productId: string, data: UpdatePr
       .select({ description: products.description, descriptionFormat: products.descriptionFormat })
       .from(products)
       .where(eq(products.id, productId))
-      .then((rows) => rows[0]);
+      .then(first);
     const format = data.descriptionFormat !== undefined
       ? normaliseFormat(data.descriptionFormat)
       : normaliseFormat(current?.descriptionFormat);
@@ -330,7 +331,7 @@ export async function updateProduct(db: AppDb, productId: string, data: UpdatePr
       .select({ inventory: products.inventory, hasVariants: products.hasVariants, trackInventory: products.trackInventory })
       .from(products)
       .where(eq(products.id, productId))
-      .then((rows) => rows[0]);
+      .then(first);
     if (current?.trackInventory && !current.hasVariants) {
       const delta = data.inventory - current.inventory;
       if (delta !== 0) {
@@ -396,7 +397,7 @@ export async function findProductIdentityConflict(
     })
     .from(products)
     .where(or(...conditions))
-    .then((rows) => rows[0]);
+    .then(first);
   if (!row) return null;
 
   const field =

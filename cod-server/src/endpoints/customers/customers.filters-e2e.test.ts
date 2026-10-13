@@ -14,6 +14,7 @@
  *   • EXPLAIN proof that the EXISTS plans use the indexes from Slice 1
  */
 
+import { sql } from "drizzle-orm";
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { createTestDb, type TestDb } from "@/test-utils/pg";
 import { readFileSync, readdirSync } from "node:fs";
@@ -25,7 +26,6 @@ import { getAllDrivers } from "../../../../cod-shared/queries/drivers";
 
 const registry: TestDb[] = [];
 let db: AppDb;
-let rawD1: D1Database;
 
 const CRASH_GROUP_MEMBERS = 150;
 
@@ -185,33 +185,33 @@ describe("getAllDrivers — real D1", () => {
 });
 
 describe("EXISTS plans use the Slice 1 indexes", () => {
+  /** PostgreSQL's plan for `query`, with sequential scans off so these tiny tables still show which index serves it. */
+  async function planOf(query: ReturnType<typeof sql>): Promise<string> {
+    await db.execute(sql`set enable_seqscan = off`);
+    try {
+      const result = await db.execute(sql`explain ${query}`);
+      return (result.rows as Array<Record<string, string>>).map((r) => r["QUERY PLAN"]).join(" | ");
+    } finally {
+      await db.execute(sql`reset enable_seqscan`);
+    }
+  }
+
   it("customer group-membership EXISTS searches the unique index", async () => {
-    const plan = await rawD1
-      .prepare(
-        `EXPLAIN QUERY PLAN SELECT * FROM customers WHERE EXISTS (
-           SELECT 1 FROM customer_group_members
-           WHERE customer_group_members.customer_id = customers.id
-             AND customer_group_members.group_id = ?
-         )`,
-      )
-      .bind("grp-big");
-    const details = (plan.results as Array<Record<string, unknown>>).map((r) => String(r.detail)).join(" | ");
-    expect(details).toContain("SEARCH customer_group_members");
-    expect(details).toContain("customer_group_members_customer_group_unique");
+    const plan = await planOf(sql`SELECT * FROM customers WHERE EXISTS (
+      SELECT 1 FROM customer_group_members
+      WHERE customer_group_members.customer_id = customers.id
+        AND customer_group_members.group_id = ${"grp-big"}
+    )`);
+    expect(plan).toContain("customer_group_members_customer_group_unique");
   });
 
   it("driver compensation EXISTS searches the unique index", async () => {
-    const plan = await rawD1
-      .prepare(
-        `EXPLAIN QUERY PLAN SELECT * FROM drivers WHERE EXISTS (
-           SELECT 1 FROM driver_compensations
-           WHERE driver_compensations.driver_id = drivers.id
-             AND driver_compensations.wilaya_id = ?
-         )`,
-      )
-      .bind(16);
-    const details = (plan.results as Array<Record<string, unknown>>).map((r) => String(r.detail)).join(" | ");
-    expect(details).toContain("SEARCH driver_compensations");
-    expect(details).toContain("driver_compensations_driver_wilaya_unique");
+    const plan = await planOf(sql`SELECT * FROM drivers WHERE EXISTS (
+      SELECT 1 FROM driver_compensations
+      WHERE driver_compensations.driver_id = drivers.id
+        AND driver_compensations.wilaya_id = ${16}
+    )`);
+    expect(plan).toContain("driver_compensations_driver_wilaya_unique");
   });
 });
+

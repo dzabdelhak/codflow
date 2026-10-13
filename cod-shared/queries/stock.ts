@@ -7,6 +7,7 @@
 import { eq, and, desc, sql, isNull } from "drizzle-orm";
 import { products, productVariants, stockMovements } from "../db/schema";
 import type { AppDb } from "../db/client";
+import { first } from "../db/client";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -243,7 +244,7 @@ export async function updateProductThreshold(
     .select({ id: products.id })
     .from(products)
     .where(and(eq(products.id, productId), isNull(products.deletedAt)))
-    .then((rows) => rows[0]);
+    .then(first);
   if (!existing) return false;
 
   await db
@@ -263,7 +264,7 @@ export async function updateVariantThreshold(
     .select({ id: productVariants.id })
     .from(productVariants)
     .where(and(eq(productVariants.id, variantId), eq(productVariants.productId, productId)))
-    .then((rows) => rows[0]);
+    .then(first);
   if (!existing) return false;
 
   await db
@@ -290,7 +291,7 @@ export async function getProductInventory(
           eq(productVariants.productId, productId),
         ),
       )
-      .then((rows) => rows[0]);
+      .then(first);
     return row ? { inventory: row.inventory, exists: true } : { inventory: 0, exists: false };
   }
 
@@ -298,6 +299,6 @@ export async function getProductInventory(
     .select({ inventory: products.inventory })
     .from(products)
     .where(and(eq(products.id, productId), isNull(products.deletedAt)))
-    .then((rows) => rows[0]);
+    .then(first);
   return row ? { inventory: row.inventory, exists: true } : { inventory: 0, exists: false };
 }

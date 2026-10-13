@@ -20,6 +20,7 @@ import { setShipmentValidated, getShipmentByOrder, logApiCall } from "@/endpoint
 import { NotFoundError, BusinessLogicError, ValidationError, ExternalApiError } from "@/lib/errors/classes";
 import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
 import { DEFERRED_LABEL_MARKER } from "./dispatch";
+import { first } from "../../../../cod-shared/db/client";
 
 /**
  * PATCH /orders/:id/update-shipment
@@ -77,7 +78,7 @@ export async function updateShipmentInfo(c: Context<AppContext>) {
 
   // Resolve French commune name — required by Packers on every update call.
   const communeRow = order.communeId
-    ? await db.select({ name: communes.name }).from(communes).where(eq(communes.id, order.communeId)).then((rows) => rows[0])
+    ? await db.select({ name: communes.name }).from(communes).where(eq(communes.id, order.communeId)).then(first)
     : null;
 
   const bodyData: any = (c.req as any).valid?.("json");

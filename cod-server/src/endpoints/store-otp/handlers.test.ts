@@ -26,7 +26,8 @@ const API_KEY = "dz-config-key";
 function makeApp(kv?: KVNamespace) {
   const app = new OpenAPIHono<AppContext>({ defaultHook: openApiValidationHook });
   app.use("*", async (c, next) => {
-    c.env = { DB: {}, ...(kv ? { RATE_LIMIT: kv } : {}) } as any;
+    c.env = { ...(kv ? { RATE_LIMIT: kv } : {}) } as any;
+    c.set("db", {} as any);
     c.set("storeId", "store-1");
     await next();
   });

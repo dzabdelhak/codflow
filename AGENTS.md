@@ -2,8 +2,8 @@
 
 CodFlow is a cash-on-delivery (COD) e-commerce platform for Algeria. Monorepo,
 TypeScript. It is moving from Cloudflare to self-hosted Node.js + PostgreSQL
-(ADR-0003): the API and the storefront already run on Node + PostgreSQL; the
-dashboard, images, MCP and background jobs still carry Cloudflare code until
+(ADR-0003): the API, the storefront and the dashboard run on Node +
+PostgreSQL; images, MCP and background jobs still carry Cloudflare code until
 their tickets in `.scratch/orestor-platform/issues/` port them.
 
 ## Layout
@@ -12,8 +12,9 @@ their tickets in `.scratch/orestor-platform/issues/` port them.
   Merchant `/api/*`, public `/store/*`, `/webhooks`, `/images`. PostgreSQL via
   Drizzle; one store (channel) per request, isolated by Row-Level Security
   (`src/db/scope.ts`). `/mcp` returns with ticket 16.
-- `cod-client-astro/` — the merchant dashboard (Astro 7). Prerendered static
-  pages + a Worker surface for `/api/auth/*` and `/mcp/oauth/login`; React
+- `cod-client-astro/` — the merchant dashboard (Astro 7, Node adapter).
+  Prerendered static pages + server routes for `/api/auth/*` (better-auth on
+  PostgreSQL + Redis), `/mcp/oauth/login` and the SPA fallback; React
   islands fetch data from cod-server through `src/lib/api.ts` (the only module
   allowed to call the API). UI strings come from `locales/{ar,en,fr}` via
   `useT(namespace)` — the i18n guard test enforces three-locale parity.
@@ -47,8 +48,10 @@ docker compose up --build       # whole stack: http://shop1.localhost:8090, http
 ```
 
 Same for `cod-client-astro` (`npm run typecheck`, `npm test`, `npm run dev`
-— astro dev on :4321). Admin bootstrap: `cd cod-client-astro &&
-npm run seed:admin` (sign-up is disabled by design).
+— astro dev on :4321, with the environment from `.env.example`). Admin
+bootstrap: `cd cod-client-astro && DATABASE_URL=… npm run seed:admin --
+--merchant=<id>` (sign-up is disabled by design; compose seeds
+admin@example.com for the demo merchant).
 
 `cod-astro/theme01` has extra validators — see
 `cod-astro/theme01/AGENTS.md` for its commands.
@@ -80,24 +83,25 @@ other is how these drift.
   README that is not actually implemented. Before editing README feature lists,
   confirm the code exists.
 - **Never commit secrets.** No live API keys, carrier tokens, or credentials in
-  source, tests, or fixtures. Real secrets go in `wrangler secrets` /
-  `.dev.vars` (gitignored). Wrangler configs with real resource IDs are
-  gitignored too (`wrangler.toml` in cod-server/cod-client-astro) — commit
-  `.example` templates only.
+  source, tests, or fixtures. Real secrets go in the deployment's environment
+  (never in the repo); commit `.example` templates only. The defaults in
+  `docker-compose.yml` are for local use.
 - No explanatory code comments unless asked.
 
 ## Boundaries
 
-- `cod-shared` is the single source of truth for the D1 schema, queries, RBAC
+- `cod-shared` is the single source of truth for the database schema, queries, RBAC
   scopes, and error codes. Do not duplicate schema or scope definitions in
   cod-server or cod-client-astro.
-- Migrations: add a new migration; never rewrite an already-applied one.
-- Ask before adding a production dependency or changing the D1 schema.
+- Migrations (`cod-server/src/db/migrations`, PostgreSQL): add a new
+  migration; never rewrite an already-applied one.
+- Ask before adding a production dependency or changing the database schema.
 - Keep engine logic out of `cod-astro/theme01`; the theme layer is meant to be
   swappable (see `cod-astro/theme01/AGENTS.md`).
 - Dashboard data access goes through the API seam (`cod-client-astro/src/lib/api.ts`).
-  Components never call `fetch` directly, and the dashboard does not query D1
-  for business data — authorization lives in cod-server.
+  Components never call `fetch` directly, and the dashboard does not query the
+  database for business data — authorization lives in cod-server. (Its auth
+  server reads identity tables for sign-in; nothing else.)
 
 ## Known traps
 
@@ -121,45 +125,49 @@ other is how these drift.
   (`STOREFRONT_SERVICE_KEY`, identical on cod-server and theme01); cod-server
   trusts the hostname only with the key. Hostname → store lives in
   `store_domains`.
-- Until ticket 03 adds accounts and the channel selector, non-storefront
-  routes (`/api/*`, `/webhooks`, `/images`) serve the deployment's **only**
-  store; with several stores they get none. **The dashboard is down on this
-  branch until then**: its auth still targets Cloudflare D1.
+- **A merchant owns stores and users** (`merchants`; `merchant_id` on `users`
+  and `stores`). Every user of a merchant may open all of its stores. The
+  dashboard sends the active store as `X-Store-Id`; `/api/*` runs auth (on the
+  platform pool), then `dashboardScope`, which accepts the store only when the
+  user's merchant owns it and pins both `app.merchant_id` and `app.store_id`.
+  `users`, `user_scopes`, `accounts`, `sessions` and `merchants` are under
+  merchant RLS. Store creation (`POST /api/merchant/stores`) goes through the
+  plan-policy seam (`cod-server/src/platform/plan-policy.ts`) — Aventy's plan
+  check plugs in there. `/webhooks` and `/images` still serve the deployment's
+  only store until their tickets.
+- Single-row reads end in `.then(first)` (row or undefined, D1's `.get()`);
+  a write's `returning()` that must give a row ends in `.then(one)` (throws
+  otherwise) — both from `cod-shared/db/client.ts`.
 - **PostgreSQL is READ COMMITTED; D1 batches were serial.** A guarded write
   (`UPDATE … WHERE inventory >= qty`) can match 0 rows after waiting on a
-  lock and commit silently — the porting spike reproduced an oversell. Lock
-  the rows a check reads (`SELECT … FOR UPDATE`) before deciding. Open in
-  `createStoreOrder` (ticket 02), `orders.ts` and stock adjustments.
+  lock and commit silently — an oversell. The stock guards (storefront and
+  dashboard orders, stock adjustments) read their row `FOR UPDATE`, so a
+  concurrent order waits and re-checks; `money-integrity-probes.e2e.test.ts`
+  holds it deterministically. Any new check-then-write must lock what it reads.
 - node-postgres returns `COUNT`/`SUM`/`AVG` as strings; `src/db/scope.ts`
   installs parsers that turn them back into numbers. Several queries in one
   `Promise.all` share the request's single connection; pg queues them (it
   warns that pg 9 will not).
 - `PUBLIC_API_URL` is a **build-time** client value: `astro:env/client` inlines
-  it into the browser bundle, so changing it requires a rebuild. It does **not**
-  go in `cod-client-astro/.env` — the Cloudflare adapter pushes wrangler values
-  and `.dev.vars` into `process.env`, and Astro reads env with an empty prefix,
-  so Vite's final `process.env` pass outranks the .env files:
-  `.dev.vars` > `wrangler.toml [vars]` > `process.env` > `.env`. A value in
-  `.env` is silently ignored, and `.dev.vars` — local-only by Cloudflare's
-  definition but still read during a build — once baked `http://localhost:8787`
-  into production. Set it in `.dev.vars` (local) and `wrangler.toml [vars]`
-  (production); `cod-client-astro npm run deploy` parks `.dev.vars` for the
-  build and refuses to upload a bundle containing a loopback URL. Runtime vars
-  (`PUBLIC_APP_URL`, `PUBLIC_TRUSTED_ORIGINS`) live in wrangler.toml `[vars]`.
+  it into the browser bundle, so changing it requires a rebuild (the dashboard
+  Docker image takes it as a build arg). At run time the dashboard reads its
+  server settings from the environment (`cod-client-astro/.env.example`).
+  On `app.<domain>` the browser derives the API as `api.<domain>`, same scheme
+  and port (`src/lib/api.ts`).
 - `BETTER_AUTH_SECRET` and `MCP_LOGIN_TICKET_SECRET` must be **identical** on
-  cod-server and cod-client-astro (shared auth D1 + MCP login-ticket relay).
-- Better Auth 1.7 schema requirements live in migrations 0010/0011:
-  `accounts.issuer` ('local:credential', account_id = user id) and
-  `jwkss.alg/crv`. cod-client-astro ships its own KV `secondaryStorage` in
-  `src/lib/auth/server.ts` because better-auth-cloudflare@0.3.1 lacks the
-  `increment` method its rate limiter requires — do not swap back to `kv:`
-  shortcut.
+  cod-server and cod-client-astro. cod-server verifies the dashboard's JWT
+  against its JWKS; set `BETTER_AUTH_JWKS_URL` when the public auth URL is
+  not reachable from the API (inside Docker: `http://dashboard:4321/api/auth/jwks`).
+- Better Auth 1.7 needs `accounts.issuer` ('local:credential', account_id =
+  user id) and `jwkss.alg/crv` (in the baseline). Its secondary storage is
+  Redis (`cod-client-astro/src/lib/auth/redis-storage.ts`), which must keep
+  the `increment` method the rate limiter requires.
 - OAuth provider tables predate better-auth 1.7: `oauthClients`,
   `oauthAccessTokens`, `oauthRefreshTokens`, `oauthConsents` are missing some
   1.7 columns, and `oauthResource(s)`, `oauthClientResource(s)`,
   `oauthClientAssertion(s)` do not exist yet. Core auth + dashboard work;
   MCP client token flows may need that alignment before heavy use.
-- The dashboard Worker and the storefront both default to port **4321** — run
+- The dashboard and the storefront both default to port **4321** — run
   one on `--port 4322` when developing both at once.
 - Inbound webhooks exist only for **Yalidine** and **ZR Express**. NOEST and
   EcoTrack tracking is pulled on demand via `GET /orders/:id/tracking` — there

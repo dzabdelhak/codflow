@@ -8,6 +8,7 @@
 import { eq } from "drizzle-orm";
 import { webhookEvents, orders } from "../db/schema";
 import type { AppDb } from "../db/client";
+import { first } from "../db/client";
 
 export interface InsertWebhookEventData {
   provider: string;
@@ -103,7 +104,7 @@ export async function getOrderByTracking(db: AppDb, trackingNumber: string) {
     .select()
     .from(orders)
     .where(eq(orders.trackingNumber, trackingNumber))
-    .then((rows) => rows[0]);
+    .then(first);
 }
 
 export async function getOrderByReference(db: AppDb, reference: string) {
@@ -111,5 +112,5 @@ export async function getOrderByReference(db: AppDb, reference: string) {
     .select()
     .from(orders)
     .where(eq(orders.orderNumber, reference))
-    .then((rows) => rows[0]);
+    .then(first);
 }

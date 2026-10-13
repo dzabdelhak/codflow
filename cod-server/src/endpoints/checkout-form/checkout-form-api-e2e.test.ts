@@ -20,6 +20,7 @@ import {
   DEFAULT_CHECKOUT_FORM_POLICY,
   CUSTOM_FIELD_ID_PATTERN,
 } from "../../../../cod-shared/checkout-form/policy";
+import { first } from "../../../../cod-shared/db/client";
 
 let harness: TestD1;
 let app: OpenAPIHono<AppContext>;
@@ -98,7 +99,7 @@ async function storedColumn() {
     .select({ json: schema.stores.checkoutFormJson })
     .from(schema.stores)
     .where(eq(schema.stores.id, STORE_ID))
-    .then((rows) => rows[0]);
+    .then(first);
   return row?.json ?? null;
 }
 

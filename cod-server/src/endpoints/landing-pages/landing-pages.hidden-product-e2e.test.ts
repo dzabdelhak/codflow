@@ -19,6 +19,7 @@ import { storeAuthMiddleware } from "@/middleware/storeAuth";
 import storeRouter from "../store/routes";
 import * as schema from "@/db/schema";
 import type { AppDb } from "@/db";
+import { first } from "../../../../cod-shared/db/client";
 
 let db: AppDb;
 let rawD1: D1Database;
@@ -193,11 +194,11 @@ describe("store-hidden products (showInStore=false) — landing pages keep selli
     expect(body.data.price).toBe(10000);
 
     const order = await db.select().from(schema.orders)
-      .where(eq(schema.orders.id, body.data.orderId)).then((rows) => rows[0]);
+      .where(eq(schema.orders.id, body.data.orderId)).then(first);
     expect(order?.landingPageId).toBe("hidden-order");
 
     const product = await db.select().from(schema.products)
-      .where(eq(schema.products.id, id)).then((rows) => rows[0]);
+      .where(eq(schema.products.id, id)).then(first);
     expect(product?.inventory).toBe(8);
 
     // The handle stays resolvable only through the LP — the store page still 404s.
