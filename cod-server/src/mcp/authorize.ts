@@ -497,7 +497,7 @@ async function loadUser(db: ReturnType<typeof getDb>, userId: string) {
     })
     .from(users)
     .where(eq(users.id, userId))
-    .get();
+    .then((rows) => rows[0]);
 }
 
 async function loadUserScopes(db: ReturnType<typeof getDb>, userId: string): Promise<string[]> {
@@ -532,7 +532,7 @@ export async function authorizeGet(c: AuthorizeContext): Promise<Response> {
     return c.redirect(buildSignInRedirectUrl(c.env.BETTER_AUTH_URL, c.req.url), 302);
   }
 
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const user = await loadUser(db, payload.sub);
   if (!user || user.status !== "active") {
     return c.html(renderOAuthErrorPage("Account unavailable or inactive.", lang), 403);
@@ -603,7 +603,7 @@ export async function authorizePost(c: AuthorizeContext): Promise<Response> {
     expirationTtl: LOGIN_TICKET_TTL_SECONDS,
   });
 
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const user = await loadUser(db, payload.sub);
   if (!user || user.status !== "active") {
     return c.html(renderOAuthErrorPage("Account unavailable or inactive.", lang), 403, clearCookie);

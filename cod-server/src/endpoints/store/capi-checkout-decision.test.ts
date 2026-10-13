@@ -52,7 +52,7 @@ async function seedStore(
   pixel?: Partial<typeof schema.storePixelConfig.$inferInsert>,
 ): Promise<string> {
   const storeId = `store-cd-${++seq}`;
-  await harness.db.insert(schema.stores).values({
+  await harness.setStore({
     id: storeId,
     name: `Store ${seq}`,
     domain: "shop.example.com",

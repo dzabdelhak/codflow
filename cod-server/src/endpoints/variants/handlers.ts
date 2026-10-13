@@ -7,13 +7,13 @@ import { NotFoundError, BusinessLogicError, SystemError } from "@/lib/errors/cla
 import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
 
 export async function listVariants(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const data = await q.getVariantsByProduct(db, c.req.param("productId")!);
   return c.json({ success: true, data, count: data.length }, 200);
 }
 
 export async function getVariant(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const variantId = c.req.param("variantId")!;
   const variant = await q.getVariantById(db, variantId);
   if (!variant) {
@@ -23,7 +23,7 @@ export async function getVariant(c: Context<AppContext>) {
 }
 
 export async function createVariant(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const productId = c.req.param("productId")!;
   const jsonData: any = (c.req as any).valid?.("json");
   const body = jsonData ?? v.createVariantSchema.parse(await c.req.json());
@@ -35,7 +35,7 @@ export async function createVariant(c: Context<AppContext>) {
 }
 
 export async function updateVariant(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const variantId = c.req.param("variantId")!;
   const jsonData: any = (c.req as any).valid?.("json");
   const body = jsonData ?? v.updateVariantSchema.parse(await c.req.json());
@@ -47,7 +47,7 @@ export async function updateVariant(c: Context<AppContext>) {
 }
 
 export async function deleteVariant(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const variantId = c.req.param("variantId")!;
   const productId = c.req.param("productId")!;
 

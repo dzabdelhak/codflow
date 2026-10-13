@@ -11,7 +11,7 @@ import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
  * Create a payment record and settle the selected orders.
  */
 export async function createPayment(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const body: any = (c.req as any).valid?.("json");
   const validated = body ?? validation.createPaymentSchema.parse(await c.req.json());
   const user = c.get("user");
@@ -28,7 +28,7 @@ export async function createPayment(c: Context<AppContext>) {
  * List all payment records for a driver.
  */
 export async function listPayments(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const driverId = c.req.param("driverId");
 
   if (!driverId) {
@@ -44,7 +44,7 @@ export async function listPayments(c: Context<AppContext>) {
  * List delivered, unsettled orders for a driver (for pre-settlement review).
  */
 export async function listPendingOrders(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const driverId = c.req.param("driverId");
 
   if (!driverId) {

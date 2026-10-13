@@ -14,7 +14,7 @@ import { getOrderStatusStats } from "../../../../cod-shared/queries/analytics";
  * Returns order counts grouped by status in a single optimized query.
  */
 export async function getDashboardStats(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const data = await getOrderStatusStats(db);
   return c.json({ success: true, data }, 200);
 }

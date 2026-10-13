@@ -7,6 +7,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { rowsOf } from "@/test-utils/mock-db";
 import {
   getTurnstileConfig,
   getTurnstileConfigRaw,
@@ -19,13 +20,13 @@ function makeDb(row: unknown | undefined) {
   const db = {
     select: vi.fn(() => ({
       from: vi.fn(() => ({
-        where: vi.fn(() => ({ get })),
+        where: vi.fn(() => rowsOf(get)),
       })),
     })),
     update: vi.fn(() => ({
       set: vi.fn(() => ({
         where: vi.fn(() => ({
-          returning: vi.fn(() => ({ get: returningGet })),
+          returning: vi.fn(() => rowsOf(returningGet)),
         })),
       })),
     })),
@@ -80,7 +81,7 @@ describe("upsertTurnstileConfig", () => {
     const selectGet = vi.fn(async () => undefined);
     db.select = vi.fn(() => ({
       from: vi.fn(() => ({
-        where: vi.fn(() => ({ get: selectGet })),
+        where: vi.fn(() => rowsOf(selectGet)),
       })),
     })) as any;
 
@@ -112,7 +113,7 @@ describe("upsertTurnstileConfig", () => {
     const selectGet = vi.fn(async () => ({ id: "row-1" }));
     db.select = vi.fn(() => ({
       from: vi.fn(() => ({
-        where: vi.fn(() => ({ get: selectGet })),
+        where: vi.fn(() => rowsOf(selectGet)),
       })),
     })) as any;
 

@@ -1,0 +1,14 @@
+# Local front proxy. Every hostname except the API's is a channel served by the
+# storefront; Caddy passes the Host header through unchanged.
+# Production (automatic TLS per merchant domain) comes with ticket 11.
+{
+	auto_https off
+}
+
+http://api.localhost {
+	reverse_proxy api:8787
+}
+
+http:// {
+	reverse_proxy storefront:4321
+}

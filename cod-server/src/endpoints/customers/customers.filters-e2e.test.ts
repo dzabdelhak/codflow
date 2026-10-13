@@ -15,45 +15,24 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { Miniflare } from "miniflare";
+import { createTestDb, type TestDb } from "@/test-utils/pg";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
-import { drizzle } from "drizzle-orm/d1";
 import * as schema from "@/db/schema";
 import type { AppDb } from "@/db";
 import { getAllCustomers } from "../../../../cod-shared/queries/customers";
 import { getAllDrivers } from "../../../../cod-shared/queries/drivers";
 
-const registry: Miniflare[] = [];
+const registry: TestDb[] = [];
 let db: AppDb;
 let rawD1: D1Database;
 
 const CRASH_GROUP_MEMBERS = 150;
 
 beforeAll(async () => {
-  const mf = new Miniflare({
-    script: "export default { fetch() { return new Response('ok'); } }",
-    modules: true,
-    d1Databases: { DB: "test-db" },
-  });
-  registry.push(mf);
-  rawD1 = await mf.getD1Database("DB");
-  const dir = resolve(__dirname, "../../db/migrations");
-  const preparedStatements: D1PreparedStatement[] = [];
-  for (const file of readdirSync(dir).filter((f) => f.endsWith(".sql")).sort()) {
-    const statements = readFileSync(`${dir}/${file}`, "utf8")
-      .split("--> statement-breakpoint")
-      .flatMap((s) => s.split(/;\s*\n/))
-      .map((s) => s.replace(/;+\s*$/, "").trim())
-      .filter((s) => s.replace(/--[^\n]*/g, "").trim().length > 0);
-    for (const statement of statements) {
-      preparedStatements.push(rawD1.prepare(statement));
-    }
-  }
-  for (let i = 0; i < preparedStatements.length; i += 50) {
-    await rawD1.batch(preparedStatements.slice(i, i + 50));
-  }
-  db = drizzle(rawD1 as unknown as D1Database, { schema }) as unknown as AppDb;
+  const harness = await createTestDb();
+  registry.push(harness);
+  db = harness.db;
 
   const now = new Date().toISOString();
 
@@ -215,8 +194,7 @@ describe("EXISTS plans use the Slice 1 indexes", () => {
              AND customer_group_members.group_id = ?
          )`,
       )
-      .bind("grp-big")
-      .all();
+      .bind("grp-big");
     const details = (plan.results as Array<Record<string, unknown>>).map((r) => String(r.detail)).join(" | ");
     expect(details).toContain("SEARCH customer_group_members");
     expect(details).toContain("customer_group_members_customer_group_unique");
@@ -231,8 +209,7 @@ describe("EXISTS plans use the Slice 1 indexes", () => {
              AND driver_compensations.wilaya_id = ?
          )`,
       )
-      .bind(16)
-      .all();
+      .bind(16);
     const details = (plan.results as Array<Record<string, unknown>>).map((r) => String(r.detail)).join(" | ");
     expect(details).toContain("SEARCH driver_compensations");
     expect(details).toContain("driver_compensations_driver_wilaya_unique");

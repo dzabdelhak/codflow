@@ -3,28 +3,45 @@
 // ║  All HTTP calls to cod-server live here. Add no fetch logic outside  ║
 // ║  this file — pages and components must import from @/lib/api.        ║
 // ╚══════════════════════════════════════════════════════════════════════╝
-import { STORE_API_KEY, COD_SERVER_URL as _COD_SERVER_URL } from "astro:env/server";
+import { STOREFRONT_SERVICE_KEY, COD_SERVER_URL as _COD_SERVER_URL } from "astro:env/server";
 const COD_SERVER_URL = _COD_SERVER_URL ?? "http://localhost:8787";
 import type { StoreConfig, Commune, Review, StorePagePublic } from "./types";
+import { currentRequestHost, memoForRequest } from "./request-host";
 
+/**
+ * The API picks the channel from the visitor's hostname, which it trusts only
+ * alongside the storefront's service key.
+ */
 function storeHeaders() {
   return {
-    "X-Store-API-Key": STORE_API_KEY!,
+    "X-Storefront-Key": STOREFRONT_SERVICE_KEY ?? "",
+    "X-Channel-Host": currentRequestHost() ?? "",
     "Content-Type": "application/json",
   };
 }
 
+/**
+ * The channel's configuration, read once per request. `status` is the API's
+ * answer: 404 means no channel uses this hostname; 0 means the API could not
+ * be reached.
+ */
+export function loadStoreConfig(): Promise<{ status: number; data: StoreConfig | null }> {
+  return memoForRequest("store-config", async () => {
+    try {
+      const res = await fetch(`${COD_SERVER_URL}/store/config`, {
+        headers: storeHeaders(),
+      });
+      if (!res.ok) return { status: res.status, data: null };
+      const json = (await res.json()) as { data: StoreConfig };
+      return { status: res.status, data: json.data ?? null };
+    } catch {
+      return { status: 0, data: null };
+    }
+  });
+}
+
 export async function fetchStoreConfig(): Promise<StoreConfig | null> {
-  try {
-    const res = await fetch(`${COD_SERVER_URL}/store/config`, {
-      headers: storeHeaders(),
-    });
-    if (!res.ok) return null;
-    const json = (await res.json()) as { data: StoreConfig };
-    return json.data ?? null;
-  } catch {
-    return null;
-  }
+  return (await loadStoreConfig()).data;
 }
 
 /**

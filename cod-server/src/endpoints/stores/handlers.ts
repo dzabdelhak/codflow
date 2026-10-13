@@ -17,7 +17,7 @@ import { createSendiliClient, SendiliError, SENDILI_ERRORS } from "../../../../c
 import { z } from "@hono/zod-openapi";
 
 export async function getMyStore(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const store = await queries.getStore(db);
   
   if (!store) {
@@ -28,7 +28,7 @@ export async function getMyStore(c: Context<AppContext>) {
 }
 
 export async function updateMyStore(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const store = await queries.getStore(db);
 
   if (!store) {
@@ -89,7 +89,7 @@ function pixelConfigResponse(row: NonNullable<Awaited<ReturnType<typeof queryPix
 }
 
 export async function getPixelConfig(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const store = await queries.getStore(db);
   if (!store) throw new NotFoundError("Store");
   const config = await queryPixelConfig(db, store.id);
@@ -97,7 +97,7 @@ export async function getPixelConfig(c: Context<AppContext>) {
 }
 
 export async function savePixelConfig(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const store = await queries.getStore(db);
   if (!store) throw new NotFoundError("Store");
   const jsonBody: any = (c.req as any).valid?.("json");
@@ -152,7 +152,7 @@ export const otpConfigSchema = z.object({
 
 /** Response shape: the safe config plus a masked key hint for the UI. */
 export async function getOtpConfig(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const store = await queries.getStore(db);
   if (!store) throw new NotFoundError("Store");
 
@@ -175,7 +175,7 @@ export async function getOtpConfig(c: Context<AppContext>) {
 }
 
 export async function saveOtpConfig(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const store = await queries.getStore(db);
   if (!store) throw new NotFoundError("Store");
 
@@ -219,7 +219,7 @@ export async function saveOtpConfig(c: Context<AppContext>) {
  * "key valid, quota unavailable" rather than a failure.
  */
 export async function testOtpConnection(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const store = await queries.getStore(db);
   if (!store) throw new NotFoundError("Store");
 
@@ -309,7 +309,7 @@ export const turnstileConfigSchema = z.object({
 });
 
 export async function getTurnstileConfig(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const store = await queries.getStore(db);
   if (!store) throw new NotFoundError("Store");
 
@@ -332,7 +332,7 @@ export async function getTurnstileConfig(c: Context<AppContext>) {
 }
 
 export async function saveTurnstileConfig(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const store = await queries.getStore(db);
   if (!store) throw new NotFoundError("Store");
 
@@ -395,7 +395,7 @@ export const emailConfigSchema = z.object({
 });
 
 export async function getEmailConfig(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const store = await queries.getStore(db);
   if (!store) throw new NotFoundError("Store");
 
@@ -419,7 +419,7 @@ export async function getEmailConfig(c: Context<AppContext>) {
 }
 
 export async function saveEmailConfig(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const store = await queries.getStore(db);
   if (!store) throw new NotFoundError("Store");
 
@@ -466,7 +466,7 @@ export async function saveEmailConfig(c: Context<AppContext>) {
  * check itself succeeded.
  */
 export async function testEmailConnection(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const store = await queries.getStore(db);
   if (!store) throw new NotFoundError("Store");
 

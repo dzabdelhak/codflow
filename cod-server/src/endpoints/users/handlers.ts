@@ -21,7 +21,7 @@ import { sendInviteEmail } from "./invite-email";
  * List all users with optional filters.
  */
 export async function listUsers(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const query: any = (c.req as any).valid?.("query");
   const filters = query ?? validation.userFiltersSchema.parse({
     role: c.req.query("role"),
@@ -39,7 +39,7 @@ export async function listUsers(c: Context<AppContext>) {
  * Get single user by ID with scope details.
  */
 export async function getUser(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const userId = c.req.param("id")!;
   const user = await queries.getUserById(db, userId);
   
@@ -77,7 +77,7 @@ async function hashPassword(password: string): Promise<string> {
  * Admin-only — enforced at the route level via requireAdmin().
  */
 export async function createUser(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const jsonBody: any = (c.req as any).valid?.("json");
   const validated = jsonBody ?? validation.createUserSchema.parse(await c.req.json());
   const actor = c.get("user");
@@ -95,7 +95,7 @@ export async function createUser(c: Context<AppContext>) {
   // 4. Check for duplicate email
   const { users: usersTable } = await import("@/db/schema");
   const { eq } = await import("drizzle-orm");
-  const existing = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.email, validated.email)).get();
+  const existing = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.email, validated.email)).then((rows) => rows[0]);
   if (existing) {
     throw new ConflictError(
       "A user with this email already exists",
@@ -153,7 +153,7 @@ export async function createUser(c: Context<AppContext>) {
  * Update user information.
  */
 export async function updateUser(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const id = c.req.param("id")!;
   const jsonBody: any = (c.req as any).valid?.("json");
   const validated = jsonBody ?? validation.updateUserSchema.parse(await c.req.json());
@@ -175,7 +175,7 @@ export async function updateUser(c: Context<AppContext>) {
  * Update user role.
  */
 export async function updateUserRole(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const id = c.req.param("id")!;
   const jsonBody: any = (c.req as any).valid?.("json");
   const body = jsonBody ?? validation.updateUserRoleSchema.parse(await c.req.json());
@@ -198,7 +198,7 @@ export async function updateUserRole(c: Context<AppContext>) {
  * Grant scope to user.
  */
 export async function grantScope(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const id = c.req.param("id")!;
   const jsonBody: any = (c.req as any).valid?.("json");
   const validated = jsonBody ?? validation.grantScopeSchema.parse(await c.req.json());
@@ -237,7 +237,7 @@ export async function grantScope(c: Context<AppContext>) {
  * Revoke scope from user.
  */
 export async function revokeScope(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const id = c.req.param("id")!;
   const scope = c.req.param("scope")!;
 
@@ -266,7 +266,7 @@ export async function revokeScope(c: Context<AppContext>) {
  * Admin only. The new raw key is returned once — it cannot be retrieved again.
  */
 export async function rotateApiKey(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const id = c.req.param("id")!;
 
   const existing = await queries.getUserById(db, id);

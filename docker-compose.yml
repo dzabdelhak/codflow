@@ -1,0 +1,75 @@
+# Local platform stack (ADR-0003). From the repo root:
+#
+#   docker compose up --build
+#
+# then open http://shop1.localhost:8090 and http://shop2.localhost:8090 — two
+# demo channels served by the same storefront, each showing only its own data.
+#
+# Host ports are overridable: COD_HTTP_PORT, COD_PG_PORT, COD_REDIS_PORT.
+# The storefront key is a local-only default; set COD_STOREFRONT_SERVICE_KEY
+# for anything else. Object storage joins with ticket 10 (MinIO no longer
+# publishes community images — the store is chosen there).
+name: codflow
+
+x-storefront-key: &storefront-key ${COD_STOREFRONT_SERVICE_KEY:-local-dev-storefront-key}
+
+services:
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: codflow
+      POSTGRES_PASSWORD: codflow
+      POSTGRES_DB: codflow
+    ports: ["${COD_PG_PORT:-5440}:5432"]
+    volumes: [pgdata:/var/lib/postgresql]
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "codflow", "-d", "codflow"]
+      interval: 2s
+      retries: 30
+
+  redis:
+    image: redis:8-alpine
+    ports: ["${COD_REDIS_PORT:-6390}:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      retries: 30
+
+  # Migrations, the two demo channels and their legal pages. Idempotent.
+  setup:
+    build: { context: ., dockerfile: docker/api.Dockerfile }
+    command: ["npm", "run", "db:setup"]
+    environment:
+      DATABASE_URL: postgres://codflow:codflow@db:5432/codflow
+    depends_on:
+      db: { condition: service_healthy }
+
+  api:
+    build: { context: ., dockerfile: docker/api.Dockerfile }
+    environment:
+      DATABASE_URL: postgres://codflow:codflow@db:5432/codflow
+      STOREFRONT_SERVICE_KEY: *storefront-key
+      ENVIRONMENT: development
+    depends_on:
+      setup: { condition: service_completed_successfully }
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8787/health').then(r => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 2s
+      retries: 30
+
+  storefront:
+    build: { context: ., dockerfile: docker/storefront.Dockerfile }
+    environment:
+      COD_SERVER_URL: http://api:8787
+      STOREFRONT_SERVICE_KEY: *storefront-key
+    depends_on:
+      api: { condition: service_healthy }
+
+  caddy:
+    image: caddy:2-alpine
+    ports: ["${COD_HTTP_PORT:-8090}:80"]
+    volumes: ["./docker/Caddyfile:/etc/caddy/Caddyfile:ro"]
+    depends_on: [api, storefront]
+
+volumes:
+  pgdata:

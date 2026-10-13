@@ -147,7 +147,7 @@ beforeAll(async () => {
     modules: [{ type: "ESModule", path: "index.mjs", contents: bundled.outputFiles[0].text }],
     d1Databases: { DB: "test-db" },
   });
-  registry.push(mf);
+  registry.push(harness);
 
   // Apply the REAL migrations — including 0025 — to the in-memory D1.
   const d1 = await mf.getD1Database("DB");

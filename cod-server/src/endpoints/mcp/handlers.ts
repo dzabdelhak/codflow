@@ -179,8 +179,7 @@ async function buildConnectionsForUser(
 async function loadUsers(db: ReturnType<typeof getDb>) {
   return db
     .select({ id: users.id, name: users.name, email: users.email })
-    .from(users)
-    .all();
+    .from(users);
 }
 
 /**
@@ -221,7 +220,7 @@ export async function listMyConnections(c: Context<AppContext>) {
  */
 export async function listTeamConnections(c: Context<AppContext>) {
   const h = helpers(c);
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const allUsers = await loadUsers(db);
   const connections: McpConnection[] = [];
   for (const u of allUsers) {
@@ -259,7 +258,7 @@ export async function revokeUserConnection(c: Context<AppContext>) {
  */
 export async function deleteMcpClient(c: Context<AppContext>) {
   const h = helpers(c);
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const actor = c.get("user")!;
   const clientId = c.req.param("clientId")!;
 
@@ -308,7 +307,7 @@ async function revokeConnection(
   }
 
   const actor = c.get("user")!;
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   await logActivity(
     db,
     actor,

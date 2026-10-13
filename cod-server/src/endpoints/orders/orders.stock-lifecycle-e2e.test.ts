@@ -16,7 +16,7 @@
  * write — proving atomicity with real SQL rather than mocks.
  */
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { Miniflare } from "miniflare";
+import { createTestDb, type TestDb } from "@/test-utils/pg";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { drizzle } from "drizzle-orm/d1";
@@ -35,32 +35,12 @@ let db: AppDb;
 let rawD1: D1Database;
 
 beforeAll(async () => {
-  const mf = new Miniflare({
-    script: "export default { fetch() { return new Response('ok'); } }",
-    modules: true,
-    d1Databases: { DB: "test-db" },
-  });
-  rawD1 = await mf.getD1Database("DB");
-  const dir = resolve(__dirname, "../../db/migrations");
-  const preparedStatements: D1PreparedStatement[] = [];
-  for (const file of readdirSync(dir).filter((f) => f.endsWith(".sql")).sort()) {
-    const statements = readFileSync(`${dir}/${file}`, "utf8")
-      .split("--> statement-breakpoint")
-      .flatMap((s) => s.split(/;\s*\n/))
-      .map((s) => s.replace(/;+\s*$/, "").trim())
-      .filter((s) => s.replace(/--[^\n]*/g, "").trim().length > 0);
-    for (const statement of statements) {
-      preparedStatements.push(rawD1.prepare(statement));
-    }
-  }
-  for (let i = 0; i < preparedStatements.length; i += 50) {
-    await rawD1.batch(preparedStatements.slice(i, i + 50));
-  }
-  db = drizzle(rawD1 as unknown as D1Database, { schema }) as unknown as AppDb;
-  registry.push(mf);
+  const harness = await createTestDb();
+  db = harness.db;
+  registry.push(harness);
 }, 120_000);
 
-const registry: Miniflare[] = [];
+const registry: TestDb[] = [];
 
 afterAll(async () => {
   for (const mf of registry) await mf.dispose();
@@ -173,27 +153,27 @@ async function seedOrder(opts: SeedOrderOpts = {}) {
 
 async function inventoryOf(productId: string) {
   return (await db.select({ inv: schema.products.inventory }).from(schema.products)
-    .where(eq(schema.products.id, productId)).get())?.inv;
+    .where(eq(schema.products.id, productId)).then((rows) => rows[0]))?.inv;
 }
 
 async function customerOf(customerId: string) {
   return (await db.select().from(schema.customers)
-    .where(eq(schema.customers.id, customerId)).get())!;
+    .where(eq(schema.customers.id, customerId)).then((rows) => rows[0]))!;
 }
 
 async function lineOf(lineId: string) {
   return (await db.select().from(schema.orderProducts)
-    .where(eq(schema.orderProducts.id, lineId)).get())!;
+    .where(eq(schema.orderProducts.id, lineId)).then((rows) => rows[0]))!;
 }
 
 async function orderStatus(orderId: string) {
   return (await db.select({ s: schema.orders.status }).from(schema.orders)
-    .where(eq(schema.orders.id, orderId)).get())?.s;
+    .where(eq(schema.orders.id, orderId)).then((rows) => rows[0]))?.s;
 }
 
 async function movementsFor(productId: string) {
   const rows = await db.select().from(schema.stockMovements)
-    .where(eq(schema.stockMovements.productId, productId)).all();
+    .where(eq(schema.stockMovements.productId, productId));
   // createdAt ties (same-ms ISO) can order arbitrarily — sort, then fall back
   // to numeric-string compare on id for determinism.
   return rows.sort((a, b) =>
@@ -292,7 +272,7 @@ describe("stock & customer stats — real D1 lifecycle matrix", () => {
     await updateOrderStatus(db, orderId, "delivered");
 
     const drv = (await db.select().from(schema.drivers)
-      .where(eq(schema.drivers.id, driverId)).get())!;
+      .where(eq(schema.drivers.id, driverId)).then((rows) => rows[0]))!;
     expect(drv).toMatchObject({ totalDelivered: 1, totalEarnings: 350, pendingCash: 2600 }); // I4
   });
 
@@ -305,7 +285,7 @@ describe("stock & customer stats — real D1 lifecycle matrix", () => {
 
     expect(res).toEqual({ updated: false });
     const drv = (await db.select().from(schema.drivers)
-      .where(eq(schema.drivers.id, driverId)).get())!;
+      .where(eq(schema.drivers.id, driverId)).then((rows) => rows[0]))!;
     expect(drv).toMatchObject({ totalDelivered: 1, totalEarnings: 350, pendingCash: 2600 }); // I4
   });
 
@@ -316,7 +296,7 @@ describe("stock & customer stats — real D1 lifecycle matrix", () => {
 
     expect(await inventoryOf(productId)).toBe(INITIAL_INVENTORY); // I1
     expect(await customerOf(customerId)).toMatchObject({ totalOrders: 0, totalSpent: 0 }); // I2/I3
-    expect(await db.select().from(schema.orders).where(eq(schema.orders.id, orderId)).get()).toBeUndefined();
+    expect(await db.select().from(schema.orders).where(eq(schema.orders.id, orderId)).then((rows) => rows[0])).toBeUndefined();
   });
 
   it("T10: cancel THEN delete — customer stats must return to the pre-order baseline", async () => {
@@ -363,7 +343,7 @@ describe("stock & customer stats — real D1 lifecycle matrix", () => {
     }], { id: "u1", name: "A" })).rejects.toThrow();
 
     // Nothing committed: no order, no lines, stats untouched, stock intact
-    expect(await db.select().from(schema.orders).where(eq(schema.orders.id, orderId)).get()).toBeUndefined();
+    expect(await db.select().from(schema.orders).where(eq(schema.orders.id, orderId)).then((rows) => rows[0])).toBeUndefined();
     expect(await customerOf(customerId)).toMatchObject({ totalOrders: 0, totalSpent: 0 });
     expect(await inventoryOf(productId)).toBe(1);
     expect(await movementsFor(productId)).toHaveLength(0);
@@ -408,7 +388,7 @@ describe("stock & customer stats — real D1 lifecycle matrix", () => {
     ).rejects.toThrow();
 
     // I5: the orders row must not exist without its products/stats.
-    expect(await db.select().from(schema.orders).where(eq(schema.orders.id, orderId)).get()).toBeUndefined();
+    expect(await db.select().from(schema.orders).where(eq(schema.orders.id, orderId)).then((rows) => rows[0])).toBeUndefined();
     expect(await customerOf(customerId)).toMatchObject({ totalOrders: 0, totalSpent: 0 });
   });
 

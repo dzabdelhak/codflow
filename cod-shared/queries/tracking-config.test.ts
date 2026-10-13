@@ -21,6 +21,7 @@
 
 import { beforeAll, afterAll, describe, it, expect } from "vitest";
 import { createTestD1, type TestD1 } from "@/test-utils/d1";
+import type { AppDb } from "../db/client";
 import * as schema from "@/db/schema";
 import {
   resolveTrackingConfig,
@@ -29,6 +30,9 @@ import {
 } from "./tracking-config";
 
 let harness: TestD1;
+/** The connection of the store seeded last — RLS pins each store to its own. */
+let db: AppDb;
+const dbs = new Map<string, AppDb>();
 const NOW = () => new Date().toISOString();
 let seq = 0;
 
@@ -42,13 +46,9 @@ afterAll(async () => {
 
 /** A store with no tracking row at all — the day-one state of every store. */
 async function seedStore(): Promise<string> {
-  const id = `store-tc-${++seq}`;
-  await harness.db.insert(schema.stores).values({
-    id,
-    name: `Store ${seq}`,
-    createdAt: NOW(),
-    updatedAt: NOW(),
-  });
+  const id = await harness.createStore(`store-tc-${++seq}`);
+  db = await harness.connect(id);
+  dbs.set(id, db);
   return id;
 }
 
@@ -56,7 +56,7 @@ async function seedStorePixel(
   storeId: string,
   overrides: Partial<typeof schema.storePixelConfig.$inferInsert> = {},
 ) {
-  await harness.db.insert(schema.storePixelConfig).values({
+  await (dbs.get(storeId) ?? db).insert(schema.storePixelConfig).values({
     id: `spc-${storeId}`,
     storeId,
     pixelId: "1111111111",
@@ -78,7 +78,7 @@ async function seedLandingPage(
   const productId = `prod-tc-${n}`;
   const landingPageId = `lp-tc-${n}`;
 
-  await harness.db.insert(schema.products).values({
+  await db.insert(schema.products).values({
     id: productId,
     name: `Product ${n}`,
     handle: `product-tc-${n}`,
@@ -95,7 +95,7 @@ async function seedLandingPage(
     updatedAt: NOW(),
   });
 
-  await harness.db.insert(schema.landingPages).values({
+  await db.insert(schema.landingPages).values({
     id: landingPageId,
     slug: `lp-tc-${n}`,
     name: `Landing page ${n}`,
@@ -106,7 +106,7 @@ async function seedLandingPage(
   });
 
   if (override) {
-    await harness.db.insert(schema.landingPagePixelConfig).values({
+    await db.insert(schema.landingPagePixelConfig).values({
       id: `lppc-${n}`,
       landingPageId,
       pixelId: "8888888888",
@@ -166,7 +166,7 @@ describe("resolveTrackingConfig — what a server-side sender reads", () => {
   it("returns null when the store has never configured tracking", async () => {
     const storeId = await seedStore();
 
-    expect(await resolveTrackingConfig(harness.db, { storeId })).toBeNull();
+    expect(await resolveTrackingConfig(db, { storeId })).toBeNull();
   });
 
   it("returns the stored configuration, access token included", async () => {
@@ -175,7 +175,7 @@ describe("resolveTrackingConfig — what a server-side sender reads", () => {
     const storeId = await seedStore();
     await seedStorePixel(storeId, { pixelId: "2222222222", conversionEvent: "Lead" });
 
-    const config = await resolveTrackingConfig(harness.db, { storeId });
+    const config = await resolveTrackingConfig(db, { storeId });
 
     expect(config).toMatchObject({
       pixelId: "2222222222",
@@ -192,7 +192,7 @@ describe("resolveTrackingConfig — what a server-side sender reads", () => {
     const storeId = await seedStore();
     await seedStorePixel(storeId, { enabled: false });
 
-    const config = await resolveTrackingConfig(harness.db, { storeId });
+    const config = await resolveTrackingConfig(db, { storeId });
 
     expect(config).not.toBeNull();
     expect(config?.enabled).toBe(false);
@@ -204,8 +204,16 @@ describe("resolveTrackingConfig — what a server-side sender reads", () => {
     await seedStorePixel(a, { pixelId: "AAAAAAAAAA" });
     await seedStorePixel(b, { pixelId: "BBBBBBBBBB" });
 
-    expect((await resolveTrackingConfig(harness.db, { storeId: a }))?.pixelId).toBe("AAAAAAAAAA");
-    expect((await resolveTrackingConfig(harness.db, { storeId: b }))?.pixelId).toBe("BBBBBBBBBB");
+    expect((await resolveTrackingConfig(dbs.get(a)!, { storeId: a }))?.pixelId).toBe("AAAAAAAAAA");
+    expect((await resolveTrackingConfig(dbs.get(b)!, { storeId: b }))?.pixelId).toBe("BBBBBBBBBB");
+  });
+
+  it("cannot read another store's configuration from a store's own connection", async () => {
+    const a = await seedStore();
+    const b = await seedStore();
+    await seedStorePixel(a, { pixelId: "AAAAAAAAAA" });
+
+    expect((await resolveTrackingConfig(dbs.get(b)!, { storeId: a }))?.pixelId ?? null).toBeNull();
   });
 });
 
@@ -213,7 +221,7 @@ describe("resolvePublicTracking — what a browser is allowed to know", () => {
   it("reports no pixel when the store has never configured tracking", async () => {
     const storeId = await seedStore();
 
-    expect(await resolvePublicTracking(harness.db, { storeId })).toEqual({
+    expect(await resolvePublicTracking(db, { storeId })).toEqual({
       pixelId: null,
       conversionEvent: "Purchase",
     });
@@ -225,7 +233,7 @@ describe("resolvePublicTracking — what a browser is allowed to know", () => {
     const storeId = await seedStore();
     await seedStorePixel(storeId, { enabled: false, conversionEvent: "Lead" });
 
-    expect(await resolvePublicTracking(harness.db, { storeId })).toEqual({
+    expect(await resolvePublicTracking(db, { storeId })).toEqual({
       pixelId: null,
       conversionEvent: "Purchase",
     });
@@ -235,7 +243,7 @@ describe("resolvePublicTracking — what a browser is allowed to know", () => {
     const storeId = await seedStore();
     await seedStorePixel(storeId, { pixelId: "3333333333", conversionEvent: "Purchase_Delivered" });
 
-    expect(await resolvePublicTracking(harness.db, { storeId })).toEqual({
+    expect(await resolvePublicTracking(db, { storeId })).toEqual({
       pixelId: "3333333333",
       conversionEvent: "Purchase_Delivered",
     });
@@ -249,7 +257,7 @@ describe("resolvePublicTracking — what a browser is allowed to know", () => {
     const storeId = await seedStore();
     await seedStorePixel(storeId, { pixelId: "" });
 
-    expect(await resolvePublicTracking(harness.db, { storeId })).toEqual({
+    expect(await resolvePublicTracking(db, { storeId })).toEqual({
       pixelId: null,
       conversionEvent: "Purchase",
     });
@@ -261,7 +269,7 @@ describe("resolvePublicTracking — what a browser is allowed to know", () => {
     const storeId = await seedStore();
     await seedStorePixel(storeId, { accessToken: "EAAG-must-never-ship" });
 
-    const publicTracking = await resolvePublicTracking(harness.db, { storeId });
+    const publicTracking = await resolvePublicTracking(db, { storeId });
 
     expect(JSON.stringify(publicTracking)).not.toContain("EAAG-must-never-ship");
     expect(Object.keys(publicTracking).sort()).toEqual(["conversionEvent", "pixelId"]);
@@ -274,7 +282,7 @@ describe("precedence — when a landing page's own pixel wins", () => {
     await seedStorePixel(storeId, { perPageTrackingEnabled: true, pixelId: "1111111111" });
     const landingPageId = await seedLandingPage();
 
-    const config = await resolveTrackingConfig(harness.db, { storeId, landingPageId });
+    const config = await resolveTrackingConfig(db, { storeId, landingPageId });
 
     expect(config?.pixelId).toBe("1111111111");
   });
@@ -287,7 +295,7 @@ describe("precedence — when a landing page's own pixel wins", () => {
     await seedStorePixel(storeId, { perPageTrackingEnabled: false, pixelId: "1111111111" });
     const landingPageId = await seedLandingPage({ pixelId: "8888888888" });
 
-    const config = await resolveTrackingConfig(harness.db, { storeId, landingPageId });
+    const config = await resolveTrackingConfig(db, { storeId, landingPageId });
 
     expect(config?.pixelId).toBe("1111111111");
   });
@@ -300,7 +308,7 @@ describe("precedence — when a landing page's own pixel wins", () => {
       accessToken: "EAAG-page-token",
     });
 
-    const config = await resolveTrackingConfig(harness.db, { storeId, landingPageId });
+    const config = await resolveTrackingConfig(db, { storeId, landingPageId });
 
     expect(config).toMatchObject({
       pixelId: "8888888888",
@@ -315,7 +323,7 @@ describe("precedence — when a landing page's own pixel wins", () => {
     await seedStorePixel(storeId, { perPageTrackingEnabled: true, pixelId: "1111111111" });
     const landingPageId = await seedLandingPage({ pixelId: "8888888888" });
 
-    const config = await resolveTrackingConfig(harness.db, { storeId, landingPageId });
+    const config = await resolveTrackingConfig(db, { storeId, landingPageId });
 
     expect(config?.pixelId).not.toBe("1111111111");
   });
@@ -336,7 +344,7 @@ describe("precedence — when a landing page's own pixel wins", () => {
       testEventCode: "TEST9999",
     });
 
-    const config = await resolveTrackingConfig(harness.db, { storeId, landingPageId });
+    const config = await resolveTrackingConfig(db, { storeId, landingPageId });
 
     expect(config).toMatchObject({
       conversionEvent: "Purchase_Delivered",
@@ -351,7 +359,7 @@ describe("precedence — when a landing page's own pixel wins", () => {
     await seedStorePixel(storeId, { perPageTrackingEnabled: true, pixelId: "1111111111" });
     const landingPageId = await seedLandingPage({ pixelId: "8888888888", enabled: false });
 
-    const config = await resolveTrackingConfig(harness.db, { storeId, landingPageId });
+    const config = await resolveTrackingConfig(db, { storeId, landingPageId });
 
     expect(config?.pixelId).toBe("1111111111");
   });
@@ -361,7 +369,7 @@ describe("precedence — when a landing page's own pixel wins", () => {
     await seedStorePixel(storeId, { perPageTrackingEnabled: true, pixelId: "1111111111" });
     const landingPageId = await seedLandingPage({ pixelId: "" });
 
-    const config = await resolveTrackingConfig(harness.db, { storeId, landingPageId });
+    const config = await resolveTrackingConfig(db, { storeId, landingPageId });
 
     expect(config?.pixelId).toBe("1111111111");
   });
@@ -373,9 +381,9 @@ describe("precedence — when a landing page's own pixel wins", () => {
     await seedStorePixel(storeId, { perPageTrackingEnabled: true, pixelId: "1111111111" });
     await seedLandingPage({ pixelId: "8888888888" });
 
-    expect((await resolveTrackingConfig(harness.db, { storeId }))?.pixelId).toBe("1111111111");
+    expect((await resolveTrackingConfig(db, { storeId }))?.pixelId).toBe("1111111111");
     expect(
-      (await resolveTrackingConfig(harness.db, { storeId, landingPageId: null }))?.pixelId,
+      (await resolveTrackingConfig(db, { storeId, landingPageId: null }))?.pixelId,
     ).toBe("1111111111");
   });
 
@@ -386,7 +394,7 @@ describe("precedence — when a landing page's own pixel wins", () => {
     await seedStorePixel(storeId, { perPageTrackingEnabled: true, enabled: false });
     const landingPageId = await seedLandingPage({ pixelId: "8888888888", enabled: true });
 
-    const config = await resolveTrackingConfig(harness.db, { storeId, landingPageId });
+    const config = await resolveTrackingConfig(db, { storeId, landingPageId });
 
     expect(config?.enabled).toBe(false);
     expect(config?.pixelId).not.toBe("8888888888");
@@ -399,10 +407,10 @@ describe("precedence — when a landing page's own pixel wins", () => {
     const second = await seedLandingPage({ pixelId: "BBBB000000" });
 
     expect(
-      (await resolveTrackingConfig(harness.db, { storeId, landingPageId: first }))?.pixelId,
+      (await resolveTrackingConfig(db, { storeId, landingPageId: first }))?.pixelId,
     ).toBe("AAAA000000");
     expect(
-      (await resolveTrackingConfig(harness.db, { storeId, landingPageId: second }))?.pixelId,
+      (await resolveTrackingConfig(db, { storeId, landingPageId: second }))?.pixelId,
     ).toBe("BBBB000000");
   });
 
@@ -410,7 +418,7 @@ describe("precedence — when a landing page's own pixel wins", () => {
     const storeId = await seedStore();
     await seedStorePixel(storeId, { perPageTrackingEnabled: true, pixelId: "1111111111" });
 
-    const config = await resolveTrackingConfig(harness.db, {
+    const config = await resolveTrackingConfig(db, {
       storeId,
       landingPageId: "lp-that-never-existed",
     });
@@ -428,7 +436,7 @@ describe("the public projection under an override", () => {
       conversionEvent: "Lead",
     });
 
-    expect(await resolvePublicTracking(harness.db, { storeId, landingPageId })).toEqual({
+    expect(await resolvePublicTracking(db, { storeId, landingPageId })).toEqual({
       pixelId: "8888888888",
       conversionEvent: "Lead",
     });
@@ -441,7 +449,7 @@ describe("the public projection under an override", () => {
       accessToken: "EAAG-page-must-never-ship",
     });
 
-    const publicTracking = await resolvePublicTracking(harness.db, { storeId, landingPageId });
+    const publicTracking = await resolvePublicTracking(db, { storeId, landingPageId });
 
     expect(JSON.stringify(publicTracking)).not.toContain("EAAG-page-must-never-ship");
     expect(Object.keys(publicTracking).sort()).toEqual(["conversionEvent", "pixelId"]);

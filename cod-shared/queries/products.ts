@@ -107,16 +107,16 @@ export async function deriveDescriptionPlain(
 }
 
 async function buildProductDetail(db: AppDb, productId: string) {
-  const product = await db.select().from(products).where(and(eq(products.id, productId), isNull(products.deletedAt))).get();
+  const product = await db.select().from(products).where(and(eq(products.id, productId), isNull(products.deletedAt))).then((rows) => rows[0]);
   if (!product) return null;
 
   const [category, variants, images, totalInventoryRow] = await Promise.all([
     product.categoryId
-      ? db.select().from(productCategories).where(eq(productCategories.id, product.categoryId)).get()
+      ? db.select().from(productCategories).where(eq(productCategories.id, product.categoryId)).then((rows) => rows[0])
       : Promise.resolve(null),
-    db.select().from(productVariants).where(eq(productVariants.productId, productId)).orderBy(productVariants.position).all(),
-    db.select().from(productImages).where(eq(productImages.productId, productId)).orderBy(productImages.position).all(),
-    db.select({ total: sum(productVariants.inventory) }).from(productVariants).where(eq(productVariants.productId, productId)).get(),
+    db.select().from(productVariants).where(eq(productVariants.productId, productId)).orderBy(productVariants.position),
+    db.select().from(productImages).where(eq(productImages.productId, productId)).orderBy(productImages.position),
+    db.select({ total: sum(productVariants.inventory) }).from(productVariants).where(eq(productVariants.productId, productId)).then((rows) => rows[0]),
   ]);
 
   const variantOptions = product.variantOptions ? JSON.parse(product.variantOptions) : null;
@@ -180,8 +180,7 @@ export async function getAllProducts(db: AppDb, filters?: ProductFilters) {
     .from(products)
     .where(conditions.length ? and(...conditions) : undefined)
     .limit(filters?.limit ?? 50)
-    .offset(filters?.offset ?? 0)
-    .all();
+    .offset(filters?.offset ?? 0);
 
   if (rows.length === 0) return [];
 
@@ -191,8 +190,7 @@ export async function getAllProducts(db: AppDb, filters?: ProductFilters) {
       .select()
       .from(productVariants)
       .where(inArray(productVariants.productId, chunk))
-      .orderBy(productVariants.productId, productVariants.position)
-      .all();
+      .orderBy(productVariants.productId, productVariants.position);
     variantRows.push(...chunkRows);
   }
 
@@ -287,7 +285,7 @@ export async function updateProduct(db: AppDb, productId: string, data: UpdatePr
       .select({ description: products.description, descriptionFormat: products.descriptionFormat })
       .from(products)
       .where(eq(products.id, productId))
-      .get();
+      .then((rows) => rows[0]);
     const format = data.descriptionFormat !== undefined
       ? normaliseFormat(data.descriptionFormat)
       : normaliseFormat(current?.descriptionFormat);
@@ -332,7 +330,7 @@ export async function updateProduct(db: AppDb, productId: string, data: UpdatePr
       .select({ inventory: products.inventory, hasVariants: products.hasVariants, trackInventory: products.trackInventory })
       .from(products)
       .where(eq(products.id, productId))
-      .get();
+      .then((rows) => rows[0]);
     if (current?.trackInventory && !current.hasVariants) {
       const delta = data.inventory - current.inventory;
       if (delta !== 0) {
@@ -398,7 +396,7 @@ export async function findProductIdentityConflict(
     })
     .from(products)
     .where(or(...conditions))
-    .get();
+    .then((rows) => rows[0]);
   if (!row) return null;
 
   const field =
@@ -411,6 +409,5 @@ export async function getProductImages(db: AppDb, productId: string) {
     .select()
     .from(productImages)
     .where(eq(productImages.productId, productId))
-    .orderBy(productImages.position)
-    .all();
+    .orderBy(productImages.position);
 }

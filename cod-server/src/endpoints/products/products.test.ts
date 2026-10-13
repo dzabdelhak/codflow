@@ -234,8 +234,8 @@ describe("getProductById", () => {
     // products.get → category_id=null skips category lookup → variants.all → images.all
     const db = makeMockDb([
       f(productRow({ category_id: null })),
-      a([]),  // productVariants.all()
-      a([]),  // productImages.all()
+      a([]),  // productVariants
+      a([]),  // productImages
     ]);
     const result = await getProductById(db, "prod_1");
     expect(result).not.toBeNull();
@@ -246,9 +246,9 @@ describe("getProductById", () => {
     // products.get → categories.get → variants.all → images.all
     const db = makeMockDb([
       f(productRow({ category_id: "cat_1" })),
-      f({ id: "cat_1", name: "ملابس" }),  // productCategories.get()
-      a([]),                               // productVariants.all()
-      a([]),                               // productImages.all()
+      f({ id: "cat_1", name: "ملابس" }),  // productCategories.then((rows) => rows[0])
+      a([]),                               // productVariants
+      a([]),                               // productImages
     ]);
     const result = await getProductById(db, "prod_1");
     expect(result).not.toBeNull();

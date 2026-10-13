@@ -1,51 +1,18 @@
 /**
- * store-pages typed-error wrapper — real-D1 E2E (workerd).
+ * store-pages typed-error wrapper — real PostgreSQL E2E.
  *
- * Bundles cod-server/src/endpoints/store-pages/queries.ts (the AppError
- * wrapper) into a Miniflare worker with a D1 binding, same pattern as
- * cod-server/src/endpoints/products/products.rich-text-e2e.test.ts. Proves
+ * Calls cod-server/src/endpoints/store-pages/queries.ts (the AppError
+ * wrapper) on a connection pinned to each test's store. Proves
  * the wrapper's ADDED behaviour over cod-shared/queries/store-pages —
  * 404/409/422 mapping and the legal-kind delete guard — against the real
  * engine. Does NOT re-prove sanitisation depth: that is
  * cod-shared/queries/store-pages.e2e.test.ts's job (16 tests, already green).
  */
 
-import { readFileSync, readdirSync } from "node:fs";
-import { resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { build } from "esbuild";
-import { Miniflare } from "miniflare";
-
-const here = resolve(__dirname);
-const MIGRATIONS_DIR = resolve(here, "../../db/migrations");
-
-const WORKER_SOURCE = `
-import { getDb } from "@/db";
+import type { AppDb } from "@/db";
+import { createTestDb, type TestDb } from "@/test-utils/pg";
 import * as q from "./queries";
-
-export default {
-  async fetch(request, env) {
-    const db = getDb(env.DB);
-    const { fn, args } = await request.json();
-    try {
-      const result = await q[fn](db, ...args);
-      return Response.json({ ok: true, result });
-    } catch (e) {
-      return Response.json({
-        ok: false,
-        name: e && e.name,
-        message: e && e.message,
-        code: e && e.code,
-        statusCode: e && e.statusCode,
-        context: e && e.context,
-      });
-    }
-  },
-};
-`;
-
-const registry: Miniflare[] = [];
-let mf: Miniflare;
 
 interface WrapperError {
   name: string;
@@ -55,79 +22,42 @@ interface WrapperError {
   context?: Record<string, unknown>;
 }
 
+let harness: TestDb;
+const dbs = new Map<string, AppDb>();
+let current: AppDb;
+
+type Query = (...args: unknown[]) => Promise<unknown>;
+
+/** Runs a wrapper query on the connection of the store named by its first argument. */
 async function call<T>(fn: string, ...args: unknown[]): Promise<T> {
-  const worker = await mf.getWorker();
-  const res = await worker.fetch("http://store-pages-wrapper-e2e.test/", {
-    method: "POST",
-    body: JSON.stringify({ fn, args }),
-  });
-  const data = (await res.json()) as { ok: boolean; result?: T } & Partial<WrapperError>;
-  if (!data.ok) throw Object.assign(new Error(data.message), data);
-  return data.result as T;
+  const db = (typeof args[0] === "string" && dbs.get(args[0])) || current;
+  const result = await (q as unknown as Record<string, Query>)[fn](db, ...args);
+  return (result === undefined ? undefined : JSON.parse(JSON.stringify(result))) as T;
 }
 
 async function callErr(fn: string, ...args: unknown[]): Promise<WrapperError> {
-  const worker = await mf.getWorker();
-  const res = await worker.fetch("http://store-pages-wrapper-e2e.test/", {
-    method: "POST",
-    body: JSON.stringify({ fn, args }),
-  });
-  const data = (await res.json()) as { ok: boolean } & WrapperError;
-  if (data.ok) throw new Error(`expected ${fn} to throw, it returned a result`);
-  return data;
+  try {
+    await call(fn, ...args);
+  } catch (e) {
+    const err = e as WrapperError;
+    return { name: err.name, message: err.message, code: err.code, statusCode: err.statusCode, context: err.context };
+  }
+  throw new Error(`expected ${fn} to throw, it returned a result`);
 }
 
 async function insertStore(id: string, name: string) {
-  const d1 = await mf.getD1Database("DB");
-  await d1
-    .prepare(
-      `INSERT INTO stores (id, name, theme_id, primary_color, accent_color, bg_color, font_family, lang, currency, currency_symbol, reviews_enabled, cart_enabled, cart_shipping_mode, status, created_at, updated_at)
-       VALUES (?, ?, 'theme01', '#7c3aed', '#f59e0b', '#f8f8f8', 'Cairo, sans-serif', 'en', 'DZD', 'دج', 1, 0, 'highest', 'active', ?, ?)`,
-    )
-    .bind(id, name, "2026-01-01T00:00:00.000Z", "2026-01-01T00:00:00.000Z")
-    .run();
+  await harness.createStore(id);
+  await harness.platform.query("update stores set name = $2, lang = 'en' where id = $1", [id, name]);
+  current = await harness.connect(id);
+  dbs.set(id, current);
 }
 
 beforeAll(async () => {
-  const bundled = await build({
-    stdin: {
-      contents: WORKER_SOURCE,
-      resolveDir: here,
-      sourcefile: "worker.ts",
-      loader: "ts",
-    },
-    bundle: true,
-    format: "esm",
-    platform: "neutral",
-    target: "es2022",
-    alias: { "@": resolve(here, "../..") },
-    write: false,
-    logLevel: "warning",
-  });
-
-  mf = new Miniflare({
-    modules: [{ type: "ESModule", path: "index.mjs", contents: bundled.outputFiles[0].text }],
-    d1Databases: { DB: "test-db" },
-  });
-  registry.push(mf);
-
-  const d1 = await mf.getD1Database("DB");
-  const prepared: D1PreparedStatement[] = [];
-  for (const file of readdirSync(MIGRATIONS_DIR).filter((f) => f.endsWith(".sql")).sort()) {
-    const statements = readFileSync(`${MIGRATIONS_DIR}/${file}`, "utf8")
-      .split("--> statement-breakpoint")
-      .flatMap((s) => s.split(/;\s*\n/))
-      .map((s) => s.replace(/;+\s*$/, "").trim())
-      .filter((s) => s.replace(/--[^\n]*/g, "").trim().length > 0);
-    for (const statement of statements) prepared.push(d1.prepare(statement));
-  }
-  for (let i = 0; i < prepared.length; i += 50) {
-    await d1.batch(prepared.slice(i, i + 50));
-  }
+  harness = await createTestDb();
 }, 120_000);
 
 afterAll(async () => {
-  for (const instance of registry) await instance.dispose();
+  await harness?.dispose();
 });
 
 describe("getStorePageOrThrow", () => {

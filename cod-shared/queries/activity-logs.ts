@@ -30,8 +30,7 @@ export async function listActivityLogs(db: AppDb, filters?: ActivityLogFilters) 
     .where(conditions.length > 0 ? and(...conditions) : undefined)
     .orderBy(desc(activityLogs.createdAt))
     .limit(limit)
-    .offset(offset)
-    .all();
+    .offset(offset);
 }
 
 export async function getUserActivityLogs(
@@ -48,6 +47,5 @@ export async function getUserActivityLogs(
     .where(eq(activityLogs.actorId, userId))
     .orderBy(desc(activityLogs.createdAt))
     .limit(limit)
-    .offset(offset)
-    .all();
+    .offset(offset);
 }

@@ -26,7 +26,7 @@ function clientIp(c: Context<AppContext>): string | null {
 }
 
 async function loadEnabledConfig(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const storeId = c.get("storeId")!;
   const config = await getOtpConfigRaw(db, storeId);
   if (!config || !config.enabled) {

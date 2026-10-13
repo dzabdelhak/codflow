@@ -402,7 +402,7 @@ export class CodLandingPageImageUploadWorkflow extends WorkflowEntrypoint<
       "insert-image-record",
       { retries: { limit: 3, delay: "5 seconds", backoff: "exponential" } },
       async () => {
-        const db = getDb(this.env.DB);
+        const db = getDb(this.env.DATABASE.platform);
 
         const landingPage = await getLandingPageById(db, params.landingPageId);
         if (!landingPage) {
@@ -458,7 +458,7 @@ export class CodLandingPageImageUploadWorkflow extends WorkflowEntrypoint<
     // so an audit failure can never fail an upload that already landed).
     await step.do("audit-image-added", async () => {
       await logActivity(
-        getDb(this.env.DB),
+        getDb(this.env.DATABASE.platform),
         params.actor,
         ACTIONS.LANDING_PAGE_UPDATED,
         { type: "landing_page", id: params.landingPageId, label: record.landingPageName },

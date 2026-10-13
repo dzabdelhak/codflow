@@ -63,7 +63,7 @@ beforeAll(async () => {
     modules: true,
     d1Databases: { DB: "budget-db" },
   });
-  registry.push(mf);
+  registry.push(harness);
   const d1 = await mf.getD1Database("DB");
   const dir = resolve(__dirname, "../../db/migrations");
   const prepared: D1PreparedStatement[] = [];

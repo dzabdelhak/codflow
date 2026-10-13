@@ -134,8 +134,7 @@ export async function getAllOrders(db: AppDb, filters: OrderFilters = {}) {
     .where(conditions.length > 0 ? and(...conditions) : undefined)
     .orderBy(desc(orders.createdAt), desc(orders.id))
     .limit(filters.limit ?? 50)
-    .offset(offset)
-    .all();
+    .offset(offset);
 }
 
 export async function getOrderById(db: AppDb, orderId: string) {
@@ -155,7 +154,7 @@ export async function getOrderById(db: AppDb, orderId: string) {
     .leftJoin(driversAlias, eq(orders.driverId, driversAlias.id))
     .leftJoin(companyShipments, eq(companyShipments.orderId, orders.id))
     .where(eq(orders.id, orderId))
-    .get();
+    .then((rows) => rows[0]);
 
   if (!order) return null;
 
@@ -234,7 +233,7 @@ export async function createOrder(
       .select({ trackInventory: products.trackInventory })
       .from(products)
       .where(eq(products.id, item.productId))
-      .get();
+      .then((rows) => rows[0]);
 
     if (!productRow?.trackInventory) continue;
 
@@ -326,7 +325,7 @@ export async function updateOrderStatus(
 ) {
   const now = new Date().toISOString();
 
-  const order = await db.select().from(orders).where(eq(orders.id, orderId)).get();
+  const order = await db.select().from(orders).where(eq(orders.id, orderId)).then((rows) => rows[0]);
 
   const statements: BatchStatement[] = [
     db
@@ -387,8 +386,7 @@ export async function updateOrderStatus(
         returnedQuantity: orderProducts.returnedQuantity,
       })
       .from(orderProducts)
-      .where(eq(orderProducts.orderId, orderId))
-      .all();
+      .where(eq(orderProducts.orderId, orderId));
 
     for (const op of ordProductRows) {
       const remaining = op.quantity - (op.returnedQuantity ?? 0);
@@ -398,7 +396,7 @@ export async function updateOrderStatus(
         .select({ trackInventory: products.trackInventory })
         .from(products)
         .where(eq(products.id, op.productId))
-        .get();
+        .then((rows) => rows[0]);
 
       if (!productRow?.trackInventory) continue;
 
@@ -407,7 +405,7 @@ export async function updateOrderStatus(
           .select({ inventory: productVariants.inventory })
           .from(productVariants)
           .where(eq(productVariants.id, op.variantId))
-          .get();
+          .then((rows) => rows[0]);
 
         const qtyBefore = variantRow?.inventory ?? 0;
         const qtyAfter = qtyBefore + remaining;
@@ -440,7 +438,7 @@ export async function updateOrderStatus(
           .select({ inventory: products.inventory })
           .from(products)
           .where(eq(products.id, op.productId))
-          .get();
+          .then((rows) => rows[0]);
 
         const qtyBefore = productInventoryRow?.inventory ?? 0;
         const qtyAfter = qtyBefore + remaining;
@@ -533,7 +531,7 @@ export async function updateOrder(
     })
     .from(orders)
     .where(eq(orders.id, orderId))
-    .get();
+    .then((rows) => rows[0]);
 
   const patch: Record<string, unknown> = {
     updatedAt: new Date().toISOString(),
@@ -603,7 +601,7 @@ export async function setOrderProductReturn(
     .select()
     .from(orderProducts)
     .where(and(eq(orderProducts.id, productLineId), eq(orderProducts.orderId, orderId)))
-    .get();
+    .then((rows) => rows[0]);
 
   if (!line) {
     throw new Error(`Order line ${productLineId} not found on order ${orderId}`);
@@ -623,7 +621,7 @@ export async function setOrderProductReturn(
       .select({ trackInventory: products.trackInventory })
       .from(products)
       .where(eq(products.id, line.productId))
-      .get();
+      .then((rows) => rows[0]);
 
     if (productRow?.trackInventory) {
       if (line.variantId) {
@@ -631,7 +629,7 @@ export async function setOrderProductReturn(
           .select({ inventory: productVariants.inventory })
           .from(productVariants)
           .where(eq(productVariants.id, line.variantId))
-          .get();
+          .then((rows) => rows[0]);
 
         const qtyBefore = variantRow?.inventory ?? 0;
         const qtyAfter = Math.max(0, qtyBefore + delta);
@@ -665,7 +663,7 @@ export async function setOrderProductReturn(
           .select({ inventory: products.inventory })
           .from(products)
           .where(eq(products.id, line.productId))
-          .get();
+          .then((rows) => rows[0]);
 
         const qtyBefore = productInventoryRow?.inventory ?? 0;
         const qtyAfter = Math.max(0, qtyBefore + delta);
@@ -725,7 +723,7 @@ export async function assignDriver(db: AppDb, orderId: string, driverId: string)
     .select({ wilayaId: orders.wilayaId, status: orders.status })
     .from(orders)
     .where(eq(orders.id, orderId))
-    .get();
+    .then((rows) => rows[0]);
 
   let driverFee = 0;
   if (order?.wilayaId) {
@@ -738,7 +736,7 @@ export async function assignDriver(db: AppDb, orderId: string, driverId: string)
           eq(driverCompensations.wilayaId, order.wilayaId),
         ),
       )
-      .get();
+      .then((rows) => rows[0]);
 
     if (comp) {
       driverFee = comp.feePerDelivery;
@@ -769,7 +767,7 @@ export async function unassignDriver(db: AppDb, orderId: string) {
     .select({ status: orders.status })
     .from(orders)
     .where(eq(orders.id, orderId))
-    .get();
+    .then((rows) => rows[0]);
 
   const shouldRollbackStatus = order?.status === "assigned";
 
@@ -852,14 +850,13 @@ export async function deleteOrder(db: AppDb, orderId: string) {
   const now = new Date().toISOString();
 
   // Get order details first to update customer stats
-  const order = await db.select().from(orders).where(eq(orders.id, orderId)).get();
+  const order = await db.select().from(orders).where(eq(orders.id, orderId)).then((rows) => rows[0]);
 
   // Get order products to restore inventory
   const orderProductsList = await db
     .select()
     .from(orderProducts)
-    .where(eq(orderProducts.orderId, orderId))
-    .all();
+    .where(eq(orderProducts.orderId, orderId));
 
   const statements: BatchStatement[] = [];
 
@@ -916,7 +913,7 @@ export async function deleteOrder(db: AppDb, orderId: string) {
       .select({ trackInventory: products.trackInventory })
       .from(products)
       .where(eq(products.id, op.productId))
-      .get();
+      .then((rows) => rows[0]);
 
     if (!productRow?.trackInventory) continue; // Product doesn't track inventory
 
@@ -926,7 +923,7 @@ export async function deleteOrder(db: AppDb, orderId: string) {
         .select({ inventory: productVariants.inventory })
         .from(productVariants)
         .where(eq(productVariants.id, op.variantId))
-        .get();
+        .then((rows) => rows[0]);
 
       const qtyBefore = variantRow?.inventory ?? 0;
       const qtyAfter = qtyBefore + remaining;
@@ -960,7 +957,7 @@ export async function deleteOrder(db: AppDb, orderId: string) {
         .select({ inventory: products.inventory })
         .from(products)
         .where(eq(products.id, op.productId))
-        .get();
+        .then((rows) => rows[0]);
 
       const qtyBefore = productInventoryRow?.inventory ?? 0;
       const qtyAfter = qtyBefore + remaining;
@@ -1054,8 +1051,7 @@ async function resolveRestockLines(
       returnedQuantity: orderProducts.returnedQuantity,
     })
     .from(orderProducts)
-    .where(eq(orderProducts.orderId, orderId))
-    .all();
+    .where(eq(orderProducts.orderId, orderId));
 
   const lines: RestockLine[] = [];
   for (const op of ordProductRows) {
@@ -1066,7 +1062,7 @@ async function resolveRestockLines(
       .select({ trackInventory: products.trackInventory })
       .from(products)
       .where(eq(products.id, op.productId))
-      .get();
+      .then((rows) => rows[0]);
 
     if (!productRow?.trackInventory) continue;
 
@@ -1090,7 +1086,7 @@ async function readCurrentInventories(
       .select({ inventory: line.variantId ? productVariants.inventory : products.inventory })
       .from(line.variantId ? productVariants : products)
       .where(eq(line.variantId ? productVariants.id : products.id, line.variantId ?? line.productId))
-      .get();
+      .then((rows) => rows[0]);
     resolved.push({ ...line, qtyBefore: row?.inventory ?? 0 });
   }
   return resolved;
@@ -1163,7 +1159,7 @@ export async function updateOrderStatusWebhook(
 ): Promise<{ updated: boolean }> {
   const now = new Date().toISOString();
 
-  const order = await db.select().from(orders).where(eq(orders.id, orderId)).get();
+  const order = await db.select().from(orders).where(eq(orders.id, orderId)).then((rows) => rows[0]);
 
   if (!order) return { updated: false };
 

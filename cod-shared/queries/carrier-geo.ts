@@ -81,7 +81,7 @@ export async function resolveCarrierWilayaName(
     .where(
       sql`${carrierWilayas.carrierCode} = ${carrierCode} AND ${carrierWilayas.wilayaId} = ${wilayaId}`,
     )
-    .get();
+    .then((rows) => rows[0]);
   return row?.carrierName ?? null;
 }
 
@@ -97,7 +97,7 @@ export async function resolveCarrierCommuneName(
     .where(
       sql`${carrierCommunes.carrierCode} = ${carrierCode} AND ${carrierCommunes.communeId} = ${communeId}`,
     )
-    .get();
+    .then((rows) => rows[0]);
   return row?.carrierName ?? null;
 }
 
@@ -129,12 +129,10 @@ export async function syncCarrierGeoNames(
 ): Promise<CarrierGeoSyncResult> {
   const ourWilayas = await db
     .select({ id: wilayas.id, name: wilayas.name })
-    .from(wilayas)
-    .all();
+    .from(wilayas);
   const ourCommunes = await db
     .select({ id: communes.id, name: communes.name, wilayaId: communes.wilayaId })
-    .from(communes)
-    .all();
+    .from(communes);
 
   // Wilayas: exact key, then normalized key.
   const yalWilayaExact = new Map(carrierNames.wilayas.map((w) => [w.name, w.id]));
@@ -249,8 +247,7 @@ export async function countCarrierCommuneMappings(db: AppDb, carrierCode: string
   const rows = await db
     .select({ id: carrierCommunes.communeId })
     .from(carrierCommunes)
-    .where(eq(carrierCommunes.carrierCode, carrierCode))
-    .all();
+    .where(eq(carrierCommunes.carrierCode, carrierCode));
   return rows.length;
 }
 
@@ -270,8 +267,7 @@ export async function resolveCarrierCommuneNames(
         communeIds.map((id) => sql`${id}`),
         sql`, `,
       )})`,
-    )
-    .all();
+    );
   for (const row of rows) map.set(row.communeId, row.carrierName);
   return map;
 }

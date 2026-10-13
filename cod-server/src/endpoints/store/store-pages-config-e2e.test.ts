@@ -26,14 +26,15 @@ import storeRouter from "./routes";
 let harness: TestD1;
 let app: OpenAPIHono<AppContext>;
 const NOW = () => new Date().toISOString();
-const STORE_ID = "store-pages-cfg";
+const STORE_ID = "test-store";
 
 beforeAll(async () => {
   harness = await createTestD1();
 
   app = new OpenAPIHono<AppContext>({ defaultHook: openApiValidationHook });
   app.use("*", async (c, next) => {
-    c.env = { DB: harness.raw } as never;
+    c.env = {} as never;
+    c.set("db", harness.db);
     c.set("storeId", STORE_ID);
     await next();
   });
@@ -49,8 +50,7 @@ beforeEach(async () => {
   await harness.db.delete(schema.storePageTranslations);
   await harness.db.delete(schema.storePages);
   await harness.db.delete(schema.storeLegalProfile);
-  await harness.db.delete(schema.stores);
-  await harness.db.insert(schema.stores).values({
+  await harness.setStore({
     id: STORE_ID,
     name: "متجر الاختبار",
     lang: "en",

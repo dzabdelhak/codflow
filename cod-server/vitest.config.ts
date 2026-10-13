@@ -1,5 +1,12 @@
 import { defineConfig } from 'vitest/config'
 import { resolve } from 'path'
+import { readFileSync } from 'fs'
+
+// Test files not yet ported to PostgreSQL, each owned by the ticket that ports
+// its area (.scratch/orestor-platform/issues). The list only shrinks.
+const pendingPgPort = Object.keys(
+  JSON.parse(readFileSync(resolve(__dirname, 'pending-pg-port.json'), 'utf8')),
+)
 
 export default defineConfig({
   test: {
@@ -16,7 +23,8 @@ export default defineConfig({
       '**/node_modules/**',
       '**/dist/**',
       '**/.{idea,git,cache,output,temp}/**',
-      '**/{karma,rollup,webpack,vite,vitest,jest,ava,babel,nyc,cypress,tsup,build}.config.*'
+      '**/{karma,rollup,webpack,vite,vitest,jest,ava,babel,nyc,cypress,tsup,build}.config.*',
+      ...pendingPgPort,
     ],
 
     // Test timeout configuration

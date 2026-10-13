@@ -34,7 +34,7 @@ export async function getEmailConfig(db: AppDb, storeId: string): Promise<EmailC
     })
     .from(storeEmailConfig)
     .where(eq(storeEmailConfig.storeId, storeId))
-    .get();
+    .then((rows) => rows[0]);
   return row;
 }
 
@@ -47,7 +47,7 @@ export async function getEmailConfigRaw(
     .select()
     .from(storeEmailConfig)
     .where(eq(storeEmailConfig.storeId, storeId))
-    .get();
+    .then((rows) => rows[0]);
 }
 
 export interface UpsertEmailConfigData {
@@ -72,7 +72,7 @@ export async function upsertEmailConfig(
     .select({ id: storeEmailConfig.id })
     .from(storeEmailConfig)
     .where(eq(storeEmailConfig.storeId, storeId))
-    .get();
+    .then((rows) => rows[0]);
 
   if (existing) {
     const row = await db
@@ -87,7 +87,7 @@ export async function upsertEmailConfig(
         createdAt: storeEmailConfig.createdAt,
         updatedAt: storeEmailConfig.updatedAt,
       })
-      .get();
+      .then((rows) => rows[0]);
     return row;
   }
 

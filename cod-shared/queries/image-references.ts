@@ -29,10 +29,9 @@ export async function collectReferencedImageKeys(db: AppDb): Promise<Set<string>
   const [imageRows, descriptionRows, categoryRows] = await Promise.all([
     db
       .select({ r2Key: productImages.r2Key, src: productImages.src })
-      .from(productImages)
-      .all(),
-    db.select({ description: products.description }).from(products).all(),
-    db.select({ imageUrl: productCategories.imageUrl }).from(productCategories).all(),
+      .from(productImages),
+    db.select({ description: products.description }).from(products),
+    db.select({ imageUrl: productCategories.imageUrl }).from(productCategories),
   ]);
 
   const keys = new Set<string>();

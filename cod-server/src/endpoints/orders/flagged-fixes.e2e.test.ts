@@ -9,10 +9,9 @@
  *   F5  driver cash reconciliation: pendingCash vs pending orders, drift visible
  */
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { Miniflare } from "miniflare";
+import { createTestDb, type TestDb } from "@/test-utils/pg";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
-import { drizzle } from "drizzle-orm/d1";
 import { eq, sql } from "drizzle-orm";
 import * as schema from "@/db/schema";
 import type { AppDb } from "@/db";
@@ -26,30 +25,12 @@ let db: AppDb;
 let rawD1: D1Database;
 
 beforeAll(async () => {
-  const mf = new Miniflare({
-    script: "export default { fetch() { return new Response('ok'); } }",
-    modules: true,
-    d1Databases: { DB: "test-db" },
-  });
-  rawD1 = await mf.getD1Database("DB");
-  const dir = resolve(__dirname, "../../db/migrations");
-  const prepared: D1PreparedStatement[] = [];
-  for (const file of readdirSync(dir).filter((f) => f.endsWith(".sql")).sort()) {
-    const statements = readFileSync(`${dir}/${file}`, "utf8")
-      .split("--> statement-breakpoint")
-      .flatMap((s) => s.split(/;\s*\n/))
-      .map((s) => s.replace(/;+\s*$/, "").trim())
-      .filter((s) => s.replace(/--[^\n]*/g, "").trim().length > 0);
-    for (const statement of statements) prepared.push(rawD1.prepare(statement));
-  }
-  for (let i = 0; i < prepared.length; i += 50) {
-    await rawD1.batch(prepared.slice(i, i + 50));
-  }
-  db = drizzle(rawD1 as unknown as D1Database, { schema }) as unknown as AppDb;
-  registry.push(mf);
+  const harness = await createTestDb();
+  db = harness.db;
+  registry.push(harness);
 }, 120_000);
 
-const registry: Miniflare[] = [];
+const registry: TestDb[] = [];
 afterAll(async () => {
   for (const mf of registry) await mf.dispose();
 });
@@ -100,7 +81,7 @@ async function seedShippingProfile(rules: Array<{ wilayaId: number; home: number
   // Reuse the single existing default profile (the schema allows only one
   // meaningful default; creating several would make .get() pick arbitrarily).
   let pid = (await db.select({ id: schema.shippingProfiles.id })
-    .from(schema.shippingProfiles).where(eq(schema.shippingProfiles.isDefault, true)).get())?.id;
+    .from(schema.shippingProfiles).where(eq(schema.shippingProfiles.isDefault, true)).then((rows) => rows[0]))?.id;
   if (!pid) {
     pid = `sp-fx-${++seq}`;
     await db.insert(schema.shippingProfiles).values({
@@ -122,8 +103,7 @@ async function movementsFor(sku: { productId: string; variantId?: string | null 
   const rows = await db.select().from(schema.stockMovements)
     .where(sku.variantId
       ? sql`${schema.stockMovements.productId} = ${sku.productId} AND ${schema.stockMovements.variantId} = ${sku.variantId}`
-      : eq(schema.stockMovements.productId, sku.productId))
-    .all();
+      : eq(schema.stockMovements.productId, sku.productId));
   return rows.sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id));
 }
 
@@ -193,7 +173,7 @@ describe("F2: carrier amount sync keeps codAmount honest", () => {
 
     await syncOrderAfterCarrierUpdate(db, oid, { price: 12000 });
 
-    const order = (await db.select().from(schema.orders).where(eq(schema.orders.id, oid)).get())!;
+    const order = (await db.select().from(schema.orders).where(eq(schema.orders.id, oid)).then((rows) => rows[0]))!;
     expect(order.price).toBe(12000);
     // FIXED: the COD the driver is booked to collect follows the carrier amount
     expect(Number(order.codAmount)).toBe(12600);
@@ -205,7 +185,7 @@ describe("F2: carrier amount sync keeps codAmount honest", () => {
 
     await syncOrderAfterCarrierUpdate(db, oid, { customerName: "New Name" });
 
-    const order = (await db.select().from(schema.orders).where(eq(schema.orders.id, oid)).get())!;
+    const order = (await db.select().from(schema.orders).where(eq(schema.orders.id, oid)).then((rows) => rows[0]))!;
     expect(order.price).toBe(9000);
     expect(Number(order.codAmount)).toBe(9600);
     expect(order.customerName).toBe("New Name");
@@ -225,7 +205,7 @@ describe("F3: catalog inventory edits write the ledger", () => {
       type: "ADJUSTMENT_ADD", delta: 5, qtyBefore: 10, qtyAfter: 15,
       productId, variantId,
     });
-    const v = (await db.select().from(schema.productVariants).where(eq(schema.productVariants.id, variantId)).get())!;
+    const v = (await db.select().from(schema.productVariants).where(eq(schema.productVariants.id, variantId)).then((rows) => rows[0]))!;
     expect(v.inventory).toBe(15);
   });
 
@@ -288,10 +268,10 @@ describe("F3: catalog inventory edits write the ledger", () => {
     // stock_movements.variant_id is ON DELETE cascade: the variant's scoped
     // movements leave with the row, keeping Σ(movements) reconciled to the
     // pool (no phantom -8 at productId level against a vanished +8).
-    expect(await db.select().from(schema.productVariants).where(eq(schema.productVariants.id, variant!.id)).get()).toBeUndefined();
+    expect(await db.select().from(schema.productVariants).where(eq(schema.productVariants.id, variant!.id)).then((rows) => rows[0])).toBeUndefined();
     expect(await movementsFor({ productId, variantId: variant!.id })).toHaveLength(0);
     // And the exit is still atomic: order lines referencing it are nulled.
-    expect(await db.select().from(schema.orderProducts).where(eq(schema.orderProducts.variantId, variant!.id)).all()).toHaveLength(0);
+    expect(await db.select().from(schema.orderProducts).where(eq(schema.orderProducts.variantId, variant!.id))).toHaveLength(0);
   });
 });
 
@@ -304,7 +284,7 @@ describe("F4: manual adjustStock — atomic and race-free", () => {
       adjustStock(db, { productId, variantId: null, type: "ADJUSTMENT_ADD", delta: 3, reason: "r2", createdBy: "u2", createdByName: "B" }),
     ]);
 
-    const inv = (await db.select().from(schema.products).where(eq(schema.products.id, productId)).get())!;
+    const inv = (await db.select().from(schema.products).where(eq(schema.products.id, productId)).then((rows) => rows[0]))!;
     expect(inv.inventory).toBe(18); // both deltas — no lost update
     const mv = await movementsFor({ productId });
     expect(mv).toHaveLength(2);
@@ -318,7 +298,7 @@ describe("F4: manual adjustStock — atomic and race-free", () => {
       adjustStock(db, { productId, variantId: null, type: "ADJUSTMENT_REMOVE", delta: -5, reason: "r", createdBy: "u1", createdByName: "A" }),
     ).rejects.toThrow(/Insufficient stock/);
 
-    const inv = (await db.select().from(schema.products).where(eq(schema.products.id, productId)).get())!;
+    const inv = (await db.select().from(schema.products).where(eq(schema.products.id, productId)).then((rows) => rows[0]))!;
     expect(inv.inventory).toBe(2); // untouched
     expect(await movementsFor({ productId })).toHaveLength(0);
   });

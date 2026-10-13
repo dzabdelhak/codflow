@@ -3,8 +3,11 @@
 // ║  Handles the POST/Redirect/GET pattern for Astro Actions.            ║
 // ║  Changing this file will break form submission for all pages.        ║
 // ╚══════════════════════════════════════════════════════════════════════╝
+import type { APIContext, MiddlewareNext } from "astro";
 import { defineMiddleware } from "astro:middleware";
 import { getActionContext } from "astro:actions";
+import { withRequestHost } from "./api/request-host";
+import { loadStoreConfig } from "./api/client";
 
 /**
  * POST/Redirect/GET pattern for Astro Actions (Astro 5 docs pattern).
@@ -23,7 +26,17 @@ import { getActionContext } from "astro:actions";
  * getActionResult() sees undefined on the next page and the thank-you redirect
  * never fires.
  */
-export const onRequest = defineMiddleware(async (context, next) => {
+export const onRequest = defineMiddleware((context, next) =>
+  // Every API call made while rendering this request names this channel.
+  withRequestHost(context.request.headers.get("host") ?? context.url.host, () => handle(context, next)),
+);
+
+async function handle(context: APIContext, next: MiddlewareNext) {
+  // A hostname no channel uses has no storefront. Read once; pages reuse it.
+  if ((await loadStoreConfig()).status === 404) {
+    return new Response("Not found", { status: 404, headers: { "Content-Type": "text/plain; charset=utf-8" } });
+  }
+
   const { action, setActionResult, serializeActionResult } = getActionContext(context);
 
   if (action?.calledFrom === "form") {
@@ -40,4 +53,4 @@ export const onRequest = defineMiddleware(async (context, next) => {
   }
 
   return next();
-});
+}

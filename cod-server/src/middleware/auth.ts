@@ -18,13 +18,13 @@ export async function authMiddleware(c: Context<AppContext>, next: Next) {
   const bearerMatch = authHeader?.match(/^Bearer\s+(.+)$/i);
   const apiKey = c.req.header("X-API-Key");
 
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   let user: typeof users.$inferSelect | undefined;
 
   if (bearerMatch) {
     try {
       const payload = await verifySessionJwt(bearerMatch[1], c.env);
-      user = await db.select().from(users).where(eq(users.id, payload.sub)).get();
+      user = await db.select().from(users).where(eq(users.id, payload.sub)).then((rows) => rows[0]);
     } catch (err) {
       console.error("[auth] JWT verification failed:", err);
       return c.json({ 
@@ -34,7 +34,7 @@ export async function authMiddleware(c: Context<AppContext>, next: Next) {
       }, 401);
     }
   } else if (apiKey) {
-    user = await db.select().from(users).where(eq(users.apiKey, apiKey)).get();
+    user = await db.select().from(users).where(eq(users.apiKey, apiKey)).then((rows) => rows[0]);
   } else {
     return c.json({ 
       error: "Missing authorization", 

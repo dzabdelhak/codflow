@@ -7,10 +7,9 @@
  * auth'd context. No mocked queries.
  */
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
-import { Miniflare } from "miniflare";
+import { createTestDb, type TestDb } from "@/test-utils/pg";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
-import { drizzle } from "drizzle-orm/d1";
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import type { AppContext } from "@/types";
@@ -28,42 +27,23 @@ import deliveryRouter from "@/endpoints/delivery-companies/routes";
 
 let realDb: AppDb;
 let app: Hono<AppContext>;
-const registry: Miniflare[] = [];
+const registry: TestDb[] = [];
 
 const READ_SCOPES = ["delivery:read"];
 const MANAGE_SCOPES = ["delivery:read", "delivery:manage"];
 const NO_SCOPES: string[] = [];
 
 beforeAll(async () => {
-  const mf = new Miniflare({
-    script: "export default { fetch() { return new Response('ok'); } }",
-    modules: true,
-    d1Databases: { DB: "test-db" },
-  });
-  const d1 = await mf.getD1Database("DB");
-  const dir = resolve(__dirname, "../../db/migrations");
-  const preparedStatements: D1PreparedStatement[] = [];
-  for (const file of readdirSync(dir).filter((f) => f.endsWith(".sql")).sort()) {
-    const statements = readFileSync(`${dir}/${file}`, "utf8")
-      .split("--> statement-breakpoint")
-      .flatMap((s) => s.split(/;\s*\n/))
-      .map((s) => s.replace(/;+\s*$/, "").trim())
-      .filter((s) => s.replace(/--[^\n]*/g, "").trim().length > 0);
-    for (const statement of statements) {
-      preparedStatements.push(d1.prepare(statement));
-    }
-  }
-  for (let i = 0; i < preparedStatements.length; i += 50) {
-    await d1.batch(preparedStatements.slice(i, i + 50));
-  }
-  realDb = drizzle(d1 as unknown as D1Database, { schema }) as unknown as AppDb;
-  registry.push(mf);
+  const harness = await createTestDb();
+  realDb = harness.db;
+  registry.push(harness);
 
   app = new Hono<AppContext>();
   // Order matters: env + identity middleware BEFORE app.route, or Hono
   // never invokes them for the router's matched handlers.
   app.use("*", async (c, next) => {
-    c.env = { DB: d1 } as any;
+    c.env = {} as never;
+    c.set("db", d1);
     c.set("user", {
       id: "user-1", email: "test@example.com", name: "Test User",
       role: "user", status: "active", apiKey: "cod_key_test",

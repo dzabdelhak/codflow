@@ -7,10 +7,9 @@
  * and every render increments views atomically (proven with concurrent GETs).
  */
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { Miniflare } from "miniflare";
+import { createTestDb, type TestDb } from "@/test-utils/pg";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
-import { drizzle } from "drizzle-orm/d1";
 import { eq } from "drizzle-orm";
 import { OpenAPIHono } from "@hono/zod-openapi";
 import type { AppContext } from "@/types";
@@ -27,40 +26,23 @@ let app: OpenAPIHono<AppContext>;
 const STORE_KEY = "store-key-lp-test";
 
 beforeAll(async () => {
-  const mf = new Miniflare({
-    script: "export default { fetch() { return new Response('ok'); } }",
-    modules: true,
-    d1Databases: { DB: "test-db" },
-  });
-  rawD1 = await mf.getD1Database("DB");
-  const dir = resolve(__dirname, "../../db/migrations");
-  const prepared: D1PreparedStatement[] = [];
-  for (const file of readdirSync(dir).filter((f) => f.endsWith(".sql")).sort()) {
-    const statements = readFileSync(`${dir}/${file}`, "utf8")
-      .split("--> statement-breakpoint")
-      .flatMap((s) => s.split(/;\s*\n/))
-      .map((s) => s.replace(/;+\s*$/, "").trim())
-      .filter((s) => s.replace(/--[^\n]*/g, "").trim().length > 0);
-    for (const statement of statements) prepared.push(rawD1.prepare(statement));
-  }
-  for (let i = 0; i < prepared.length; i += 50) {
-    await rawD1.batch(prepared.slice(i, i + 50));
-  }
-  db = drizzle(rawD1 as unknown as D1Database, { schema }) as unknown as AppDb;
+  const harness = await createTestDb();
+  db = harness.db;
 
   app = new OpenAPIHono<AppContext>({ defaultHook: openApiValidationHook });
   app.use("*", async (c, next) => {
-    c.env = { DB: rawD1 as any } as any;
+    c.env = {} as never;
+    c.set("db", db);
     await next();
   });
   app.use("/store/*", storeAuthMiddleware);
   app.onError(errorHandler);
   app.route("/store", storeRouter);
 
-  registry.push(mf);
+  registry.push(harness);
 }, 120_000);
 
-const registry: Miniflare[] = [];
+const registry: TestDb[] = [];
 afterAll(async () => {
   for (const mf of registry) await mf.dispose();
 });
@@ -96,16 +78,16 @@ async function sha256hex(text: string): Promise<string> {
 }
 
 async function seedStore(): Promise<string> {
-  await db.insert(schema.stores).values({
-    id: "store-lp-1", name: "LP Test Store", lang: "ar", currency: "DZD",
+  await harness.setStore({
+    id: "test-store", name: "LP Test Store", lang: "ar", currency: "DZD",
     currencySymbol: "دج", createdAt: NOW(), updatedAt: NOW(),
   });
   await db.insert(schema.storeApiKeys).values({
-    id: "sak-lp-1", storeId: "store-lp-1",
+    id: "sak-lp-1", storeId: "test-store",
     keyHash: await sha256hex(STORE_KEY), name: "test",
     createdAt: NOW(),
   });
-  return "store-lp-1";
+  return "test-store";
 }
 
 async function seedProduct(): Promise<{ id: string; handle: string }> {
@@ -198,7 +180,7 @@ describe("Slice 4 — public GET /store/landing-pages/{slug} (real D1 + store au
     );
 
     const row = await db.select().from(schema.landingPages)
-      .where(eq(schema.landingPages.slug, "counted-page")).get();
+      .where(eq(schema.landingPages.slug, "counted-page")).then((rows) => rows[0]);
     expect(row?.views).toBe(25);
   });
 

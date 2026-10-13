@@ -17,7 +17,7 @@ import * as validation from "./validation";
  * List all 58 Algerian wilayas with optional search.
  */
 export async function listWilayas(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const filters = validation.wilayaFiltersSchema.parse({
     search: c.req.query("search"),
   });
@@ -30,7 +30,7 @@ export async function listWilayas(c: Context<AppContext>) {
  * List all communes for a given wilaya.
  */
 export async function listCommunes(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const wilayaId = parseInt(c.req.param("id")!, 10);
 
   if (isNaN(wilayaId) || wilayaId < 1 || wilayaId > 58) {

@@ -21,7 +21,7 @@ import { shouldTriggerCapiPurchase, shouldTriggerCapiConfirmed, getCapiWorkflowI
  * Update order status
  */
 export async function updateStatus(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const orderId = c.req.param("id");
   
   if (!orderId) {
@@ -121,7 +121,7 @@ export async function updateStatus(c: Context<AppContext>) {
  * Assign driver to order
  */
 export async function assignDriver(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const orderId = c.req.param("id");
 
   if (!orderId) {
@@ -170,7 +170,7 @@ export async function assignDriver(c: Context<AppContext>) {
     .select({ id: drivers.id })
     .from(drivers)
     .where(eq(drivers.id, validated.driverId))
-    .get();
+    .then((rows) => rows[0]);
 
   if (!driver) {
     throw new NotFoundError("Driver", validated.driverId);
@@ -201,7 +201,7 @@ export async function assignDriver(c: Context<AppContext>) {
  *    would erase payroll/handoff history.
  */
 export async function unassignDriver(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const orderId = c.req.param("id");
 
   if (!orderId) {

@@ -53,7 +53,7 @@ const updateStatusBodySchema = z.object({
 // ─── Inline handlers (thin query wrappers) ────────────────────────────────────
 
 async function listHandler(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const { status, search, limit, offset } = (c.req as any).valid("query");
 
   const { rows, total } = await listAbandonedOrders(db, {
@@ -67,13 +67,13 @@ async function listHandler(c: Context<AppContext>) {
 }
 
 async function statsHandler(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const stats = await getAbandonedOrderStats(db);
   return c.json({ success: true, data: stats }, 200);
 }
 
 async function updateStatusHandler(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const id = c.req.param("id")!;
   const { status } = (c.req as any).valid("json");
 
@@ -82,7 +82,7 @@ async function updateStatusHandler(c: Context<AppContext>) {
 }
 
 async function deleteHandler(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const id = c.req.param("id")!;
   await deleteAbandonedOrder(db, id);
   return c.json({ success: true }, 200);

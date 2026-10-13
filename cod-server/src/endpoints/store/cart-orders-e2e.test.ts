@@ -12,10 +12,9 @@
  */
 
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from "vitest";
-import { Miniflare } from "miniflare";
+import { createTestDb, type TestDb } from "@/test-utils/pg";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
-import { drizzle } from "drizzle-orm/d1";
 import { eq } from "drizzle-orm";
 import * as schema from "@/db/schema";
 import type { AppDb } from "@/db";
@@ -25,33 +24,15 @@ import {
 } from "../../../../cod-shared/queries/store";
 import { CartValidationError } from "../../../../cod-shared/queries/cart";
 
-const registry: Miniflare[] = [];
+const registry: TestDb[] = [];
 let db: AppDb;
 
 const WILAYA = 16;
 
 beforeAll(async () => {
-  const mf = new Miniflare({
-    script: "export default { fetch() { return new Response('ok'); } }",
-    modules: true,
-    d1Databases: { DB: "cart-db" },
-  });
-  registry.push(mf);
-  const d1 = await mf.getD1Database("DB");
-  const dir = resolve(__dirname, "../../db/migrations");
-  const prepared: D1PreparedStatement[] = [];
-  for (const file of readdirSync(dir).filter((f) => f.endsWith(".sql")).sort()) {
-    const statements = readFileSync(`${dir}/${file}`, "utf8")
-      .split("--> statement-breakpoint")
-      .flatMap((s) => s.split(/;\s*\n/))
-      .map((s) => s.replace(/;+\s*$/, "").trim())
-      .filter((s) => s.replace(/--[^\n]*/g, "").trim().length > 0);
-    for (const statement of statements) prepared.push(d1.prepare(statement));
-  }
-  for (let i = 0; i < prepared.length; i += 50) {
-    await d1.batch(prepared.slice(i, i + 50));
-  }
-  db = drizzle(d1 as unknown as D1Database, { schema }) as unknown as AppDb;
+  const harness = await createTestDb();
+  registry.push(harness);
+  db = harness.db;
 });
 
 beforeEach(async () => {
@@ -152,10 +133,10 @@ async function place(extra: Record<string, unknown>) {
 }
 
 const linesOf = (orderId: string) =>
-  db.select().from(schema.orderProducts).where(eq(schema.orderProducts.orderId, orderId)).all();
+  db.select().from(schema.orderProducts).where(eq(schema.orderProducts.orderId, orderId));
 
 const inventoryOf = async (productId: string) =>
-  (await db.select().from(schema.products).where(eq(schema.products.id, productId)).get())!
+  (await db.select().from(schema.products).where(eq(schema.products.id, productId)).then((rows) => rows[0]))!
     .inventory;
 
 const variantInventoryOf = async (variantId: string) =>
@@ -164,7 +145,7 @@ const variantInventoryOf = async (variantId: string) =>
       .select()
       .from(schema.productVariants)
       .where(eq(schema.productVariants.id, variantId))
-      .get()
+      .then((rows) => rows[0])
   )!.inventory;
 
 // ─── Multi-product baskets ────────────────────────────────────────────────────
@@ -204,7 +185,7 @@ describe("createStoreOrder — multi-product basket", () => {
       items: [{ productId: a, productName: "P", quantity: 2 }],
     });
 
-    const row = await db.select().from(schema.orders).where(eq(schema.orders.id, order.id)).get();
+    const row = await db.select().from(schema.orders).where(eq(schema.orders.id, order.id)).then((rows) => rows[0]);
     expect(row).toMatchObject({ price: 2000, deliveryFee: 600, codAmount: 2600 });
   });
 
@@ -267,8 +248,7 @@ describe("createStoreOrder — multi-product basket", () => {
     const movements = await db
       .select()
       .from(schema.stockMovements)
-      .where(eq(schema.stockMovements.reference, order.id))
-      .all();
+      .where(eq(schema.stockMovements.reference, order.id));
     expect(movements).toHaveLength(2);
     expect(movements.every((m) => m.type === "ORDER_DEDUCTED")).toBe(true);
   });
@@ -308,9 +288,9 @@ describe("createStoreOrder — a basket is all or nothing", () => {
 
     // Nothing at all may survive: no order, no lines, no movements, and the
     // healthy product's stock must be untouched.
-    expect(await db.select().from(schema.orders).all()).toHaveLength(0);
-    expect(await db.select().from(schema.orderProducts).all()).toHaveLength(0);
-    expect(await db.select().from(schema.stockMovements).all()).toHaveLength(0);
+    expect(await db.select().from(schema.orders)).toHaveLength(0);
+    expect(await db.select().from(schema.orderProducts)).toHaveLength(0);
+    expect(await db.select().from(schema.stockMovements)).toHaveLength(0);
     expect(await inventoryOf(ok)).toBe(100);
     expect(await inventoryOf(short)).toBe(1);
   });
@@ -339,7 +319,7 @@ describe("createStoreOrder — a basket is all or nothing", () => {
       .select()
       .from(schema.customers)
       .where(eq(schema.customers.id, customer.id))
-      .get();
+      .then((rows) => rows[0]);
     expect(after).toMatchObject({ totalOrders: 0, totalSpent: 0 });
   });
 
@@ -352,7 +332,7 @@ describe("createStoreOrder — a basket is all or nothing", () => {
     }));
 
     await expect(place({ items })).rejects.toBeInstanceOf(CartValidationError);
-    expect(await db.select().from(schema.orders).all()).toHaveLength(0);
+    expect(await db.select().from(schema.orders)).toHaveLength(0);
   });
 
   it("refuses when merged duplicates exceed the per-line quantity cap", async () => {
@@ -366,7 +346,7 @@ describe("createStoreOrder — a basket is all or nothing", () => {
         ],
       }),
     ).rejects.toBeInstanceOf(CartValidationError);
-    expect(await db.select().from(schema.orders).all()).toHaveLength(0);
+    expect(await db.select().from(schema.orders)).toHaveLength(0);
   });
 });
 

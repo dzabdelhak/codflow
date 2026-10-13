@@ -86,20 +86,18 @@ function now() {
 }
 
 export async function getAllProfiles(db: AppDb): Promise<ShippingProfile[]> {
-  const profiles = await db.select().from(shippingProfiles).all();
+  const profiles = await db.select().from(shippingProfiles);
   const results = await Promise.all(
     profiles.map(async (p) => {
       const [rules, productRows] = await Promise.all([
         db
           .select({ id: shippingRules.id })
           .from(shippingRules)
-          .where(eq(shippingRules.profileId, p.id))
-          .all(),
+          .where(eq(shippingRules.profileId, p.id)),
         db
           .select({ id: products.id })
           .from(products)
-          .where(eq(products.shippingProfileId, p.id))
-          .all(),
+          .where(eq(products.shippingProfileId, p.id)),
       ]);
       return {
         id: p.id,
@@ -124,7 +122,7 @@ export async function getProfileById(
     .select()
     .from(shippingProfiles)
     .where(eq(shippingProfiles.id, id))
-    .get();
+    .then((rows) => rows[0]);
 
   if (!profile) return null;
 
@@ -144,13 +142,11 @@ export async function getProfileById(
       })
       .from(shippingRules)
       .leftJoin(wilayas, eq(shippingRules.wilayaId, wilayas.id))
-      .where(eq(shippingRules.profileId, id))
-      .all(),
+      .where(eq(shippingRules.profileId, id)),
     db
       .select({ id: products.id })
       .from(products)
-      .where(eq(products.shippingProfileId, id))
-      .all(),
+      .where(eq(products.shippingProfileId, id)),
   ]);
 
   return {
@@ -181,7 +177,7 @@ export async function getDefaultProfileRules(db: AppDb): Promise<ShippingRule[]>
     .select()
     .from(shippingProfiles)
     .where(eq(shippingProfiles.isDefault, true))
-    .get();
+    .then((rows) => rows[0]);
 
   if (!defaultProfile) return [];
 
@@ -200,8 +196,7 @@ export async function getDefaultProfileRules(db: AppDb): Promise<ShippingRule[]>
     })
     .from(shippingRules)
     .leftJoin(wilayas, eq(shippingRules.wilayaId, wilayas.id))
-    .where(eq(shippingRules.profileId, defaultProfile.id))
-    .all();
+    .where(eq(shippingRules.profileId, defaultProfile.id));
 
   return rules.map((r) => ({
     id: r.id,
@@ -225,7 +220,7 @@ export async function createProfile(
   const ts = now();
 
   if (data.isDefault) {
-    await db.update(shippingProfiles).set({ isDefault: false }).run();
+    await db.update(shippingProfiles).set({ isDefault: false });
   }
 
   await db
@@ -237,8 +232,7 @@ export async function createProfile(
       notes: data.notes ?? null,
       createdAt: ts,
       updatedAt: ts,
-    })
-    .run();
+    });
 
   return {
     id,
@@ -257,11 +251,11 @@ export async function deleteProfile(db: AppDb, id: string): Promise<boolean> {
     .select()
     .from(shippingProfiles)
     .where(eq(shippingProfiles.id, id))
-    .get();
+    .then((rows) => rows[0]);
 
   if (!existing) return false;
 
-  await db.delete(shippingProfiles).where(eq(shippingProfiles.id, id)).run();
+  await db.delete(shippingProfiles).where(eq(shippingProfiles.id, id));
   return true;
 }
 
@@ -278,7 +272,7 @@ export async function getWilayaRule(
     .where(
       and(eq(shippingRules.profileId, profileId), eq(shippingRules.wilayaId, wilayaId)),
     )
-    .get();
+    .then((rows) => rows[0]);
 }
 
 export async function getCommunesWithOverrides(
@@ -296,14 +290,12 @@ export async function getCommunesWithOverrides(
     .select()
     .from(communes)
     .where(eq(communes.wilayaId, wilayaId))
-    .orderBy(communes.nameAr)
-    .all();
+    .orderBy(communes.nameAr);
 
   const overrideRows = await db
     .select()
     .from(shippingRuleCommunes)
-    .where(eq(shippingRuleCommunes.ruleId, ruleId))
-    .all();
+    .where(eq(shippingRuleCommunes.ruleId, ruleId));
 
   const overrideMap = new Map(overrideRows.map((r) => [r.communeId, r]));
 
@@ -356,8 +348,7 @@ export async function setCommuneOverride(
           eq(shippingRuleCommunes.ruleId, ruleId),
           eq(shippingRuleCommunes.communeId, communeId),
         ),
-      )
-      .run();
+      );
     return;
   }
 
@@ -370,14 +361,13 @@ export async function setCommuneOverride(
         eq(shippingRuleCommunes.communeId, communeId),
       ),
     )
-    .get();
+    .then((rows) => rows[0]);
 
   if (existing) {
     await db
       .update(shippingRuleCommunes)
       .set({ homeEnabled, stopDeskEnabled, homePrice, stopDeskPrice })
-      .where(eq(shippingRuleCommunes.id, existing.id))
-      .run();
+      .where(eq(shippingRuleCommunes.id, existing.id));
   } else {
     await db
       .insert(shippingRuleCommunes)
@@ -389,8 +379,7 @@ export async function setCommuneOverride(
         stopDeskEnabled,
         homePrice,
         stopDeskPrice,
-      })
-      .run();
+      });
   }
 }
 
@@ -408,14 +397,13 @@ export async function deleteCommuneOverride(
         eq(shippingRuleCommunes.communeId, communeId),
       ),
     )
-    .get();
+    .then((rows) => rows[0]);
 
   if (!existing) return false;
 
   await db
     .delete(shippingRuleCommunes)
-    .where(eq(shippingRuleCommunes.id, existing.id))
-    .run();
+    .where(eq(shippingRuleCommunes.id, existing.id));
 
   return true;
 }

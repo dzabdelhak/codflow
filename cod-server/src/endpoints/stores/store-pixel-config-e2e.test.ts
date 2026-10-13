@@ -27,14 +27,15 @@ vi.mock("@/db", () => dbModule);
 let harness: TestD1;
 let app: OpenAPIHono<AppContext>;
 const NOW = () => new Date().toISOString();
-const STORE_ID = "store-spc";
+const STORE_ID = "test-store";
 
 beforeAll(async () => {
   harness = await createTestD1();
 
   app = new OpenAPIHono<AppContext>({ defaultHook: openApiValidationHook });
   app.use("*", async (c, next) => {
-    c.env = { DB: harness.raw } as never;
+    c.env = {} as never;
+    c.set("db", harness.db);
     c.set("user", {
       id: "admin_user_001",
       email: "admin@example.com",
@@ -57,8 +58,7 @@ afterAll(async () => {
 beforeEach(async () => {
   dbModule.getDb.mockReturnValue(harness.db);
   await harness.db.delete(schema.storePixelConfig);
-  await harness.db.delete(schema.stores);
-  await harness.db.insert(schema.stores).values({
+  await harness.setStore({
     id: STORE_ID,
     name: "Test Store",
     createdAt: NOW(),
@@ -81,7 +81,7 @@ function save(body: Record<string, unknown>) {
 }
 
 async function storedRow() {
-  return harness.db.select().from(schema.storePixelConfig).get();
+  return harness.db.select().from(schema.storePixelConfig).then((rows) => rows[0]);
 }
 
 async function read() {

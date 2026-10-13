@@ -1,5 +1,5 @@
 /**
- * Migration 0031 against a real D1, not a mock.
+ * The checkout-form columns against a real PostgreSQL, not a mock.
  *
  * A migration is exactly the kind of thing a mock cannot prove: the mock db
  * answers from a queue and would happily "store" a column that does not exist.
@@ -19,11 +19,11 @@ import {
 
 let harness: TestD1;
 const NOW = new Date().toISOString();
-const STORE_ID = "store_checkout_form";
+const STORE_ID = "test-store";
 
 beforeAll(async () => {
   harness = await createTestD1();
-  await harness.db.insert(stores).values({
+  await harness.setStore({
     id: STORE_ID,
     name: "Checkout Form Test Store",
     createdAt: NOW,
@@ -46,7 +46,7 @@ afterAll(async () => {
 
 describe("stores.checkout_form_json", () => {
   it("starts NULL, which every existing store reads as today's form", async () => {
-    const row = await harness.db.select().from(stores).where(eq(stores.id, STORE_ID)).get();
+    const row = await harness.db.select().from(stores).where(eq(stores.id, STORE_ID)).then((rows) => rows[0]);
     expect(row?.checkoutFormJson).toBeNull();
     expect(parseCheckoutFormPolicy(row?.checkoutFormJson ?? null)).toEqual(
       DEFAULT_CHECKOUT_FORM_POLICY,
@@ -73,10 +73,9 @@ describe("stores.checkout_form_json", () => {
     await harness.db
       .update(stores)
       .set({ checkoutFormJson: serializeCheckoutFormPolicy(policy) })
-      .where(eq(stores.id, STORE_ID))
-      .run();
+      .where(eq(stores.id, STORE_ID));
 
-    const row = await harness.db.select().from(stores).where(eq(stores.id, STORE_ID)).get();
+    const row = await harness.db.select().from(stores).where(eq(stores.id, STORE_ID)).then((rows) => rows[0]);
     expect(parseCheckoutFormPolicy(row?.checkoutFormJson ?? null)).toEqual(policy);
   });
 
@@ -84,10 +83,9 @@ describe("stores.checkout_form_json", () => {
     await harness.db
       .update(stores)
       .set({ checkoutFormJson: null })
-      .where(eq(stores.id, STORE_ID))
-      .run();
+      .where(eq(stores.id, STORE_ID));
 
-    const row = await harness.db.select().from(stores).where(eq(stores.id, STORE_ID)).get();
+    const row = await harness.db.select().from(stores).where(eq(stores.id, STORE_ID)).then((rows) => rows[0]);
     expect(row?.checkoutFormJson).toBeNull();
   });
 });
@@ -109,7 +107,7 @@ describe("orders.customer_email / orders.custom_fields_json", () => {
       updatedAt: NOW,
       ...extra,
     });
-    return harness.db.select().from(orders).where(eq(orders.id, id)).get();
+    return harness.db.select().from(orders).where(eq(orders.id, id)).then((rows) => rows[0]);
   }
 
   it("accepts an order that carries neither — every order placed before this feature", async () => {
@@ -134,10 +132,9 @@ describe("orders.customer_email / orders.custom_fields_json", () => {
     await harness.db
       .update(stores)
       .set({ checkoutFormJson: serializeCheckoutFormPolicy(DEFAULT_CHECKOUT_FORM_POLICY) })
-      .where(eq(stores.id, STORE_ID))
-      .run();
+      .where(eq(stores.id, STORE_ID));
 
-    const after = await harness.db.select().from(orders).where(eq(orders.id, "0003")).get();
+    const after = await harness.db.select().from(orders).where(eq(orders.id, "0003")).then((rows) => rows[0]);
     expect(JSON.parse(after!.customFieldsJson!)).toEqual(JSON.parse(snapshot));
   });
 });

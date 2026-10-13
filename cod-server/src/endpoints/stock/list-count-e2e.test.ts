@@ -11,10 +11,9 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { Miniflare } from "miniflare";
+import { createTestDb, type TestDb } from "@/test-utils/pg";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
-import { drizzle } from "drizzle-orm/d1";
 import * as schema from "@/db/schema";
 import type { AppDb } from "@/db";
 import { getStockHistory } from "../../../../cod-shared/queries/stock";
@@ -25,38 +24,18 @@ import {
   getAbandonedOrderStats,
 } from "../../../../cod-shared/queries/abandoned-orders";
 
-const registry: Miniflare[] = [];
+const registry: TestDb[] = [];
 let db: AppDb;
 
 beforeAll(async () => {
-  const mf = new Miniflare({
-    script: "export default { fetch() { return new Response('ok'); } }",
-    modules: true,
-    d1Databases: { DB: "test-db" },
-  });
-  registry.push(mf);
-  const d1 = await mf.getD1Database("DB");
-  const dir = resolve(__dirname, "../../db/migrations");
-  const preparedStatements: D1PreparedStatement[] = [];
-  for (const file of readdirSync(dir).filter((f) => f.endsWith(".sql")).sort()) {
-    const statements = readFileSync(`${dir}/${file}`, "utf8")
-      .split("--> statement-breakpoint")
-      .flatMap((s) => s.split(/;\s*\n/))
-      .map((s) => s.replace(/;+\s*$/, "").trim())
-      .filter((s) => s.replace(/--[^\n]*/g, "").trim().length > 0);
-    for (const statement of statements) {
-      preparedStatements.push(d1.prepare(statement));
-    }
-  }
-  for (let i = 0; i < preparedStatements.length; i += 50) {
-    await d1.batch(preparedStatements.slice(i, i + 50));
-  }
-  db = drizzle(d1 as unknown as D1Database, { schema }) as unknown as AppDb;
+  const harness = await createTestDb();
+  registry.push(harness);
+  db = harness.db;
 
   const now = new Date().toISOString();
   const day = (n: number) => `2026-01-${String(n).padStart(2, "0")}T00:00:00.000Z`;
 
-  await db.insert(schema.stores).values({ id: "store-1", name: "S", createdAt: now, updatedAt: now });
+  await harness.setStore({ id: "test-store", name: "S", createdAt: now, updatedAt: now });
   await db.insert(schema.products).values([
     { id: "prod-1", name: "Product 1", handle: "p1", price: 1000, hasVariants: false, inventory: 10, trackInventory: true, status: "ACTIVE", visibility: true, showInStore: true, createdAt: now, updatedAt: now },
     { id: "prod-2", name: "Product 2", handle: "p2", price: 2000, hasVariants: true, inventory: 0, trackInventory: true, status: "ACTIVE", visibility: true, showInStore: true, createdAt: now, updatedAt: now },
@@ -85,15 +64,15 @@ beforeAll(async () => {
       delta: i % 2 === 0 ? 5 : -2, qtyBefore: i, qtyAfter: i + (i % 2 === 0 ? 5 : -2),
       reason: null, reference: `ord-${i}`, createdBy: "user-1", createdByName: "U",
       createdAt: day(i),
-    });
+  });
   }
 
   await db.insert(schema.reviews).values([
-    { id: "rev-1", storeId: "store-1", productId: "prod-1", orderId: "ord-1", orderNumber: "ORD-1", customerName: "C1", rating: 5, body: "a", status: "approved", createdAt: day(1), updatedAt: now },
-    { id: "rev-2", storeId: "store-1", productId: "prod-1", orderId: "ord-2", orderNumber: "ORD-2", customerName: "C2", rating: 4, body: "b", status: "approved", createdAt: day(2), updatedAt: now },
-    { id: "rev-3", storeId: "store-1", productId: "prod-1", orderId: "ord-3", orderNumber: "ORD-3", customerName: "C3", rating: 3, body: "c", status: "pending", createdAt: day(3), updatedAt: now },
-    { id: "rev-4", storeId: "store-1", productId: "prod-2", orderId: "ord-4", orderNumber: "ORD-4", customerName: "C1", rating: 2, body: "d", status: "pending", createdAt: day(4), updatedAt: now },
-    { id: "rev-5", storeId: "store-1", productId: "prod-2", orderId: "ord-5", orderNumber: "ORD-5", customerName: "C2", rating: 1, body: "e", status: "rejected", createdAt: day(5), updatedAt: now },
+    { id: "rev-1", storeId: "test-store", productId: "prod-1", orderId: "ord-1", orderNumber: "ORD-1", customerName: "C1", rating: 5, body: "a", status: "approved", createdAt: day(1), updatedAt: now },
+    { id: "rev-2", storeId: "test-store", productId: "prod-1", orderId: "ord-2", orderNumber: "ORD-2", customerName: "C2", rating: 4, body: "b", status: "approved", createdAt: day(2), updatedAt: now },
+    { id: "rev-3", storeId: "test-store", productId: "prod-1", orderId: "ord-3", orderNumber: "ORD-3", customerName: "C3", rating: 3, body: "c", status: "pending", createdAt: day(3), updatedAt: now },
+    { id: "rev-4", storeId: "test-store", productId: "prod-2", orderId: "ord-4", orderNumber: "ORD-4", customerName: "C1", rating: 2, body: "d", status: "pending", createdAt: day(4), updatedAt: now },
+    { id: "rev-5", storeId: "test-store", productId: "prod-2", orderId: "ord-5", orderNumber: "ORD-5", customerName: "C2", rating: 1, body: "e", status: "rejected", createdAt: day(5), updatedAt: now },
   ]);
 
   await db.insert(schema.abandonedOrders).values([
@@ -142,21 +121,21 @@ describe("getStockHistory — real D1", () => {
 
 describe("getApprovedProductReviews — real D1", () => {
   it("returns only approved reviews for the product, paginated", async () => {
-    const result = await getApprovedProductReviews(db, "store-1", "prod-1", 20, 0);
+    const result = await getApprovedProductReviews(db, "test-store", "prod-1", 20, 0);
     expect(result.rows.map((r) => r.id)).toEqual(["rev-2", "rev-1"]);
     expect(result.total).toBe(2);
 
-    const page = await getApprovedProductReviews(db, "store-1", "prod-1", 1, 1);
+    const page = await getApprovedProductReviews(db, "test-store", "prod-1", 1, 1);
     expect(page.rows.map((r) => r.id)).toEqual(["rev-1"]);
     expect(page.total).toBe(2);
   });
 
   it("excludes pending and rejected; empty page keeps total", async () => {
-    const result = await getApprovedProductReviews(db, "store-1", "prod-2", 20, 0);
+    const result = await getApprovedProductReviews(db, "test-store", "prod-2", 20, 0);
     expect(result.rows).toEqual([]);
     expect(result.total).toBe(0);
 
-    const beyond = await getApprovedProductReviews(db, "store-1", "prod-1", 20, 50);
+    const beyond = await getApprovedProductReviews(db, "test-store", "prod-1", 20, 50);
     expect(beyond.rows).toEqual([]);
     expect(beyond.total).toBe(2);
   });

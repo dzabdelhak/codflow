@@ -1,68 +1,19 @@
 {
   "version": "7",
-  "dialect": "sqlite",
+  "dialect": "postgresql",
   "entries": [
     {
       "idx": 0,
-      "version": "6",
-      "when": 1776636208150,
-      "tag": "0000_complete",
+      "version": "7",
+      "when": 1791904823110,
+      "tag": "0000_baseline",
       "breakpoints": true
     },
     {
       "idx": 1,
-      "version": "6",
-      "when": 1776647439985,
-      "tag": "0001_refactor_delivery_split_brain",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "6",
-      "when": 1776986349049,
-      "tag": "0002_mcp_oauth_tables",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "6",
-      "when": 1746057600000,
-      "tag": "0003_product_categories_seo",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "6",
-      "when": 1746057601000,
-      "tag": "0004_orders_pixel_tracking",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "6",
-      "when": 1746057602000,
-      "tag": "0005_store_pixel_config",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "6",
-      "when": 1746057603000,
-      "tag": "0006_capi_event_log",
-      "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "6",
-      "when": 1746057604000,
-      "tag": "0007_stores_api_key",
-      "breakpoints": true
-    },
-    {
-      "idx": 8,
-      "version": "6",
-      "when": 1746230400000,
-      "tag": "0008_dashboard_brand_meta",
+      "version": "7",
+      "when": 1791904823689,
+      "tag": "0001_multi_store",
       "breakpoints": true
     }
   ]

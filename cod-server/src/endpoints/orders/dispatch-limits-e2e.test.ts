@@ -13,10 +13,9 @@
  */
 
 import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from "vitest";
-import { Miniflare } from "miniflare";
+import { createTestDb, type TestDb } from "@/test-utils/pg";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
-import { drizzle } from "drizzle-orm/d1";
 import { eq } from "drizzle-orm";
 import * as schema from "@/db/schema";
 import type { AppDb } from "@/db";
@@ -40,34 +39,16 @@ vi.mock("@/lib/activity", () => ({
   ACTIONS: new Proxy({}, { get: (_t, p) => String(p) }),
 }));
 
-const registry: Miniflare[] = [];
+const registry: TestDb[] = [];
 let db: AppDb;
 
 const WILAYA = 16;
 const YALIDINE_MAX = 150_000;
 
 beforeAll(async () => {
-  const mf = new Miniflare({
-    script: "export default { fetch() { return new Response('ok'); } }",
-    modules: true,
-    d1Databases: { DB: "dispatch-db" },
-  });
-  registry.push(mf);
-  const d1 = await mf.getD1Database("DB");
-  const dir = resolve(__dirname, "../../db/migrations");
-  const prepared: D1PreparedStatement[] = [];
-  for (const file of readdirSync(dir).filter((f) => f.endsWith(".sql")).sort()) {
-    const statements = readFileSync(`${dir}/${file}`, "utf8")
-      .split("--> statement-breakpoint")
-      .flatMap((s) => s.split(/;\s*\n/))
-      .map((s) => s.replace(/;+\s*$/, "").trim())
-      .filter((s) => s.replace(/--[^\n]*/g, "").trim().length > 0);
-    for (const statement of statements) prepared.push(d1.prepare(statement));
-  }
-  for (let i = 0; i < prepared.length; i += 50) {
-    await d1.batch(prepared.slice(i, i + 50));
-  }
-  db = drizzle(d1 as unknown as D1Database, { schema }) as unknown as AppDb;
+  const harness = await createTestDb();
+  registry.push(harness);
+  db = harness.db;
 });
 
 beforeEach(async () => {
@@ -130,7 +111,7 @@ async function seedOrder(opts: {
     .select({ id: schema.communes.id })
     .from(schema.communes)
     .where(eq(schema.communes.wilayaId, WILAYA))
-    .get();
+    .then((rows) => rows[0]);
 
   const orderId = uid("ord");
   await db.insert(schema.orders).values({
@@ -204,7 +185,7 @@ function makeContext(orderId: string, body: Record<string, unknown> = {}) {
   } as any;
 }
 
-// The handler resolves its db through getDb(c.env.DB); point that at the real
+// The handler resolves its db through c.get("db"); point that at the real
 // Miniflare database so everything below the carrier is genuinely exercised.
 vi.mock("@/db", () => ({ getDb: () => db }));
 

@@ -27,8 +27,7 @@ export async function getOrderStatusStats(db: AppDb): Promise<OrderStatusStat[]>
       count: sql<number>`count(*)`,
     })
     .from(orders)
-    .groupBy(orders.status)
-    .all();
+    .groupBy(orders.status);
 
   return rows.map((r) => ({ status: r.status, count: Number(r.count) }));
 }

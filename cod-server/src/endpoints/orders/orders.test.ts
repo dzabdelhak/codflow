@@ -134,7 +134,8 @@ describe("Orders — targeted business-logic tests", () => {
   beforeEach(() => {
     app = new OpenAPIHono<AppContext>({ defaultHook: openApiValidationHook });
     app.use("*", async (c, next) => {
-      c.env = { DB: mockDb } as any;
+      c.env = {} as never;
+      c.set("db", mockDb);
       c.set("user", {
         id: "admin_1",
         email: "admin@example.com",

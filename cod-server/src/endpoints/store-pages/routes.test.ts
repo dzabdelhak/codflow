@@ -78,7 +78,8 @@ let app: OpenAPIHono<AppContext>;
 function mountAs(user: typeof admin | typeof staffNoScope) {
   app = new OpenAPIHono<AppContext>({ defaultHook: openApiValidationHook });
   app.use("*", async (c, next) => {
-    c.env = { DB: mockDb } as any;
+    c.env = {} as never;
+    c.set("db", mockDb);
     c.set("user", user as any);
     await next();
   });

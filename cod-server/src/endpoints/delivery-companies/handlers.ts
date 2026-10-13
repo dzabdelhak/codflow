@@ -23,7 +23,7 @@ import { syncCarrierGeoNames } from "../../../../cod-shared/queries/carrier-geo"
  * List all delivery companies with optional filters.
  */
 export async function listDeliveryCompanies(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const filters = (c.req as any).valid?.("query") ?? {
     active: c.req.query("active"),
     search: c.req.query("search"),
@@ -40,7 +40,7 @@ export async function listDeliveryCompanies(c: Context<AppContext>) {
  * Get a single delivery company by ID.
  */
 export async function getDeliveryCompany(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const { id } = (c.req as any).valid?.("param") ?? { id: c.req.param("id")! };
   const company = await queries.getDeliveryCompanyById(db, id);
   
@@ -56,7 +56,7 @@ export async function getDeliveryCompany(c: Context<AppContext>) {
  * Create a new delivery company.
  */
 export async function createDeliveryCompany(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const body = (c.req as any).valid?.("json") ?? await c.req.json();
   const parsed = validation.createDeliveryCompanySchema.parse(body);
 
@@ -89,7 +89,7 @@ export async function createDeliveryCompany(c: Context<AppContext>) {
  * Update a delivery company.
  */
 export async function updateDeliveryCompany(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const { id } = (c.req as any).valid?.("param") ?? { id: c.req.param("id")! };
   const body = (c.req as any).valid?.("json") ?? await c.req.json();
   const parsed = validation.updateDeliveryCompanySchema.parse(body);
@@ -122,7 +122,7 @@ export async function updateDeliveryCompany(c: Context<AppContext>) {
  * The `active` flag is NEVER overwritten — preserves admin's manual deactivations.
  */
 export async function syncCompanyStopDesks(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const { id } = (c.req as any).valid?.("param") ?? { id: c.req.param("id")! };
 
   const company = await queries.getDeliveryCompanyRaw(db, id);
@@ -166,7 +166,7 @@ export async function syncCompanyStopDesks(c: Context<AppContext>) {
     // that don't begin with a parseable wilaya prefix). Provider adapters now
     // return null in those cases, but defend at the boundary too — one bad
     // row would otherwise abort the whole batch with FK constraint failed.
-    const validWilayaRows = await db.select({ id: wilayas.id }).from(wilayas).all();
+    const validWilayaRows = await db.select({ id: wilayas.id }).from(wilayas);
     const validWilayas = new Set(validWilayaRows.map((r) => r.id));
     const safeWilayaId = (wid: number | null | undefined) =>
       wid != null && validWilayas.has(wid) ? wid : null;
@@ -265,7 +265,7 @@ export async function syncCompanyStopDesks(c: Context<AppContext>) {
  * Transport failures (timeout, carrier down) surface as 502.
  */
 export async function testCompanyConnection(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const { id } = (c.req as any).valid?.("param") ?? { id: c.req.param("id")! };
 
   const company = await queries.getDeliveryCompanyRaw(db, id);
@@ -330,7 +330,7 @@ export async function testCompanyConnection(c: Context<AppContext>) {
  * statuses are skipped and sampled — never guessed.
  */
 export async function reconcileCompanyOrders(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const { id } = (c.req as any).valid?.("param") ?? { id: c.req.param("id")! };
 
   const company = await queries.getDeliveryCompanyRaw(db, id);
@@ -396,7 +396,7 @@ export async function reconcileCompanyOrders(c: Context<AppContext>) {
  * No live API call — admin must sync first via POST .../sync-stop-desks.
  */
 export async function fetchCompanyStopDesks(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const { id } = (c.req as any).valid?.("param") ?? { id: c.req.param("id")! };
   const query = (c.req as any).valid?.("query") ?? {
     wilayaId: c.req.query("wilayaId"),
@@ -423,8 +423,7 @@ export async function fetchCompanyStopDesks(c: Context<AppContext>) {
     .select()
     .from(companyStopDesks)
     .where(and(...conditions))
-    .orderBy(companyStopDesks.name)
-    .all();
+    .orderBy(companyStopDesks.name);
 
   const desks = rows.map((r) => ({
     ...r,
@@ -448,7 +447,7 @@ export async function fetchCompanyStopDesks(c: Context<AppContext>) {
  * This toggle survives re-syncs.
  */
 export async function toggleCompanyStopDesk(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const params = (c.req as any).valid?.("param") ?? { id: c.req.param("id")!, code: c.req.param("code")! };
   const companyId = params.id;
   const code = params.code;
@@ -462,7 +461,7 @@ export async function toggleCompanyStopDesk(c: Context<AppContext>) {
         eq(companyStopDesks.code, code),
       )
     )
-    .get();
+    .then((rows) => rows[0]);
 
   if (!existing) {
     throw new NotFoundError("Stop desk", `${companyId}/${code}`);
@@ -482,7 +481,7 @@ export async function toggleCompanyStopDesk(c: Context<AppContext>) {
  * Delete a delivery company.
  */
 export async function deleteDeliveryCompany(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const { id } = (c.req as any).valid?.("param") ?? { id: c.req.param("id")! };
 
   const existing = await queries.getDeliveryCompanyById(db, id);
@@ -513,7 +512,7 @@ export async function deleteDeliveryCompany(c: Context<AppContext>) {
  * name-matching carrier we integrate); other carriers get 422.
  */
 export async function syncGeoNames(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const { id } = (c.req as any).valid?.("param") ?? { id: c.req.param("id")! };
 
   const company = await queries.getDeliveryCompanyRaw(db, id);
@@ -581,7 +580,7 @@ export async function syncGeoNames(c: Context<AppContext>) {
  * Newest first; orderNumber joined for display; rawPayload excluded.
  */
 export async function listWebhookEvents(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const { id } = (c.req as any).valid?.("param") ?? { id: c.req.param("id")! };
   const query = (c.req as any).valid?.("query") ?? {
     limit: 25,
@@ -624,13 +623,12 @@ export async function listWebhookEvents(c: Context<AppContext>) {
       .where(where)
       .orderBy(desc(webhookEvents.createdAt), desc(webhookEvents.id))
       .limit(limit)
-      .offset(offset)
-      .all(),
+      .offset(offset),
     db
       .select({ total: count() })
       .from(webhookEvents)
       .where(where)
-      .get(),
+      .then((rows) => rows[0]),
   ]);
 
   return c.json(

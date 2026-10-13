@@ -14,8 +14,25 @@ concurrency:
 
 jobs:
   server:
-    name: cod-server (typecheck + test + build)
+    name: cod-server (typecheck + test)
     runs-on: ubuntu-latest
+    services:
+      # Tests run on a real PostgreSQL (src/test-utils/pg.ts). The user must
+      # be able to create databases and roles: it builds a migrated template
+      # once, then one database per test file.
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: codflow
+          POSTGRES_PASSWORD: codflow
+          POSTGRES_DB: codflow
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U codflow -d codflow"
+          --health-interval 2s
+          --health-retries 30
+    env:
+      TEST_DATABASE_URL: postgres://codflow:codflow@localhost:5432/codflow
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -26,9 +43,6 @@ jobs:
       - run: npm ci
       - run: npm run typecheck --workspace codflow-server
       - run: npm test --workspace codflow-server
-      - run: cp wrangler.toml.example wrangler.toml
-        working-directory: cod-server
-      - run: npm run build:ci --workspace codflow-server
 
   dashboard:
     name: cod-client-astro (typecheck + test + build)

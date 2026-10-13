@@ -33,7 +33,7 @@ import {
 let harness: TestD1;
 let app: OpenAPIHono<AppContext>;
 const NOW = () => new Date().toISOString();
-const STORE_ID = "store-checkout-policy";
+const STORE_ID = "test-store";
 const WILAYA = 16;
 // A real commune from the migrations — orders.commune_id is a foreign key.
 const COMMUNE_ID = "c-16-001";
@@ -45,37 +45,23 @@ let productId: string;
  * Every statement the order path prepares, so the cost of the policy read is
  * asserted rather than assumed.
  *
- * D1 is a single-threaded Durable Object billed by rows read, so a read added
- * to checkout is paid on every order forever. `checkout-query-budget.e2e.test.ts`
+ * A read added to checkout is paid on every order forever. `checkout-query-budget.e2e.test.ts`
  * ratchets the engine's own reads; it calls the query layer directly, so the
  * handler's read belongs here, next to the thing that added it.
  */
 let sqlLog: string[] = [];
-
-function recordingD1(d1: D1Database): D1Database {
-  return new Proxy(d1, {
-    get(target, prop, receiver) {
-      const value = Reflect.get(target, prop, receiver);
-      if (prop === "prepare") {
-        return (query: string) => {
-          sqlLog.push(query);
-          return (value as D1Database["prepare"]).call(target, query);
-        };
-      }
-      return typeof value === "function" ? (value as Function).bind(target) : value;
-    },
-  }) as D1Database;
-}
 
 const selectsAgainst = (table: string) =>
   sqlLog.filter((q) => /^\s*select\b/i.test(q) && new RegExp(`\\bfrom\\s+"${table}"`, "i").test(q));
 
 beforeAll(async () => {
   harness = await createTestD1();
+  harness.recordQueries((sql) => sqlLog.push(sql));
 
   app = new OpenAPIHono<AppContext>({ defaultHook: openApiValidationHook });
   app.use("*", async (c, next) => {
-    c.env = { DB: recordingD1(harness.raw) } as never;
+    c.env = {} as never;
+    c.set("db", harness.db);
     c.set("storeId", STORE_ID);
     await next();
   });
@@ -96,9 +82,8 @@ beforeEach(async () => {
   await harness.db.delete(schema.products);
   await harness.db.delete(schema.shippingRules);
   await harness.db.delete(schema.shippingProfiles);
-  await harness.db.delete(schema.stores);
 
-  await harness.db.insert(schema.stores).values({
+  await harness.setStore({
     id: STORE_ID,
     name: "Policy Test Store",
     lang: "en",
@@ -153,8 +138,7 @@ async function setPolicy(over: Partial<CheckoutFormPolicy>) {
   await harness.db
     .update(schema.stores)
     .set({ checkoutFormJson: serializeCheckoutFormPolicy(policy) })
-    .where(eq(schema.stores.id, STORE_ID))
-    .run();
+    .where(eq(schema.stores.id, STORE_ID));
 }
 
 /** A complete, valid order body — the shape the storefront form posts. */
@@ -388,8 +372,7 @@ describe("the message the shopper reads", () => {
     await harness.db
       .update(schema.stores)
       .set({ lang: "fr" })
-      .where(eq(schema.stores.id, STORE_ID))
-      .run();
+      .where(eq(schema.stores.id, STORE_ID));
     await setPolicy({ address: "required" });
 
     const { json } = await postOrder(orderBody({ address: "" }));
@@ -400,8 +383,7 @@ describe("the message the shopper reads", () => {
     await harness.db
       .update(schema.stores)
       .set({ lang: "ar" })
-      .where(eq(schema.stores.id, STORE_ID))
-      .run();
+      .where(eq(schema.stores.id, STORE_ID));
     await setPolicy({ email: "required" });
 
     const { json } = await postOrder(orderBody());

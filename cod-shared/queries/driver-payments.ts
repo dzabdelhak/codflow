@@ -10,8 +10,7 @@ export async function getDriverPayments(db: AppDb, driverId: string) {
     .select()
     .from(driverPayments)
     .where(eq(driverPayments.driverId, driverId))
-    .orderBy(desc(driverPayments.createdAt))
-    .all();
+    .orderBy(desc(driverPayments.createdAt));
 }
 
 /**
@@ -29,6 +28,5 @@ export async function getPendingSettlementOrders(db: AppDb, driverId: string) {
         isNull(orders.codPaymentId),
       ),
     )
-    .orderBy(desc(orders.updatedAt))
-    .all();
+    .orderBy(desc(orders.updatedAt));
 }

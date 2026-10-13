@@ -29,7 +29,8 @@ describe("Shipping Profiles Endpoint - Error Scenarios", () => {
     
     // Add middleware to inject mock env and user
     app.use("*", async (c, next) => {
-      c.env = { DB: mockDb } as any;
+      c.env = {} as never;
+      c.set("db", mockDb);
       c.set("user", {
         id: "user-123",
         email: "test@example.com",

@@ -8,7 +8,7 @@ import { NotFoundError, BusinessLogicError, ConflictError, SystemError } from "@
 import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
 
 export async function listProducts(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const queryData: any = (c.req as any).valid?.("query");
   const filters = queryData ?? validation.productFiltersSchema.parse({
     categoryId: c.req.query("categoryId"),
@@ -23,7 +23,7 @@ export async function listProducts(c: Context<AppContext>) {
 }
 
 export async function getProduct(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const productId = c.req.param("id")!;
   const product = await queries.getProductById(db, productId);
   if (!product) {
@@ -40,7 +40,7 @@ function isProductUniqueViolation(err: unknown): "handle" | "sku" | null {
 }
 
 export async function createProduct(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const jsonData: any = (c.req as any).valid?.("json");
   const validated = jsonData ?? validation.createProductSchema.parse(await c.req.json());
 
@@ -98,7 +98,7 @@ export async function createProduct(c: Context<AppContext>) {
 }
 
 export async function updateProduct(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const productId = c.req.param("id")!;
   const jsonData: any = (c.req as any).valid?.("json");
   const validated = jsonData ?? validation.updateProductSchema.parse(await c.req.json());
@@ -138,7 +138,7 @@ export async function updateProduct(c: Context<AppContext>) {
 }
 
 export async function updateProductStatus(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const productId = c.req.param("id")!;
   const jsonData: any = (c.req as any).valid?.("json");
   const { status } = jsonData ?? validation.updateStatusSchema.parse(await c.req.json());
@@ -154,7 +154,7 @@ export async function updateProductStatus(c: Context<AppContext>) {
 }
 
 export async function deleteProduct(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const id = c.req.param("id")!;
   const existing = await queries.getProductById(db, id);
   if (!existing) {
@@ -164,7 +164,7 @@ export async function deleteProduct(c: Context<AppContext>) {
   // Check if product has orders
   const { orderProducts } = await import("@/db/schema");
   const { eq } = await import("drizzle-orm");
-  const ordersWithProduct = await db.select().from(orderProducts).where(eq(orderProducts.productId, id)).get();
+  const ordersWithProduct = await db.select().from(orderProducts).where(eq(orderProducts.productId, id)).then((rows) => rows[0]);
   if (ordersWithProduct) {
     throw new BusinessLogicError(
       "Cannot delete product with existing orders",

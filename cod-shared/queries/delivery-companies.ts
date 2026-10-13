@@ -83,8 +83,7 @@ export async function getAllDeliveryCompanies(
   const rows = await query
     .orderBy(desc(deliveryCompanies.createdAt))
     .limit(limit)
-    .offset(offset)
-    .all();
+    .offset(offset);
   return rows.map(sanitize);
 }
 
@@ -93,7 +92,7 @@ export async function getDeliveryCompanyById(db: AppDb, id: string) {
     .select()
     .from(deliveryCompanies)
     .where(eq(deliveryCompanies.id, id))
-    .get();
+    .then((rows) => rows[0]);
   return row ? sanitize(row) : null;
 }
 
@@ -102,7 +101,7 @@ export async function getDeliveryCompanyByCode(db: AppDb, code: string) {
     .select()
     .from(deliveryCompanies)
     .where(eq(deliveryCompanies.code, code))
-    .get();
+    .then((rows) => rows[0]);
 }
 
 /**
@@ -114,7 +113,7 @@ export async function getDeliveryCompanyRaw(db: AppDb, id: string) {
     .select()
     .from(deliveryCompanies)
     .where(eq(deliveryCompanies.id, id))
-    .get();
+    .then((rows) => rows[0]);
 }
 
 export async function createDeliveryCompany(
@@ -181,7 +180,7 @@ export async function deleteDeliveryCompany(db: AppDb, id: string) {
         notInArray(orders.status, ["delivered", "returned", "cancelled"]),
       ),
     )
-    .get();
+    .then((rows) => rows[0]);
 
   if (liveOrders && liveOrders.count > 0) {
     throw new Error(

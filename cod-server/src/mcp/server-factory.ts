@@ -48,7 +48,7 @@ export function createCodMcpServer(env: Env): McpServer {
     return server;
   }
 
-  const db = getDb(env.DB);
+  const db = getDb(env.DATABASE.platform);
   const actor: McpActor = {
     id: props.userId,
     name: props.name || props.email,

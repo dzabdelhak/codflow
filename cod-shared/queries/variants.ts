@@ -78,13 +78,12 @@ export async function getVariantsByProduct(db: AppDb, productId: string) {
     .select()
     .from(productVariants)
     .where(eq(productVariants.productId, productId))
-    .orderBy(productVariants.position)
-    .all();
+    .orderBy(productVariants.position);
   return variants.map(parseVariant);
 }
 
 export async function getVariantById(db: AppDb, variantId: string) {
-  const v = await db.select().from(productVariants).where(eq(productVariants.id, variantId)).get();
+  const v = await db.select().from(productVariants).where(eq(productVariants.id, variantId)).then((rows) => rows[0]);
   return v ? parseVariant(v) : null;
 }
 
@@ -121,7 +120,7 @@ export async function createVariant(db: AppDb, productId: string, data: CreateVa
       .select({ trackInventory: products.trackInventory })
       .from(products)
       .where(eq(products.id, productId))
-      .get();
+      .then((rows) => rows[0]);
     if (productRow?.trackInventory) {
       statements.push(
         buildInventoryMovement(db, {
@@ -167,13 +166,13 @@ export async function updateVariant(db: AppDb, variantId: string, data: UpdateVa
       .select({ productId: productVariants.productId, inventory: productVariants.inventory })
       .from(productVariants)
       .where(eq(productVariants.id, variantId))
-      .get();
+      .then((rows) => rows[0]);
     if (variantRow) {
       const productRow = await db
         .select({ trackInventory: products.trackInventory })
         .from(products)
         .where(eq(products.id, variantRow.productId))
-        .get();
+        .then((rows) => rows[0]);
       if (productRow?.trackInventory) {
         const qtyBefore = variantRow.inventory;
         const delta = data.inventory - qtyBefore;
@@ -203,7 +202,7 @@ export async function deleteVariant(db: AppDb, variantId: string) {
     .select({ productId: productVariants.productId, inventory: productVariants.inventory })
     .from(productVariants)
     .where(eq(productVariants.id, variantId))
-    .get();
+    .then((rows) => rows[0]);
 
   // No ledger surrogate for the deletion: stock_movements.variant_id is
   // ON DELETE cascade, so the variant's scoped movements (including its

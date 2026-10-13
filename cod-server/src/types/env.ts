@@ -1,12 +1,19 @@
 /**
- * Cloudflare Worker environment bindings.
- * Declared in wrangler.toml — keep this in sync.
+ * Server environment, built from process.env by the Node entry (src/node.ts).
+ * Cloudflare bindings still listed here belong to code not yet ported
+ * (images, MCP, workflows) and are absent at runtime.
  */
 import type { OAuthHelpers } from "@cloudflare/workers-oauth-provider";
+import type { Database } from "@/db/scope";
 
 export interface Env {
-  /** D1 database binding */
-  DB: D1Database;
+  /** PostgreSQL pools (app: RLS-confined, platform: cross-store). */
+  DATABASE: Database;
+  /**
+   * Shared secret the storefront sends as `X-Storefront-Key`; without it the
+   * API ignores `X-Channel-Host`. Server-to-server only, never in a browser.
+   */
+  STOREFRONT_SERVICE_KEY?: string;
   /** R2 bucket for product images */
   IMAGES: R2Bucket;
   /**

@@ -1,4 +1,4 @@
-import { defineConfig, envField, passthroughImageService } from "astro/config";
+import { defineConfig, envField, memoryCache, passthroughImageService } from "astro/config";
 import tailwindcss from "@tailwindcss/vite";
 import compress from "@playform/compress";
 import icon from "astro-icon";
@@ -6,13 +6,13 @@ import icon from "astro-icon";
 const isVercel = process.env.DEPLOY_TARGET === "vercel";
 const adapter = isVercel
   ? (await import("@astrojs/vercel")).default()
-  : (await import("@astrojs/cloudflare")).default({
-      imageService: "passthrough",
-    });
+  : (await import("@astrojs/node")).default({ mode: "standalone" });
 
+// One storefront serves every channel. The memory cache keys on origin +
+// path, so each hostname gets its own entries (src/theme/cache-contracts.test.ts).
 const cacheProvider = isVercel
   ? (await import("@astrojs/vercel/cache")).cacheVercel()
-  : (await import("@astrojs/cloudflare/cache")).cacheCloudflare();
+  : memoryCache();
 
 export default defineConfig({
   output: "server",
@@ -33,7 +33,9 @@ export default defineConfig({
   },
   env: {
     schema: {
-      STORE_API_KEY: envField.string({
+      // Shared secret proving to cod-server that a call comes from the
+      // storefront; it then trusts the X-Channel-Host it sends.
+      STOREFRONT_SERVICE_KEY: envField.string({
         context: "server",
         access: "secret",
         optional: true, // Allow build to proceed with warning if missing

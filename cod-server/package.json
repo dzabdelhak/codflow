@@ -1,22 +1,16 @@
 {
   "name": "codflow-server",
   "version": "1.1.0",
-  "description": "COD Flow Backend Worker - Cloudflare Workers API",
-  "main": "src/index.ts",
+  "description": "CodFlow API \u2014 Hono on Node.js + PostgreSQL (ADR-0003)",
+  "main": "src/node.ts",
   "scripts": {
-    "dev": "wrangler dev --port 8787 --persist-to ../.wrangler-shared",
-    "deploy": "wrangler deploy",
-    "build:ci": "wrangler deploy --dry-run --outdir dist",
+    "dev": "tsx watch src/node.ts",
+    "start": "tsx src/node.ts",
     "db:generate": "drizzle-kit generate",
-    "db:migrate:local": "node scripts/d1.mjs migrations apply --local --persist-to ../.wrangler-shared",
-    "db:migrate:remote": "node scripts/d1.mjs migrations apply --remote",
-    "db:seed:local": "node scripts/seed-local.mjs",
-    "db:seed:legal-pages:local": "npx tsx scripts/seed-store-pages.ts",
-    "db:setup:local": "npm run db:migrate:local && npm run db:seed:local && npm run db:seed:legal-pages:local",
-    "db:seed:remote": "node scripts/seed-local.mjs --remote",
-    "db:seed:legal-pages:remote": "npx tsx scripts/seed-store-pages.ts --remote",
-    "db:setup:remote": "npm run db:migrate:remote && npm run db:seed:remote && npm run db:seed:legal-pages:remote",
-    "db:validate": "npx tsx scripts/validate-migration.ts",
+    "db:migrate": "tsx src/db/migrate.ts",
+    "db:seed:demo": "tsx scripts/seed-demo.ts",
+    "db:seed:legal-pages": "tsx scripts/seed-store-pages.ts",
+    "db:setup": "npm run db:migrate && npm run db:seed:demo && npm run db:seed:legal-pages",
     "typecheck": "tsc --noEmit",
     "test": "vitest --run",
     "test:watch": "vitest",
@@ -33,6 +27,7 @@
     "@aws-sdk/s3-request-presigner": "^3.1115.0",
     "@better-auth/oauth-provider": "^1.7.1",
     "@cloudflare/workers-oauth-provider": "^0.10.3",
+    "@hono/node-server": "^2.1.5",
     "@modelcontextprotocol/client": "2.0.0",
     "@modelcontextprotocol/server": "2.0.0",
     "@noble/hashes": "^2.3.0",
@@ -41,6 +36,7 @@
     "better-auth": "^1.7.1",
     "drizzle-orm": "^0.45.2",
     "hono": "^4.13.7",
+    "pg": "^8.23.1",
     "zod": "^4.4.3"
   },
   "devDependencies": {
@@ -48,6 +44,7 @@
     "@hono/zod-openapi": "^1.6.1",
     "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^26.2.0",
+    "@types/pg": "^8.23.1",
     "@vitest/coverage-v8": "^5.0.0",
     "@vitest/ui": "^5.0.0",
     "better-sqlite3": "^13.0.3",
@@ -57,6 +54,6 @@
     "typescript": "^7.0.2",
     "vitest": "^5.0.0",
     "vitest-environment-miniflare": "^2.14.4",
-    "wrangler": "^4.125.0"
+    "tsx": "^4.20.0"
   }
 }

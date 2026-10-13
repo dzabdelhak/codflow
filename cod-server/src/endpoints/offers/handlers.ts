@@ -6,13 +6,13 @@ import { createOfferSchema, updateOfferSchema } from "./validation";
 import { NotFoundError, SystemError } from "@/lib/errors/classes";
 
 export async function listOffers(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const data = await queries.listOffers(db);
   return c.json({ success: true, data, count: data.length }, 200);
 }
 
 export async function getOffer(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const id = c.req.param("id")!;
   const data = await queries.getOfferById(db, id);
   if (!data) throw new NotFoundError("Offer", id);
@@ -20,7 +20,7 @@ export async function getOffer(c: Context<AppContext>) {
 }
 
 export async function createOffer(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const body: any = (c.req as any).valid?.("json");
   const data =
     body ?? createOfferSchema.parse(await c.req.json());
@@ -31,7 +31,7 @@ export async function createOffer(c: Context<AppContext>) {
 }
 
 export async function updateOffer(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const id = c.req.param("id")!;
 
   const existing = await queries.getOfferById(db, id);
@@ -47,7 +47,7 @@ export async function updateOffer(c: Context<AppContext>) {
 }
 
 export async function deleteOffer(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const id = c.req.param("id")!;
 
   const existing = await queries.getOfferById(db, id);

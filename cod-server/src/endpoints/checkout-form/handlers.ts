@@ -43,21 +43,21 @@ const CAPABILITIES = {
 
 /** Single-tenant: one store per deployment, exactly like getMyStore. */
 async function requireStoreId(c: Context<AppContext>): Promise<string> {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const store = await getStore(db);
   if (!store) throw new NotFoundError("Store");
   return store.id;
 }
 
 export async function getCheckoutForm(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const storeId = await requireStoreId(c);
   const { policy } = await getCheckoutFormPolicy(db, storeId);
   return c.json({ success: true, data: { policy, capabilities: CAPABILITIES } }, 200);
 }
 
 export async function putCheckoutForm(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const storeId = await requireStoreId(c);
 
   // The route body is deliberately loose (a passthrough object): the policy's

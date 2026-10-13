@@ -2,7 +2,7 @@
  * Stock Routes
  *
  * Inventory tracking, movement logging, and stock health monitoring.
- * Split across two routers by mount point (both mounted in src/index.ts):
+ * Split across two routers by mount point (both mounted in src/app.ts):
  *   - stockRouter         → /api/stock/*          (overview, alerts)
  *   - productStockRouter  → /api/products/*       (adjust/history/threshold
  *     for simple products and variants, nested under the product path)

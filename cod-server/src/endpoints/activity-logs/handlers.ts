@@ -20,7 +20,7 @@ import {
  * Returns paginated activity log, optionally filtered by actorId or entityType.
  */
 export async function listActivityLogs(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   
   // When called via OpenAPIHono, c.req.valid() provides validated data
   const query: any = (c.req as any).valid?.("query");
@@ -40,7 +40,7 @@ export async function listActivityLogs(c: Context<AppContext>) {
  * Used by the team member profile sheet.
  */
 export async function getUserActivityLogs(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   
   // When called via OpenAPIHono, c.req.valid() provides validated data
   const params: any = (c.req as any).valid?.("param");

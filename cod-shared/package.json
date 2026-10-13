@@ -5,6 +5,8 @@
   "description": "Shared drizzle schema, queries, RBAC, and errors consumed by cod-server and cod-client-astro. Not published — imported via relative path.",
   "type": "module",
   "dependencies": {
-    "drizzle-orm": "^0.45.2"
+    "drizzle-orm": "^0.45.2",
+    "html-rewriter-wasm": "^0.4.1",
+    "pg": "^8.23.1"
   }
 }

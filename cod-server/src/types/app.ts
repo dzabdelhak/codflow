@@ -1,6 +1,7 @@
 import type { InferSelectModel } from "drizzle-orm";
 import type { users } from "@/db/schema";
 import type { Env } from "./env";
+import type { AppDb } from "@/db";
 
 /**
  * Authenticated user — schema row + resolved scopes.
@@ -12,8 +13,10 @@ export type AuthUser = InferSelectModel<typeof users> & { scopes: string[] };
 export interface AppVariables {
   /** Set by authMiddleware on /api/* routes */
   user: AuthUser;
-  /** Set by storeAuthMiddleware on /store/* routes */
+  /** The request's store (channel), set by the request scope. */
   storeId?: string;
+  /** The request's database handle: one connection, one transaction, pinned to storeId. */
+  db: AppDb;
 }
 
 /**

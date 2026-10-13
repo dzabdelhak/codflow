@@ -95,9 +95,9 @@ interface Report {
 const publicUrl = (key: string) => `https://media.example.com/${key}`;
 
 async function seed() {
-  await d1.prepare("DELETE FROM product_images").run();
-  await d1.prepare("DELETE FROM product_categories").run();
-  await d1.prepare("DELETE FROM products").run();
+  await d1.prepare("DELETE FROM product_images");
+  await d1.prepare("DELETE FROM product_categories");
+  await d1.prepare("DELETE FROM products");
 
   // 1. A description whose ONLY reference to `described` is inside the HTML.
   await d1
@@ -105,8 +105,7 @@ async function seed() {
       `INSERT INTO products (id, name, description, description_format, handle, currency, price, has_variants, inventory, track_inventory, low_stock_threshold, visibility, status, show_in_store, store_featured, deleted_at, created_at, updated_at)
        VALUES ('p1', 'Described', ?, 'html', 'p1', 'DZD', 1000, 0, 5, 1, 5, 1, 'ACTIVE', 1, 0, NULL, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')`
     )
-    .bind(`<p>look</p><img src="${publicUrl(KEYS.described)}" alt="a">`)
-    .run();
+    .bind(`<p>look</p><img src="${publicUrl(KEYS.described)}" alt="a">`);
 
   // 2. Gallery record that only knows its key.
   await d1
@@ -114,8 +113,7 @@ async function seed() {
       `INSERT INTO product_images (id, product_id, src, r2_key, type, position, created_at, updated_at)
        VALUES ('i1', 'p1', ?, ?, 1, 1, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')`
     )
-    .bind(publicUrl(KEYS.galleryKey), KEYS.galleryKey)
-    .run();
+    .bind(publicUrl(KEYS.galleryKey), KEYS.galleryKey);
 
   // 3. Gallery record saved without a key — only its URL names the object.
   await d1
@@ -123,8 +121,7 @@ async function seed() {
       `INSERT INTO product_images (id, product_id, src, r2_key, type, position, created_at, updated_at)
        VALUES ('i2', 'p1', ?, NULL, 1, 2, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')`
     )
-    .bind(publicUrl(KEYS.galleryUrl))
-    .run();
+    .bind(publicUrl(KEYS.galleryUrl));
 
   // 4. Category image — uploaded into the same products/ namespace.
   await d1
@@ -132,8 +129,7 @@ async function seed() {
       `INSERT INTO product_categories (id, name, slug, image_url, position, created_at, updated_at)
        VALUES ('c1', 'Cat', 'cat', ?, 0, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')`
     )
-    .bind(publicUrl(KEYS.category))
-    .run();
+    .bind(publicUrl(KEYS.category));
 
   for (const key of MANAGED_KEYS) {
     await bucket.put(key, key === KEYS.orphan ? ORPHAN_BODY : `body-of-${key}`);
@@ -168,7 +164,7 @@ beforeAll(async () => {
     d1Databases: { DB: "test-db" },
     r2Buckets: { IMAGES: "test-bucket" },
   });
-  registry.push(mf);
+  registry.push(harness);
 
   d1 = await mf.getD1Database("DB");
   bucket = await mf.getR2Bucket("IMAGES");

@@ -164,14 +164,13 @@ export async function serveImage(c: Context<AppContext>) {
  */
 export async function listProductImages(c: Context<AppContext>) {
   const productId = c.req.param("id")!;
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
 
   const images = await db
     .select()
     .from(productImages)
     .where(eq(productImages.productId, productId))
-    .orderBy(productImages.position)
-    .all();
+    .orderBy(productImages.position);
 
   return c.json({ success: true, data: images }, 200);
 }
@@ -183,7 +182,7 @@ export async function listProductImages(c: Context<AppContext>) {
  */
 export async function saveProductImage(c: Context<AppContext>) {
   const productId = c.req.param("id")!;
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
 
   const jsonData: any = (c.req as any).valid?.("json");
   const body = jsonData ?? (await c.req.json<{
@@ -205,8 +204,7 @@ export async function saveProductImage(c: Context<AppContext>) {
   const existing = await db
     .select()
     .from(productImages)
-    .where(eq(productImages.productId, productId))
-    .all();
+    .where(eq(productImages.productId, productId));
 
   const position =
     body.position ??
@@ -247,7 +245,7 @@ export async function saveProductImage(c: Context<AppContext>) {
  */
 export async function reorderProductImages(c: Context<AppContext>) {
   const productId = c.req.param("id")!;
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
 
   const jsonData: any = (c.req as any).valid?.("json");
   const body = jsonData ?? (await c.req.json<{ imageIds?: unknown }>());
@@ -273,8 +271,7 @@ export async function reorderProductImages(c: Context<AppContext>) {
   const existing = await db
     .select({ id: productImages.id })
     .from(productImages)
-    .where(eq(productImages.productId, productId))
-    .all();
+    .where(eq(productImages.productId, productId));
 
   const existingIds = new Set(existing.map((img) => img.id));
 
@@ -307,8 +304,7 @@ export async function reorderProductImages(c: Context<AppContext>) {
     .select()
     .from(productImages)
     .where(eq(productImages.productId, productId))
-    .orderBy(asc(productImages.position))
-    .all();
+    .orderBy(asc(productImages.position));
 
   return c.json({ success: true, data: updated }, 200);
 }
@@ -320,14 +316,14 @@ export async function reorderProductImages(c: Context<AppContext>) {
 export async function deleteProductImage(c: Context<AppContext>) {
   const productId = c.req.param("id")!;
   const imageId = c.req.param("imageId")!;
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const bucket = c.env.IMAGES;
 
   const image = await db
     .select()
     .from(productImages)
     .where(and(eq(productImages.id, imageId), eq(productImages.productId, productId)))
-    .get();
+    .then((rows) => rows[0]);
 
   if (!image) {
     throw new NotFoundError("Image", imageId);

@@ -42,13 +42,13 @@ async function resolveOfferDetail(
       .select({ id: products.id, name: products.name, handle: products.handle })
       .from(products)
       .where(eq(products.id, offer.triggerProductId))
-      .get(),
+      .then((rows) => rows[0]),
     offer.rewardProductId
       ? db
           .select({ id: products.id, name: products.name, handle: products.handle })
           .from(products)
           .where(eq(products.id, offer.rewardProductId))
-          .get()
+          .then((rows) => rows[0])
       : Promise.resolve(null),
   ]);
 
@@ -58,14 +58,14 @@ async function resolveOfferDetail(
           .select({ id: productVariants.id, variations: productVariants.variations })
           .from(productVariants)
           .where(eq(productVariants.id, offer.triggerVariantId))
-          .get()
+          .then((rows) => rows[0])
       : Promise.resolve(null),
     offer.rewardVariantId
       ? db
           .select({ id: productVariants.id, variations: productVariants.variations })
           .from(productVariants)
           .where(eq(productVariants.id, offer.rewardVariantId))
-          .get()
+          .then((rows) => rows[0])
       : Promise.resolve(null),
   ]);
 
@@ -105,8 +105,7 @@ export async function listOffers(db: AppDb) {
   const rows = await db
     .select()
     .from(offers)
-    .orderBy(desc(offers.createdAt))
-    .all();
+    .orderBy(desc(offers.createdAt));
 
   return Promise.all(rows.map((row) => resolveOfferDetail(db, row)));
 }
@@ -116,7 +115,7 @@ export async function getOfferById(db: AppDb, id: string) {
     .select()
     .from(offers)
     .where(eq(offers.id, id))
-    .get();
+    .then((rows) => rows[0]);
 
   if (!offer) return null;
   return resolveOfferDetail(db, offer);

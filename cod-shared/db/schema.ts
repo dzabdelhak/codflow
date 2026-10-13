@@ -1,13 +1,21 @@
-import { sqliteTable, text, integer, real, uniqueIndex, index, primaryKey } from "drizzle-orm/sqlite-core";
+import { pgTable, text, integer, doublePrecision, boolean, timestamp, uniqueIndex, index, primaryKey } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
-const authNow = sql`(cast(unixepoch('subsecond') * 1000 as integer))`;
+/**
+ * The channel (store) a row belongs to. Filled from the request's current
+ * store, so inserts never pass it; Row-Level Security filters every read and
+ * write on it (see the multi-store migration).
+ */
+const storeIdColumn = () =>
+  text("store_id").notNull().default(sql`current_setting('app.store_id')`);
 
-export const users = sqliteTable("users", {
+const authNow = sql`now()`;
+
+export const users = pgTable("users", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
-  emailVerified: integer("email_verified", { mode: "boolean" }).notNull().default(false),
+  emailVerified: boolean("email_verified").notNull().default(false),
   image: text("image"),
   role: text("role", { enum: ["admin", "staff"] })
     .notNull()
@@ -16,13 +24,13 @@ export const users = sqliteTable("users", {
     .notNull()
     .default("active"),
   apiKey: text("api_key").unique(),
-  createdAt: integer("created_at", { mode: "timestamp_ms" }).default(authNow).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).default(authNow).notNull(),
+  createdAt: timestamp("created_at", { mode: "date", precision: 3 }).default(authNow).notNull(),
+  updatedAt: timestamp("updated_at", { mode: "date", precision: 3 }).default(authNow).notNull(),
   /** UI language preference for emails: "ar" | "en" */
   language: text("language").notNull().default("en"),
 });
 
-export const userScopes = sqliteTable("user_scopes", {
+export const userScopes = pgTable("user_scopes", {
   id: text("id").primaryKey(),
   userId: text("user_id")
     .notNull()
@@ -32,7 +40,8 @@ export const userScopes = sqliteTable("user_scopes", {
   grantedAt: text("granted_at").notNull(),
 });
 
-export const customers = sqliteTable("customers", {
+export const customers = pgTable("customers", {
+  storeId: storeIdColumn(),
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   phone: text("phone").notNull(),
@@ -45,10 +54,12 @@ export const customers = sqliteTable("customers", {
   commune: text("commune"),
   address: text("address"),
   totalOrders: integer("total_orders").notNull().default(0),
-  totalSpent: real("total_spent").notNull().default(0),
+  totalSpent: doublePrecision("total_spent").notNull().default(0),
   createdAt: text("created_at").notNull(),
   lastOrderAt: text("last_order_at"),
-});
+}, (t) => ({
+  phonePerStore: uniqueIndex("customers_store_phone_unique").on(t.storeId, t.phone),
+}));
 
 // ─── Customer Groups ──────────────────────────────────────────────────────────
 
@@ -56,7 +67,8 @@ export const customers = sqliteTable("customers", {
  * Named customer segments (e.g. "VIP", "Wholesale", "Problematic").
  * Customers are linked via customer_group_members.
  */
-export const customerGroups = sqliteTable("customer_groups", {
+export const customerGroups = pgTable("customer_groups", {
+  storeId: storeIdColumn(),
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   description: text("description"),
@@ -72,7 +84,8 @@ export const customerGroups = sqliteTable("customer_groups", {
  * Junction table linking customers to groups.
  * A customer can belong to multiple groups.
  */
-export const customerGroupMembers = sqliteTable("customer_group_members", {
+export const customerGroupMembers = pgTable("customer_group_members", {
+  storeId: storeIdColumn(),
   id: text("id").primaryKey(),
   customerId: text("customer_id")
     .notNull()
@@ -90,20 +103,24 @@ export const customerGroupMembers = sqliteTable("customer_group_members", {
  * Lighter than groups — no description, just name + color.
  * assignmentCount is denormalised for fast display.
  */
-export const customerTags = sqliteTable("customer_tags", {
+export const customerTags = pgTable("customer_tags", {
+  storeId: storeIdColumn(),
   id: text("id").primaryKey(),
-  name: text("name").notNull().unique(),
+  name: text("name").notNull(),
   color: text("color").notNull().default("#64748b"),
   assignmentCount: integer("assignment_count").notNull().default(0),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
-});
+}, (t) => ({
+  namePerStore: uniqueIndex("customer_tags_store_name_unique").on(t.storeId, t.name),
+}));
 
 /**
  * Junction table linking customers to tags.
  * A customer can have multiple tags.
  */
-export const customerTagAssignments = sqliteTable("customer_tag_assignments", {
+export const customerTagAssignments = pgTable("customer_tag_assignments", {
+  storeId: storeIdColumn(),
   id: text("id").primaryKey(),
   customerId: text("customer_id")
     .notNull()
@@ -123,7 +140,7 @@ export const customerTagAssignments = sqliteTable("customer_tag_assignments", {
  * Integer PK matches the official wilaya number (1–58) used by logistics APIs
  * like NOEST, Yalidine, and ZR Express.
  */
-export const wilayas = sqliteTable("wilayas", {
+export const wilayas = pgTable("wilayas", {
   id: integer("id").primaryKey(), // Official wilaya number 1-58
   name: text("name").notNull(),   // "Alger"
   nameAr: text("name_ar").notNull(), // "الجزائر"
@@ -133,7 +150,7 @@ export const wilayas = sqliteTable("wilayas", {
  * Communes (municipalities) within each wilaya.
  * Seeded with major communes; postal codes for stop-desk lookups.
  */
-export const communes = sqliteTable("communes", {
+export const communes = pgTable("communes", {
   id: text("id").primaryKey(),
   wilayaId: integer("wilaya_id")
     .notNull()
@@ -151,7 +168,7 @@ export const communes = sqliteTable("communes", {
  * spellings; these rows carry the carrier's exact string for our wilaya IDs.
  * Carriers absent here keep the reference-table name.
  */
-export const carrierWilayas = sqliteTable("carrier_wilayas", {
+export const carrierWilayas = pgTable("carrier_wilayas", {
   carrierCode: text("carrier_code").notNull(),
   wilayaId: integer("wilaya_id")
     .notNull()
@@ -162,7 +179,7 @@ export const carrierWilayas = sqliteTable("carrier_wilayas", {
 }));
 
 /** Same contract as carrier_wilayas, one level down. */
-export const carrierCommunes = sqliteTable("carrier_communes", {
+export const carrierCommunes = pgTable("carrier_communes", {
   carrierCode: text("carrier_code").notNull(),
   communeId: text("commune_id")
     .notNull()
@@ -182,11 +199,12 @@ export const carrierCommunes = sqliteTable("carrier_communes", {
  * (products.shippingProfileId). Drivers and delivery companies do NOT
  * reference these profiles — driver pay lives in driver_compensations.
  */
-export const shippingProfiles = sqliteTable("shipping_profiles", {
+export const shippingProfiles = pgTable("shipping_profiles", {
+  storeId: storeIdColumn(),
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   /** When true, rates from this profile are auto-applied on order creation. */
-  isDefault: integer("is_default", { mode: "boolean" }).notNull().default(false),
+  isDefault: boolean("is_default").notNull().default(false),
   notes: text("notes"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
@@ -205,7 +223,8 @@ export const shippingProfiles = sqliteTable("shipping_profiles", {
  *
  * Driver payroll is NOT stored here — see driver_compensations.
  */
-export const shippingRules = sqliteTable("shipping_rules", {
+export const shippingRules = pgTable("shipping_rules", {
+  storeId: storeIdColumn(),
   id: text("id").primaryKey(),
   profileId: text("profile_id")
     .notNull()
@@ -213,12 +232,12 @@ export const shippingRules = sqliteTable("shipping_rules", {
   wilayaId: integer("wilaya_id")
     .notNull()
     .references(() => wilayas.id),
-  homePrice: real("home_price").notNull().default(0),
-  stopDeskPrice: real("stop_desk_price").notNull().default(0),
+  homePrice: doublePrecision("home_price").notNull().default(0),
+  stopDeskPrice: doublePrecision("stop_desk_price").notNull().default(0),
   /** Whether home delivery is offered to this wilaya under this profile. */
-  homeEnabled: integer("home_enabled", { mode: "boolean" }).notNull().default(true),
+  homeEnabled: boolean("home_enabled").notNull().default(true),
   /** Whether stop-desk pickup is offered to this wilaya under this profile. */
-  stopDeskEnabled: integer("stop_desk_enabled", { mode: "boolean" }).notNull().default(false),
+  stopDeskEnabled: boolean("stop_desk_enabled").notNull().default(false),
   createdAt: text("created_at").notNull(),
 });
 
@@ -234,7 +253,8 @@ export const shippingRules = sqliteTable("shipping_rules", {
  *   effective.homePrice       = commune.homePrice       ?? wilayaRule.homePrice
  *   effective.stopDeskPrice   = commune.stopDeskPrice   ?? wilayaRule.stopDeskPrice
  */
-export const shippingRuleCommunes = sqliteTable("shipping_rule_communes", {
+export const shippingRuleCommunes = pgTable("shipping_rule_communes", {
+  storeId: storeIdColumn(),
   id: text("id").primaryKey(),
   ruleId: text("rule_id")
     .notNull()
@@ -243,13 +263,13 @@ export const shippingRuleCommunes = sqliteTable("shipping_rule_communes", {
     .notNull()
     .references(() => communes.id, { onDelete: "cascade" }),
   /** null = inherit from wilaya rule. */
-  homeEnabled: integer("home_enabled", { mode: "boolean" }),
+  homeEnabled: boolean("home_enabled"),
   /** null = inherit from wilaya rule. */
-  stopDeskEnabled: integer("stop_desk_enabled", { mode: "boolean" }),
+  stopDeskEnabled: boolean("stop_desk_enabled"),
   /** null = inherit price from wilaya rule. */
-  homePrice: real("home_price"),
+  homePrice: doublePrecision("home_price"),
   /** null = inherit price from wilaya rule. */
-  stopDeskPrice: real("stop_desk_price"),
+  stopDeskPrice: doublePrecision("stop_desk_price"),
 }, (t) => ({
   ruleCommuneUnique: uniqueIndex("shipping_rule_communes_unique").on(t.ruleId, t.communeId),
 }));
@@ -261,7 +281,8 @@ export const shippingRuleCommunes = sqliteTable("shipping_rule_communes", {
  * Per-wilaya payroll lives in driver_compensations — what the driver earns
  * per delivery in each wilaya (independent of what the customer was charged).
  */
-export const drivers = sqliteTable("drivers", {
+export const drivers = pgTable("drivers", {
+  storeId: storeIdColumn(),
   id: text("id").primaryKey(),
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
@@ -274,11 +295,11 @@ export const drivers = sqliteTable("drivers", {
   /** Cumulative deliveries completed (incremented on status → delivered). */
   totalDelivered: integer("total_delivered").notNull().default(0),
   /** Cumulative delivery fees earned (incremented on status → delivered). */
-  totalEarnings: real("total_earnings").notNull().default(0),
+  totalEarnings: doublePrecision("total_earnings").notNull().default(0),
   /** COD cash collected by driver but not yet remitted to the business. */
-  pendingCash: real("pending_cash").notNull().default(0),
+  pendingCash: doublePrecision("pending_cash").notNull().default(0),
   /** Total COD cash remitted to the business. */
-  totalPaid: real("total_paid").notNull().default(0),
+  totalPaid: doublePrecision("total_paid").notNull().default(0),
   notes: text("notes"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
@@ -294,7 +315,8 @@ export const drivers = sqliteTable("drivers", {
  * Sparse: no row = the store doesn't pay this driver for deliveries in that wilaya
  * (assignment still works with driverFee = 0; admin should fill the row).
  */
-export const driverCompensations = sqliteTable("driver_compensations", {
+export const driverCompensations = pgTable("driver_compensations", {
+  storeId: storeIdColumn(),
   id: text("id").primaryKey(),
   driverId: text("driver_id")
     .notNull()
@@ -303,7 +325,7 @@ export const driverCompensations = sqliteTable("driver_compensations", {
     .notNull()
     .references(() => wilayas.id),
   /** What the store pays this driver per delivery in this wilaya. */
-  feePerDelivery: real("fee_per_delivery").notNull().default(0),
+  feePerDelivery: doublePrecision("fee_per_delivery").notNull().default(0),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 }, (t) => ({
@@ -320,7 +342,8 @@ export const driverCompensations = sqliteTable("driver_compensations", {
  *   fee_payment     — shop pays driver his earned delivery fees
  *   net_settlement  — hybrid: driver hands (COD − fees) net; both settled together
  */
-export const driverPayments = sqliteTable("driver_payments", {
+export const driverPayments = pgTable("driver_payments", {
+  storeId: storeIdColumn(),
   id: text("id").primaryKey(),
   driverId: text("driver_id")
     .notNull()
@@ -329,7 +352,7 @@ export const driverPayments = sqliteTable("driver_payments", {
     enum: ["cod_remittance", "fee_payment", "net_settlement"],
   }).notNull(),
   /** Settled amount (COD total, fee total, or net COD−fees depending on type). */
-  amount: real("amount").notNull(),
+  amount: doublePrecision("amount").notNull(),
   /** Number of orders included in this payment batch. */
   orderCount: integer("order_count").notNull().default(0),
   notes: text("notes"),
@@ -349,14 +372,15 @@ export const driverPayments = sqliteTable("driver_payments", {
  * pays always comes from shipping_rules; what the store pays the carrier is
  * whatever the carrier invoices out-of-band.
  */
-export const deliveryCompanies = sqliteTable("delivery_companies", {
+export const deliveryCompanies = pgTable("delivery_companies", {
+  storeId: storeIdColumn(),
   id: text("id").primaryKey(),
   name: text("name").notNull(),       // "Yalidine"
   nameAr: text("name_ar").notNull(),  // "ياليدين"
   /** Short unique code used in API calls and display. e.g. "yalidine" */
-  code: text("code").notNull().unique(),
+  code: text("code").notNull(),
   website: text("website"),
-  active: integer("active", { mode: "boolean" }).notNull().default(true),
+  active: boolean("active").notNull().default(true),
 
   // ── API Integration ──────────────────────────────────────────────────────
   /** Base URL of the company's REST API. */
@@ -367,13 +391,13 @@ export const deliveryCompanies = sqliteTable("delivery_companies", {
   apiUserGuid: text("api_user_guid"),
 
   // ── Capabilities ─────────────────────────────────────────────────────────
-  supportsHomeDelivery: integer("supports_home_delivery", { mode: "boolean" })
+  supportsHomeDelivery: boolean("supports_home_delivery")
     .notNull()
     .default(true),
-  supportsStopDesk: integer("supports_stop_desk", { mode: "boolean" })
+  supportsStopDesk: boolean("supports_stop_desk")
     .notNull()
     .default(true),
-  supportsTracking: integer("supports_tracking", { mode: "boolean" })
+  supportsTracking: boolean("supports_tracking")
     .notNull()
     .default(false),
 
@@ -401,18 +425,21 @@ export const deliveryCompanies = sqliteTable("delivery_companies", {
    * If false, the team must manually validate via POST /orders/:id/validate-shipment.
    * Set false for Packers (ecotrack) — team controls when parcel enters courier flow.
    */
-  autoValidate: integer("auto_validate", { mode: "boolean" }).notNull().default(true),
+  autoValidate: boolean("auto_validate").notNull().default(true),
 
   notes: text("notes"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
-});
+}, (t) => ({
+  codePerStore: uniqueIndex("delivery_companies_store_code_unique").on(t.storeId, t.code),
+}));
 
 // ─── Orders ───────────────────────────────────────────────────────────────────
 
-export const orders = sqliteTable("orders", {
+export const orders = pgTable("orders", {
+  storeId: storeIdColumn(),
   id: text("id").primaryKey(),
-  orderNumber: text("order_number").notNull().unique(),
+  orderNumber: text("order_number").notNull(),
   customerId: text("customer_id")
     .notNull()
     .references(() => customers.id),
@@ -424,7 +451,7 @@ export const orders = sqliteTable("orders", {
   communeId: text("commune_id").references(() => communes.id),
   city: text("city"),
   address: text("address"),
-  price: real("price").notNull(),
+  price: doublePrecision("price").notNull(),
   notes: text("notes"),
   status: text("status", {
     enum: [
@@ -482,22 +509,22 @@ export const orders = sqliteTable("orders", {
    * Delivery fee charged to the customer (from the store's shipping profile).
    * Set at order creation and NEVER changed after that.
    */
-  deliveryFee: real("delivery_fee").notNull().default(0),
+  deliveryFee: doublePrecision("delivery_fee").notNull().default(0),
   /**
    * The driver's cut for this delivery (from the driver's shipping profile for this wilaya).
    * Set when a driver is assigned.
    */
-  driverFee: real("driver_fee").notNull().default(0),
+  driverFee: doublePrecision("driver_fee").notNull().default(0),
   /**
    * Cash-on-delivery amount the driver must collect from the customer.
    * Set to order.price + delivery_fee on creation. Added to driver.pendingCash when delivered.
    */
-  codAmount: real("cod_amount").notNull().default(0),
+  codAmount: doublePrecision("cod_amount").notNull().default(0),
 
   /** Parcel weight in kg — sent to carrier API when set (optional). */
-  weight: real("weight"),
+  weight: doublePrecision("weight"),
   /** Fragile parcel flag — sent to carrier API when set (optional). */
-  isFragile: integer("is_fragile", { mode: "boolean" }),
+  isFragile: boolean("is_fragile"),
 
   pickupTime: text("pickup_time"),
   deliveryTime: text("delivery_time"),
@@ -551,9 +578,12 @@ export const orders = sqliteTable("orders", {
    * against the live policy. Carriers and pricing never read it.
    */
   customFieldsJson: text("custom_fields_json"),
-});
+}, (t) => ({
+  orderNumberPerStore: uniqueIndex("orders_store_order_number_unique").on(t.storeId, t.orderNumber),
+}));
 
-export const orderAssignments = sqliteTable("order_assignments", {
+export const orderAssignments = pgTable("order_assignments", {
+  storeId: storeIdColumn(),
   id: text("id").primaryKey(),
   orderId: text("order_id")
     .notNull()
@@ -578,7 +608,8 @@ export const orderAssignments = sqliteTable("order_assignments", {
     .default("assigned"),
 });
 
-export const orderStatusHistory = sqliteTable("order_status_history", {
+export const orderStatusHistory = pgTable("order_status_history", {
+  storeId: storeIdColumn(),
   id: text("id").primaryKey(),
   orderId: text("order_id")
     .notNull()
@@ -604,10 +635,11 @@ export const orderStatusHistory = sqliteTable("order_status_history", {
 
 // ─── Product Catalog ─────────────────────────────────────────────────────────
 
-export const productCategories = sqliteTable("product_categories", {
+export const productCategories = pgTable("product_categories", {
+  storeId: storeIdColumn(),
   id: text("id").primaryKey(),
   name: text("name").notNull(),
-  slug: text("slug").notNull().unique(),
+  slug: text("slug").notNull(),
   description: text("description"),
   parentId: text("parent_id"), // self-reference at app level
   imageUrl: text("image_url"),
@@ -617,24 +649,27 @@ export const productCategories = sqliteTable("product_categories", {
   position: integer("position").notNull().default(0),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
-});
+}, (t) => ({
+  slugPerStore: uniqueIndex("product_categories_store_slug_unique").on(t.storeId, t.slug),
+}));
 
-export const products = sqliteTable("products", {
+export const products = pgTable("products", {
+  storeId: storeIdColumn(),
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   description: text("description"),
   descriptionFormat: text("description_format", { enum: ["text", "html"] })
     .notNull()
     .default("text"), // 'text' renders literally (legacy rows); 'html' is sanitised at write
-  handle: text("handle").notNull().unique(), // URL slug (was "slug")
+  handle: text("handle").notNull(), // URL slug (was "slug")
   currency: text("currency").notNull().default("DZD"),
   price: integer("price").notNull(), // base price in DZD (whole number)
   compareAtPrice: integer("compare_at_price"),
   costPrice: integer("cost_price"),
   type: text("type", { enum: ["PHYSICAL", "DIGITAL"] }).notNull().default("PHYSICAL"),
-  hasVariants: integer("has_variants", { mode: "boolean" }).notNull().default(false),
+  hasVariants: boolean("has_variants").notNull().default(false),
   variantOptions: text("variant_options"), // JSON: [{name: string, values: [{value: string, hexColor?: string}]}]
-  sku: text("sku").unique(), // only for simple products (hasVariants=false)
+  sku: text("sku"), // only for simple products (hasVariants=false)
   inventory: integer("inventory").notNull().default(0), // only for simple products
   /**
    * Master inventory toggle. When false, the product is excluded from stock
@@ -644,15 +679,15 @@ export const products = sqliteTable("products", {
    *     from any variant, and stock alerts/overview hide the whole product.
    * Variant rows do not have their own toggle; the parent flag governs them.
    */
-  trackInventory: integer("track_inventory", { mode: "boolean" }).notNull().default(true),
+  trackInventory: boolean("track_inventory").notNull().default(true),
   /** Alert when inventory drops to or below this number (0 = disabled). */
   lowStockThreshold: integer("low_stock_threshold").notNull().default(5),
   categoryId: text("category_id").references(() => productCategories.id, { onDelete: "set null" }),
   tags: text("tags"), // JSON string[]
-  visibility: integer("visibility", { mode: "boolean" }).notNull().default(true),
+  visibility: boolean("visibility").notNull().default(true),
   status: text("status", { enum: ["DRAFT", "ACTIVE", "ARCHIVED"] }).notNull().default("ACTIVE"),
-  showInStore: integer("show_in_store", { mode: "boolean" }).notNull().default(true),
-  storeFeatured: integer("store_featured", { mode: "boolean" }).notNull().default(false),
+  showInStore: boolean("show_in_store").notNull().default(true),
+  storeFeatured: boolean("store_featured").notNull().default(false),
   deletedAt: text("deleted_at"),
   publishedAt: text("published_at"),
   /**
@@ -664,30 +699,37 @@ export const products = sqliteTable("products", {
     .references(() => shippingProfiles.id, { onDelete: "set null" }),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
-});
+}, (t) => ({
+  handlePerStore: uniqueIndex("products_store_handle_unique").on(t.storeId, t.handle),
+  skuPerStore: uniqueIndex("products_store_sku_unique").on(t.storeId, t.sku),
+}));
 
-export const productVariants = sqliteTable("product_variants", {
+export const productVariants = pgTable("product_variants", {
+  storeId: storeIdColumn(),
   id: text("id").primaryKey(),
   productId: text("product_id").notNull().references(() => products.id, { onDelete: "cascade" }),
   variations: text("variations").notNull(), // JSON: {"Color": "Red", "Size": "M"}
   currency: text("currency").notNull().default("DZD"),
   price: integer("price").notNull(), // price in DZD
   compareAtPrice: integer("compare_at_price"),
-  sku: text("sku").notNull().unique(),
+  sku: text("sku").notNull(),
   barcode: text("barcode"),
   inventory: integer("inventory").notNull().default(0),
   /** Alert when variant inventory drops to or below this number (0 = disabled). */
   lowStockThreshold: integer("low_stock_threshold").notNull().default(5),
-  weightKg: real("weight_kg"),
+  weightKg: doublePrecision("weight_kg"),
   imageId: text("image_id"), // reference to productImages.id
-  isDefault: integer("is_default", { mode: "boolean" }).notNull().default(false),
-  active: integer("active", { mode: "boolean" }).notNull().default(true),
+  isDefault: boolean("is_default").notNull().default(false),
+  active: boolean("active").notNull().default(true),
   position: integer("position").notNull().default(1),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
-});
+}, (t) => ({
+  skuPerStore: uniqueIndex("product_variants_store_sku_unique").on(t.storeId, t.sku),
+}));
 
-export const productImages = sqliteTable("product_images", {
+export const productImages = pgTable("product_images", {
+  storeId: storeIdColumn(),
   id: text("id").primaryKey(),
   productId: text("product_id").notNull().references(() => products.id, { onDelete: "cascade" }),
   src: text("src").notNull(), // original URL
@@ -707,7 +749,8 @@ export const productImages = sqliteTable("product_images", {
 /** Status lifecycle value for orders — derived from the column enum. */
 export type OrderStatus = (typeof orders.$inferSelect)["status"];
 
-export const orderProducts = sqliteTable("order_products", {
+export const orderProducts = pgTable("order_products", {
+  storeId: storeIdColumn(),
   id: text("id").primaryKey(),
   orderId: text("order_id")
     .notNull()
@@ -720,8 +763,8 @@ export const orderProducts = sqliteTable("order_products", {
   variantLabel: text("variant_label"), // denormalized: "أحمر / XL"
   sku: text("sku"), // denormalized from products.sku / product_variants.sku at creation time
   quantity: integer("quantity").notNull(),
-  pricePerUnit: real("price_per_unit").notNull(),
-  lineTotal: real("line_total").notNull(),
+  pricePerUnit: doublePrecision("price_per_unit").notNull(),
+  lineTotal: doublePrecision("line_total").notNull(),
   /**
    * Per-line fulfilment outcome — supports Algerian box-opening returns.
    *   fulfilled           — customer kept all units (returnedQuantity = 0)
@@ -753,7 +796,8 @@ export const orderProducts = sqliteTable("order_products", {
  *   Yalidine         → center_id as string (e.g. "42")
  *   ZR Express       → territory UUID
  */
-export const companyStopDesks = sqliteTable("company_stop_desks", {
+export const companyStopDesks = pgTable("company_stop_desks", {
+  storeId: storeIdColumn(),
   id:        text("id").primaryKey(),
   companyId: text("company_id")
                .notNull()
@@ -765,7 +809,7 @@ export const companyStopDesks = sqliteTable("company_stop_desks", {
   address:   text("address"),
   phones:    text("phones"),   // JSON: string[]
   /** Admin-controlled: false = hidden from dispatch dialog. Never reset by sync. */
-  active:    integer("active", { mode: "boolean" }).notNull().default(true),
+  active:    boolean("active").notNull().default(true),
   syncedAt:  text("synced_at").notNull(),
 }, (t) => ({
   companyCodeUnique: uniqueIndex("company_stop_desks_company_code_unique")
@@ -781,7 +825,8 @@ export const companyStopDesks = sqliteTable("company_stop_desks", {
  * carrier-side handle (tracking number, label, raw response) and the
  * validated flag for the provider's two-step create→validate flow.
  */
-export const companyShipments = sqliteTable("company_shipments", {
+export const companyShipments = pgTable("company_shipments", {
+  storeId: storeIdColumn(),
   id: text("id").primaryKey(),
   orderId: text("order_id")
     .notNull()
@@ -792,7 +837,7 @@ export const companyShipments = sqliteTable("company_shipments", {
   /** Tracking number returned by the company API (e.g. "ECS12345678"). */
   trackingNumber: text("tracking_number").notNull(),
   /** Whether the shipment has been validated via the company's validate endpoint. */
-  validated: integer("validated", { mode: "boolean" }).notNull().default(false),
+  validated: boolean("validated").notNull().default(false),
   /** URL to the printable shipping label PDF, if available. */
   labelUrl: text("label_url"),
   /** Raw JSON response from the create-shipment API call. */
@@ -804,7 +849,8 @@ export const companyShipments = sqliteTable("company_shipments", {
 /**
  * Audit log for every outbound API call to delivery company APIs.
  */
-export const companyApiLogs = sqliteTable("company_api_logs", {
+export const companyApiLogs = pgTable("company_api_logs", {
+  storeId: storeIdColumn(),
   id: text("id").primaryKey(),
   companyId: text("company_id")
     .notNull()
@@ -820,7 +866,7 @@ export const companyApiLogs = sqliteTable("company_api_logs", {
   httpStatus: integer("http_status"),
   /** Serialised response body (truncated if large). */
   responseBody: text("response_body"), // JSON
-  success: integer("success", { mode: "boolean" }).notNull().default(false),
+  success: boolean("success").notNull().default(false),
   errorMessage: text("error_message"),
   /** Round-trip time in milliseconds. */
   durationMs: integer("duration_ms"),
@@ -833,7 +879,7 @@ export const companyApiLogs = sqliteTable("company_api_logs", {
  * One store per deployment. Holds branding, theme, and SEO settings
  * editable from the dashboard.
  */
-export const stores = sqliteTable("stores", {
+export const stores = pgTable("stores", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   domain: text("domain"),
@@ -883,13 +929,13 @@ export const stores = sqliteTable("stores", {
   /** Top announcement bar text (null = hidden) */
   announcementBar: text("announcement_bar"),
   /** When false, reviews are hidden on the storefront and submission is disabled. */
-  reviewsEnabled: integer("reviews_enabled", { mode: "boolean" }).notNull().default(true),
+  reviewsEnabled: boolean("reviews_enabled").notNull().default(true),
   /**
    * Shopping cart opt-in. False (the default) keeps the storefront exactly as
    * it is: the direct one-click order form, no cart. True adds "Add to cart"
    * alongside it — the direct form is never replaced.
    */
-  cartEnabled: integer("cart_enabled", { mode: "boolean" }).notNull().default(false),
+  cartEnabled: boolean("cart_enabled").notNull().default(false),
 
   // ── Delivery pricing ──────────────────────────────────────────────────────
   /**
@@ -956,7 +1002,23 @@ export const stores = sqliteTable("stores", {
  * API keys issued to Astro storefronts.
  * The raw key is never stored — only a SHA-256 hex digest.
  */
-export const storeApiKeys = sqliteTable("store_api_keys", {
+/**
+ * Platform routing: which channel (store) a hostname serves — a free
+ * subdomain or a merchant's own domain. Read before any store is known, so it
+ * sits outside Row-Level Security; request code may read it, never write it.
+ */
+export const storeDomains = pgTable("store_domains", {
+  hostname: text("hostname").primaryKey(),
+  storeId: text("store_id")
+    .notNull()
+    .references(() => stores.id, { onDelete: "cascade" }),
+  kind: text("kind", { enum: ["subdomain", "custom"] }).notNull(),
+  createdAt: text("created_at").notNull(),
+}, (t) => ({
+  storeIdx: index("store_domains_store_idx").on(t.storeId),
+}));
+
+export const storeApiKeys = pgTable("store_api_keys", {
   id: text("id").primaryKey(),
   storeId: text("store_id")
     .notNull()
@@ -975,7 +1037,7 @@ export const storeApiKeys = sqliteTable("store_api_keys", {
  * Requires a valid order_id from the same store — identity comes from the order.
  * Moderated by the merchant: pending → approved | rejected.
  */
-export const reviews = sqliteTable("reviews", {
+export const reviews = pgTable("reviews", {
   id: text("id").primaryKey(),
   storeId: text("store_id")
     .notNull()
@@ -1010,7 +1072,8 @@ export const reviews = sqliteTable("reviews", {
  * Audit trail of all write actions performed by staff and admin users.
  * Only admins can query this table.
  */
-export const activityLogs = sqliteTable("activity_logs", {
+export const activityLogs = pgTable("activity_logs", {
+  storeId: storeIdColumn(),
   id: text("id").primaryKey(),
   /** ID of the user who performed the action. */
   actorId: text("actor_id").notNull(),
@@ -1044,7 +1107,8 @@ export const activityLogs = sqliteTable("activity_logs", {
  *   ORDER_RETURNED    — stock restored when a delivered order is returned (delta > 0)
  *   OFFLINE_SALE      — direct sale not via the online order system (delta < 0)
  */
-export const stockMovements = sqliteTable("stock_movements", {
+export const stockMovements = pgTable("stock_movements", {
+  storeId: storeIdColumn(),
   id: text("id").primaryKey(),
   productId: text("product_id")
     .notNull()
@@ -1092,7 +1156,8 @@ export const stockMovements = sqliteTable("stock_movements", {
  *   unmapped — state/status name not found in any mapping; admin must add it
  *   error    — exception during processing; still returned 200 to provider
  */
-export const webhookEvents = sqliteTable("webhook_events", {
+export const webhookEvents = pgTable("webhook_events", {
+  storeId: storeIdColumn(),
   id: text("id").primaryKey(),
   /** 'zr_express' | 'yalidine' */
   provider: text("provider").notNull(),
@@ -1141,7 +1206,8 @@ export const webhookEvents = sqliteTable("webhook_events", {
  * triggerQuantity wins (store.ts selectApplicableOffer orders by triggerQuantity DESC).
  * createdAt ASC ordering applies only to the storefront display list.
  */
-export const offers = sqliteTable("offers", {
+export const offers = pgTable("offers", {
+  storeId: storeIdColumn(),
   id: text("id").primaryKey(),
 
   /** Human-readable name shown in dashboard, e.g. "اشترِ 2 واحصل على 1 مجاناً" */
@@ -1208,10 +1274,11 @@ export const offers = sqliteTable("offers", {
  * and compare which one converts. All marketing copy lives inside the images;
  * the engine charges the catalog price (no price override — see PR #90).
  */
-export const landingPages = sqliteTable("landing_pages", {
+export const landingPages = pgTable("landing_pages", {
+  storeId: storeIdColumn(),
   id: text("id").primaryKey(),
   /** Public URL identifier: [a-z0-9-]{3,60}. Auto-generated `lp-<8char>` default. */
-  slug: text("slug").notNull().unique(),
+  slug: text("slug").notNull(),
   /** Internal label, e.g. "Zinc v3 — carousel ad". Never rendered publicly. */
   name: text("name").notNull(),
   /** The single product this page sells. */
@@ -1239,7 +1306,9 @@ export const landingPages = sqliteTable("landing_pages", {
   publishedAt: text("published_at"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
-});
+}, (t) => ({
+  slugPerStore: uniqueIndex("landing_pages_store_slug_unique").on(t.storeId, t.slug),
+}));
 
 /**
  * One row of the landing page image stack. Mirrors product_images:
@@ -1249,7 +1318,8 @@ export const landingPages = sqliteTable("landing_pages", {
  * reserve layout space before the bytes arrive — no form-jumping CLS.
  * Nullable: legacy rows and failed client measurements render without dims.
  */
-export const landingPageImages = sqliteTable("landing_page_images", {
+export const landingPageImages = pgTable("landing_page_images", {
+  storeId: storeIdColumn(),
   id: text("id").primaryKey(),
   landingPageId: text("landing_page_id")
     .notNull()
@@ -1270,7 +1340,7 @@ export const landingPageImages = sqliteTable("landing_page_images", {
  * Single-row table (id = 'default') — written by the partner via push-brand,
  * read by the dashboard at request time through its D1 binding.
  */
-export const dashboardBrand = sqliteTable("dashboard_brand", {
+export const dashboardBrand = pgTable("dashboard_brand", {
   id:           text("id").primaryKey().default("default"),
   brandName:    text("brand_name").notNull().default("Dashboard"),
   logoUrl:      text("logo_url"),
@@ -1287,7 +1357,7 @@ export const dashboardBrand = sqliteTable("dashboard_brand", {
  * One row per store. No row = tracking disabled (safe default).
  * Kept separate from `stores` — analytics config is a distinct concern.
  */
-export const storePixelConfig = sqliteTable("store_pixel_config", {
+export const storePixelConfig = pgTable("store_pixel_config", {
   id: text("id").primaryKey(),
   storeId: text("store_id")
     .notNull()
@@ -1302,8 +1372,8 @@ export const storePixelConfig = sqliteTable("store_pixel_config", {
   /** Which CAPI event the merchant optimizes for — chosen explicitly in the dashboard, never defaulted by the UI. */
   conversionEvent: text("conversion_event", { enum: ["Lead", "Purchase", "Purchase_Confirmed", "Purchase_Delivered"] }).notNull().default("Purchase"),
   /** When true, CAPI events carry test_event_code to Meta's test stream instead of production measurement. */
-  testMode: integer("test_mode", { mode: "boolean" }).notNull().default(false),
-  enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+  testMode: boolean("test_mode").notNull().default(false),
+  enabled: boolean("enabled").notNull().default(true),
   /**
    * The master switch for per-landing-page tracking.
    *
@@ -1313,7 +1383,7 @@ export const storePixelConfig = sqliteTable("store_pixel_config", {
    * `resolveTrackingConfig` and nowhere else, so the browser and the
    * Conversions API can never disagree about whether the feature is on.
    */
-  perPageTrackingEnabled: integer("per_page_tracking_enabled", { mode: "boolean" })
+  perPageTrackingEnabled: boolean("per_page_tracking_enabled")
     .notNull()
     .default(false),
   createdAt: text("created_at").notNull(),
@@ -1334,7 +1404,8 @@ export const storePixelConfig = sqliteTable("store_pixel_config", {
  * would be one careless spread away from shipping a credential to every
  * visitor's browser.
  */
-export const landingPagePixelConfig = sqliteTable("landing_page_pixel_config", {
+export const landingPagePixelConfig = pgTable("landing_page_pixel_config", {
+  storeId: storeIdColumn(),
   id: text("id").primaryKey(),
   landingPageId: text("landing_page_id")
     .notNull()
@@ -1348,9 +1419,9 @@ export const landingPagePixelConfig = sqliteTable("landing_page_pixel_config", {
   testEventCode: text("test_event_code"),
   /** This page's own conversion choice: a product with a 40% confirmation rate may deserve a different optimisation event from one at 80%. */
   conversionEvent: text("conversion_event", { enum: ["Lead", "Purchase", "Purchase_Confirmed", "Purchase_Delivered"] }).notNull().default("Purchase"),
-  testMode: integer("test_mode", { mode: "boolean" }).notNull().default(false),
+  testMode: boolean("test_mode").notNull().default(false),
   /** Switched off = fall back to the store pixel, without losing what was configured. */
-  enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+  enabled: boolean("enabled").notNull().default(true),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 });
@@ -1362,7 +1433,7 @@ export const landingPagePixelConfig = sqliteTable("landing_page_pixel_config", {
  * and the API key is merchant integration config (like carrier tokens), never
  * a worker secret.
  */
-export const storeOtpConfig = sqliteTable("store_otp_config", {
+export const storeOtpConfig = pgTable("store_otp_config", {
   id: text("id").primaryKey(),
   storeId: text("store_id")
     .notNull()
@@ -1371,7 +1442,7 @@ export const storeOtpConfig = sqliteTable("store_otp_config", {
   apiKey: text("api_key").notNull(),
   /** WhatsApp message language for OTP sends: en | fr | ar. */
   language: text("language", { enum: ["en", "fr", "ar"] }).notNull().default("ar"),
-  enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+  enabled: boolean("enabled").notNull().default(true),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 });
@@ -1383,7 +1454,7 @@ export const storeOtpConfig = sqliteTable("store_otp_config", {
  * the API key is merchant integration config (like carrier tokens and the
  * dzverify key), never a worker secret.
  */
-export const storeEmailConfig = sqliteTable("store_email_config", {
+export const storeEmailConfig = pgTable("store_email_config", {
   id: text("id").primaryKey(),
   storeId: text("store_id")
     .notNull()
@@ -1394,7 +1465,7 @@ export const storeEmailConfig = sqliteTable("store_email_config", {
   fromEmail: text("from_email").notNull(),
   /** Optional sender display name (e.g. the store name). */
   fromName: text("from_name"),
-  enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+  enabled: boolean("enabled").notNull().default(true),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 });
@@ -1407,7 +1478,7 @@ export const storeEmailConfig = sqliteTable("store_email_config", {
  * keys), never a worker secret. The site key is public by design (it is
  * rendered into storefront HTML); the secret key never leaves the server.
  */
-export const storeTurnstileConfig = sqliteTable("store_turnstile_config", {
+export const storeTurnstileConfig = pgTable("store_turnstile_config", {
   id: text("id").primaryKey(),
   storeId: text("store_id")
     .notNull()
@@ -1417,7 +1488,7 @@ export const storeTurnstileConfig = sqliteTable("store_turnstile_config", {
   siteKey: text("site_key").notNull(),
   /** Server-side siteverify secret — never returned to any client. */
   secretKey: text("secret_key").notNull(),
-  enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+  enabled: boolean("enabled").notNull().default(true),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 });
@@ -1440,7 +1511,7 @@ export const storeTurnstileConfig = sqliteTable("store_turnstile_config", {
  * The page row is identity and publication state; the words live in
  * `storePageTranslations`, one row per locale.
  */
-export const storePages = sqliteTable("store_pages", {
+export const storePages = pgTable("store_pages", {
   id: text("id").primaryKey(),
   storeId: text("store_id")
     .notNull()
@@ -1459,7 +1530,7 @@ export const storePages = sqliteTable("store_pages", {
   status: text("status", { enum: ["published", "draft"] })
     .notNull()
     .default("published"),
-  showInFooter: integer("show_in_footer", { mode: "boolean" }).notNull().default(true),
+  showInFooter: boolean("show_in_footer").notNull().default(true),
   position: integer("position").notNull().default(0),
   /** Which template revision seeded this page; null for merchant-created pages. */
   templateVersion: integer("template_version"),
@@ -1476,7 +1547,8 @@ export const storePages = sqliteTable("store_pages", {
  * A store serves exactly one locale — `stores.lang` — but all three are seeded
  * so switching the store language never reveals a blank policy page.
  */
-export const storePageTranslations = sqliteTable("store_page_translations", {
+export const storePageTranslations = pgTable("store_page_translations", {
+  storeId: storeIdColumn(),
   pageId: text("page_id")
     .notNull()
     .references(() => storePages.id, { onDelete: "cascade" }),
@@ -1516,7 +1588,7 @@ export const storePageTranslations = sqliteTable("store_page_translations", {
  * storefront as well as the policy pages themselves. Legal identity (RC, NIF)
  * appears only inside the documents.
  */
-export const storeLegalProfile = sqliteTable("store_legal_profile", {
+export const storeLegalProfile = pgTable("store_legal_profile", {
   storeId: text("store_id")
     .primaryKey()
     .references(() => stores.id, { onDelete: "cascade" }),
@@ -1535,9 +1607,10 @@ export const storeLegalProfile = sqliteTable("store_legal_profile", {
   updatedAt: text("updated_at").notNull(),
 });
 
-export const capiEventLog = sqliteTable(
+export const capiEventLog = pgTable(
   "capi_event_log",
   {
+  storeId: storeIdColumn(),
     id: text("id").primaryKey(),
     orderId: text("order_id")
       .notNull()
@@ -1565,20 +1638,20 @@ export const capiEventLog = sqliteTable(
 // Declared so the dashboard's auth code can reference them via Drizzle. The D1
 // schema itself is created by cod-server migrations (0000_complete.sql).
 
-export const sessions = sqliteTable("sessions", {
+export const sessions = pgTable("sessions", {
   id:        text("id").primaryKey(),
   userId:    text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   token:     text("token").notNull().unique(),
-  expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+  expiresAt: timestamp("expires_at", { mode: "date", precision: 3 }).notNull(),
   ipAddress: text("ip_address"),
   userAgent: text("user_agent"),
-  createdAt: integer("created_at", { mode: "timestamp_ms" }).default(authNow).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).default(authNow).notNull(),
+  createdAt: timestamp("created_at", { mode: "date", precision: 3 }).default(authNow).notNull(),
+  updatedAt: timestamp("updated_at", { mode: "date", precision: 3 }).default(authNow).notNull(),
 }, (t) => ({
   userIdIdx: index("sessions_user_id_idx").on(t.userId),
 }));
 
-export const accounts = sqliteTable("accounts", {
+export const accounts = pgTable("accounts", {
   id:                    text("id").primaryKey(),
   userId:                text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   accountId:             text("account_id").notNull(),
@@ -1587,23 +1660,23 @@ export const accounts = sqliteTable("accounts", {
   accessToken:           text("access_token"),
   refreshToken:          text("refresh_token"),
   idToken:               text("id_token"),
-  accessTokenExpiresAt:  integer("access_token_expires_at",  { mode: "timestamp_ms" }),
-  refreshTokenExpiresAt: integer("refresh_token_expires_at", { mode: "timestamp_ms" }),
+  accessTokenExpiresAt:  timestamp("access_token_expires_at", { mode: "date", precision: 3 }),
+  refreshTokenExpiresAt: timestamp("refresh_token_expires_at", { mode: "date", precision: 3 }),
   scope:                 text("scope"),
   password:              text("password"),
-  createdAt:             integer("created_at", { mode: "timestamp_ms" }).default(authNow).notNull(),
-  updatedAt:             integer("updated_at", { mode: "timestamp_ms" }).default(authNow).notNull(),
+  createdAt:             timestamp("created_at", { mode: "date", precision: 3 }).default(authNow).notNull(),
+  updatedAt:             timestamp("updated_at", { mode: "date", precision: 3 }).default(authNow).notNull(),
 }, (t) => ({
   userIdIdx: index("accounts_user_id_idx").on(t.userId),
 }));
 
-export const verifications = sqliteTable("verifications", {
+export const verifications = pgTable("verifications", {
   id:         text("id").primaryKey(),
   identifier: text("identifier").notNull(),
   value:      text("value").notNull(),
-  expiresAt:  integer("expires_at", { mode: "timestamp_ms" }).notNull(),
-  createdAt:  integer("created_at", { mode: "timestamp_ms" }).default(authNow).notNull(),
-  updatedAt:  integer("updated_at", { mode: "timestamp_ms" }).default(authNow).notNull(),
+  expiresAt:  timestamp("expires_at", { mode: "date", precision: 3 }).notNull(),
+  createdAt:  timestamp("created_at", { mode: "date", precision: 3 }).default(authNow).notNull(),
+  updatedAt:  timestamp("updated_at", { mode: "date", precision: 3 }).default(authNow).notNull(),
 }, (t) => ({
   identifierIdx: index("verifications_identifier_idx").on(t.identifier),
 }));
@@ -1612,12 +1685,12 @@ export const verifications = sqliteTable("verifications", {
 // RSA keypair storage for signing OAuth access tokens. The public half is
 // exposed via /api/auth/jwks so cod-server can verify tokens offline.
 // Added by the MCP rollout (MCP-5).
-export const jwkss = sqliteTable("jwkss", {
+export const jwkss = pgTable("jwkss", {
   id:         text("id").primaryKey(),
   publicKey:  text("public_key").notNull(),
   privateKey: text("private_key").notNull(),
-  createdAt:  integer("created_at", { mode: "timestamp_ms" }).default(authNow).notNull(),
-  expiresAt:  integer("expires_at", { mode: "timestamp_ms" }),
+  createdAt:  timestamp("created_at", { mode: "date", precision: 3 }).default(authNow).notNull(),
+  expiresAt:  timestamp("expires_at", { mode: "date", precision: 3 }),
   alg:        text("alg"),
   crv:        text("crv"),
 });
@@ -1636,13 +1709,13 @@ export const jwkss = sqliteTable("jwkss", {
 // `plural` mode is ON globally so Better Auth maps `oauthClient` → `oauthClients`
 // in queries — table names below must match.
 
-export const oauthClients = sqliteTable("oauthClients", {
+export const oauthClients = pgTable("oauthClients", {
   id:                      text("id").primaryKey(),
   clientId:                text("client_id").notNull().unique(),
   clientSecret:            text("client_secret"),
-  disabled:                integer("disabled", { mode: "boolean" }).default(false),
-  skipConsent:             integer("skip_consent", { mode: "boolean" }),
-  enableEndSession:        integer("enable_end_session", { mode: "boolean" }),
+  disabled:                boolean("disabled").default(false),
+  skipConsent:             boolean("skip_consent"),
+  enableEndSession:        boolean("enable_end_session"),
   subjectType:             text("subject_type"),
   scopes:                  text("scopes"),                   // JSON string[]
   userId:                  text("user_id").references(() => users.id, { onDelete: "cascade" }),
@@ -1661,29 +1734,29 @@ export const oauthClients = sqliteTable("oauthClients", {
   grantTypes:              text("grant_types"),              // JSON string[]
   responseTypes:           text("response_types"),           // JSON string[]
   type:                    text("type"),
-  public:                  integer("public", { mode: "boolean" }),
-  clientIdIssuedAt:        integer("client_id_issued_at",     { mode: "timestamp_ms" }),
-  clientSecretExpiresAt:   integer("client_secret_expires_at",{ mode: "timestamp_ms" }),
-  requirePkce:             integer("require_pkce", { mode: "boolean" }),
+  public:                  boolean("public"),
+  clientIdIssuedAt:        timestamp("client_id_issued_at", { mode: "date", precision: 3 }),
+  clientSecretExpiresAt:   timestamp("client_secret_expires_at", { mode: "date", precision: 3 }),
+  requirePkce:             boolean("require_pkce"),
   referenceId:             text("reference_id"),
   metadata:                text("metadata"),                 // JSON
-  createdAt:               integer("created_at", { mode: "timestamp_ms" }).default(authNow).notNull(),
-  updatedAt:               integer("updated_at", { mode: "timestamp_ms" }).default(authNow).notNull(),
+  createdAt:               timestamp("created_at", { mode: "date", precision: 3 }).default(authNow).notNull(),
+  updatedAt:               timestamp("updated_at", { mode: "date", precision: 3 }).default(authNow).notNull(),
 }, (t) => ({
   userIdIdx: index("oauthClients_user_id_idx").on(t.userId),
 }));
 
-export const oauthRefreshTokens = sqliteTable("oauthRefreshTokens", {
+export const oauthRefreshTokens = pgTable("oauthRefreshTokens", {
   id:          text("id").primaryKey(),
   token:       text("token").notNull(),
   clientId:    text("client_id").notNull().references(() => oauthClients.clientId),
   sessionId:   text("session_id").references(() => sessions.id, { onDelete: "set null" }),
   userId:      text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   referenceId: text("reference_id"),
-  expiresAt:   integer("expires_at", { mode: "timestamp_ms" }).notNull(),
-  createdAt:   integer("created_at", { mode: "timestamp_ms" }).default(authNow).notNull(),
-  revoked:     integer("revoked",    { mode: "timestamp_ms" }),
-  authTime:    integer("auth_time",  { mode: "timestamp_ms" }),
+  expiresAt:   timestamp("expires_at", { mode: "date", precision: 3 }).notNull(),
+  createdAt:   timestamp("created_at", { mode: "date", precision: 3 }).default(authNow).notNull(),
+  revoked:     timestamp("revoked", { mode: "date", precision: 3 }),
+  authTime:    timestamp("auth_time", { mode: "date", precision: 3 }),
   scopes:      text("scopes").notNull(),                     // JSON string[]
 }, (t) => ({
   tokenIdx:    index("oauthRefreshTokens_token_idx").on(t.token),
@@ -1691,7 +1764,7 @@ export const oauthRefreshTokens = sqliteTable("oauthRefreshTokens", {
   clientIdIdx: index("oauthRefreshTokens_client_id_idx").on(t.clientId),
 }));
 
-export const oauthAccessTokens = sqliteTable("oauthAccessTokens", {
+export const oauthAccessTokens = pgTable("oauthAccessTokens", {
   id:          text("id").primaryKey(),
   token:       text("token").unique(),
   clientId:    text("client_id").notNull().references(() => oauthClients.clientId),
@@ -1699,22 +1772,22 @@ export const oauthAccessTokens = sqliteTable("oauthAccessTokens", {
   userId:      text("user_id").references(() => users.id, { onDelete: "cascade" }),
   referenceId: text("reference_id"),
   refreshId:   text("refresh_id").references(() => oauthRefreshTokens.id, { onDelete: "set null" }),
-  expiresAt:   integer("expires_at", { mode: "timestamp_ms" }).notNull(),
-  createdAt:   integer("created_at", { mode: "timestamp_ms" }).default(authNow).notNull(),
+  expiresAt:   timestamp("expires_at", { mode: "date", precision: 3 }).notNull(),
+  createdAt:   timestamp("created_at", { mode: "date", precision: 3 }).default(authNow).notNull(),
   scopes:      text("scopes").notNull(),                     // JSON string[]
 }, (t) => ({
   userIdIdx:   index("oauthAccessTokens_user_id_idx").on(t.userId),
   clientIdIdx: index("oauthAccessTokens_client_id_idx").on(t.clientId),
 }));
 
-export const oauthConsents = sqliteTable("oauthConsents", {
+export const oauthConsents = pgTable("oauthConsents", {
   id:          text("id").primaryKey(),
   clientId:    text("client_id").notNull().references(() => oauthClients.clientId),
   userId:      text("user_id").references(() => users.id, { onDelete: "cascade" }),
   referenceId: text("reference_id"),
   scopes:      text("scopes").notNull(),                     // JSON string[]
-  createdAt:   integer("created_at", { mode: "timestamp_ms" }).default(authNow).notNull(),
-  updatedAt:   integer("updated_at", { mode: "timestamp_ms" }).default(authNow).notNull(),
+  createdAt:   timestamp("created_at", { mode: "date", precision: 3 }).default(authNow).notNull(),
+  updatedAt:   timestamp("updated_at", { mode: "date", precision: 3 }).default(authNow).notNull(),
 }, (t) => ({
   userClientIdx: index("oauthConsents_user_client_idx").on(t.userId, t.clientId),
 }));
@@ -1726,7 +1799,8 @@ export const oauthConsents = sqliteTable("oauthConsents", {
 //   abandoned → 30+ min old with no order (Cron Trigger flips this)
 //   converted → visitor placed an order (markConverted called synchronously)
 //   contacted → merchant manually marked outreach done
-export const abandonedOrders = sqliteTable("abandoned_orders", {
+export const abandonedOrders = pgTable("abandoned_orders", {
+  storeId: storeIdColumn(),
   id:                    text("id").primaryKey(),
   sessionId:             text("session_id").notNull().unique(),
 
@@ -1748,7 +1822,7 @@ export const abandonedOrders = sqliteTable("abandoned_orders", {
   variantId:             text("variant_id"),
   variantLabel:          text("variant_label"),
   /** Cart value at abandonment: the basket subtotal, or one unit's price. */
-  price:                 real("price"),
+  price:                 doublePrecision("price"),
 
   /** The whole basket. NULL for a single-product checkout. See migration 0028. */
   itemsJson:             text("items_json"),

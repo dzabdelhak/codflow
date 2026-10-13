@@ -84,8 +84,8 @@ export async function getAllDrivers(db: AppDb, filters?: DriverFilters) {
   const offset = filters?.offset ?? 0;
 
   const driverRows = await (conditions.length > 0
-    ? db.select().from(drivers).where(and(...conditions)).limit(limit).offset(offset).all()
-    : db.select().from(drivers).limit(limit).offset(offset).all());
+    ? db.select().from(drivers).where(and(...conditions)).limit(limit).offset(offset)
+    : db.select().from(drivers).limit(limit).offset(offset));
 
   if (driverRows.length === 0) return [];
 
@@ -93,8 +93,7 @@ export async function getAllDrivers(db: AppDb, filters?: DriverFilters) {
     .select({ driverId: driverCompensations.driverId, c: count() })
     .from(driverCompensations)
     .where(inArray(driverCompensations.driverId, driverRows.map((d) => d.id)))
-    .groupBy(driverCompensations.driverId)
-    .all();
+    .groupBy(driverCompensations.driverId);
 
   const compCountMap = new Map(compRows.map((r) => [r.driverId, r.c]));
 
@@ -116,7 +115,7 @@ export async function getDriverCashReconciliation(db: AppDb, driverId: string) {
       .select({ pendingCash: drivers.pendingCash })
       .from(drivers)
       .where(eq(drivers.id, driverId))
-      .get(),
+      .then((rows) => rows[0]),
     db
       .select({
         total: sql<number>`coalesce(sum(${orders.codAmount}), 0)`,
@@ -130,7 +129,7 @@ export async function getDriverCashReconciliation(db: AppDb, driverId: string) {
           sql`${orders.codPaymentId} IS NULL`,
         ),
       )
-      .get(),
+      .then((rows) => rows[0]),
   ]);
 
   const pendingCash = Number(driverRow?.pendingCash ?? 0);
@@ -150,7 +149,7 @@ export async function getDriverById(db: AppDb, driverId: string) {
     .select()
     .from(drivers)
     .where(eq(drivers.id, driverId))
-    .get();
+    .then((rows) => rows[0]);
 
   if (!driver) return null;
 
@@ -161,7 +160,7 @@ export async function getDriverById(db: AppDb, driverId: string) {
     })
     .from(driverCompensations)
     .where(eq(driverCompensations.driverId, driverId))
-    .get();
+    .then((rows) => rows[0]);
 
   const [recentOrders, cashReconciliation] = await Promise.all([
     db
@@ -169,8 +168,7 @@ export async function getDriverById(db: AppDb, driverId: string) {
       .from(orders)
       .where(eq(orders.driverId, driverId))
       .orderBy(desc(orders.updatedAt))
-      .limit(10)
-      .all(),
+      .limit(10),
     getDriverCashReconciliation(db, driverId),
   ]);
 
@@ -188,7 +186,7 @@ export async function createDriver(db: AppDb, data: CreateDriverData) {
     .select({ id: drivers.id, phone: drivers.phone })
     .from(drivers)
     .where(eq(drivers.phone, data.phone))
-    .get();
+    .then((rows) => rows[0]);
 
   if (existingDriver) {
     throw new Error(`Driver with phone "${data.phone}" already exists`);
@@ -227,7 +225,7 @@ export async function updateDriver(db: AppDb, driverId: string, data: UpdateDriv
       .select({ id: drivers.id, phone: drivers.phone })
       .from(drivers)
       .where(eq(drivers.phone, data.phone))
-      .get();
+      .then((rows) => rows[0]);
 
     if (duplicateDriver) {
       throw new Error(`Driver with phone "${data.phone}" already exists`);
@@ -281,14 +279,12 @@ export async function getCompensationsForDriver(
   const allWilayas = await db
     .select({ id: wilayas.id, name: wilayas.name, nameAr: wilayas.nameAr })
     .from(wilayas)
-    .orderBy(wilayas.id)
-    .all();
+    .orderBy(wilayas.id);
 
   const rows = await db
     .select()
     .from(driverCompensations)
-    .where(eq(driverCompensations.driverId, driverId))
-    .all();
+    .where(eq(driverCompensations.driverId, driverId));
 
   const feeMap = new Map(rows.map((r) => [r.wilayaId, r.feePerDelivery]));
 
@@ -317,7 +313,7 @@ export async function setCompensation(
         eq(driverCompensations.wilayaId, wilayaId),
       ),
     )
-    .get();
+    .then((rows) => rows[0]);
 
   if (existing) {
     await db
@@ -344,7 +340,7 @@ export async function setCompensation(
         eq(driverCompensations.wilayaId, wilayaId),
       ),
     )
-    .get();
+    .then((rows) => rows[0]);
 }
 
 export async function deleteCompensation(
@@ -361,7 +357,7 @@ export async function deleteCompensation(
         eq(driverCompensations.wilayaId, wilayaId),
       ),
     )
-    .get();
+    .then((rows) => rows[0]);
 
   if (!existing) return false;
 

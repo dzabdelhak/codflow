@@ -32,7 +32,7 @@ export async function getOtpConfig(db: AppDb, storeId: string): Promise<OtpConfi
     })
     .from(storeOtpConfig)
     .where(eq(storeOtpConfig.storeId, storeId))
-    .get();
+    .then((rows) => rows[0]);
   return row;
 }
 
@@ -45,7 +45,7 @@ export async function getOtpConfigRaw(
     .select()
     .from(storeOtpConfig)
     .where(eq(storeOtpConfig.storeId, storeId))
-    .get();
+    .then((rows) => rows[0]);
 }
 
 export interface UpsertOtpConfigData {
@@ -67,7 +67,7 @@ export async function upsertOtpConfig(
     .select({ id: storeOtpConfig.id })
     .from(storeOtpConfig)
     .where(eq(storeOtpConfig.storeId, storeId))
-    .get();
+    .then((rows) => rows[0]);
 
   if (existing) {
     const row = await db
@@ -81,7 +81,7 @@ export async function upsertOtpConfig(
         createdAt: storeOtpConfig.createdAt,
         updatedAt: storeOtpConfig.updatedAt,
       })
-      .get();
+      .then((rows) => rows[0]);
     return row;
   }
 

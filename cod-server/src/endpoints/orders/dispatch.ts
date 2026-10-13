@@ -51,8 +51,7 @@ async function resolveParcelWeight(
   const rows = await db
     .select({ id: productVariants.id, weightKg: productVariants.weightKg })
     .from(productVariants)
-    .where(inArray(productVariants.id, variantIds))
-    .all();
+    .where(inArray(productVariants.id, variantIds));
 
   return sumParcelWeight(lines, new Map(rows.map((r) => [r.id, r.weightKg])));
 }
@@ -64,7 +63,7 @@ async function resolveParcelWeight(
  * Requires DELIVERY_DISPATCH scope.
  */
 export async function dispatchToCompany(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const orderId = c.req.param("id")!;
 
   // Load order
@@ -130,8 +129,8 @@ export async function dispatchToCompany(c: Context<AppContext>) {
 
   // Resolve French names from reference tables — used by both NOEST (commune text) and ZR Express (territory search keyword).
   const [wilayaRow, communeRow] = await Promise.all([
-    db.select({ name: wilayas.name }).from(wilayas).where(eq(wilayas.id, order.wilayaId)).get(),
-    db.select({ name: communes.name }).from(communes).where(eq(communes.id, order.communeId)).get(),
+    db.select({ name: wilayas.name }).from(wilayas).where(eq(wilayas.id, order.wilayaId)).then((rows) => rows[0]),
+    db.select({ name: communes.name }).from(communes).where(eq(communes.id, order.communeId)).then((rows) => rows[0]),
   ]);
 
   if (!wilayaRow || !communeRow) {
@@ -399,7 +398,7 @@ export async function dispatchToCompany(c: Context<AppContext>) {
  * Requires DELIVERY_DISPATCH scope.
  */
 export async function validateShipmentManually(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const orderId = c.req.param("id")!;
 
   const order = await queries.getOrderById(db, orderId);
@@ -516,7 +515,7 @@ export async function validateShipmentManually(c: Context<AppContext>) {
  * Response:     { results: [{ orderId, trackingNumber?, labelUrl?, error? }] }
  */
 export async function bulkDispatch(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const bodyData: any = (c.req as any).valid?.("json");
   const validated = bodyData ?? validation.bulkDispatchSchema.parse(await c.req.json());
 
@@ -582,8 +581,8 @@ export async function bulkDispatch(c: Context<AppContext>) {
 
     // Resolve commune name for this order
     const [wilayaRow, communeRow] = await Promise.all([
-      db.select({ name: wilayas.name }).from(wilayas).where(eq(wilayas.id, order.wilayaId)).get(),
-      db.select({ name: communes.name }).from(communes).where(eq(communes.id, order.communeId)).get(),
+      db.select({ name: wilayas.name }).from(wilayas).where(eq(wilayas.id, order.wilayaId)).then((rows) => rows[0]),
+      db.select({ name: communes.name }).from(communes).where(eq(communes.id, order.communeId)).then((rows) => rows[0]),
     ]);
 
     if (!wilayaRow || !communeRow) {

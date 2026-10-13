@@ -68,7 +68,7 @@ export async function sweepOrphanImages(
     cursor = page.truncated ? page.cursor : undefined;
   } while (cursor);
 
-  const referenced = await collectReferencedImageKeys(getDb(env.DB));
+  const referenced = await collectReferencedImageKeys(getDb(env.DATABASE.platform));
 
   const orphans = selectOrphanImageKeys({
     candidates,

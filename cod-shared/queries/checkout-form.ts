@@ -48,7 +48,7 @@ export async function getCheckoutFormPolicy(
     .select({ checkoutFormJson: stores.checkoutFormJson, lang: stores.lang })
     .from(stores)
     .where(eq(stores.id, storeId))
-    .get();
+    .then((rows) => rows[0]);
 
   return {
     policy: parseCheckoutFormPolicy(row?.checkoutFormJson ?? null),
@@ -69,8 +69,7 @@ export async function saveCheckoutFormPolicy(
         : serializeCheckoutFormPolicy(policy),
       updatedAt: new Date().toISOString(),
     })
-    .where(eq(stores.id, storeId))
-    .run();
+    .where(eq(stores.id, storeId));
 
   return policy;
 }

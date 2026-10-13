@@ -1,7 +1,8 @@
 import { betterAuth } from "better-auth";
 import { withCloudflare } from "better-auth-cloudflare";
 import { customSession, jwt } from "better-auth/plugins";
-import { getDb } from "../../../../cod-shared/db/client";
+import { drizzle } from "drizzle-orm/d1";
+import type { AppDb } from "../../../../cod-shared/db/client";
 import { userScopes } from "../../../../cod-shared/db/schema";
 import { getStore } from "../../../../cod-shared/queries/stores";
 import { renderPasswordResetEmail } from "../../../../cod-shared/lib/email-templates";
@@ -40,7 +41,12 @@ interface AuthCloudflareContext {
 // around the same D1 binding contend on SQLite's write lock (documented
 // better-auth-on-Workers failure mode).
 export function createAuth(env: AuthEnv, cloudflare?: AuthCloudflareContext) {
-  const db = getDb(env.DB);
+  // Still the Cloudflare D1 binding: the platform database is PostgreSQL now,
+  // so dashboard sign-in is down until ticket 03 moves auth to PostgreSQL +
+  // Redis. cod-shared's queries are typed for PostgreSQL; the cast below goes
+  // with this function in ticket 03.
+  const d1 = drizzle(env.DB);
+  const db = d1 as unknown as AppDb;
 
   const kv = env.RATE_LIMIT_KV;
   const secondaryStorage = {    get: (key: string) => kv.get(key),
@@ -71,7 +77,7 @@ export function createAuth(env: AuthEnv, cloudflare?: AuthCloudflareContext) {
         autoDetectIpAddress: false,
         geolocationTracking: false,
         d1: {
-          db,
+          db: d1,
           options: {
             usePlural: true,
             transaction: false,

@@ -62,7 +62,7 @@ export async function getReviewById(db: AppDb, id: string) {
     .select()
     .from(reviews)
     .where(eq(reviews.id, id))
-    .get();
+    .then((rows) => rows[0]);
 }
 
 export async function updateReviewStatus(
@@ -75,7 +75,7 @@ export async function updateReviewStatus(
     .update(reviews)
     .set({ status, updatedAt: now })
     .where(eq(reviews.id, id));
-  return db.select().from(reviews).where(eq(reviews.id, id)).get();
+  return db.select().from(reviews).where(eq(reviews.id, id)).then((rows) => rows[0]);
 }
 
 export async function deleteReview(db: AppDb, id: string) {

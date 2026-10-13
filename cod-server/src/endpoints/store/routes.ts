@@ -2,7 +2,7 @@
  * Store API Routes
  *
  * Public storefront surface (cod-astro/theme01). Authenticated globally via
- * storeAuthMiddleware (X-Store-API-Key) applied to /store/* in src/index.ts —
+ * storeAuthMiddleware (channel resolved from the visitor hostname) applied to /store/* in src/app.ts —
  * a different credential from the dashboard X-API-Key.
  * Built with defineRoute() — the standard route-builder pattern.
  */

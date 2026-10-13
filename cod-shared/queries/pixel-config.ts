@@ -10,13 +10,13 @@ export async function getPixelConfig(db: AppDb, storeId?: string) {
       .select()
       .from(storePixelConfig)
       .where(eq(storePixelConfig.storeId, storeId))
-      .get();
+      .then((rows) => rows[0]);
   }
   return db
     .select()
     .from(storePixelConfig)
     .limit(1)
-    .get();
+    .then((rows) => rows[0]);
 }
 
 export interface UpsertPixelConfigData {
@@ -70,7 +70,7 @@ export async function upsertPixelConfig(
       })
       .where(eq(storePixelConfig.storeId, storeId))
       .returning()
-      .get();
+      .then((rows) => rows[0]);
   }
 
   const row = {

@@ -1,7 +1,8 @@
 # theme01 — repository instructions for coding agents
 
-`cod-astro/theme01` is the swappable storefront theme for CodFlow (Astro,
-Cloudflare Workers, AR/FR/EN). It is a **theme layer, not a platform package**:
+`cod-astro/theme01` is the swappable storefront theme for CodFlow (Astro on
+Node.js, AR/FR/EN). One running storefront serves every channel: the
+visitor's hostname picks it. It is a **theme layer, not a platform package**:
 engine logic lives in the CodFlow platform (see `cod-server`). Read the root
 `AGENTS.md` too — this file only overrides what differs here.
 
@@ -21,7 +22,8 @@ This package is part of the root npm workspace. Install at the repo root
 
 ```sh
 npm run dev         # astro dev :4321 (expects cod-server on :8787)
-npm run build       # astro build
+npm run build       # astro build (Node adapter, standalone)
+npm start           # node dist/server/entry.mjs
 npm test            # vitest --run (unit/property tests)
 npx astro check     # typecheck + diagnostics
 npm run validate    # string + style validators, then build
@@ -51,11 +53,15 @@ tests for cod-server, cod-client-astro, and the legacy cod-client).
   load-bearing: it keeps a single Vite major across astro/vitest/plugins.
   Removing it reintroduces a dev-server boot crash; bump it together with
   astro's Vite major. `npm ls vite` must show one version.
-- `COD_SERVER_URL` is never set in `wrangler.jsonc` — `npm run deploy`
-  (scripts/deploy.mjs) injects it at deploy time from the repo-root `.env`
-  and refuses a localhost value without `--force-local`. Local dev reads it
-  from this package's `.dev.vars`. Real secrets go in `.dev.vars` (gitignored)
-  or `wrangler secret put` — never in `wrangler.jsonc`.
+- `COD_SERVER_URL` and `STOREFRONT_SERVICE_KEY` are runtime server
+  variables (`astro:env/server`), read from the environment. The key must
+  match cod-server's; it is what lets the API trust the `X-Channel-Host` the
+  client sends (`src/core/api/client.ts`). Never ship it to a browser.
+- Every API call names the channel through the request context
+  (`src/core/api/request-host.ts`, set by the core middleware). Code that
+  calls the API outside a request has no channel.
+- The page cache (`memoryCache`) keys on origin + path, so each hostname has
+  its own entries; `src/theme/cache-contracts.test.ts` holds that.
 - `MEDIA_DOMAIN` is optional; unset, the image optimizer passes URLs through
   unchanged.
 - **astro-icon uses an explicit allowlist** (`icon({ include: { heroicons: […] } })`

@@ -15,7 +15,7 @@ import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
  * List all shipping profiles with rule counts.
  */
 export async function listProfiles(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const data = await queries.getAllProfiles(db);
   return c.json({ success: true, data, count: data.length }, 200);
 }
@@ -25,7 +25,7 @@ export async function listProfiles(c: Context<AppContext>) {
  * Get all rules for the default profile (used by order form for auto-fill).
  */
 export async function getDefaultRules(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const data = await queries.getDefaultProfileRules(db);
   return c.json({ success: true, data }, 200);
 }
@@ -35,7 +35,7 @@ export async function getDefaultRules(c: Context<AppContext>) {
  * Get a single profile with all its wilaya rules.
  */
 export async function getProfile(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const profile = await queries.getProfileById(db, c.req.param("id")!);
   if (!profile) {
     throw new NotFoundError("shipping_profile", c.req.param("id")!);
@@ -48,7 +48,7 @@ export async function getProfile(c: Context<AppContext>) {
  * Create a new shipping profile.
  */
 export async function createProfile(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const jsonBody: any = (c.req as any).valid?.("json");
   const body = jsonBody ?? validation.createProfileSchema.parse(await c.req.json());
   const profile = await queries.createProfile(db, body);
@@ -60,7 +60,7 @@ export async function createProfile(c: Context<AppContext>) {
  * Update profile name, notes, or set as default.
  */
 export async function updateProfile(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const id = c.req.param("id")!;
   const jsonBody: any = (c.req as any).valid?.("json");
   const body = jsonBody ?? validation.updateProfileSchema.parse(await c.req.json());
@@ -76,7 +76,7 @@ export async function updateProfile(c: Context<AppContext>) {
  * Delete a shipping profile and all its rules.
  */
 export async function deleteProfile(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const id = c.req.param("id")!;
   
   // Check if profile exists
@@ -116,7 +116,7 @@ export async function deleteProfile(c: Context<AppContext>) {
  * Replace all wilaya rules for a profile.
  */
 export async function setProfileRules(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const id = c.req.param("id")!;
   const jsonBody: any = (c.req as any).valid?.("json");
   const body = jsonBody ?? validation.bulkRulesSchema.parse(await c.req.json());
@@ -133,7 +133,7 @@ export async function setProfileRules(c: Context<AppContext>) {
  * Returns effective values (after applying wilaya rule defaults) for each commune.
  */
 export async function listCommuneOverrides(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const profileId = c.req.param("id")!;
   const wilayaId = parseInt(c.req.param("wilayaId")!, 10);
 
@@ -159,7 +159,7 @@ export async function listCommuneOverrides(c: Context<AppContext>) {
  * If both fields are null, the override row is deleted.
  */
 export async function setCommuneOverride(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const profileId = c.req.param("id")!;
   const wilayaId = parseInt(c.req.param("wilayaId")!, 10);
   const communeId = c.req.param("communeId")!;
@@ -182,7 +182,7 @@ export async function setCommuneOverride(c: Context<AppContext>) {
  * Remove a commune override — resets to wilaya rule defaults.
  */
 export async function deleteCommuneOverride(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const profileId = c.req.param("id")!;
   const wilayaId = parseInt(c.req.param("wilayaId")!, 10);
   const communeId = c.req.param("communeId")!;

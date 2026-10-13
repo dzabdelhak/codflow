@@ -27,7 +27,8 @@ describe("Webhooks routes (OpenAPIHono)", () => {
   beforeEach(() => {
     app = new OpenAPIHono<AppContext>();
     app.use("*", async (c, next) => {
-      c.env = { DB: mockDb } as any;
+      c.env = {} as never;
+      c.set("db", mockDb);
       await next();
     });
     app.onError(errorHandler);

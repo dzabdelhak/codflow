@@ -12,10 +12,9 @@
  * Retour à retirer → Retourné au vendeur`.
  */
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
-import { Miniflare } from "miniflare";
+import { createTestDb, type TestDb } from "@/test-utils/pg";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
-import { drizzle } from "drizzle-orm/d1";
 import { eq } from "drizzle-orm";
 import { createHmac } from "node:crypto";
 import { Hono } from "hono";
@@ -37,36 +36,17 @@ import { handleYalidineWebhook } from "./handlers";
 
 let realDb: AppDb;
 let app: Hono<AppContext>;
-const registry: Miniflare[] = [];
+const registry: TestDb[] = [];
 
 beforeAll(async () => {
-  const mf = new Miniflare({
-    script: "export default { fetch() { return new Response('ok'); } }",
-    modules: true,
-    d1Databases: { DB: "test-db" },
-  });
-  const d1 = await mf.getD1Database("DB");
-  const dir = resolve(__dirname, "../../db/migrations");
-  const preparedStatements: D1PreparedStatement[] = [];
-  for (const file of readdirSync(dir).filter((f) => f.endsWith(".sql")).sort()) {
-    const statements = readFileSync(`${dir}/${file}`, "utf8")
-      .split("--> statement-breakpoint")
-      .flatMap((s) => s.split(/;\s*\n/))
-      .map((s) => s.replace(/;+\s*$/, "").trim())
-      .filter((s) => s.replace(/--[^\n]*/g, "").trim().length > 0);
-    for (const statement of statements) {
-      preparedStatements.push(d1.prepare(statement));
-    }
-  }
-  for (let i = 0; i < preparedStatements.length; i += 50) {
-    await d1.batch(preparedStatements.slice(i, i + 50));
-  }
-  realDb = drizzle(d1 as unknown as D1Database, { schema }) as unknown as AppDb;
-  registry.push(mf);
+  const harness = await createTestDb();
+  realDb = harness.db;
+  registry.push(harness);
 
   app = new Hono<AppContext>();
   app.use("*", async (c, next) => {
-    c.env = { DB: d1 } as any;
+    c.env = {} as never;
+    c.set("db", d1);
     await next();
   });
   app.onError(errorHandler);
@@ -152,7 +132,7 @@ async function orderRow() {
     .select()
     .from(schema.orders)
     .where(eq(schema.orders.id, "ord-map-1"))
-    .get();
+    .then((rows) => rows[0]);
   return row!;
 }
 
@@ -161,7 +141,7 @@ async function eventRow(eventId: string) {
     .select()
     .from(schema.webhookEvents)
     .where(eq(schema.webhookEvents.eventId, eventId))
-    .get();
+    .then((rows) => rows[0]);
 }
 
 describe("handleYalidineWebhook — real D1, real mapper, real order path", () => {
@@ -192,7 +172,7 @@ describe("handleYalidineWebhook — real D1, real mapper, real order path", () =
       .select()
       .from(schema.products)
       .where(eq(schema.products.id, "prod-e2e-2"))
-      .get();
+      .then((rows) => rows[0]);
     expect(product!.inventory).toBe(3);
     expect(finalOrder.deliveryAttempts).toBe(0);
 
@@ -200,8 +180,7 @@ describe("handleYalidineWebhook — real D1, real mapper, real order path", () =
     const history = await realDb
       .select()
       .from(schema.orderStatusHistory)
-      .where(eq(schema.orderStatusHistory.orderId, "ord-map-1"))
-      .all();
+      .where(eq(schema.orderStatusHistory.orderId, "ord-map-1"));
     expect(history.some((h) => h.status === "returned")).toBe(true);
   });
 
@@ -244,8 +223,7 @@ describe("handleYalidineWebhook — real D1, real mapper, real order path", () =
     const rowsAfterFirst = await realDb
       .select()
       .from(schema.webhookEvents)
-      .where(eq(schema.webhookEvents.eventId, dupId))
-      .all();
+      .where(eq(schema.webhookEvents.eventId, dupId));
     expect(rowsAfterFirst).toHaveLength(1);
 
     // The replayed delivery must ALSO answer 200 — Yalidine retries
@@ -259,8 +237,7 @@ describe("handleYalidineWebhook — real D1, real mapper, real order path", () =
     const rowsAfterSecond = await realDb
       .select()
       .from(schema.webhookEvents)
-      .where(eq(schema.webhookEvents.eventId, dupId))
-      .all();
+      .where(eq(schema.webhookEvents.eventId, dupId));
     expect(rowsAfterSecond).toHaveLength(1);
   });
 });

@@ -1,7 +1,7 @@
 /**
  * Route-level tests for the wilayas OpenAPIHono router.
  *
- * Mounts the router the same way src/index.ts does (minus auth) and
+ * Mounts the router the same way src/app.ts does (minus auth) and
  * asserts that the migration to @hono/zod-openapi preserved the exact
  * response/error contracts of the previous hand-routed version —
  * including the parseInt-based wilaya ID semantics.
@@ -27,7 +27,8 @@ describe("Wilayas routes (OpenAPIHono)", () => {
   beforeEach(() => {
     app = new OpenAPIHono<AppContext>();
     app.use("*", async (c, next) => {
-      c.env = { DB: mockDb } as any;
+      c.env = {} as never;
+      c.set("db", mockDb);
       await next();
     });
     app.onError(errorHandler);

@@ -18,7 +18,7 @@ const patchSchema = z.object({
 });
 
 export async function listReviews(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const query: any = (c.req as any).valid?.("query");
   const filters = query ?? filtersSchema.parse({
     status: c.req.query("status"),
@@ -31,7 +31,7 @@ export async function listReviews(c: Context<AppContext>) {
 }
 
 export async function updateReview(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const id = c.req.param("id")!;
 
   const existing = await queries.getReviewById(db, id);
@@ -55,7 +55,7 @@ export async function updateReview(c: Context<AppContext>) {
 }
 
 export async function deleteReview(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const id = c.req.param("id")!;
 
   const existing = await queries.getReviewById(db, id);

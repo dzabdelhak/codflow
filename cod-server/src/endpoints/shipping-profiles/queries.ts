@@ -51,7 +51,7 @@ export async function updateProfile(
     .select()
     .from(shippingProfiles)
     .where(eq(shippingProfiles.id, id))
-    .get();
+    .then((rows) => rows[0]);
 
   if (!existing) return null;
 
@@ -61,8 +61,7 @@ export async function updateProfile(
     const otherDefaults = await db
       .select({ id: shippingProfiles.id })
       .from(shippingProfiles)
-      .where(eq(shippingProfiles.isDefault, true))
-      .all();
+      .where(eq(shippingProfiles.isDefault, true));
     if (otherDefaults.length <= 1) {
       throw new BusinessLogicError(
         "Cannot unset the last default shipping profile",
@@ -73,7 +72,7 @@ export async function updateProfile(
   }
 
   if (data.isDefault) {
-    await db.update(shippingProfiles).set({ isDefault: false }).run();
+    await db.update(shippingProfiles).set({ isDefault: false });
   }
 
   await db
@@ -84,8 +83,7 @@ export async function updateProfile(
       notes: data.notes !== undefined ? data.notes : existing.notes,
       updatedAt: now(),
     })
-    .where(eq(shippingProfiles.id, id))
-    .run();
+    .where(eq(shippingProfiles.id, id));
 
   return getProfileById(db, id);
 }
@@ -100,7 +98,7 @@ export async function setProfileRules(
     .select()
     .from(shippingProfiles)
     .where(eq(shippingProfiles.id, profileId))
-    .get();
+    .then((rows) => rows[0]);
 
   if (!existing) return null;
 
@@ -118,7 +116,7 @@ export async function setProfileRules(
     );
   }
 
-  await db.delete(shippingRules).where(eq(shippingRules.profileId, profileId)).run();
+  await db.delete(shippingRules).where(eq(shippingRules.profileId, profileId));
 
   const ts = now();
   for (const rule of data.rules) {
@@ -133,15 +131,13 @@ export async function setProfileRules(
         homeEnabled: rule.homeEnabled ?? true,
         stopDeskEnabled: rule.stopDeskEnabled ?? false,
         createdAt: ts,
-      })
-      .run();
+      });
   }
 
   await db
     .update(shippingProfiles)
     .set({ updatedAt: now() })
-    .where(eq(shippingProfiles.id, profileId))
-    .run();
+    .where(eq(shippingProfiles.id, profileId));
 
   return getProfileById(db, profileId);
 }

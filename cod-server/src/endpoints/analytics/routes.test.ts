@@ -24,7 +24,8 @@ vi.mock("../../../../cod-shared/queries/analytics", () => ({
 function makeApp(user: any) {
   const app = new OpenAPIHono<AppContext>({ defaultHook: openApiValidationHook });
   app.use("*", async (c, next) => {
-    c.env = { DB: mockDb } as any;
+    c.env = {} as never;
+    c.set("db", mockDb);
     if (user) c.set("user", user);
     await next();
   });

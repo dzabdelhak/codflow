@@ -110,7 +110,7 @@ export interface StoreOrderData {
 }
 
 export async function getStoreConfig(db: AppDb, storeId: string) {
-  const store = await db.select().from(stores).where(eq(stores.id, storeId)).get();
+  const store = await db.select().from(stores).where(eq(stores.id, storeId)).then((rows) => rows[0]);
   if (!store) return null;
   const [tracking, otpRow, turnstileRow, pages, legalContact] = await Promise.all([
     // Which pixel this storefront loads is resolved in one place for every
@@ -122,14 +122,14 @@ export async function getStoreConfig(db: AppDb, storeId: string) {
       .select({ enabled: storeOtpConfig.enabled })
       .from(storeOtpConfig)
       .where(eq(storeOtpConfig.storeId, storeId))
-      .get(),
+      .then((rows) => rows[0]),
     // Safe projection only — the site key is public by design; the siteverify
     // secret must never reach the storefront payload.
     db
       .select({ enabled: storeTurnstileConfig.enabled, siteKey: storeTurnstileConfig.siteKey })
       .from(storeTurnstileConfig)
       .where(eq(storeTurnstileConfig.storeId, storeId))
-      .get(),
+      .then((rows) => rows[0]),
     // The footer renders on every page, so its link list rides along here
     // rather than costing a second round trip per page view (plan D6/R7).
     getFooterPages(db, storeId, store.lang as PageLocale),
@@ -182,8 +182,7 @@ export async function getStoreProducts(
     .from(products)
     .where(and(...conditions))
     .orderBy(desc(products.storeFeatured), desc(products.createdAt))
-    .limit(params.limit ?? 24)
-    .all();
+    .limit(params.limit ?? 24);
 
   if (rows.length === 0) return [];
 
@@ -271,7 +270,7 @@ export async function getStoreProductByHandle(
     .select()
     .from(products)
     .where(and(...conditions))
-    .get();
+    .then((rows) => rows[0]);
 
   if (!product) return null;
 
@@ -281,7 +280,7 @@ export async function getStoreProductByHandle(
           .select()
           .from(productCategories)
           .where(eq(productCategories.id, product.categoryId))
-          .get()
+          .then((rows) => rows[0])
       : null,
     db
       .select()
@@ -289,14 +288,12 @@ export async function getStoreProductByHandle(
       .where(
         and(eq(productVariants.productId, product.id), eq(productVariants.active, true)),
       )
-      .orderBy(productVariants.position)
-      .all(),
+      .orderBy(productVariants.position),
     db
       .select()
       .from(productImages)
       .where(eq(productImages.productId, product.id))
-      .orderBy(productImages.position)
-      .all(),
+      .orderBy(productImages.position),
     db
       .select({
         avgRating: sql<number | null>`ROUND(AVG(${reviews.rating}), 1)`,
@@ -304,7 +301,7 @@ export async function getStoreProductByHandle(
       })
       .from(reviews)
       .where(and(eq(reviews.productId, product.id), eq(reviews.status, "approved")))
-      .get(),
+      .then((rows) => rows[0]),
   ]);
 
   const now = new Date().toISOString();
@@ -319,8 +316,7 @@ export async function getStoreProductByHandle(
         or(isNull(offers.endsAt), gte(offers.endsAt, now)),
       ),
     )
-    .orderBy(offers.createdAt)
-    .all();
+    .orderBy(offers.createdAt);
 
   const resolvedOffers = await Promise.all(
     offerRows.map(async (offer) => {
@@ -329,7 +325,7 @@ export async function getStoreProductByHandle(
             .select({ id: products.id, name: products.name })
             .from(products)
             .where(eq(products.id, offer.rewardProductId))
-            .get()
+            .then((rows) => rows[0])
         : null;
 
       const rewardVariant = offer.rewardVariantId
@@ -337,7 +333,7 @@ export async function getStoreProductByHandle(
             .select({ id: productVariants.id, variations: productVariants.variations })
             .from(productVariants)
             .where(eq(productVariants.id, offer.rewardVariantId))
-            .get()
+            .then((rows) => rows[0])
         : null;
 
       return {
@@ -387,15 +383,14 @@ export async function getStoreProductByHandle(
 }
 
 export async function getStoreCategories(db: AppDb) {
-  return db.select().from(productCategories).orderBy(productCategories.position).all();
+  return db.select().from(productCategories).orderBy(productCategories.position);
 }
 
 export async function getStoreCommunes(db: AppDb, wilayaId: number) {
   return db
     .select({ id: communes.id, name: communes.name, nameAr: communes.nameAr })
     .from(communes)
-    .where(eq(communes.wilayaId, wilayaId))
-    .all();
+    .where(eq(communes.wilayaId, wilayaId));
 }
 
 export async function findOrCreateCustomer(
@@ -407,13 +402,13 @@ export async function findOrCreateCustomer(
       .select({ nameAr: wilayas.nameAr })
       .from(wilayas)
       .where(eq(wilayas.id, data.wilayaId))
-      .get(),
+      .then((rows) => rows[0]),
     data.communeId
       ? db
           .select({ nameAr: communes.nameAr })
           .from(communes)
           .where(eq(communes.id, data.communeId))
-          .get()
+          .then((rows) => rows[0])
       : Promise.resolve(null),
   ]);
 
@@ -484,14 +479,13 @@ export async function getShippingRates(db: AppDb) {
     .select()
     .from(shippingProfiles)
     .where(eq(shippingProfiles.isDefault, true))
-    .get();
+    .then((rows) => rows[0]);
   if (!profile) return {};
 
   const rules = await db
     .select()
     .from(shippingRules)
-    .where(eq(shippingRules.profileId, profile.id))
-    .all();
+    .where(eq(shippingRules.profileId, profile.id));
 
   return Object.fromEntries(
     rules.map((r) => [r.wilayaId, { home: r.homePrice, stopDesk: r.stopDeskPrice }]),
@@ -524,23 +518,21 @@ export async function selectApplicableOffer(
       .select()
       .from(offers)
       .where(and(eq(offers.id, offerId), baseConditions))
-      .get();
+      .then((rows) => rows[0]);
     if (explicit) candidates = [explicit];
     else {
       candidates = await db
         .select()
         .from(offers)
         .where(baseConditions)
-        .orderBy(desc(offers.triggerQuantity))
-        .all();
+        .orderBy(desc(offers.triggerQuantity));
     }
   } else {
     candidates = await db
       .select()
       .from(offers)
       .where(baseConditions)
-      .orderBy(desc(offers.triggerQuantity))
-      .all();
+      .orderBy(desc(offers.triggerQuantity));
   }
 
   for (const offer of candidates) {
@@ -956,7 +948,7 @@ export async function findOrderForReview(
     .from(orders)
     .innerJoin(customers, eq(orders.customerId, customers.id))
     .where(eq(orders.orderNumber, orderNumber))
-    .get();
+    .then((rows) => rows[0]);
 
   if (!order) return null;
 
@@ -964,7 +956,7 @@ export async function findOrderForReview(
 }
 
 export async function getExistingReviewByOrder(db: AppDb, orderId: string) {
-  return db.select().from(reviews).where(eq(reviews.orderId, orderId)).get();
+  return db.select().from(reviews).where(eq(reviews.orderId, orderId)).then((rows) => rows[0]);
 }
 
 export async function createReview(

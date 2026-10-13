@@ -17,7 +17,7 @@ function jsonBody(c: Context<AppContext>): any {
 
 /** POST /api/products/{id}/stock/adjust — simple product */
 export async function adjustProductStock(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const productId = c.req.param("id")!;
   const actor = c.get("user");
   const body = jsonBody(c) ?? v.adjustStockSchema.parse(await c.req.json());
@@ -30,7 +30,7 @@ export async function adjustProductStock(c: Context<AppContext>) {
     ...body,
   });
 
-  const productRow = await db.select({ name: products.name }).from(products).where(eq(products.id, productId)).get();
+  const productRow = await db.select({ name: products.name }).from(products).where(eq(products.id, productId)).then((rows) => rows[0]);
   await logActivity(db, actor, ACTIONS.STOCK_ADJUSTED, {
     type: "stock",
     id: productId,
@@ -42,7 +42,7 @@ export async function adjustProductStock(c: Context<AppContext>) {
 
 /** POST /api/products/{productId}/variants/{variantId}/stock/adjust — variant */
 export async function adjustVariantStock(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const productId = c.req.param("productId")!;
   const variantId = c.req.param("variantId")!;
   const actor = c.get("user");
@@ -56,7 +56,7 @@ export async function adjustVariantStock(c: Context<AppContext>) {
     ...body,
   });
 
-  const productRow = await db.select({ name: products.name }).from(products).where(eq(products.id, productId)).get();
+  const productRow = await db.select({ name: products.name }).from(products).where(eq(products.id, productId)).then((rows) => rows[0]);
   await logActivity(db, actor, ACTIONS.STOCK_ADJUSTED, {
     type: "stock",
     id: productId,
@@ -70,7 +70,7 @@ export async function adjustVariantStock(c: Context<AppContext>) {
 
 /** GET /api/products/{id}/stock/history */
 export async function getProductStockHistory(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const productId = c.req.param("id")!;
   const queryData: any = (c.req as any).valid?.("query");
   const filters = queryData ?? v.stockHistoryFiltersSchema.parse({
@@ -86,7 +86,7 @@ export async function getProductStockHistory(c: Context<AppContext>) {
 
 /** GET /api/stock/overview */
 export async function getStockOverview(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const data = await q.getStockOverview(db);
   return c.json({ success: true, data }, 200);
 }
@@ -95,7 +95,7 @@ export async function getStockOverview(c: Context<AppContext>) {
 
 /** GET /api/stock/alerts */
 export async function getStockAlerts(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const queryData: any = (c.req as any).valid?.("query");
   const filters = queryData ?? v.stockAlertsFiltersSchema.parse({
     limit: c.req.query("limit"),
@@ -109,7 +109,7 @@ export async function getStockAlerts(c: Context<AppContext>) {
 
 /** PATCH /api/products/{id}/stock/threshold */
 export async function updateProductThreshold(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const productId = c.req.param("id")!;
   const body = jsonBody(c) ?? v.updateThresholdSchema.parse(await c.req.json());
   const updated = await q.updateProductThreshold(db, productId, body);
@@ -123,7 +123,7 @@ export async function updateProductThreshold(c: Context<AppContext>) {
 
 /** PATCH /api/products/{productId}/variants/{variantId}/stock/threshold */
 export async function updateVariantThreshold(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const productId = c.req.param("productId")!;
   const variantId = c.req.param("variantId")!;
   const body = jsonBody(c) ?? v.updateThresholdSchema.parse(await c.req.json());

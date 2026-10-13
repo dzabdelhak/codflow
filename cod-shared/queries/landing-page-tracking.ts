@@ -21,7 +21,7 @@ export async function getLandingPageTracking(db: AppDb, landingPageId: string) {
     .select()
     .from(landingPagePixelConfig)
     .where(eq(landingPagePixelConfig.landingPageId, landingPageId))
-    .get();
+    .then((rows) => rows[0]);
 }
 
 export interface UpsertLandingPageTrackingData {
@@ -70,7 +70,7 @@ export async function upsertLandingPageTracking(
       })
       .where(eq(landingPagePixelConfig.landingPageId, landingPageId))
       .returning()
-      .get();
+      .then((rows) => rows[0]);
   }
 
   const row = {
@@ -87,8 +87,11 @@ export async function upsertLandingPageTracking(
     updatedAt: now,
   };
 
-  await db.insert(landingPagePixelConfig).values(row);
-  return row;
+  return db
+    .insert(landingPagePixelConfig)
+    .values(row)
+    .returning()
+    .then((rows) => rows[0]);
 }
 
 /** Return the page to the store pixel. */
@@ -127,5 +130,5 @@ export async function lastCapiEventForLandingPage(db: AppDb, landingPageId: stri
     .where(eq(orders.landingPageId, landingPageId))
     .orderBy(desc(capiEventLog.sentAt))
     .limit(1)
-    .get();
+    .then((rows) => rows[0]);
 }

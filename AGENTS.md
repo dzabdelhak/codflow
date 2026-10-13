@@ -1,12 +1,17 @@
 # CodFlow — repository instructions for coding agents
 
 CodFlow is a cash-on-delivery (COD) e-commerce platform for Algeria. Monorepo,
-TypeScript, deployed on Cloudflare (Workers, D1, R2, KV).
+TypeScript. It is moving from Cloudflare to self-hosted Node.js + PostgreSQL
+(ADR-0003): the API and the storefront already run on Node + PostgreSQL; the
+dashboard, images, MCP and background jobs still carry Cloudflare code until
+their tickets in `.scratch/orestor-platform/issues/` port them.
 
 ## Layout
 
-- `cod-server/` — Cloudflare Workers API (Hono). Merchant `/api/*`, public
-  `/store/*`, `/webhooks`, `/images`, `/mcp`. D1 via Drizzle.
+- `cod-server/` — API (Hono on Node.js, entry `src/node.ts`, app `src/app.ts`).
+  Merchant `/api/*`, public `/store/*`, `/webhooks`, `/images`. PostgreSQL via
+  Drizzle; one store (channel) per request, isolated by Row-Level Security
+  (`src/db/scope.ts`). `/mcp` returns with ticket 16.
 - `cod-client-astro/` — the merchant dashboard (Astro 7). Prerendered static
   pages + a Worker surface for `/api/auth/*` and `/mcp/oauth/login`; React
   islands fetch data from cod-server through `src/lib/api.ts` (the only module
@@ -15,7 +20,8 @@ TypeScript, deployed on Cloudflare (Workers, D1, R2, KV).
 - `cod-shared/` — shared Drizzle schema, queries, RBAC scopes, error codes.
   Imported by the apps via relative path (`../../cod-shared/...`). **Not
   published.**
-- `cod-astro/theme01/` — storefront theme (Astro). It is a swappable theme
+- `cod-astro/theme01/` — storefront theme (Astro, Node adapter). One running
+  storefront serves every channel; the visitor's hostname picks it. It is a swappable theme
   layer, not a platform package; keep engine logic out. Its commands and
   boundaries differ — read `cod-astro/theme01/AGENTS.md` before editing it.
 
@@ -30,10 +36,14 @@ One install at the repo root covers every package:
 
 ```sh
 npm ci                          # at repo root — installs all workspaces
+docker compose up -d db         # PostgreSQL on :5440 — needed by cod-server tests
 
 cd cod-server && npm run typecheck
 cd cod-server && npm test
-cd cod-server && npm run dev   # wrangler dev :8787
+cd cod-server && npm run db:setup   # migrate + demo channels + legal pages (DATABASE_URL)
+cd cod-server && npm run dev        # Node, :8787 (DATABASE_URL, STOREFRONT_SERVICE_KEY)
+
+docker compose up --build       # whole stack: http://shop1.localhost:8090, http://shop2.localhost:8090
 ```
 
 Same for `cod-client-astro` (`npm run typecheck`, `npm test`, `npm run dev`
@@ -45,9 +55,9 @@ npm run seed:admin` (sign-up is disabled by design).
 
 ## Cloud resource configuration
 
-Resource names and URLs are **not** hardcoded in scripts. The seeders, the
-D1 migration wrapper (`cod-server/scripts/d1.mjs`), the R2 CORS setup and
-the storefront deploy helper all read `<repo-root>/.env` through
+The PostgreSQL scripts (`db:migrate`, `db:seed:*`) read `DATABASE_URL` from
+the environment. The remaining Cloudflare scripts (dashboard admin seed and
+deploy, R2 CORS, carrier seeders) still read `<repo-root>/.env` through
 `cod-server/scripts/cloud-env.mjs`. Precedence is
 **`process.env` > `.env` > built-in default**; the committed template is
 `<repo-root>/.env.example`.
@@ -98,17 +108,32 @@ other is how these drift.
   workspace members. It keeps a single Vite major across astro/vitest;
   removing it reintroduces the dual-Vite boot crash
   (`Missing field 'moduleType'`). Keep it in sync when astro bumps Vite.
-- `COD_SERVER_URL` defaults to `http://localhost:8787` so local dev works
-  untouched. A deployed Worker can never reach that, so
-  `cod-astro/theme01/scripts/deploy.mjs` refuses to deploy a loopback value
-  unless `--force-local` is passed. Set the real origin in the root `.env`
-  before deploying the storefront.
-- Local D1 state is **shared** through `<repo-root>/.wrangler-shared`:
-  cod-server's dev/migrate scripts write there via `--persist-to`, and
-  cod-client-astro's astro dev reads the same files via the Cloudflare
-  adapter's `persistState`. Sign-in against an unmigrated local D1 is the
-  #1 "dashboard broken locally" cause — run `cod-server npm run db:setup:local`
-  first, then `cod-client-astro npm run seed:admin`.
+- **Every store-owned table is behind Row-Level Security.** Request code runs
+  as the `codflow_app` role inside one transaction per request, pinned to its
+  store with `set_config('app.store_id', …, true)` (`cod-server/src/db/scope.ts`).
+  A query that forgets `WHERE store_id` still sees only its own store; with no
+  store set it sees nothing. `store_id` is filled by a column default, so
+  inserts never pass it. Platform code (routing, schedulers, cross-store
+  jobs) uses the `codflow_platform` pool, which bypasses RLS — keep it out of
+  request handlers. Request code cannot create or delete stores.
+- **The storefront names its channel by hostname.** It sends the visitor's
+  `Host` as `X-Channel-Host` together with `X-Storefront-Key`
+  (`STOREFRONT_SERVICE_KEY`, identical on cod-server and theme01); cod-server
+  trusts the hostname only with the key. Hostname → store lives in
+  `store_domains`.
+- Until ticket 03 adds accounts and the channel selector, non-storefront
+  routes (`/api/*`, `/webhooks`, `/images`) serve the deployment's **only**
+  store; with several stores they get none. **The dashboard is down on this
+  branch until then**: its auth still targets Cloudflare D1.
+- **PostgreSQL is READ COMMITTED; D1 batches were serial.** A guarded write
+  (`UPDATE … WHERE inventory >= qty`) can match 0 rows after waiting on a
+  lock and commit silently — the porting spike reproduced an oversell. Lock
+  the rows a check reads (`SELECT … FOR UPDATE`) before deciding. Open in
+  `createStoreOrder` (ticket 02), `orders.ts` and stock adjustments.
+- node-postgres returns `COUNT`/`SUM`/`AVG` as strings; `src/db/scope.ts`
+  installs parsers that turn them back into numbers. Several queries in one
+  `Promise.all` share the request's single connection; pg queues them (it
+  warns that pg 9 will not).
 - `PUBLIC_API_URL` is a **build-time** client value: `astro:env/client` inlines
   it into the browser bundle, so changing it requires a rebuild. It does **not**
   go in `cod-client-astro/.env` — the Cloudflare adapter pushes wrangler values
@@ -148,24 +173,30 @@ other is how these drift.
   flat `productId`/`productName`/`pricePerUnit`, which are optional only when
   `items[]` is present. `cod-shared/queries/cart.ts` (`normalizeOrderLines`) is
   the single place the shapes meet — do not branch on them anywhere else.
-- **The basket lives in the shopper's browser, never in D1.** The client's
+- **The basket lives in the shopper's browser, never in the database.** The client's
   `pricePerUnit` is display-only; every line is re-priced from the catalog
   server-side. Never trust a cart total that arrived over the wire.
 - The mock db in cod-server's unit tests maps a full-table `select()`
   **positionally by schema column order**. Adding a column to a table breaks
   every fixture for it until the new field is inserted at the same position —
   this is why those fixtures list columns in schema order with a comment.
-- cod-server tests run on miniflare + better-sqlite3 locally with no network
-  or credentials required.
-- **A store is never born with its four legal pages automatically** — this
-  is single-tenant (one deployment per store), so there is no app-level
-  "create store" flow to hook a seed into. `npm run db:setup:local` /
-  `db:setup:remote` (cod-server) run `scripts/seed-store-pages.ts` as their
-  last step, which is idempotent (`INSERT OR IGNORE`) and safe to re-run.
-  A store that already existed before this feature shipped needs one manual
-  catch-up: `npm run db:seed:legal-pages:remote -- --store-id=<id>` from
-  cod-server, or the dashboard's Pages screen → "Add Terms, Privacy, Refund &
-  Shipping" (calls the same `POST /api/store-pages/seed-defaults`). Without
+  (`store_id`, first on every store-owned table, is prepended for you.)
+- cod-server tests run on a **real PostgreSQL**: `docker compose up -d db`, or
+  `TEST_DATABASE_URL`. `src/test-utils/pg.ts` migrates a template once and
+  gives each test file its own database, pinned to a store under RLS. Test
+  files not yet ported are listed in `cod-server/pending-pg-port.json` with
+  their owning ticket; vitest and the typecheck skip them. Port a file, then
+  remove its line — the list only shrinks.
+- Rich text (product descriptions, legal pages) is sanitised by lol-html via
+  `html-rewriter-wasm` — the same engine as Cloudflare's HTMLRewriter, so the
+  sanitiser tests keep their meaning. Do not swap the parser.
+- **A store is never born with its four legal pages automatically** — there
+  is no channel-creation flow to hook a seed into yet (ticket 07).
+  `npm run db:setup` (cod-server) runs `scripts/seed-store-pages.ts` as its
+  last step: the app's own `seedStorePages` for every store, idempotent and
+  safe to re-run (`-- --store-id=<id>` for one store). The dashboard's Pages
+  screen → "Add Terms, Privacy, Refund & Shipping" calls the same
+  `POST /api/store-pages/seed-defaults`. Without
   this, Meta Ads rejects the store's ads for missing policy pages — see
   `report-md/LEGAL_PAGES_PLAN.md`.
 

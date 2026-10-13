@@ -269,7 +269,6 @@ src/middleware.ts              ← Astro action redirect handler
 src/content.config.ts
 src/pages/api/**               ← /api/communes, /api/product-reviews, /api/submit-review
 astro.config.mjs               ← exception: only edit `integrations` if needed
-wrangler.jsonc                 ← Worker name + bindings
 package.json deps              ← only add new dev deps if absolutely required
 ```
 
@@ -463,9 +462,9 @@ A page is done when:
   English / Arabic / French copy that isn't from a content key.
 - ✅ All three locale files (`ar.ts`, `fr.ts`, `en.ts`) parse and
   satisfy `StoreFrontContent`. (TypeScript will tell you.)
-- ✅ The page renders cleanly in `npm run dev` AND in
-  `wrangler dev` (the deployed Worker is the source of truth — dev
-  alone is not enough).
+- ✅ The page renders cleanly in `npm run dev` AND in the production
+  build (`npm run build && npm start` — the built server is the source of
+  truth; dev alone is not enough).
 - ✅ DevTools console is empty on a freshly-loaded product page.
 - ✅ All clickable elements respond on first click. Touch & drag
   the gallery on mobile. Bottom nav active state updates on

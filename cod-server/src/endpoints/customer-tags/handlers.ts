@@ -10,7 +10,7 @@ import { NotFoundError, BusinessLogicError, ConflictError, SystemError } from "@
 import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
 
 export async function listTags(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const query: any = (c.req as any).valid?.("query");
   const filters = query ?? validation.customerTagFiltersSchema.parse({
     search: c.req.query("search"),
@@ -22,7 +22,7 @@ export async function listTags(c: Context<AppContext>) {
 }
 
 export async function getTag(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const query: any = (c.req as any).valid?.("query");
   const tagId = c.req.param("id")!;
   const withCustomers = (query?.customers ?? c.req.query("customers")) === "true";
@@ -36,7 +36,7 @@ export async function getTag(c: Context<AppContext>) {
 }
 
 export async function createTag(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const jsonBody: any = (c.req as any).valid?.("json");
   const validated = jsonBody ?? validation.createCustomerTagSchema.parse(await c.req.json());
   const tag = await queries.createTag(db, validated);
@@ -51,7 +51,7 @@ export async function createTag(c: Context<AppContext>) {
 }
 
 export async function updateTag(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const tagId = c.req.param("id")!;
   const jsonBody: any = (c.req as any).valid?.("json");
   const validated = jsonBody ?? validation.updateCustomerTagSchema.parse(await c.req.json());
@@ -67,7 +67,7 @@ export async function updateTag(c: Context<AppContext>) {
 }
 
 export async function deleteTag(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const tagId = c.req.param("id")!;
   const tag = await queries.getTagById(db, tagId);
   if (!tag) {
@@ -96,7 +96,7 @@ export async function deleteTag(c: Context<AppContext>) {
 }
 
 export async function assignTag(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const tagId = c.req.param("id")!;
   const jsonBody: any = (c.req as any).valid?.("json");
   const { customerId } = jsonBody ?? validation.assignTagSchema.parse(await c.req.json());
@@ -106,7 +106,7 @@ export async function assignTag(c: Context<AppContext>) {
     throw new NotFoundError("customer_tag", tagId);
   }
 
-  const customer = await db.select({ id: customers.id }).from(customers).where(eq(customers.id, customerId)).get();
+  const customer = await db.select({ id: customers.id }).from(customers).where(eq(customers.id, customerId)).then((rows) => rows[0]);
   if (!customer) {
     throw new NotFoundError("customer", customerId);
   }
@@ -120,7 +120,7 @@ export async function assignTag(c: Context<AppContext>) {
 }
 
 export async function unassignTag(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const tagId = c.req.param("id")!;
   const customerId = c.req.param("customerId")!;
 

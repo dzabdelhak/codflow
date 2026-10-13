@@ -1,15 +1,44 @@
 /**
- * Database Migration Runner
+ * Applies the PostgreSQL migrations, then the reference data (wilayas and
+ * communes) when it is missing. Idempotent; safe to run on every deploy.
  *
- * Apply locally:  wrangler d1 migrations apply DB --local
- * Apply remotely: wrangler d1 migrations apply DB --remote
+ *   DATABASE_URL=postgres://… npx tsx src/db/migrate.ts
+ *
+ * Runs as the database owner (a superuser on first run: the multi-store
+ * migration creates the BYPASSRLS platform role).
  */
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
+import pg from "pg";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { migrate } from "drizzle-orm/node-postgres/migrator";
 
-import { drizzle } from "drizzle-orm/d1";
-import { migrate } from "drizzle-orm/d1/migrator";
-import * as schema from "./schema";
+const here = (path: string) => resolve(import.meta.dirname, path);
 
-export async function runMigrations(d1: D1Database) {
-  const db = drizzle(d1, { schema });
-  await migrate(db, { migrationsFolder: "./src/db/migrations" });
+export async function runMigrations(connectionString: string): Promise<void> {
+  const client = new pg.Client({ connectionString });
+  await client.connect();
+  try {
+    await migrate(drizzle(client), { migrationsFolder: here("migrations") });
+    const { rows } = await client.query<{ n: number }>("select count(*)::int as n from wilayas");
+    if (rows[0].n === 0) await client.query(readFileSync(here("seed/geo.sql"), "utf8"));
+  } finally {
+    await client.end();
+  }
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const url = process.env.DATABASE_URL;
+  if (!url) {
+    console.error("DATABASE_URL is required");
+    process.exit(1);
+  }
+  runMigrations(url).then(
+    () => console.log("migrations applied"),
+    (err) => {
+      console.error(err);
+      process.exit(1);
+    },
+  );
 }

@@ -5,10 +5,10 @@ conversion-focused **Astro 7** storefront that talks to the CodFlow backend
 (`cod-server`) over the public `/store/*` API.
 
 theme01 is part of the [CodFlow monorepo](../../README.md). It is one of three
-Workers that make up the platform:
+apps that make up the platform:
 
-| Worker | Role |
-|--------|------|
+| App | Role |
+|-----|------|
 | `cod-server` | Backend engine — REST API, `/store/*` storefront API, webhooks, MCP |
 | `cod-client-astro` | Merchant dashboard (Astro) |
 | `cod-astro/theme01` | **Storefront — this package** |
@@ -25,15 +25,18 @@ Workers that make up the platform:
 
 ## Quick start
 
-Prereqs: Node 22.12+, the [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/),
-and a running `cod-server` (the storefront reads all data from its `/store/*` API).
+Prereqs: Node 22.12+ and a running `cod-server` (the storefront reads all
+data from its `/store/*` API). The whole stack, with two demo channels, is
+`docker compose up --build` at the repo root.
 
 ```bash
 npm ci                           # at the repo root — installs all workspaces
 cd cod-astro/theme01
-cp .dev.vars.example .dev.vars   # fill in your values
-npm run dev                      # http://localhost:4321
+STOREFRONT_SERVICE_KEY=… COD_SERVER_URL=http://localhost:8787 npm run dev
 ```
+
+The channel is picked from the hostname: open `http://shop1.localhost:4321`
+for a channel whose hostname is `shop1.localhost`.
 
 > The storefront expects `cod-server` to be running on `http://localhost:8787`
 > (the default `COD_SERVER_URL`). See the [monorepo README](../../README.md#getting-started)
@@ -41,13 +44,12 @@ npm run dev                      # http://localhost:4321
 
 ## Environment variables
 
-Defined in `astro.config.mjs` → `env.schema`, read from `.dev.vars` locally and
-`wrangler secret put` in production.
+Defined in `astro.config.mjs` → `env.schema`, read from the environment.
 
 | Variable | Required | Purpose |
 |----------|----------|---------|
-| `STORE_API_KEY` | yes | Per-store key sent as `X-Store-API-Key` to the `/store/*` API. Must match the key seeded into D1 (dev default: `codflow-dev-store-key`). |
-| `COD_SERVER_URL` | yes | Base URL of the `cod-server` Worker (dev: `http://localhost:8787`). |
+| `STOREFRONT_SERVICE_KEY` | yes | Shared secret sent as `X-Storefront-Key`; must match cod-server's. With it, cod-server trusts the visitor hostname sent as `X-Channel-Host`. |
+| `COD_SERVER_URL` | yes | Base URL of `cod-server` (dev: `http://localhost:8787`). |
 | `MEDIA_DOMAIN` | no | Media/CDN domain serving R2 images (no scheme). Unset → the image optimizer passes original URLs through unchanged. |
 
 ## Scripts
@@ -56,13 +58,11 @@ Defined in `astro.config.mjs` → `env.schema`, read from `.dev.vars` locally an
 |--------|--------------|
 | `npm run dev` | Astro dev server on `http://localhost:4321` |
 | `npm run build` | Production build (`astro build`) |
-| `npm run preview` | Build, then run the Worker locally via `wrangler dev` |
-| `npm run deploy` | Deploy to Cloudflare Workers (`wrangler deploy`) |
+| `npm start` | Run the production build (`node dist/server/entry.mjs`) |
 | `npm test` | Vitest unit/property tests (`fast-check`) |
 | `npm run validate:strings` | Check for hardcoded user-facing strings in components |
 | `npm run validate:styles` | Check for hardcoded colors/radii/fonts in component styles |
 | `npm run validate:all` | Both validators, then `astro build` |
-| `npm run cf-typegen` | Regenerate `src/env.d.ts` from `wrangler.jsonc` |
 
 ## Project structure
 
@@ -95,18 +95,11 @@ inventory.
 
 ## Deployment
 
-```bash
-cd cod-astro/theme01
-# COD_SERVER_URL comes from the repo-root .env; `deploy` builds, then injects it
-# as a Worker var and refuses a loopback value unless --force-local is passed.
-npm run deploy
-wrangler secret put STORE_API_KEY     # the key your backend issues
-# optional:
-wrangler secret put MEDIA_DOMAIN      # media.yourdomain.com
-```
-
-`wrangler.jsonc` ships a local `COD_SERVER_URL` var — replace it before
-deploying. Never put real secrets in `wrangler.jsonc`.
+`npm run build` produces a standalone Node server (`dist/server/entry.mjs`);
+`docker/storefront.Dockerfile` at the repo root packages it. Run it with
+`COD_SERVER_URL`, `STOREFRONT_SERVICE_KEY` (and optionally `MEDIA_DOMAIN`) in
+the environment, behind the front proxy that routes every channel hostname to
+it (`docker/Caddyfile`).
 
 ## Documentation
 

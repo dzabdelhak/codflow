@@ -16,41 +16,20 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { Miniflare } from "miniflare";
+import { createTestDb, type TestDb } from "@/test-utils/pg";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
-import { drizzle } from "drizzle-orm/d1";
 import * as schema from "@/db/schema";
 import type { AppDb } from "@/db";
 import { getStockOverview, getStockAlerts } from "../../../../cod-shared/queries/stock";
 
-const registry: Miniflare[] = [];
+const registry: TestDb[] = [];
 let db: AppDb;
 
 beforeAll(async () => {
-  const mf = new Miniflare({
-    script: "export default { fetch() { return new Response('ok'); } }",
-    modules: true,
-    d1Databases: { DB: "test-db" },
-  });
-  registry.push(mf);
-  const d1 = await mf.getD1Database("DB");
-  const dir = resolve(__dirname, "../../db/migrations");
-  const preparedStatements: D1PreparedStatement[] = [];
-  for (const file of readdirSync(dir).filter((f) => f.endsWith(".sql")).sort()) {
-    const statements = readFileSync(`${dir}/${file}`, "utf8")
-      .split("--> statement-breakpoint")
-      .flatMap((s) => s.split(/;\s*\n/))
-      .map((s) => s.replace(/;+\s*$/, "").trim())
-      .filter((s) => s.replace(/--[^\n]*/g, "").trim().length > 0);
-    for (const statement of statements) {
-      preparedStatements.push(d1.prepare(statement));
-    }
-  }
-  for (let i = 0; i < preparedStatements.length; i += 50) {
-    await d1.batch(preparedStatements.slice(i, i + 50));
-  }
-  db = drizzle(d1 as unknown as D1Database, { schema }) as unknown as AppDb;
+  const harness = await createTestDb();
+  registry.push(harness);
+  db = harness.db;
 
   const now = new Date().toISOString();
   const mk = (
@@ -187,25 +166,9 @@ describe("getStockOverview — real D1", () => {
   });
 
   it("returns zeros for an empty catalog", async () => {
-    const mf = new Miniflare({
-      script: "export default { fetch() { return new Response('ok'); } }",
-      modules: true,
-      d1Databases: { DB: "empty-db" },
-    });
-    registry.push(mf);
-    const d1 = await mf.getD1Database("DB");
-    const dir = resolve(__dirname, "../../db/migrations");
-    for (const file of readdirSync(dir).filter((f) => f.endsWith(".sql")).sort()) {
-      const statements = readFileSync(`${dir}/${file}`, "utf8")
-        .split("--> statement-breakpoint")
-        .flatMap((s) => s.split(/;\s*\n/))
-        .map((s) => s.replace(/;+\s*$/, "").trim())
-        .filter((s) => s.replace(/--[^\n]*/g, "").trim().length > 0);
-      for (const statement of statements) {
-        await d1.prepare(statement).run();
-      }
-    }
-    const emptyDb = drizzle(d1 as unknown as D1Database, { schema }) as unknown as AppDb;
+    const harness = await createTestDb();
+    registry.push(harness);
+    const emptyDb = harness.db;
 
     const overview = await getStockOverview(emptyDb);
     expect(overview).toMatchObject({

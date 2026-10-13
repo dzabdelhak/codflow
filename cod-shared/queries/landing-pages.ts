@@ -150,7 +150,7 @@ async function resolveListRow(
   let query = baseQuery.$dynamic();
   if (pagination.limit !== undefined) query = query.limit(pagination.limit);
   if (pagination.offset !== undefined) query = query.offset(pagination.offset);
-  const rows = await query.all();
+  const rows = await query;
 
   return rows.map((row) => {
     const {
@@ -194,7 +194,7 @@ export async function getLandingPageStats(db: AppDb, id: string): Promise<Landin
     })
     .from(landingPages)
     .where(eq(landingPages.id, id))
-    .get();
+    .then((rows) => rows[0]);
   if (!row) return null;
   return {
     views: Number(row.views),
@@ -220,7 +220,7 @@ export async function getLandingPageById(db: AppDb, id: string) {
     .select()
     .from(landingPages)
     .where(eq(landingPages.id, id))
-    .get();
+    .then((rows) => rows[0]);
   if (!row) return null;
 
   const results = await db.batch([
@@ -276,7 +276,7 @@ export async function getLandingPageDetailBySlug(db: AppDb, slug: string) {
     .select()
     .from(landingPages)
     .where(eq(landingPages.slug, slug))
-    .get();
+    .then((rows) => rows[0]);
   if (!row) return null;
 
   const results = await db.batch([
@@ -335,7 +335,7 @@ export async function getLandingPageBySlug(db: AppDb, slug: string) {
     .select()
     .from(landingPages)
     .where(eq(landingPages.slug, slug))
-    .get();
+    .then((rows) => rows[0]);
   if (!row) return null;
   return getLandingPageById(db, row.id);
 }
@@ -414,7 +414,7 @@ export async function countLandingPageOrders(db: AppDb, id: string): Promise<num
     .select({ c: count() })
     .from(orders)
     .where(eq(orders.landingPageId, id))
-    .get();
+    .then((rows) => rows[0]);
   return Number(row?.c ?? 0);
 }
 
@@ -435,7 +435,7 @@ export async function addLandingPageImage(
     .select({ maxPos: sql<number>`MAX(${landingPageImages.position})` })
     .from(landingPageImages)
     .where(eq(landingPageImages.landingPageId, landingPageId))
-    .get();
+    .then((rows) => rows[0]);
   const nextPosition = image.position ?? Number(lastRow?.maxPos ?? 0) + 1;
 
   await db.insert(landingPageImages).values({
@@ -459,8 +459,7 @@ export async function getLandingPageImages(db: AppDb, landingPageId: string) {
     .select()
     .from(landingPageImages)
     .where(eq(landingPageImages.landingPageId, landingPageId))
-    .orderBy(landingPageImages.position)
-    .all();
+    .orderBy(landingPageImages.position);
 }
 
 export async function getLandingPageImage(
@@ -477,7 +476,7 @@ export async function getLandingPageImage(
         eq(landingPageImages.landingPageId, landingPageId),
       ),
     )
-    .get();
+    .then((rows) => rows[0]);
 }
 
 export async function reorderLandingPageImages(
@@ -534,7 +533,7 @@ export async function findPublishedLandingPageIdBySlug(
     .select({ id: landingPages.id })
     .from(landingPages)
     .where(and(eq(landingPages.slug, slug), eq(landingPages.status, "published")))
-    .get();
+    .then((rows) => rows[0]);
   return row?.id ?? null;
 }
 
@@ -557,15 +556,14 @@ export async function duplicateLandingPage(db: AppDb, id: string): Promise<strin
     .select()
     .from(landingPages)
     .where(eq(landingPages.id, id))
-    .get();
+    .then((rows) => rows[0]);
   if (!source) return null;
 
   const images = await db
     .select()
     .from(landingPageImages)
     .where(eq(landingPageImages.landingPageId, id))
-    .orderBy(landingPageImages.position)
-    .all();
+    .orderBy(landingPageImages.position);
 
   // A duplicate is a fresh creative test of the same product for the same
   // campaign, so it inherits the same pixel — like every other setting here,
@@ -576,7 +574,7 @@ export async function duplicateLandingPage(db: AppDb, id: string): Promise<strin
     .select()
     .from(landingPagePixelConfig)
     .where(eq(landingPagePixelConfig.landingPageId, id))
-    .get();
+    .then((rows) => rows[0]);
 
   const newId = crypto.randomUUID();
   const now = new Date().toISOString();
@@ -643,7 +641,7 @@ export async function countOtherLandingPageImageReferences(
     .select({ c: count() })
     .from(landingPageImages)
     .where(and(eq(landingPageImages.r2Key, r2Key), sql`${landingPageImages.id} <> ${excludeImageId}`))
-    .get();
+    .then((rows) => rows[0]);
   return Number(row?.c ?? 0);
 }
 
@@ -652,7 +650,7 @@ export async function slugExists(db: AppDb, slug: string): Promise<boolean> {
     .select({ id: landingPages.id })
     .from(landingPages)
     .where(eq(landingPages.slug, slug))
-    .get();
+    .then((rows) => rows[0]);
   return row !== undefined;
 }
 
@@ -687,7 +685,7 @@ export async function resolveStorefrontBaseUrl(
     .select({ domain: stores.domain })
     .from(stores)
     .limit(1)
-    .get();
+    .then((rows) => rows[0]);
   if (store?.domain) return `https://${store.domain}`;
   const fallback = (fallbackUrl ?? "").replace(/\/+$/, "");
   return fallback || null;

@@ -28,7 +28,7 @@ import { DEFERRED_LABEL_MARKER } from "./dispatch";
  * Supported providers: ecotrack (Packers). Others return OPERATION_NOT_SUPPORTED.
  */
 export async function updateShipmentInfo(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const orderId = c.req.param("id")!;
 
   const order = await queries.getOrderById(db, orderId);
@@ -77,7 +77,7 @@ export async function updateShipmentInfo(c: Context<AppContext>) {
 
   // Resolve French commune name — required by Packers on every update call.
   const communeRow = order.communeId
-    ? await db.select({ name: communes.name }).from(communes).where(eq(communes.id, order.communeId)).get()
+    ? await db.select({ name: communes.name }).from(communes).where(eq(communes.id, order.communeId)).then((rows) => rows[0])
     : null;
 
   const bodyData: any = (c.req as any).valid?.("json");
@@ -183,7 +183,7 @@ export async function updateShipmentInfo(c: Context<AppContext>) {
  * Uses POST (not DELETE) to avoid routing ambiguity with DELETE /orders/:id.
  */
 export async function cancelShipment(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const orderId = c.req.param("id")!;
 
   const order = await queries.getOrderById(db, orderId);
@@ -288,7 +288,7 @@ export async function cancelShipment(c: Context<AppContext>) {
  * Supported providers: ecotrack. Others return OPERATION_NOT_SUPPORTED.
  */
 export async function askShipmentReturn(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const orderId = c.req.param("id")!;
 
   const order = await queries.getOrderById(db, orderId);
@@ -383,7 +383,7 @@ export async function askShipmentReturn(c: Context<AppContext>) {
  * Supported providers: ecotrack. Others return OPERATION_NOT_SUPPORTED.
  */
 export async function confirmReturnReception(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const orderId = c.req.param("id")!;
 
   const order = await queries.getOrderById(db, orderId);
@@ -482,7 +482,7 @@ export async function confirmReturnReception(c: Context<AppContext>) {
  * Supported providers: ecotrack (Packers). Others return OPERATION_NOT_SUPPORTED.
  */
 export async function addShipmentRemark(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const orderId = c.req.param("id")!;
 
   const order = await queries.getOrderById(db, orderId);
@@ -560,7 +560,7 @@ export async function addShipmentRemark(c: Context<AppContext>) {
  * Supported providers: ecotrack (Packers). Others return OPERATION_NOT_SUPPORTED.
  */
 export async function getShipmentRemarks(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const orderId = c.req.param("id")!;
 
   const order = await queries.getOrderById(db, orderId);
@@ -601,7 +601,7 @@ export async function getShipmentRemarks(c: Context<AppContext>) {
  * Supported providers: all (ecotrack, noest, zr_express, yalidine).
  */
 export async function getShipmentTracking(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const orderId = c.req.param("id")!;
 
   const order = await queries.getOrderById(db, orderId);
@@ -646,7 +646,7 @@ export async function getShipmentTracking(c: Context<AppContext>) {
  * Returns: application/pdf with Content-Disposition: inline (opens in browser tab)
  */
 export async function proxyShipmentLabel(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const orderId = c.req.param("id")!;
 
   const order = await queries.getOrderById(db, orderId);

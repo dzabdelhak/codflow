@@ -243,7 +243,7 @@ export async function updateProductThreshold(
     .select({ id: products.id })
     .from(products)
     .where(and(eq(products.id, productId), isNull(products.deletedAt)))
-    .get();
+    .then((rows) => rows[0]);
   if (!existing) return false;
 
   await db
@@ -263,7 +263,7 @@ export async function updateVariantThreshold(
     .select({ id: productVariants.id })
     .from(productVariants)
     .where(and(eq(productVariants.id, variantId), eq(productVariants.productId, productId)))
-    .get();
+    .then((rows) => rows[0]);
   if (!existing) return false;
 
   await db
@@ -290,7 +290,7 @@ export async function getProductInventory(
           eq(productVariants.productId, productId),
         ),
       )
-      .get();
+      .then((rows) => rows[0]);
     return row ? { inventory: row.inventory, exists: true } : { inventory: 0, exists: false };
   }
 
@@ -298,6 +298,6 @@ export async function getProductInventory(
     .select({ inventory: products.inventory })
     .from(products)
     .where(and(eq(products.id, productId), isNull(products.deletedAt)))
-    .get();
+    .then((rows) => rows[0]);
   return row ? { inventory: row.inventory, exists: true } : { inventory: 0, exists: false };
 }

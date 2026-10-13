@@ -24,7 +24,7 @@ import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
  */
 export async function listOrders(c: Context<AppContext>) {
   try {
-    const db = getDb(c.env.DB);
+    const db = c.get("db");
 
     const queryData: any = (c.req as any).valid?.("query");
     const filters = queryData ?? validation.orderFiltersSchema.parse({
@@ -52,7 +52,7 @@ export async function listOrders(c: Context<AppContext>) {
  * Get single order by ID
  */
 export async function getOrder(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const orderId = c.req.param("id");
 
   if (!orderId) {
@@ -77,7 +77,7 @@ export async function getOrder(c: Context<AppContext>) {
  */
 export async function createOrder(c: Context<AppContext>) {
   try {
-    const db = getDb(c.env.DB);
+    const db = c.get("db");
     const bodyData: any = (c.req as any).valid?.("json");
     const validated: validation.CreateOrderInput =
       bodyData ?? validation.createOrderSchema.parse(await c.req.json());
@@ -133,13 +133,13 @@ export async function createOrder(c: Context<AppContext>) {
       .select({ id: customers.id })
       .from(customers)
       .where(eq(customers.id, validated.customerId))
-      .get();
+      .then((rows) => rows[0]);
 
     if (!existingCustomer) {
       const [wilayaRow, communeRow] = await Promise.all([
-        db.select({ nameAr: wilayas.nameAr }).from(wilayas).where(eq(wilayas.id, validated.wilayaId)).get(),
+        db.select({ nameAr: wilayas.nameAr }).from(wilayas).where(eq(wilayas.id, validated.wilayaId)).then((rows) => rows[0]),
         validated.communeId
-          ? db.select({ nameAr: communes.nameAr }).from(communes).where(eq(communes.id, validated.communeId)).get()
+          ? db.select({ nameAr: communes.nameAr }).from(communes).where(eq(communes.id, validated.communeId)).then((rows) => rows[0])
           : Promise.resolve(null),
       ]);
 
@@ -244,7 +244,7 @@ export async function createOrder(c: Context<AppContext>) {
  * and on terminal states, whose books are already reconciled.
  */
 export async function updateOrder(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const orderId = c.req.param("id");
 
   if (!orderId) {
@@ -284,7 +284,7 @@ export async function updateOrder(c: Context<AppContext>) {
       .select({ id: wilayas.id })
       .from(wilayas)
       .where(eq(wilayas.id, validated.wilayaId))
-      .get();
+      .then((rows) => rows[0]);
     if (!wilayaRow) {
       throw new ValidationError("Wilaya not found in reference tables", ERROR_CODES.MISSING_WILAYA_COMMUNE, { orderId, wilayaId: validated.wilayaId });
     }
@@ -294,7 +294,7 @@ export async function updateOrder(c: Context<AppContext>) {
       .select({ id: communes.id, wilayaId: communes.wilayaId })
       .from(communes)
       .where(eq(communes.id, validated.communeId))
-      .get();
+      .then((rows) => rows[0]);
     if (!communeRow) {
       throw new ValidationError("Commune not found in reference tables", ERROR_CODES.MISSING_WILAYA_COMMUNE, { orderId, communeId: validated.communeId });
     }
@@ -369,7 +369,7 @@ export async function updateOrder(c: Context<AppContext>) {
  * desync inventory.
  */
 export async function returnOrderProduct(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const orderId = c.req.param("id");
   const productLineId = c.req.param("productLineId");
 
@@ -427,7 +427,7 @@ export async function returnOrderProduct(c: Context<AppContext>) {
  * history/reviews. No soft-delete exists for orders.
  */
 export async function deleteOrder(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const orderId = c.req.param("id");
 
   if (!orderId) {

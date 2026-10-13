@@ -21,7 +21,7 @@ import {
  * handler starts here — mirrors stores/handlers.ts's own `getStore(db)` call.
  */
 async function requireStore(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const store = await getStore(db);
   if (!store) throw new NotFoundError("Store");
   return { db, store };

@@ -435,7 +435,7 @@ export const getProductTools = (db: ReturnType<typeof getDb>) => ({
           .select()
           .from(orderProducts)
           .where(eq(orderProducts.productId, parsed.data.productId))
-          .get();
+          .then((rows) => rows[0]);
 
         if (ordersWithProduct) {
           return {

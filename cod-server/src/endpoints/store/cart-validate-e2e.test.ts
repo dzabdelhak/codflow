@@ -11,10 +11,9 @@
  */
 
 import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from "vitest";
-import { Miniflare } from "miniflare";
+import { createTestDb, type TestDb } from "@/test-utils/pg";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
-import { drizzle } from "drizzle-orm/d1";
 import { eq } from "drizzle-orm";
 import { OpenAPIHono } from "@hono/zod-openapi";
 import type { AppContext } from "@/types";
@@ -24,43 +23,24 @@ import * as schema from "@/db/schema";
 import type { AppDb } from "@/db";
 import storeRouter from "./routes";
 
-const registry: Miniflare[] = [];
+const registry: TestDb[] = [];
 let db: AppDb;
 let storeId: string;
 
 vi.mock("@/db", () => ({ getDb: () => db }));
 
 beforeAll(async () => {
-  const mf = new Miniflare({
-    script: "export default { fetch() { return new Response('ok'); } }",
-    modules: true,
-    d1Databases: { DB: "cart-validate-db" },
-  });
-  registry.push(mf);
-  const d1 = await mf.getD1Database("DB");
-  const dir = resolve(__dirname, "../../db/migrations");
-  const prepared: D1PreparedStatement[] = [];
-  for (const file of readdirSync(dir).filter((f) => f.endsWith(".sql")).sort()) {
-    const statements = readFileSync(`${dir}/${file}`, "utf8")
-      .split("--> statement-breakpoint")
-      .flatMap((s) => s.split(/;\s*\n/))
-      .map((s) => s.replace(/;+\s*$/, "").trim())
-      .filter((s) => s.replace(/--[^\n]*/g, "").trim().length > 0);
-    for (const statement of statements) prepared.push(d1.prepare(statement));
-  }
-  for (let i = 0; i < prepared.length; i += 50) {
-    await d1.batch(prepared.slice(i, i + 50));
-  }
-  db = drizzle(d1 as unknown as D1Database, { schema }) as unknown as AppDb;
+  const harness = await createTestDb();
+  registry.push(harness);
+  db = harness.db;
 });
 
 beforeEach(async () => {
   await db.delete(schema.offers);
   await db.delete(schema.productVariants);
   await db.delete(schema.products);
-  await db.delete(schema.stores);
   storeId = `store-${crypto.randomUUID().slice(0, 8)}`;
-  await db.insert(schema.stores).values({
+  await harness.setStore({
     id: storeId,
     name: "Validate Store",
     createdAt: now(),
@@ -451,8 +431,8 @@ describe("POST /store/cart/validate — bounds", () => {
       .select({ inventory: schema.products.inventory })
       .from(schema.products)
       .where(eq(schema.products.id, id))
-      .get();
+      .then((rows) => rows[0]);
     expect(after!.inventory).toBe(10); // no stock reserved
-    expect(await db.select().from(schema.orders).all()).toHaveLength(0);
+    expect(await db.select().from(schema.orders)).toHaveLength(0);
   });
 });

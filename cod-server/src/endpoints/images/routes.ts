@@ -1,7 +1,7 @@
 /**
  * Images Routes
  *
- * Two routers, two different worlds (both mounted in src/index.ts):
+ * Two routers, two different worlds (both mounted in src/app.ts):
  *   - uploadRouter → /api/images/*   (auth + `products:manage` scope)
  *       POST /upload  — multipart upload straight to R2
  *       POST /presign — presigned URL for direct client-side PUT

@@ -13,10 +13,9 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { Miniflare } from "miniflare";
+import { createTestDb, type TestDb } from "@/test-utils/pg";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
-import { drizzle } from "drizzle-orm/d1";
 import { eq } from "drizzle-orm";
 import * as schema from "@/db/schema";
 import type { AppDb } from "@/db";
@@ -25,33 +24,13 @@ import {
   createStoreOrder,
 } from "../../../../cod-shared/queries/store";
 
-const registry: Miniflare[] = [];
+const registry: TestDb[] = [];
 let db: AppDb;
 
 beforeAll(async () => {
-  const mf = new Miniflare({
-    script: "export default { fetch() { return new Response('ok'); } }",
-    modules: true,
-    d1Databases: { DB: "test-db" },
-  });
-  registry.push(mf);
-  const d1 = await mf.getD1Database("DB");
-  const dir = resolve(__dirname, "../../db/migrations");
-  const preparedStatements: D1PreparedStatement[] = [];
-  for (const file of readdirSync(dir).filter((f) => f.endsWith(".sql")).sort()) {
-    const statements = readFileSync(`${dir}/${file}`, "utf8")
-      .split("--> statement-breakpoint")
-      .flatMap((s) => s.split(/;\s*\n/))
-      .map((s) => s.replace(/;+\s*$/, "").trim())
-      .filter((s) => s.replace(/--[^\n]*/g, "").trim().length > 0);
-    for (const statement of statements) {
-      preparedStatements.push(d1.prepare(statement));
-    }
-  }
-  for (let i = 0; i < preparedStatements.length; i += 50) {
-    await d1.batch(preparedStatements.slice(i, i + 50));
-  }
-  db = drizzle(d1 as unknown as D1Database, { schema }) as unknown as AppDb;
+  const harness = await createTestDb();
+  registry.push(harness);
+  db = harness.db;
 }, 120_000);
 
 afterAll(async () => {
@@ -73,8 +52,7 @@ describe("findOrCreateCustomer — race-free upsert (BC-1)", () => {
     const all = await db
       .select()
       .from(schema.customers)
-      .where(eq(schema.customers.phone, "0777000001"))
-      .all();
+      .where(eq(schema.customers.phone, "0777000001"));
     expect(all).toHaveLength(1);
     expect(new Set(rows.map((r) => r.id)).size).toBe(1);
     expect(rows[0]).toMatchObject({ phone: "0777000001", name: "Race Tester" });
@@ -159,7 +137,7 @@ describe("createStoreOrder — atomic commit + guarded deduction (BC-2)", () => 
     expect(result.deliveryFee).toBe(400);
     expect(result.orderNumber).toMatch(/^ORD-\d{8}-\d{4}$/);
 
-    const order = await db.select().from(schema.orders).where(eq(schema.orders.id, result.id)).get();
+    const order = await db.select().from(schema.orders).where(eq(schema.orders.id, result.id)).then((rows) => rows[0]);
     expect(order).toMatchObject({
       status: "new",
       codAmount: 4900,
@@ -169,31 +147,28 @@ describe("createStoreOrder — atomic commit + guarded deduction (BC-2)", () => 
     const lines = await db
       .select()
       .from(schema.orderProducts)
-      .where(eq(schema.orderProducts.orderId, result.id))
-      .all();
+      .where(eq(schema.orderProducts.orderId, result.id));
     expect(lines).toHaveLength(1);
     expect(lines[0]).toMatchObject({ quantity: 3, lineTotal: 4500 });
 
     const history = await db
       .select()
       .from(schema.orderStatusHistory)
-      .where(eq(schema.orderStatusHistory.orderId, result.id))
-      .all();
+      .where(eq(schema.orderStatusHistory.orderId, result.id));
     expect(history).toHaveLength(1);
     expect(history[0].status).toBe("new");
 
-    const cust = await db.select().from(schema.customers).where(eq(schema.customers.id, customer.id)).get();
+    const cust = await db.select().from(schema.customers).where(eq(schema.customers.id, customer.id)).then((rows) => rows[0]);
     expect(cust?.totalOrders).toBe(1);
     expect(cust?.totalSpent).toBe(4500);
 
-    const product = await db.select().from(schema.products).where(eq(schema.products.id, productId)).get();
+    const product = await db.select().from(schema.products).where(eq(schema.products.id, productId)).then((rows) => rows[0]);
     expect(product?.inventory).toBe(7);
 
     const movements = await db
       .select()
       .from(schema.stockMovements)
-      .where(eq(schema.stockMovements.reference, result.id))
-      .all();
+      .where(eq(schema.stockMovements.reference, result.id));
     expect(movements).toHaveLength(1);
     expect(movements[0]).toMatchObject({
       type: "ORDER_DEDUCTED",
@@ -207,11 +182,10 @@ describe("createStoreOrder — atomic commit + guarded deduction (BC-2)", () => 
     const productId = await seedTrackedProduct({ inventory: 1 });
     const customer = await seedCustomer("0661234599");
 
-    const ordersBefore = await db.select({ id: schema.orders.id }).from(schema.orders).all();
+    const ordersBefore = await db.select({ id: schema.orders.id }).from(schema.orders);
     const movementsBefore = await db
       .select({ id: schema.stockMovements.id })
-      .from(schema.stockMovements)
-      .all();
+      .from(schema.stockMovements);
 
     let failed = false;
     try {
@@ -234,19 +208,18 @@ describe("createStoreOrder — atomic commit + guarded deduction (BC-2)", () => 
 
     expect(failed).toBe(true);
 
-    const ordersAfter = await db.select({ id: schema.orders.id }).from(schema.orders).all();
+    const ordersAfter = await db.select({ id: schema.orders.id }).from(schema.orders);
     expect(ordersAfter.length).toBe(ordersBefore.length);
 
     const movementsAfter = await db
       .select({ id: schema.stockMovements.id })
-      .from(schema.stockMovements)
-      .all();
+      .from(schema.stockMovements);
     expect(movementsAfter.length).toBe(movementsBefore.length);
 
-    const product = await db.select().from(schema.products).where(eq(schema.products.id, productId)).get();
+    const product = await db.select().from(schema.products).where(eq(schema.products.id, productId)).then((rows) => rows[0]);
     expect(product?.inventory).toBe(1);
 
-    const cust = await db.select().from(schema.customers).where(eq(schema.customers.id, customer.id)).get();
+    const cust = await db.select().from(schema.customers).where(eq(schema.customers.id, customer.id)).then((rows) => rows[0]);
     expect(cust?.totalOrders).toBe(0);
     expect(cust?.totalSpent).toBe(0);
   });

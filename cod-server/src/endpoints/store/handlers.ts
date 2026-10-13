@@ -32,7 +32,7 @@ import type { PageLocale } from "../../../../cod-shared/legal/kinds";
 
 export async function getStoreConfig(c: Context<AppContext>) {
   const storeId = c.get("storeId")!;
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const store = await queries.getStoreConfig(db, storeId);
   if (!store) {
     throw new NotFoundError("Store", storeId);
@@ -41,7 +41,7 @@ export async function getStoreConfig(c: Context<AppContext>) {
 }
 
 export async function listStoreProducts(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const queryData: any = (c.req as any).valid?.("query");
   const rawFeatured = queryData?.featured ?? c.req.query("featured");
   const featured = rawFeatured === "true";
@@ -52,7 +52,7 @@ export async function listStoreProducts(c: Context<AppContext>) {
 }
 
 export async function getStoreProduct(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const handle = c.req.param("handle")!;
   const data = await queries.getStoreProductByHandle(db, handle);
   if (!data) {
@@ -62,7 +62,7 @@ export async function getStoreProduct(c: Context<AppContext>) {
 }
 
 export async function getStoreLandingPage(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const slug = c.req.param("slug")!;
 
   // Two round trips total: the row by slug, then ONE batched call carrying
@@ -139,14 +139,14 @@ export async function getStoreLandingPage(c: Context<AppContext>) {
  * event name out. No customer, no total, no contents, and never a token.
  */
 export async function getStoreOrderTracking(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const orderId = c.req.param("id")!;
 
   const order = await db
     .select({ id: orders.id, landingPageId: orders.landingPageId })
     .from(orders)
     .where(eq(orders.id, orderId))
-    .get();
+    .then((rows) => rows[0]);
   if (!order) throw new NotFoundError("Order", orderId);
 
   const config = await resolveTrackingConfig(db, {
@@ -179,11 +179,11 @@ export async function getStoreOrderTracking(c: Context<AppContext>) {
  * all answer the same 404, so nothing about a page's existence leaks.
  */
 export async function getStorePage(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const storeId = c.get("storeId")!;
   const slug = c.req.param("slug")!;
 
-  const storeRow = await db.select({ lang: stores.lang }).from(stores).where(eq(stores.id, storeId)).get();
+  const storeRow = await db.select({ lang: stores.lang }).from(stores).where(eq(stores.id, storeId)).then((rows) => rows[0]);
   if (!storeRow) throw new NotFoundError("Store", storeId);
 
   const page = await queries.resolvePublishedPage(db, storeId, slug, storeRow.lang as PageLocale);
@@ -193,13 +193,13 @@ export async function getStorePage(c: Context<AppContext>) {
 }
 
 export async function listStoreCategories(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const data = await queries.getStoreCategories(db);
   return c.json({ success: true, data, count: data.length }, 200);
 }
 
 export async function getShippingRates(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const data = await queries.getShippingRates(db);
   return c.json({ success: true, data }, 200);
 }
@@ -213,13 +213,13 @@ export async function listStoreCommunes(c: Context<AppContext>) {
       { wilayaId, min: 1, max: 58 }
     );
   }
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const data = await queries.getStoreCommunes(db, wilayaId);
   return c.json({ success: true, data, count: data.length }, 200);
 }
 
 export async function createStoreOrder(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const bodyData: any = (c.req as any).valid?.("json");
   const submitted: import("./validation").StoreOrderInput =
     bodyData ?? storeOrderSchema.parse(await c.req.json());
@@ -398,7 +398,7 @@ export async function createStoreOrder(c: Context<AppContext>) {
             .select({ domain: stores.domain })
             .from(stores)
             .where(eq(stores.id, storeId))
-            .get();
+            .then((rows) => rows[0]);
         }
 
         // The landing page the ad pointed at, when this order came from one —
@@ -477,7 +477,7 @@ export async function createStoreOrder(c: Context<AppContext>) {
  * and is resolved at checkout.
  */
 export async function validateCart(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const bodyData: any = (c.req as any).valid?.("json");
   const data: import("./validation").ValidateCartInput =
     bodyData ?? validateCartSchema.parse(await c.req.json());
@@ -517,7 +517,7 @@ export async function validateCart(c: Context<AppContext>) {
         .select({ freeShippingThreshold: stores.freeShippingThreshold })
         .from(stores)
         .where(eq(stores.id, storeId))
-        .get()
+        .then((rows) => rows[0])
     : undefined;
   const threshold = store?.freeShippingThreshold ?? null;
   const thresholdActive = threshold != null && threshold > 0;
@@ -564,7 +564,7 @@ export async function validateCart(c: Context<AppContext>) {
 
 export async function listProductReviews(c: Context<AppContext>) {
   const storeId = c.get("storeId")!;
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const queryData: any = (c.req as any).valid?.("query");
   const productId = queryData?.productId ?? c.req.query("productId");
   if (!productId) {
@@ -582,7 +582,7 @@ export async function listProductReviews(c: Context<AppContext>) {
 
 export async function submitReview(c: Context<AppContext>) {
   const storeId = c.get("storeId")!;
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const bodyData: any = (c.req as any).valid?.("json");
 
   // Let Zod validation errors propagate to error middleware

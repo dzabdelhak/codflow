@@ -10,7 +10,7 @@ import { NotFoundError, BusinessLogicError, ConflictError, SystemError } from "@
 import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
 
 export async function listGroups(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const query: any = (c.req as any).valid?.("query");
   const filters = query ?? validation.customerGroupFiltersSchema.parse({
     search: c.req.query("search"),
@@ -22,7 +22,7 @@ export async function listGroups(c: Context<AppContext>) {
 }
 
 export async function getGroup(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const query: any = (c.req as any).valid?.("query");
   const groupId = c.req.param("id")!;
   const withMembers = (query?.members ?? c.req.query("members")) === "true";
@@ -36,7 +36,7 @@ export async function getGroup(c: Context<AppContext>) {
 }
 
 export async function createGroup(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const jsonBody: any = (c.req as any).valid?.("json");
   const validated = jsonBody ?? validation.createCustomerGroupSchema.parse(await c.req.json());
   const group = await queries.createGroup(db, validated);
@@ -51,7 +51,7 @@ export async function createGroup(c: Context<AppContext>) {
 }
 
 export async function updateGroup(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const groupId = c.req.param("id")!;
   const jsonBody: any = (c.req as any).valid?.("json");
   const validated = jsonBody ?? validation.updateCustomerGroupSchema.parse(await c.req.json());
@@ -67,7 +67,7 @@ export async function updateGroup(c: Context<AppContext>) {
 }
 
 export async function deleteGroup(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const groupId = c.req.param("id")!;
   const group = await queries.getGroupById(db, groupId);
   if (!group) {
@@ -96,7 +96,7 @@ export async function deleteGroup(c: Context<AppContext>) {
 }
 
 export async function addMember(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const groupId = c.req.param("id")!;
   const jsonBody: any = (c.req as any).valid?.("json");
   const { customerId } = jsonBody ?? validation.addMemberSchema.parse(await c.req.json());
@@ -106,7 +106,7 @@ export async function addMember(c: Context<AppContext>) {
     throw new NotFoundError("customer_group", groupId);
   }
 
-  const customer = await db.select({ id: customers.id }).from(customers).where(eq(customers.id, customerId)).get();
+  const customer = await db.select({ id: customers.id }).from(customers).where(eq(customers.id, customerId)).then((rows) => rows[0]);
   if (!customer) {
     throw new NotFoundError("customer", customerId);
   }
@@ -120,7 +120,7 @@ export async function addMember(c: Context<AppContext>) {
 }
 
 export async function removeMember(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const groupId = c.req.param("id")!;
   const customerId = c.req.param("customerId")!;
 

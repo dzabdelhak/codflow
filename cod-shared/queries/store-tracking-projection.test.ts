@@ -19,7 +19,7 @@ import { getStoreConfig } from "./store";
 
 let harness: TestD1;
 const NOW = () => new Date().toISOString();
-const STORE_ID = "store-stp";
+const STORE_ID = "test-store";
 
 beforeAll(async () => {
   harness = await createTestD1();
@@ -31,8 +31,7 @@ afterAll(async () => {
 
 beforeEach(async () => {
   await harness.db.delete(schema.storePixelConfig);
-  await harness.db.delete(schema.stores);
-  await harness.db.insert(schema.stores).values({
+  await harness.setStore({
     id: STORE_ID,
     name: "Test Store",
     createdAt: NOW(),

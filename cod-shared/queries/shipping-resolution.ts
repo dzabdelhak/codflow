@@ -203,7 +203,6 @@ export async function resolveDeliveryFee(
             eq(shippingRules.wilayaId, wilayaId),
           ),
         )
-        .all()
     : await db
         .select({
           ...selection,
@@ -218,8 +217,7 @@ export async function resolveDeliveryFee(
             inArray(shippingRules.profileId, profileIds),
             eq(shippingRules.wilayaId, wilayaId),
           ),
-        )
-        .all();
+        );
 
   const byProfile = new Map(rows.map((r) => [r.profileId, r]));
 

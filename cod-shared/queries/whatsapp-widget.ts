@@ -35,8 +35,7 @@ export async function saveWhatsAppWidgetConfig(
         : serializeWhatsAppWidgetConfig(config),
       updatedAt: new Date().toISOString(),
     })
-    .where(eq(stores.id, storeId))
-    .run();
+    .where(eq(stores.id, storeId));
 
   return config;
 }

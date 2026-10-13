@@ -57,15 +57,13 @@ export async function getAllUsers(db: AppDb, filters?: UserFilters) {
       .from(users)
       .where(and(...conditions))
       .limit(limit)
-      .offset(offset)
-      .all();
+      .offset(offset);
   } else {
     allUsers = await db
       .select()
       .from(users)
       .limit(limit)
-      .offset(offset)
-      .all();
+      .offset(offset);
   }
 
   const usersWithScopes = await Promise.all(
@@ -94,7 +92,7 @@ export async function getUserById(db: AppDb, userId: string) {
     .select()
     .from(users)
     .where(eq(users.id, userId))
-    .get();
+    .then((rows) => rows[0]);
 
   if (!user) {
     return null;

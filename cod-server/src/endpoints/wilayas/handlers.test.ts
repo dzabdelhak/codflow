@@ -29,7 +29,8 @@ describe("Wilayas Endpoint - Error Scenarios", () => {
     
     // Add middleware to inject mock env
     app.use("*", async (c, next) => {
-      c.env = { DB: mockDb } as any;
+      c.env = {} as never;
+      c.set("db", mockDb);
       await next();
     });
     

@@ -33,34 +33,17 @@ let harness: TestD1;
 let app: OpenAPIHono<AppContext>;
 let sqlLog: string[] = [];
 const NOW = () => new Date().toISOString();
-const STORE_ID = "store-wa-config";
-
-/**
- * Wraps the D1 binding so every prepared statement is recorded. Drizzle
- * prepares each statement it sends, so this sees the full traffic without
- * changing any behaviour. Same technique as checkout-query-budget.e2e.test.ts.
- */
-function recordingD1(d1: D1Database, log: string[]): D1Database {
-  return new Proxy(d1, {
-    get(target, prop, receiver) {
-      const value = Reflect.get(target, prop, receiver);
-      if (prop === "prepare") {
-        return (query: string) => {
-          log.push(query);
-          return (value as D1Database["prepare"]).call(target, query);
-        };
-      }
-      return typeof value === "function" ? (value as Function).bind(target) : value;
-    },
-  }) as D1Database;
-}
+const STORE_ID = "test-store";
 
 beforeAll(async () => {
   harness = await createTestD1();
+  // Every statement the handler sends, so the widget's query cost is visible.
+  harness.recordQueries((sql) => sqlLog.push(sql));
 
   app = new OpenAPIHono<AppContext>({ defaultHook: openApiValidationHook });
   app.use("*", async (c, next) => {
-    c.env = { DB: recordingD1(harness.raw, sqlLog) } as never;
+    c.env = {} as never;
+    c.set("db", harness.db);
     c.set("storeId", STORE_ID);
     await next();
   });
@@ -73,8 +56,7 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-  await harness.db.delete(schema.stores);
-  await harness.db.insert(schema.stores).values({
+  await harness.setStore({
     id: STORE_ID,
     name: "متجر الاختبار",
     lang: "ar",

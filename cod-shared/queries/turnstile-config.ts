@@ -41,7 +41,7 @@ export async function getTurnstileConfig(
     })
     .from(storeTurnstileConfig)
     .where(eq(storeTurnstileConfig.storeId, storeId))
-    .get();
+    .then((rows) => rows[0]);
   return row;
 }
 
@@ -54,7 +54,7 @@ export async function getTurnstileConfigRaw(
     .select()
     .from(storeTurnstileConfig)
     .where(eq(storeTurnstileConfig.storeId, storeId))
-    .get();
+    .then((rows) => rows[0]);
 }
 
 export interface UpsertTurnstileConfigData {
@@ -76,7 +76,7 @@ export async function upsertTurnstileConfig(
     .select({ id: storeTurnstileConfig.id })
     .from(storeTurnstileConfig)
     .where(eq(storeTurnstileConfig.storeId, storeId))
-    .get();
+    .then((rows) => rows[0]);
 
   if (existing) {
     const row = await db
@@ -90,7 +90,7 @@ export async function upsertTurnstileConfig(
         createdAt: storeTurnstileConfig.createdAt,
         updatedAt: storeTurnstileConfig.updatedAt,
       })
-      .get();
+      .then((rows) => rows[0]);
     return row;
   }
 

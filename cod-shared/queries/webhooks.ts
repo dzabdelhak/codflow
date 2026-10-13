@@ -103,7 +103,7 @@ export async function getOrderByTracking(db: AppDb, trackingNumber: string) {
     .select()
     .from(orders)
     .where(eq(orders.trackingNumber, trackingNumber))
-    .get();
+    .then((rows) => rows[0]);
 }
 
 export async function getOrderByReference(db: AppDb, reference: string) {
@@ -111,5 +111,5 @@ export async function getOrderByReference(db: AppDb, reference: string) {
     .select()
     .from(orders)
     .where(eq(orders.orderNumber, reference))
-    .get();
+    .then((rows) => rows[0]);
 }

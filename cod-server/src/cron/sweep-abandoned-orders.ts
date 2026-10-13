@@ -3,7 +3,7 @@ import { sweepPendingToAbandoned } from "../../../cod-shared/queries/abandoned-o
 import type { Env } from "@/types";
 
 export async function sweepAbandonedOrders(env: Env): Promise<void> {
-  const db = getDb(env.DB);
+  const db = getDb(env.DATABASE.platform);
   const count = await sweepPendingToAbandoned(db);
   console.log(`[cron:sweep-abandoned] swept ${count} pending → abandoned`);
 }

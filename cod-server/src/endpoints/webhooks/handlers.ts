@@ -55,7 +55,7 @@ import { shouldTriggerCapiPurchase, getCapiWorkflowId } from "@/workflows/capi-h
 export async function handleZrWebhook(c: Context<AppContext>) {
   // MUST read raw body first — Svix signature verification requires raw bytes
   const rawBody = await c.req.text();
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
 
   // Locate the ZR Express delivery company record
   const company = await getDeliveryCompanyByCode(db, "zr_express");
@@ -290,7 +290,7 @@ export async function handleYalidineChallenge(c: Context<AppContext>) {
 export async function handleYalidineWebhook(c: Context<AppContext>) {
   // MUST read raw body first — needed for future signature verification
   const rawBody = await c.req.text();
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
 
   const company = await getDeliveryCompanyByCode(db, "yalidine");
   if (!company) {

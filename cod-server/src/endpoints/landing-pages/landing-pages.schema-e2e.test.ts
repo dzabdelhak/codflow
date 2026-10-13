@@ -6,10 +6,9 @@
  * orders.landingPageId nullable (best-effort attribution shape).
  */
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { Miniflare } from "miniflare";
+import { createTestDb, type TestDb } from "@/test-utils/pg";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
-import { drizzle } from "drizzle-orm/d1";
 import { eq } from "drizzle-orm";
 import * as schema from "@/db/schema";
 import type { AppDb } from "@/db";
@@ -19,30 +18,12 @@ let db: AppDb;
 let rawD1: D1Database;
 
 beforeAll(async () => {
-  const mf = new Miniflare({
-    script: "export default { fetch() { return new Response('ok'); } }",
-    modules: true,
-    d1Databases: { DB: "test-db" },
-  });
-  rawD1 = await mf.getD1Database("DB");
-  const dir = resolve(__dirname, "../../db/migrations");
-  const prepared: D1PreparedStatement[] = [];
-  for (const file of readdirSync(dir).filter((f) => f.endsWith(".sql")).sort()) {
-    const statements = readFileSync(`${dir}/${file}`, "utf8")
-      .split("--> statement-breakpoint")
-      .flatMap((s) => s.split(/;\s*\n/))
-      .map((s) => s.replace(/;+\s*$/, "").trim())
-      .filter((s) => s.replace(/--[^\n]*/g, "").trim().length > 0);
-    for (const statement of statements) prepared.push(rawD1.prepare(statement));
-  }
-  for (let i = 0; i < prepared.length; i += 50) {
-    await rawD1.batch(prepared.slice(i, i + 50));
-  }
-  db = drizzle(rawD1 as unknown as D1Database, { schema }) as unknown as AppDb;
-  registry.push(mf);
+  const harness = await createTestDb();
+  db = harness.db;
+  registry.push(harness);
 }, 120_000);
 
-const registry: Miniflare[] = [];
+const registry: TestDb[] = [];
 afterAll(async () => {
   for (const mf of registry) await mf.dispose();
 });
@@ -66,7 +47,7 @@ describe("Slice 1 — landing pages schema on real D1", () => {
       createdAt: NOW(), updatedAt: NOW(),
     });
 
-    const row = await db.select().from(landingPages).where(eq(landingPages.id, "lp-1")).get();
+    const row = await db.select().from(landingPages).where(eq(landingPages.id, "lp-1")).then((rows) => rows[0]);
     expect(row).toMatchObject({
       id: "lp-1",
       slug: "lp-abcdefgh",
@@ -136,7 +117,7 @@ describe("Slice 1 — landing pages schema on real D1", () => {
     });
 
     const order = await db.select().from(schema.orders)
-      .where(eq(schema.orders.id, "ord-lp-s3")).get();
+      .where(eq(schema.orders.id, "ord-lp-s3")).then((rows) => rows[0]);
     expect(order?.landingPageId).toBe("lp-3");
 
     // Attributed history blocks LP delete (the app layer refuses; the FK
@@ -160,7 +141,7 @@ describe("Slice 1 — landing pages schema on real D1", () => {
     });
 
     const order = await db.select().from(schema.orders)
-      .where(eq(schema.orders.id, "ord-lp-s4")).get();
+      .where(eq(schema.orders.id, "ord-lp-s4")).then((rows) => rows[0]);
     expect(order?.landingPageId).toBeNull();
   });
 });

@@ -146,10 +146,32 @@ interface RichTextContentHandlers {
 interface RichTextRewriter {
   on(selector: string, handlers: RichTextContentHandlers): RichTextRewriter;
   onDocument(handlers: { comments?(comment: RichTextComment): void }): RichTextRewriter;
-  transform(response: Response): Response;
 }
 
-declare const HTMLRewriter: { new (): RichTextRewriter };
+/**
+ * Runs `html` through lol-html — the parser behind Cloudflare's HTMLRewriter,
+ * compiled to WebAssembly so it runs on Node with identical parsing. Loaded
+ * lazily: the dashboard imports this module for its constants only.
+ */
+async function rewrite(html: string, configure: (rewriter: RichTextRewriter) => void): Promise<string> {
+  const { HTMLRewriter } = await import("html-rewriter-wasm");
+  const chunks: Uint8Array[] = [];
+  const rewriter = new HTMLRewriter((chunk) => chunks.push(chunk));
+  configure(rewriter as unknown as RichTextRewriter);
+  try {
+    await rewriter.write(new TextEncoder().encode(html));
+    await rewriter.end();
+  } finally {
+    rewriter.free();
+  }
+  const bytes = new Uint8Array(chunks.reduce((n, c) => n + c.length, 0));
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.length;
+  }
+  return new TextDecoder().decode(bytes);
+}
 
 function isForbiddenAttrName(name: string): boolean {
   return (
@@ -312,11 +334,12 @@ async function runAllowList(
   html: string
 ): Promise<{ html: string; removed: RichTextRemoval[] }> {
   const handler = new AllowListHandler();
-  const output = new HTMLRewriter()
-    .on("*", { element: (el) => handler.element(el) })
-    .onDocument({ comments: (c) => handler.comment(c) })
-    .transform(new Response(html));
-  return { html: await output.text(), removed: handler.removals };
+  const output = await rewrite(html, (rewriter) =>
+    rewriter
+      .on("*", { element: (el) => handler.element(el) })
+      .onDocument({ comments: (c) => handler.comment(c) }),
+  );
+  return { html: output, removed: handler.removals };
 }
 
 function truncateUnterminatedTail(html: string): string {
@@ -366,8 +389,8 @@ const VOID_BLOCK_TAGS: ReadonlySet<string> = new Set(["br", "hr"]);
 
 export async function toPlainText(html: string): Promise<string> {
   let text = "";
-  const output = new HTMLRewriter()
-    .on("*", {
+  await rewrite(html, (rewriter) =>
+    rewriter.on("*", {
       element(el) {
         if (BLOCK_TAGS.has(el.tagName.toLowerCase())) {
           // Blocks separate content on BOTH sides: a start-tag space covers
@@ -385,8 +408,7 @@ export async function toPlainText(html: string): Promise<string> {
       text(chunk) {
         text += decodeEntities(chunk.text);
       },
-    })
-    .transform(new Response(html));
-  await output.text();
+    }),
+  );
   return text.replace(/\s+/g, " ").trim();
 }

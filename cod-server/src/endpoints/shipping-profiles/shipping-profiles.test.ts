@@ -221,9 +221,9 @@ describe("setProfileRules", () => {
     //    - Promise.all[rules.all, products.all] → entries 3, 4
     const db = makeMockDb([
       f(shippingProfileRow()),  // existing check
-      f(shippingProfileRow()),  // getProfileById → profile.get()
-      a([]),                    // getProfileById → rules.all() (Promise.all[0])
-      a([]),                    // getProfileById → products.all() (Promise.all[1])
+      f(shippingProfileRow()),  // getProfileById → profile.then((rows) => rows[0])
+      a([]),                    // getProfileById → rules (Promise.all[0])
+      a([]),                    // getProfileById → products (Promise.all[1])
     ]);
     const result = await setProfileRules(db as any, "prof_1", {
       rules: [{ wilayaId: 16, homePrice: 300, stopDeskPrice: 250, homeEnabled: true, stopDeskEnabled: false }],
@@ -235,7 +235,7 @@ describe("setProfileRules", () => {
   it("inserts all rules including zero-price (homeEnabled/stopDeskEnabled control availability)", async () => {
     const db = makeMockDb([
       f(shippingProfileRow()),  // existing check
-      f(shippingProfileRow()),  // getProfileById → profile.get()
+      f(shippingProfileRow()),  // getProfileById → profile.then((rows) => rows[0])
       a([]),                    // rules (Promise.all[0])
       a([]),                    // products (Promise.all[1])
     ]);

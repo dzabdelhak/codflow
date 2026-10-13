@@ -1,7 +1,7 @@
 /**
  * Abandoned Orders — Store Endpoints
  * Public routes authenticated via X-Store-API-Key (storeAuthMiddleware is
- * applied to /store/* in src/index.ts before this router mounts).
+ * applied to /store/* in src/app.ts before this router mounts).
  *
  * POST  /store/abandoned               → upsert (create or update) an abandoned record
  * PATCH /store/abandoned/:sessionId/convert → mark as converted after successful order
@@ -82,7 +82,7 @@ const sessionIdParams = z.object({
 // ─── Inline handlers ──────────────────────────────────────────────────────────
 
 async function upsertHandler(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const data = (c.req as any).valid("json");
 
   // X-Forwarded-For first: the storefront worker forwards the shopper's IP
@@ -103,7 +103,7 @@ async function upsertHandler(c: Context<AppContext>) {
 }
 
 async function convertHandler(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const sessionId = c.req.param("sessionId")!;
   const { orderId, orderNumber } = (c.req as any).valid("json");
 

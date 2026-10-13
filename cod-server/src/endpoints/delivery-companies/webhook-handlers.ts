@@ -34,7 +34,7 @@ const VALID_OUR_STATUSES = new Set<string>(ORDER_STATUSES);
  * is an API key used consistently as X-Api-Key across all ZR endpoints.
  */
 export async function registerZrWebhook(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const { id } = (c.req as any).valid?.("param") ?? { id: c.req.param("id")! };
 
   const company = await getDeliveryCompanyRaw(db, id);
@@ -158,7 +158,7 @@ export async function registerZrWebhook(c: Context<AppContext>) {
  * and clears the endpointId + secret from the DB.
  */
 export async function unregisterZrWebhook(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const { id } = (c.req as any).valid?.("param") ?? { id: c.req.param("id")! };
 
   const company = await getDeliveryCompanyRaw(db, id);
@@ -214,7 +214,7 @@ export async function unregisterZrWebhook(c: Context<AppContext>) {
  * after setting up the webhook in the Yalidine dashboard).
  */
 export async function saveYalidineSecret(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const { id } = (c.req as any).valid?.("param") ?? { id: c.req.param("id")! };
 
   const company = await getDeliveryCompanyRaw(db, id);
@@ -252,7 +252,7 @@ export async function saveYalidineSecret(c: Context<AppContext>) {
  * Keys must be valid our-status strings. Values are arrays of ZR state names.
  */
 export async function saveZrStatusMapping(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const { id } = (c.req as any).valid?.("param") ?? { id: c.req.param("id")! };
 
   const company = await getDeliveryCompanyRaw(db, id);

@@ -104,10 +104,9 @@ export async function getAllCustomers(db: AppDb, filters?: CustomerFilters) {
       .from(customers)
       .where(and(...conditions))
       .limit(limit)
-      .offset(offset)
-      .all();
+      .offset(offset);
   }
-  return await db.select().from(customers).limit(limit).offset(offset).all();
+  return await db.select().from(customers).limit(limit).offset(offset);
 }
 
 export async function getCustomerById(db: AppDb, customerId: string) {
@@ -115,7 +114,7 @@ export async function getCustomerById(db: AppDb, customerId: string) {
     .select()
     .from(customers)
     .where(eq(customers.id, customerId))
-    .get();
+    .then((rows) => rows[0]);
 
   if (!customer) {
     return null;
@@ -126,8 +125,7 @@ export async function getCustomerById(db: AppDb, customerId: string) {
     .from(orders)
     .where(eq(orders.customerId, customerId))
     .orderBy(desc(orders.createdAt))
-    .limit(10)
-    .all();
+    .limit(10);
 
   return {
     ...customer,
@@ -140,7 +138,7 @@ export async function getCustomerByPhone(db: AppDb, phone: string) {
     .select()
     .from(customers)
     .where(eq(customers.phone, phone))
-    .get();
+    .then((rows) => rows[0]);
 }
 
 export async function createCustomer(db: AppDb, customerData: CreateCustomerData) {
@@ -151,7 +149,7 @@ export async function createCustomer(db: AppDb, customerData: CreateCustomerData
     .select({ nameAr: wilayas.nameAr })
     .from(wilayas)
     .where(eq(wilayas.id, customerData.wilayaId))
-    .get();
+    .then((rows) => rows[0]);
 
   let communeName: string | null = null;
   if (customerData.communeId) {
@@ -159,7 +157,7 @@ export async function createCustomer(db: AppDb, customerData: CreateCustomerData
       .select({ nameAr: communes.nameAr })
       .from(communes)
       .where(eq(communes.id, customerData.communeId))
-      .get();
+      .then((rows) => rows[0]);
     communeName = communeRow?.nameAr ?? null;
   }
 
@@ -196,7 +194,7 @@ export async function updateCustomer(
       .select({ nameAr: wilayas.nameAr })
       .from(wilayas)
       .where(eq(wilayas.id, updates.wilayaId))
-      .get();
+      .then((rows) => rows[0]);
     updateData.wilaya = wilayaRow?.nameAr ?? String(updates.wilayaId);
   }
 
@@ -208,7 +206,7 @@ export async function updateCustomer(
         .select({ nameAr: communes.nameAr })
         .from(communes)
         .where(eq(communes.id, updates.communeId))
-        .get();
+        .then((rows) => rows[0]);
       updateData.commune = communeRow?.nameAr ?? null;
     }
   }
@@ -234,16 +232,14 @@ export async function getOrdersByCustomerId(db: AppDb, customerId: string) {
     .leftJoin(wilayas, eq(orders.wilayaId, wilayas.id))
     .leftJoin(communes, eq(orders.communeId, communes.id))
     .where(eq(orders.customerId, customerId))
-    .orderBy(desc(orders.createdAt))
-    .all();
+    .orderBy(desc(orders.createdAt));
 
   const ordersWithHistory = await Promise.all(
     customerOrders.map(async (order) => {
       const history = await db
         .select()
         .from(orderStatusHistory)
-        .where(eq(orderStatusHistory.orderId, order.id))
-        .all();
+        .where(eq(orderStatusHistory.orderId, order.id));
 
       return {
         ...order,
@@ -271,8 +267,7 @@ export async function getCustomerGroupMemberships(db: AppDb, customerId: string)
     })
     .from(customerGroupMembers)
     .innerJoin(customerGroups, eq(customerGroups.id, customerGroupMembers.groupId))
-    .where(eq(customerGroupMembers.customerId, customerId))
-    .all();
+    .where(eq(customerGroupMembers.customerId, customerId));
 }
 
 export async function getCustomerTagMemberships(db: AppDb, customerId: string) {
@@ -288,6 +283,5 @@ export async function getCustomerTagMemberships(db: AppDb, customerId: string) {
     })
     .from(customerTagAssignments)
     .innerJoin(customerTags, eq(customerTags.id, customerTagAssignments.tagId))
-    .where(eq(customerTagAssignments.customerId, customerId))
-    .all();
+    .where(eq(customerTagAssignments.customerId, customerId));
 }

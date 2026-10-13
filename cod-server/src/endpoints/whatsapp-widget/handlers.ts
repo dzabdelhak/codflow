@@ -55,7 +55,7 @@ const CAPABILITIES = {
 
 /** Single-tenant: one store per deployment, exactly like getMyStore. */
 async function requireStore(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const store = await getStore(db);
   if (!store) throw new NotFoundError("Store");
   return store;
@@ -84,7 +84,7 @@ export async function getWhatsAppWidget(c: Context<AppContext>) {
 }
 
 export async function putWhatsAppWidget(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const store = await requireStore(c);
 
   // The route body is deliberately loose (a passthrough object): the widget's

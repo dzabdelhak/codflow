@@ -20,11 +20,11 @@ import {
 
 let harness: TestD1;
 const NOW = new Date().toISOString();
-const STORE_ID = "store_whatsapp_widget";
+const STORE_ID = "test-store";
 
 beforeAll(async () => {
   harness = await createTestD1();
-  await harness.db.insert(stores).values({
+  await harness.setStore({
     id: STORE_ID,
     name: "WhatsApp Widget Test Store",
     createdAt: NOW,
@@ -37,7 +37,7 @@ afterAll(async () => {
 });
 
 async function readColumn(): Promise<string | null> {
-  const row = await harness.db.select().from(stores).where(eq(stores.id, STORE_ID)).get();
+  const row = await harness.db.select().from(stores).where(eq(stores.id, STORE_ID)).then((rows) => rows[0]);
   return row?.whatsappWidgetJson ?? null;
 }
 

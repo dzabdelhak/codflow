@@ -13,53 +13,32 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { Miniflare } from "miniflare";
+import { createTestDb, type TestDb } from "@/test-utils/pg";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
-import { drizzle } from "drizzle-orm/d1";
 import { eq } from "drizzle-orm";
 import * as schema from "@/db/schema";
 import type { AppDb } from "@/db";
 import { getAllOrders, getOrderById } from "../../../../cod-shared/queries/orders";
 
-const registry: Miniflare[] = [];
+const registry: TestDb[] = [];
 let db: AppDb;
 
 beforeAll(async () => {
-  const mf = new Miniflare({
-    script: "export default { fetch() { return new Response('ok'); } }",
-    modules: true,
-    d1Databases: { DB: "test-db" },
-  });
-  registry.push(mf);
-  const d1 = await mf.getD1Database("DB");
-  const dir = resolve(__dirname, "../../db/migrations");
-  const preparedStatements: D1PreparedStatement[] = [];
-  for (const file of readdirSync(dir).filter((f) => f.endsWith(".sql")).sort()) {
-    const statements = readFileSync(`${dir}/${file}`, "utf8")
-      .split("--> statement-breakpoint")
-      .flatMap((s) => s.split(/;\s*\n/))
-      .map((s) => s.replace(/;+\s*$/, "").trim())
-      .filter((s) => s.replace(/--[^\n]*/g, "").trim().length > 0);
-    for (const statement of statements) {
-      preparedStatements.push(d1.prepare(statement));
-    }
-  }
-  for (let i = 0; i < preparedStatements.length; i += 50) {
-    await d1.batch(preparedStatements.slice(i, i + 50));
-  }
-  db = drizzle(d1 as unknown as D1Database, { schema }) as unknown as AppDb;
+  const harness = await createTestDb();
+  registry.push(harness);
+  db = harness.db;
 
   const commune = await db
     .select({ id: schema.communes.id, nameAr: schema.communes.nameAr })
     .from(schema.communes)
     .where(eq(schema.communes.wilayaId, 16))
-    .get();
+    .then((rows) => rows[0]);
   const wilaya = await db
     .select({ nameAr: schema.wilayas.nameAr })
     .from(schema.wilayas)
     .where(eq(schema.wilayas.id, 16))
-    .get();
+    .then((rows) => rows[0]);
 
   const now = new Date().toISOString();
   const earlier = "2025-12-01T00:00:00.000Z";
@@ -88,8 +67,8 @@ beforeAll(async () => {
     status: "ACTIVE", visibility: true, showInStore: true,
     createdAt: now, updatedAt: now,
   });
-  await db.insert(schema.stores).values({
-    id: "store-e2e", name: "E2E Store", createdAt: now, updatedAt: now,
+  await harness.setStore({
+    id: "test-store", name: "E2E Store", createdAt: now, updatedAt: now,
   });
 
   // Order A — full graph: wilaya, commune, driver, shipment, review, history by user
@@ -119,7 +98,7 @@ beforeAll(async () => {
     createdAt: now, updatedAt: now,
   });
   await db.insert(schema.reviews).values({
-    id: "rev-a", storeId: "store-e2e", productId: "prod-e2e",
+    id: "rev-a", storeId: "test-store", productId: "prod-e2e",
     orderId: "ord-e2e-a", orderNumber: "ORD-E2E-A", customerName: "Full Buyer",
     rating: 5, body: "great", status: "approved",
     createdAt: now, updatedAt: now,

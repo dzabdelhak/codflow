@@ -69,7 +69,7 @@ function makeFakeStep() {
   };
 }
 
-const STORE_ID = "store-cdest";
+const STORE_ID = "test-store";
 
 interface Scenario {
   /** Tracking config for the store, or undefined for a store with none. */
@@ -87,9 +87,8 @@ interface Scenario {
  */
 async function seedStore(pixel?: Partial<typeof schema.storePixelConfig.$inferInsert>) {
   await harness.db.delete(schema.storePixelConfig);
-  await harness.db.delete(schema.stores);
 
-  await harness.db.insert(schema.stores).values({
+  await harness.setStore({
     id: STORE_ID,
     name: "Test Store",
     domain: "shop.example.com",
@@ -329,7 +328,7 @@ describe("the CAPI Workflow's destination", () => {
       .select()
       .from(schema.capiEventLog)
       .where(eq(schema.capiEventLog.orderId, orderId))
-      .get();
+      .then((rows) => rows[0]);
     expect(row).toMatchObject({ status: "sent", pixelId: "6666666666" });
   });
 
@@ -348,7 +347,7 @@ describe("the CAPI Workflow's destination", () => {
       .select()
       .from(schema.capiEventLog)
       .where(eq(schema.capiEventLog.orderId, orderId))
-      .get();
+      .then((rows) => rows[0]);
     expect(row).toMatchObject({ status: "skipped", pixelId: "6767676767" });
   });
 

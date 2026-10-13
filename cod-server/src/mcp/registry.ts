@@ -409,7 +409,7 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
  * many times; `getDb` returns the same Drizzle wrapper for a given env.
  */
 export function buildToolsForUser(env: Env, props: McpProps): Record<string, Tool> {
-  const db = getDb(env.DB);
+  const db = getDb(env.DATABASE.platform);
   const isAdmin = props.role === "admin";
   const out: Record<string, Tool> = {};
 

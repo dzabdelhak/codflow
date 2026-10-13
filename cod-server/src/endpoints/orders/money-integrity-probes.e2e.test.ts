@@ -11,10 +11,9 @@
  *   P4  driver settlement atomicity (insert → link → counters)
  */
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { Miniflare } from "miniflare";
+import { createTestDb, type TestDb } from "@/test-utils/pg";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
-import { drizzle } from "drizzle-orm/d1";
 import { eq, sql } from "drizzle-orm";
 import * as schema from "@/db/schema";
 import type { AppDb } from "@/db";
@@ -24,32 +23,12 @@ let db: AppDb;
 let rawD1: D1Database;
 
 beforeAll(async () => {
-  const mf = new Miniflare({
-    script: "export default { fetch() { return new Response('ok'); } }",
-    modules: true,
-    d1Databases: { DB: "test-db" },
-  });
-  rawD1 = await mf.getD1Database("DB");
-  const dir = resolve(__dirname, "../../db/migrations");
-  const preparedStatements: D1PreparedStatement[] = [];
-  for (const file of readdirSync(dir).filter((f) => f.endsWith(".sql")).sort()) {
-    const statements = readFileSync(`${dir}/${file}`, "utf8")
-      .split("--> statement-breakpoint")
-      .flatMap((s) => s.split(/;\s*\n/))
-      .map((s) => s.replace(/;+\s*$/, "").trim())
-      .filter((s) => s.replace(/--[^\n]*/g, "").trim().length > 0);
-    for (const statement of statements) {
-      preparedStatements.push(rawD1.prepare(statement));
-    }
-  }
-  for (let i = 0; i < preparedStatements.length; i += 50) {
-    await rawD1.batch(preparedStatements.slice(i, i + 50));
-  }
-  db = drizzle(rawD1 as unknown as D1Database, { schema }) as unknown as AppDb;
-  registry.push(mf);
+  const harness = await createTestDb();
+  db = harness.db;
+  registry.push(harness);
 }, 120_000);
 
-const registry: Miniflare[] = [];
+const registry: TestDb[] = [];
 afterAll(async () => {
   for (const mf of registry) await mf.dispose();
 });
@@ -115,12 +94,12 @@ describe("P3: dashboard createOrder — oversell guard & race", () => {
 
     expect(res).toBeInstanceOf(Error);
     // Nothing was written: no order, no lines, stats untouched, stock intact
-    expect(await db.select().from(schema.orders).where(eq(schema.orders.id, oid)).get()).toBeUndefined();
-    expect(await db.select().from(schema.orderProducts).where(eq(schema.orderProducts.orderId, oid)).all()).toHaveLength(0);
-    expect(await db.select().from(schema.stockMovements).where(eq(schema.stockMovements.productId, productId)).all()).toHaveLength(0);
-    const cust = (await db.select().from(schema.customers).where(eq(schema.customers.id, customerId)).get())!;
+    expect(await db.select().from(schema.orders).where(eq(schema.orders.id, oid)).then((rows) => rows[0])).toBeUndefined();
+    expect(await db.select().from(schema.orderProducts).where(eq(schema.orderProducts.orderId, oid))).toHaveLength(0);
+    expect(await db.select().from(schema.stockMovements).where(eq(schema.stockMovements.productId, productId))).toHaveLength(0);
+    const cust = (await db.select().from(schema.customers).where(eq(schema.customers.id, customerId)).then((rows) => rows[0]))!;
     expect(cust.totalOrders).toBe(0);
-    const inv = (await db.select().from(schema.products).where(eq(schema.products.id, productId)).get())!;
+    const inv = (await db.select().from(schema.products).where(eq(schema.products.id, productId)).then((rows) => rows[0]))!;
     expect(inv.inventory).toBe(2);
   });
 
@@ -148,8 +127,8 @@ describe("P3: dashboard createOrder — oversell guard & race", () => {
     expect(fulfilled).toBe(1);
     expect(rejected).toBe(1);
 
-    const inv = (await db.select().from(schema.products).where(eq(schema.products.id, productId)).get())!;
-    const movements = await db.select().from(schema.stockMovements).where(eq(schema.stockMovements.productId, productId)).all();
+    const inv = (await db.select().from(schema.products).where(eq(schema.products.id, productId)).then((rows) => rows[0]))!;
+    const movements = await db.select().from(schema.stockMovements).where(eq(schema.stockMovements.productId, productId));
     expect(inv.inventory).toBe(0);
     expect(movements).toHaveLength(1);
     expect(movements[0].delta).toBe(-1);
@@ -170,13 +149,13 @@ describe("P2: delete delivered order → driver money reconciliation", () => {
     }]);
     await updateOrderStatus(db, oid, "delivered");
 
-    const drvBefore = (await db.select().from(schema.drivers).where(eq(schema.drivers.id, driverId)).get())!;
+    const drvBefore = (await db.select().from(schema.drivers).where(eq(schema.drivers.id, driverId)).then((rows) => rows[0]))!;
     expect(drvBefore).toMatchObject({ totalDelivered: 1, totalEarnings: 500, pendingCash: 10500 });
 
     await deleteOrder(db, oid);
 
     // FIXED: the driver ledger reconciles — no phantom cash, no ghost credit
-    const drvAfter = (await db.select().from(schema.drivers).where(eq(schema.drivers.id, driverId)).get())!;
+    const drvAfter = (await db.select().from(schema.drivers).where(eq(schema.drivers.id, driverId)).then((rows) => rows[0]))!;
     expect(drvAfter).toMatchObject({ totalDelivered: 0, totalEarnings: 0, pendingCash: 0 });
   });
 
@@ -195,7 +174,7 @@ describe("P2: delete delivered order → driver money reconciliation", () => {
 
     await deleteOrder(db, oid);
 
-    const drvAfter = (await db.select().from(schema.drivers).where(eq(schema.drivers.id, driverId)).get())!;
+    const drvAfter = (await db.select().from(schema.drivers).where(eq(schema.drivers.id, driverId)).then((rows) => rows[0]))!;
     // Counters stay — the money really moved; the payment row stays reconciled
     expect(drvAfter).toMatchObject({ totalDelivered: 1, totalEarnings: 500, pendingCash: 10500 });
   });
@@ -220,11 +199,11 @@ describe("P4: driver settlement atomicity (real createDriverPayment)", () => {
     );
 
     expect(res.amount).toBe(10500);
-    const drv = (await db.select().from(schema.drivers).where(eq(schema.drivers.id, driverId)).get())!;
+    const drv = (await db.select().from(schema.drivers).where(eq(schema.drivers.id, driverId)).then((rows) => rows[0]))!;
     expect(drv).toMatchObject({ pendingCash: 0, totalPaid: 10500, totalEarnings: 500 });
-    const order = (await db.select().from(schema.orders).where(eq(schema.orders.id, oid)).get())!;
+    const order = (await db.select().from(schema.orders).where(eq(schema.orders.id, oid)).then((rows) => rows[0]))!;
     expect(order.codPaymentId).toBe(res.id);
-    const payments = await db.select().from(schema.driverPayments).all();
+    const payments = await db.select().from(schema.driverPayments);
     expect(payments.filter((p) => p.driverId === driverId)).toHaveLength(1);
 
     // Double-settlement guard still enforced
@@ -266,7 +245,7 @@ describe("P1: storefront price forging (server-authoritative pricing)", () => {
 
     expect(result).not.toBeInstanceOf(Error);
 
-    const created = await db.select().from(schema.orders).where(eq(schema.orders.customerId, typeof customerId === "string" ? customerId : (customerId as any).id)).all();
+    const created = await db.select().from(schema.orders).where(eq(schema.orders.customerId, typeof customerId === "string" ? customerId : (customerId as any).id));
     const forged = created.find((o) => o.phone === "0770000001");
     expect(forged).toBeDefined();
     // FIXED: the order persisted at the CATALOG price, not the forged 1 DZD
@@ -275,12 +254,12 @@ describe("P1: storefront price forging (server-authoritative pricing)", () => {
 
     // And the customer stats inherited the real price, not the forged one
     const cust = (await db.select().from(schema.customers)
-      .where(eq(schema.customers.id, typeof customerId === "string" ? customerId : (customerId as any).id)).get())!;
+      .where(eq(schema.customers.id, typeof customerId === "string" ? customerId : (customerId as any).id)).then((rows) => rows[0]))!;
     expect(Number(cust.totalSpent)).toBe(50000);
 
     // The line too
     const line = (await db.select().from(schema.orderProducts)
-      .where(eq(schema.orderProducts.orderId, forged!.id)).get())!;
+      .where(eq(schema.orderProducts.orderId, forged!.id)).then((rows) => rows[0]))!;
     expect(line.pricePerUnit).toBe(50000);
     expect(line.lineTotal).toBe(50000);
   });

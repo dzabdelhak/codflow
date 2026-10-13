@@ -47,6 +47,19 @@ export const f = (v: Record<string, unknown> | null): Q => ({ _: "f", v });
 /** Response for an .all() call — an array of rows. */
 export const a = (v: Record<string, unknown>[]): Q => ({ _: "a", v });
 
+/**
+ * Store-owned tables gained `store_id` as their FIRST column (multi-store).
+ * Fixtures predate it, so a full-table select that starts with it gets the
+ * test store's id prepended rather than every fixture being rewritten.
+ */
+export const MOCK_STORE_ID = "test-store";
+
+function withStoreId(sqlText: string, row: Record<string, unknown>): unknown[] {
+  const values = Object.values(row);
+  const startsWithStoreId = /^\s*select\s+(?:"[a-z_]+"\.)?"store_id"\s*,/i.test(sqlText);
+  return startsWithStoreId && !("store_id" in row) ? [MOCK_STORE_ID, ...values] : values;
+}
+
 export function makeMockDb(queue: Q[] = []): AppDb {
   let idx = 0;
 
@@ -114,7 +127,7 @@ export function makeMockDb(queue: Q[] = []): AppDb {
       // full selects, or select-clause order for partial selects).
       raw: ((..._args: unknown[]) => {
         const rows = consume();
-        return Promise.resolve(rows.map((r) => Object.values(r)));
+        return Promise.resolve(rows.map((r) => withStoreId(sqlText, r)));
       }) as D1PreparedStatement["raw"],
     };
     (stmt as D1PreparedStatement & { __sql: string }).__sql = sqlText;
@@ -135,7 +148,10 @@ export function makeMockDb(queue: Q[] = []): AppDb {
         const rows = isSelect ? consume() : [];
         return {
           success: true,
-          results: rows,
+          // Drizzle maps batch rows by Object.values, so keep store_id first.
+          results: rows.map((r) =>
+            withStoreId(sqlText, r).length > Object.keys(r).length ? { store_id: MOCK_STORE_ID, ...r } : r,
+          ),
           meta: {
             changed_db: !isSelect,
             changes: isSelect ? 0 : 1,
@@ -405,5 +421,18 @@ export function deliveryCompanyRow(overrides: Record<string, unknown> = {}): Rec
     created_at: NOW,
     updated_at: NOW,
     ...overrides,
+  };
+}
+
+/**
+ * For hand-built query stubs: D1's `.get()` is gone (queries now await the
+ * builder and take `rows[0]`), so a stubbed single-row read must be thenable.
+ * `read` returns the row, or undefined for "no row".
+ */
+export function rowsOf(read: () => unknown) {
+  return {
+    then<T>(onFulfilled: (rows: unknown[]) => T, onRejected?: (err: unknown) => T) {
+      return Promise.resolve(read()).then((row) => onFulfilled(row === undefined || row === null ? [] : [row]), onRejected);
+    },
   };
 }

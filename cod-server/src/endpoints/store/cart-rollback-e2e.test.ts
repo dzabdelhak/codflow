@@ -17,10 +17,9 @@
  */
 
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from "vitest";
-import { Miniflare } from "miniflare";
+import { createTestDb, type TestDb } from "@/test-utils/pg";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
-import { drizzle } from "drizzle-orm/d1";
 import { eq } from "drizzle-orm";
 import * as schema from "@/db/schema";
 import type { AppDb } from "@/db";
@@ -30,7 +29,7 @@ import {
   getStoreConfig,
 } from "../../../../cod-shared/queries/store";
 
-const registry: Miniflare[] = [];
+const registry: TestDb[] = [];
 let db: AppDb;
 let storeId: string;
 
@@ -39,27 +38,9 @@ const now = () => new Date().toISOString();
 const uid = (p: string) => `${p}-${crypto.randomUUID().slice(0, 8)}`;
 
 beforeAll(async () => {
-  const mf = new Miniflare({
-    script: "export default { fetch() { return new Response('ok'); } }",
-    modules: true,
-    d1Databases: { DB: "cart-rollback-db" },
-  });
-  registry.push(mf);
-  const d1 = await mf.getD1Database("DB");
-  const dir = resolve(__dirname, "../../db/migrations");
-  const prepared: D1PreparedStatement[] = [];
-  for (const file of readdirSync(dir).filter((f) => f.endsWith(".sql")).sort()) {
-    const statements = readFileSync(`${dir}/${file}`, "utf8")
-      .split("--> statement-breakpoint")
-      .flatMap((s) => s.split(/;\s*\n/))
-      .map((s) => s.replace(/;+\s*$/, "").trim())
-      .filter((s) => s.replace(/--[^\n]*/g, "").trim().length > 0);
-    for (const statement of statements) prepared.push(d1.prepare(statement));
-  }
-  for (let i = 0; i < prepared.length; i += 50) {
-    await d1.batch(prepared.slice(i, i + 50));
-  }
-  db = drizzle(d1 as unknown as D1Database, { schema }) as unknown as AppDb;
+  const harness = await createTestDb();
+  registry.push(harness);
+  db = harness.db;
 });
 
 beforeEach(async () => {
@@ -68,10 +49,9 @@ beforeEach(async () => {
   await db.delete(schema.orderStatusHistory);
   await db.delete(schema.orders);
   await db.delete(schema.products);
-  await db.delete(schema.stores);
 
   storeId = uid("store");
-  await db.insert(schema.stores).values({
+  await harness.setStore({
     id: storeId,
     name: "Pilot Store",
     cartEnabled: true,
@@ -140,10 +120,10 @@ async function placeBasketOrder() {
 }
 
 const linesOf = (orderId: string) =>
-  db.select().from(schema.orderProducts).where(eq(schema.orderProducts.orderId, orderId)).all();
+  db.select().from(schema.orderProducts).where(eq(schema.orderProducts.orderId, orderId));
 
 const inventoryOf = async (productId: string) =>
-  (await db.select().from(schema.products).where(eq(schema.products.id, productId)).get())!
+  (await db.select().from(schema.products).where(eq(schema.products.id, productId)).then((rows) => rows[0]))!
     .inventory;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -201,7 +181,7 @@ describe("orders already taken survive the rollback", () => {
       .select()
       .from(schema.orders)
       .where(eq(schema.orders.id, order.id))
-      .get();
+      .then((rows) => rows[0]);
 
     await rollback();
 
@@ -209,7 +189,7 @@ describe("orders already taken survive the rollback", () => {
       .select()
       .from(schema.orders)
       .where(eq(schema.orders.id, order.id))
-      .get();
+      .then((rows) => rows[0]);
     expect(after).toEqual(before);
     // Goods only, priced from the catalog: 2 × 2400 + 1 × 1000.
     expect(after!.price).toBe(5800);
@@ -234,7 +214,7 @@ describe("orders already taken survive the rollback", () => {
 
     await rollback();
 
-    const row = await db.select().from(schema.orders).where(eq(schema.orders.id, order.id)).get();
+    const row = await db.select().from(schema.orders).where(eq(schema.orders.id, order.id)).then((rows) => rows[0]);
     expect(row).toBeDefined();
     expect(row!.status).toBe("new");
     // Products live in order_products, which the dashboard joins — the lines

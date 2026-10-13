@@ -18,7 +18,7 @@ import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
  * List all customers with optional filters
  */
 export async function listCustomers(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
 
   const query: any = (c.req as any).valid?.("query");
   const filters = query ?? validation.customerFiltersSchema.parse({
@@ -44,7 +44,7 @@ export async function listCustomers(c: Context<AppContext>) {
  * Get single customer by ID
  */
 export async function getCustomer(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const customerId = c.req.param("id");
 
   if (!customerId) {
@@ -68,7 +68,7 @@ export async function getCustomer(c: Context<AppContext>) {
  * Create new customer
  */
 export async function createCustomer(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const jsonBody: any = (c.req as any).valid?.("json");
   const validated = jsonBody ?? validation.createCustomerSchema.parse(await c.req.json());
 
@@ -108,7 +108,7 @@ export async function createCustomer(c: Context<AppContext>) {
  * Update customer information
  */
 export async function updateCustomer(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const customerId = c.req.param("id");
   
   if (!customerId) {
@@ -156,7 +156,7 @@ export async function updateCustomer(c: Context<AppContext>) {
  * Get all orders for a specific customer
  */
 export async function listCustomerOrders(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const customerId = c.req.param("id");
 
   if (!customerId) {
@@ -177,7 +177,7 @@ export async function listCustomerOrders(c: Context<AppContext>) {
  * Get all groups a customer belongs to
  */
 export async function listCustomerGroups(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const customerId = c.req.param("id");
 
   if (!customerId) {
@@ -193,7 +193,7 @@ export async function listCustomerGroups(c: Context<AppContext>) {
  * Get all tags assigned to a customer
  */
 export async function listCustomerTags(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const customerId = c.req.param("id");
 
   if (!customerId) {
@@ -209,7 +209,7 @@ export async function listCustomerTags(c: Context<AppContext>) {
  * Delete customer
  */
 export async function deleteCustomer(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const customerId = c.req.param("id");
 
   if (!customerId) {

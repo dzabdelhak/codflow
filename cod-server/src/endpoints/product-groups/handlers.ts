@@ -7,7 +7,7 @@ import { NotFoundError, ValidationError, BusinessLogicError, SystemError } from 
 import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
 
 export async function listGroups(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const query: any = (c.req as any).valid?.("query");
   const filters = query ?? v.groupFiltersSchema.parse({
     search: c.req.query("search"),
@@ -18,7 +18,7 @@ export async function listGroups(c: Context<AppContext>) {
 }
 
 export async function getGroup(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const id = c.req.param("id")!;
   const group = await q.getGroupById(db, id);
   if (!group) {
@@ -28,7 +28,7 @@ export async function getGroup(c: Context<AppContext>) {
 }
 
 export async function createGroup(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const jsonBody: any = (c.req as any).valid?.("json");
   const body = jsonBody ?? v.createGroupSchema.parse(await c.req.json());
   const group = await q.createGroup(db, body);
@@ -39,7 +39,7 @@ export async function createGroup(c: Context<AppContext>) {
 }
 
 export async function updateGroup(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const id = c.req.param("id")!;
   const jsonBody: any = (c.req as any).valid?.("json");
   const body = jsonBody ?? v.updateGroupSchema.parse(await c.req.json());
@@ -51,7 +51,7 @@ export async function updateGroup(c: Context<AppContext>) {
 }
 
 export async function deleteGroup(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const id = c.req.param("id")!;
   
   // Check if group exists

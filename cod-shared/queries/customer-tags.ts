@@ -33,10 +33,9 @@ export async function getAllTags(db: AppDb, filters?: CustomerTagFilters) {
       .from(customerTags)
       .where(and(...conditions))
       .limit(limit)
-      .offset(offset)
-      .all();
+      .offset(offset);
   }
-  return await db.select().from(customerTags).limit(limit).offset(offset).all();
+  return await db.select().from(customerTags).limit(limit).offset(offset);
 }
 
 export async function getTagById(db: AppDb, tagId: string) {
@@ -44,7 +43,7 @@ export async function getTagById(db: AppDb, tagId: string) {
     .select()
     .from(customerTags)
     .where(eq(customerTags.id, tagId))
-    .get();
+    .then((rows) => rows[0]);
 }
 
 export async function getTagWithCustomers(db: AppDb, tagId: string) {
@@ -63,8 +62,7 @@ export async function getTagWithCustomers(db: AppDb, tagId: string) {
     })
     .from(customerTagAssignments)
     .innerJoin(customers, eq(customerTagAssignments.customerId, customers.id))
-    .where(eq(customerTagAssignments.tagId, tagId))
-    .all();
+    .where(eq(customerTagAssignments.tagId, tagId));
 
   return { ...tag, customers: assigned };
 }
@@ -115,7 +113,7 @@ export async function assignTag(db: AppDb, tagId: string, customerId: string) {
     .select({ count: sql<number>`count(*)` })
     .from(customerTagAssignments)
     .where(eq(customerTagAssignments.tagId, tagId))
-    .get();
+    .then((rows) => rows[0]);
 
   await db
     .update(customerTags)
@@ -138,7 +136,7 @@ export async function unassignTag(db: AppDb, tagId: string, customerId: string) 
     .select({ count: sql<number>`count(*)` })
     .from(customerTagAssignments)
     .where(eq(customerTagAssignments.tagId, tagId))
-    .get();
+    .then((rows) => rows[0]);
 
   await db
     .update(customerTags)

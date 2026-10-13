@@ -1,56 +1,34 @@
 /**
- * Store Authentication Middleware
+ * Storefront channel resolution.
  *
- * Validates the X-Store-API-Key header by comparing a SHA-256 hash
- * of the provided key against the stored hash in store_api_keys.
+ * One storefront deployment serves every channel. It authenticates as the
+ * storefront with `X-Storefront-Key` (shared secret, server-to-server only)
+ * and names the visitor's hostname in `X-Channel-Host`; the hostname picks the
+ * channel. The hostname is trusted only together with the key, so a browser
+ * calling the API directly cannot choose a store.
  */
-
-import { Context, Next } from "hono";
+import { timingSafeEqual } from "node:crypto";
+import type { Context } from "hono";
 import type { AppContext } from "@/types";
-import { getDb } from "@/db";
-import { storeApiKeys } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { requestScope, storeIdForHost } from "@/db/scope";
 
-async function sha256hex(text: string): Promise<string> {
-  const data = new TextEncoder().encode(text);
-  const hash = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(hash))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
+function sameSecret(given: string, expected: string): boolean {
+  const a = Buffer.from(given);
+  const b = Buffer.from(expected);
+  return a.length === b.length && timingSafeEqual(a, b);
 }
 
-export async function storeAuthMiddleware(c: Context<AppContext>, next: Next) {
-  const rawKey = c.req.header("X-Store-API-Key");
-  if (!rawKey) {
-    return c.json({ error: "Missing store API key" }, 401);
+export async function resolveStorefrontStore(c: Context<AppContext>): Promise<string | Response> {
+  const expected = c.env.STOREFRONT_SERVICE_KEY;
+  const key = c.req.header("X-Storefront-Key");
+  if (!expected || !key || !sameSecret(key, expected)) {
+    return c.json({ error: "Invalid storefront key" }, 401);
   }
+  const host = c.req.header("X-Channel-Host");
+  if (!host) return c.json({ error: "Missing channel host" }, 400);
 
-  try {
-    const db = getDb(c.env.DB);
-    const keyHash = await sha256hex(rawKey);
-
-    const record = await db
-      .select()
-      .from(storeApiKeys)
-      .where(eq(storeApiKeys.keyHash, keyHash))
-      .get();
-
-    if (!record) {
-      return c.json({ error: "Invalid store API key" }, 401);
-    }
-
-    c.set("storeId", record.storeId);
-
-    // Update lastUsedAt fire-and-forget (non-critical)
-    db.update(storeApiKeys)
-      .set({ lastUsedAt: new Date().toISOString() })
-      .where(eq(storeApiKeys.id, record.id))
-      .run()
-      .catch(() => {});
-
-    await next();
-  } catch (err) {
-    console.error("[storeAuth]", err);
-    return c.json({ error: "Authentication failed" }, 500);
-  }
+  const storeId = await storeIdForHost(c.env.DATABASE.app, host);
+  return storeId ?? c.json({ error: "Unknown store" }, 404);
 }
+
+export const storeAuthMiddleware = requestScope(resolveStorefrontStore);

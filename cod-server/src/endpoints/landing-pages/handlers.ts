@@ -31,7 +31,7 @@ import {
  * var is the fallback; null leaves the caller a relative path.
  */
 async function publicUrlDecorator(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const baseUrl = await resolveStorefrontBaseUrl(db, c.env.STOREFRONT_URL);
   return <T extends { slug: string }>(lp: T): T & { publicUrl: string } => ({
     ...lp,
@@ -40,7 +40,7 @@ async function publicUrlDecorator(c: Context<AppContext>) {
 }
 
 export async function listLandingPages(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const withPublicUrl = await publicUrlDecorator(c);
   const productId = c.req.query("productId");
   const status = c.req.query("status");
@@ -71,7 +71,7 @@ export async function listLandingPages(c: Context<AppContext>) {
 }
 
 export async function getLandingPage(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const withPublicUrl = await publicUrlDecorator(c);
   const id = c.req.param("id")!;
   const data = await queries.getLandingPageById(db, id);
@@ -120,7 +120,7 @@ async function requireLandingPage(c: Context<AppContext>, db: ReturnType<typeof 
  * panel that only echoes what they typed cannot tell them.
  */
 export async function getLandingPageTrackingConfig(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const { id } = await requireLandingPage(c, db);
   const [row, lastEvent] = await Promise.all([
     getLandingPageTracking(db, id),
@@ -139,7 +139,7 @@ export async function getLandingPageTrackingConfig(c: Context<AppContext>) {
 }
 
 export async function saveLandingPageTrackingConfig(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const { id, landingPage } = await requireLandingPage(c, db);
   const body: any = (c.req as any).valid?.("json");
   const data = body ?? landingPageTrackingSchema.parse(await c.req.json());
@@ -174,7 +174,7 @@ export async function saveLandingPageTrackingConfig(c: Context<AppContext>) {
 }
 
 export async function deleteLandingPageTrackingConfig(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const { id, landingPage } = await requireLandingPage(c, db);
   await deleteLandingPageTracking(db, id);
 
@@ -191,7 +191,7 @@ export async function deleteLandingPageTrackingConfig(c: Context<AppContext>) {
 }
 
 export async function createLandingPage(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const withPublicUrl = await publicUrlDecorator(c);
   const body: any = (c.req as any).valid?.("json");
   const data = body ?? createLandingPageSchema.parse(await c.req.json());
@@ -208,7 +208,7 @@ export async function createLandingPage(c: Context<AppContext>) {
 }
 
 export async function updateLandingPage(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const withPublicUrl = await publicUrlDecorator(c);
   const id = c.req.param("id")!;
 
@@ -230,7 +230,7 @@ export async function updateLandingPage(c: Context<AppContext>) {
 }
 
 export async function deleteLandingPage(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const id = c.req.param("id")!;
 
   await queries.deleteLandingPageWithGuard(db, id);
@@ -244,7 +244,7 @@ export async function deleteLandingPage(c: Context<AppContext>) {
 }
 
 export async function duplicateLandingPage(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const id = c.req.param("id")!;
 
   const newId = await queries.duplicateLandingPage(db, id);
@@ -263,7 +263,7 @@ export async function duplicateLandingPage(c: Context<AppContext>) {
 }
 
 export async function publishLandingPage(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const withPublicUrl = await publicUrlDecorator(c);
   const id = c.req.param("id")!;
 
@@ -283,7 +283,7 @@ export async function publishLandingPage(c: Context<AppContext>) {
 }
 
 export async function unpublishLandingPage(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const withPublicUrl = await publicUrlDecorator(c);
   const id = c.req.param("id")!;
 
@@ -303,7 +303,7 @@ export async function unpublishLandingPage(c: Context<AppContext>) {
 }
 
 export async function archiveLandingPage(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const id = c.req.param("id")!;
 
   const existing = await queries.getLandingPageById(db, id);
@@ -320,7 +320,7 @@ export async function archiveLandingPage(c: Context<AppContext>) {
 }
 
 export async function compareLandingPages(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const withPublicUrl = await publicUrlDecorator(c);
   const productId = c.req.query("productId");
   if (!productId) {
@@ -334,14 +334,14 @@ export async function compareLandingPages(c: Context<AppContext>) {
 }
 
 export async function listLandingPageImages(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const id = c.req.param("id")!;
   const data = await queries.getLandingPageImages(db, id);
   return c.json({ success: true, data, count: data.length }, 200);
 }
 
 export async function saveLandingPageImage(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const id = c.req.param("id")!;
 
   const existing = await queries.getLandingPageById(db, id);
@@ -369,7 +369,7 @@ export async function saveLandingPageImage(c: Context<AppContext>) {
 }
 
 export async function reorderLandingPageImages(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const id = c.req.param("id")!;
 
   const existing = await queries.getLandingPageById(db, id);
@@ -388,7 +388,7 @@ export async function reorderLandingPageImages(c: Context<AppContext>) {
 }
 
 export async function deleteLandingPageImage(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const id = c.req.param("id")!;
   const imageId = c.req.param("imageId")!;
   const bucket = c.env.IMAGES;

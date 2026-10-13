@@ -170,7 +170,7 @@ export async function resolveTrackingConfig(
     .select()
     .from(storePixelConfig)
     .where(eq(storePixelConfig.storeId, ctx.storeId))
-    .get();
+    .then((rows) => rows[0]);
 
   if (!storeRow) return null;
 
@@ -182,7 +182,7 @@ export async function resolveTrackingConfig(
           .select()
           .from(landingPagePixelConfig)
           .where(eq(landingPagePixelConfig.landingPageId, ctx.landingPageId))
-          .get()
+          .then((rows) => rows[0])
       : undefined;
 
   return effectiveTrackingFrom(storeRow, pageRow);

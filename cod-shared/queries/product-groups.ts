@@ -44,8 +44,7 @@ export async function getAllGroups(db: AppDb, filters?: GroupFilters) {
     .select()
     .from(productCategories)
     .where(conditions.length ? and(...conditions) : undefined)
-    .orderBy(productCategories.position)
-    .all();
+    .orderBy(productCategories.position);
 
   return Promise.all(rows.map(async (cat) => {
     const countRow = await db
@@ -55,16 +54,16 @@ export async function getAllGroups(db: AppDb, filters?: GroupFilters) {
         eq(products.categoryId, cat.id),
         isNull(products.deletedAt)
       ))
-      .get();
+      .then((rows) => rows[0]);
     return { ...cat, productsCount: countRow?.count ?? 0 };
   }));
 }
 
 export async function getGroupById(db: AppDb, id: string) {
-  const cat = await db.select().from(productCategories).where(eq(productCategories.id, id)).get();
+  const cat = await db.select().from(productCategories).where(eq(productCategories.id, id)).then((rows) => rows[0]);
   if (!cat) return null;
   const [childrenRows, productsCountRow] = await Promise.all([
-    db.select().from(productCategories).where(eq(productCategories.parentId, id)).all(),
+    db.select().from(productCategories).where(eq(productCategories.parentId, id)),
     db
       .select({ count: count() })
       .from(products)
@@ -72,7 +71,7 @@ export async function getGroupById(db: AppDb, id: string) {
         eq(products.categoryId, id),
         isNull(products.deletedAt)
       ))
-      .get(),
+      .then((rows) => rows[0]),
   ]);
   return { ...cat, children: childrenRows, productsCount: productsCountRow?.count ?? 0 };
 }

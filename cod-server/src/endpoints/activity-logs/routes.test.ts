@@ -30,7 +30,8 @@ const staff = { id: "user_staff_001", name: "Amira Khalil", role: "staff", scope
 function makeApp(user: any) {
   const app = new OpenAPIHono<AppContext>({ defaultHook: openApiValidationHook });
   app.use("*", async (c, next) => {
-    c.env = { DB: mockDb } as any;
+    c.env = {} as never;
+    c.set("db", mockDb);
     if (user) c.set("user", user);
     await next();
   });

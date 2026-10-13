@@ -6,7 +6,7 @@ type StoreUpdate = Partial<typeof stores.$inferInsert>;
 
 /** Single-tenant: returns the one store in this D1 database. */
 export async function getStore(db: AppDb) {
-  return db.select().from(stores).get();
+  return db.select().from(stores).then((rows) => rows[0]);
 }
 
 export async function updateStore(db: AppDb, storeId: string, data: StoreUpdate) {
@@ -14,7 +14,6 @@ export async function updateStore(db: AppDb, storeId: string, data: StoreUpdate)
   await db
     .update(stores)
     .set({ ...data, updatedAt: now })
-    .where(eq(stores.id, storeId))
-    .run();
-  return db.select().from(stores).where(eq(stores.id, storeId)).get();
+    .where(eq(stores.id, storeId));
+  return db.select().from(stores).where(eq(stores.id, storeId)).then((rows) => rows[0]);
 }

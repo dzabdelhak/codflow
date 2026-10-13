@@ -19,15 +19,14 @@ export async function getAllWilayas(db: AppDb, filters?: WilayaFilters) {
       .select()
       .from(wilayas)
       .where(or(like(wilayas.name, `%${filters.search}%`), like(wilayas.nameAr, `%${filters.search}%`)))
-      .orderBy(asc(wilayas.id))
-      .all();
+      .orderBy(asc(wilayas.id));
   }
 
-  return await db.select().from(wilayas).orderBy(asc(wilayas.id)).all();
+  return await db.select().from(wilayas).orderBy(asc(wilayas.id));
 }
 
 export async function getWilayaById(db: AppDb, id: number) {
-  return await db.select().from(wilayas).where(eq(wilayas.id, id)).get();
+  return await db.select().from(wilayas).where(eq(wilayas.id, id)).then((rows) => rows[0]);
 }
 
 export async function getCommunesByWilaya(db: AppDb, wilayaId: number) {
@@ -35,6 +34,5 @@ export async function getCommunesByWilaya(db: AppDb, wilayaId: number) {
     .select()
     .from(communes)
     .where(eq(communes.wilayaId, wilayaId))
-    .orderBy(asc(communes.name))
-    .all();
+    .orderBy(asc(communes.name));
 }

@@ -1,76 +1,22 @@
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { transform } from "esbuild";
-import { Miniflare } from "miniflare";
-import { RICH_TEXT_ATTRS, RICH_TEXT_DANGEROUS_TAGS, RICH_TEXT_SCHEMES, RICH_TEXT_TAGS, RICH_TEXT_STYLE_PATTERNS, RICH_TEXT_DATA_VALUES } from "./rich-text";
-import type { RichTextRemoval, SanitizeRichTextResult } from "./rich-text";
+import { describe, expect, it } from "vitest";
+import {
+  RICH_TEXT_ATTRS,
+  RICH_TEXT_DANGEROUS_TAGS,
+  RICH_TEXT_SCHEMES,
+  RICH_TEXT_TAGS,
+  RICH_TEXT_STYLE_PATTERNS,
+  RICH_TEXT_DATA_VALUES,
+  sanitizeRichText,
+  toPlainText,
+  unsupportedElements,
+} from "./rich-text";
+import type { RichTextRemoval } from "./rich-text";
 
-// HTMLRewriter does not exist in the Node vitest pool (proven: typeof is
-// "undefined" there), so every sanitize/plain/unsupported call runs inside a
-// real workerd via a programmatic Miniflare instance — the same devDependency
-// and pattern the repo's e2e tests already use. The module source is
-// esbuild-transformed (loader: "ts") and registered as a workerd module; no
-// fake or polyfilled parser is involved anywhere.
-const here = dirname(fileURLToPath(import.meta.url));
-const moduleSource = readFileSync(join(here, "rich-text.ts"), "utf8");
-
-const WORKER = `
-import { sanitizeRichText, toPlainText, unsupportedElements } from "./rich-text.mjs";
-export default {
-  async fetch(request) {
-    const { fn, args } = await request.json();
-    try {
-      let result;
-      if (fn === "sanitizeRichText") result = await sanitizeRichText(args[0]);
-      else if (fn === "toPlainText") result = await toPlainText(args[0]);
-      else if (fn === "unsupportedElements") result = await unsupportedElements(args[0]);
-      else return Response.json({ ok: false, error: "unknown fn: " + fn }, { status: 400 });
-      return Response.json({ ok: true, result });
-    } catch (e) {
-      return Response.json({ ok: false, error: String((e && e.stack) || e) }, { status: 500 });
-    }
-  },
-};
-`;
-
-let mf: Miniflare | undefined;
-
-beforeAll(async () => {
-  const lib = await transform(moduleSource, { loader: "ts", format: "esm" });
-  mf = new Miniflare({
-    modules: [
-      { type: "ESModule", path: "index.mjs", contents: WORKER },
-      { type: "ESModule", path: "rich-text.mjs", contents: lib.code },
-    ],
-  });
-});
-
-afterAll(async () => {
-  await mf?.dispose();
-});
-
-async function runInWorkerd<T>(fn: string, ...args: unknown[]): Promise<T> {
-  const worker = await mf!.getWorker();
-  const res = await worker.fetch("http://rich-text.test/", {
-    method: "POST",
-    body: JSON.stringify({ fn, args }),
-  });
-  const data = (await res.json()) as {
-    ok: boolean;
-    result?: T;
-    error?: string;
-  };
-  if (!data.ok) throw new Error(`workerd run failed for ${fn}: ${data.error}`);
-  return data.result as T;
-}
-
-const sanitize = (html: string) =>
-  runInWorkerd<SanitizeRichTextResult>("sanitizeRichText", html);
-const plain = (html: string) => runInWorkerd<string>("toPlainText", html);
-const unsupported = (html: string) =>
-  runInWorkerd<RichTextRemoval[]>("unsupportedElements", html);
+// The real lol-html engine (WebAssembly build of Cloudflare's HTMLRewriter) —
+// no fake or polyfilled parser is involved anywhere.
+const sanitize = (html: string) => sanitizeRichText(html);
+const plain = (html: string) => toPlainText(html);
+const unsupported = (html: string) => unsupportedElements(html);
 
 const names = (removals: RichTextRemoval[]) =>
   removals.map((r) => `${r.kind}:${r.name}`).sort();

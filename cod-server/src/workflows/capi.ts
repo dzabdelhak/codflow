@@ -69,7 +69,7 @@ export class CodCapiWorkflow extends WorkflowEntrypoint<Env, CodCapiParams> {
 
     // Step 1 — fetch fresh data from D1 (never rely on stale params)
     const data = await step.do("fetch-order-and-config", async () => {
-      const db = getDb(this.env.DB);
+      const db = getDb(this.env.DATABASE.platform);
 
       const order = await db
         .select({
@@ -96,7 +96,7 @@ export class CodCapiWorkflow extends WorkflowEntrypoint<Env, CodCapiParams> {
         .from(orders)
         .leftJoin(landingPages, eq(orders.landingPageId, landingPages.id))
         .where(eq(orders.id, orderId))
-        .get();
+        .then((rows) => rows[0]);
 
       if (!order) throw new NonRetryableError(`Order ${orderId} not found`);
 
@@ -106,11 +106,11 @@ export class CodCapiWorkflow extends WorkflowEntrypoint<Env, CodCapiParams> {
             .select({ name: communes.name, postalCode: communes.postalCode })
             .from(communes)
             .where(eq(communes.id, order.communeId))
-            .get()
+            .then((rows) => rows[0])
         : null;
 
       // Single-tenant: one store per database
-      const storeRow = await db.select({ id: stores.id, domain: stores.domain }).from(stores).limit(1).get();
+      const storeRow = await db.select({ id: stores.id, domain: stores.domain }).from(stores).limit(1).then((rows) => rows[0]);
       if (!storeRow) throw new NonRetryableError("No store found");
 
       const productRows = await db
@@ -151,7 +151,7 @@ export class CodCapiWorkflow extends WorkflowEntrypoint<Env, CodCapiParams> {
     if (!dispatch.send) {
       if (dispatch.reason === "no-access-token") {
         await step.do("log-skip", async () => {
-          await logCapiEvent(getDb(this.env.DB), {
+          await logCapiEvent(getDb(this.env.DATABASE.platform), {
             orderId,
             eventName,
             stage,
@@ -168,7 +168,7 @@ export class CodCapiWorkflow extends WorkflowEntrypoint<Env, CodCapiParams> {
     const ageSeconds = Math.floor(Date.now() / 1000) - triggeredAt;
     if (ageSeconds >= SEVEN_DAYS_SECONDS) {
       await step.do("log-skip", async () => {
-        await logCapiEvent(getDb(this.env.DB), {
+        await logCapiEvent(getDb(this.env.DATABASE.platform), {
           orderId,
           eventName,
           stage,
@@ -182,7 +182,7 @@ export class CodCapiWorkflow extends WorkflowEntrypoint<Env, CodCapiParams> {
 
     // Step 4 — Atomic Event Claim in D1
     const claim = await step.do("claim-event", async () => {
-      const db = getDb(this.env.DB);
+      const db = getDb(this.env.DATABASE.platform);
       const now = new Date().toISOString();
       const claimId = `claim-${orderId}-${stage}-${eventName}`;
       // The destination is written with the claim, not with the result, so an
@@ -214,7 +214,7 @@ export class CodCapiWorkflow extends WorkflowEntrypoint<Env, CodCapiParams> {
             eq(capiEventLog.eventName, eventName)
           )
         )
-        .get();
+        .then((rows) => rows[0]);
 
       if (existing) {
         if (existing.status === "sent") {
@@ -274,7 +274,7 @@ export class CodCapiWorkflow extends WorkflowEntrypoint<Env, CodCapiParams> {
       );
     } catch (err) {
       await step.do("log-failure", async () => {
-        const db = getDb(this.env.DB);
+        const db = getDb(this.env.DATABASE.platform);
         const now = new Date().toISOString();
         const errorMsg = err instanceof Error ? err.message : String(err);
         await db.run(
@@ -288,7 +288,7 @@ export class CodCapiWorkflow extends WorkflowEntrypoint<Env, CodCapiParams> {
 
     // Step 6 — Update claim row in capi_event_log
     await step.do("log-result", async () => {
-      const db = getDb(this.env.DB);
+      const db = getDb(this.env.DATABASE.platform);
       const now = new Date().toISOString();
       const status = capiResult.success ? "sent" : "failed";
       const metaEventId = capiResult.fbtrace_id ?? null;

@@ -26,7 +26,7 @@ let app: OpenAPIHono<AppContext>;
 /** Same router, mounted for a staff user who may look but not change. */
 let readOnlyApp: OpenAPIHono<AppContext>;
 const NOW = () => new Date().toISOString();
-const STORE_ID = "store-cf-api";
+const STORE_ID = "test-store";
 
 /**
  * A STAFF user with explicit scopes, not an admin.
@@ -50,7 +50,8 @@ function staff(scopes: string[]) {
 function mountWith(scopes: string[]) {
   const instance = new OpenAPIHono<AppContext>({ defaultHook: openApiValidationHook });
   instance.use("*", async (c, next) => {
-    c.env = { DB: harness.raw } as never;
+    c.env = {} as never;
+    c.set("db", harness.db);
     c.set("user", staff(scopes));
     await next();
   });
@@ -70,8 +71,7 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-  await harness.db.delete(schema.stores);
-  await harness.db.insert(schema.stores).values({
+  await harness.setStore({
     id: STORE_ID,
     name: "API Test Store",
     createdAt: NOW(),
@@ -98,7 +98,7 @@ async function storedColumn() {
     .select({ json: schema.stores.checkoutFormJson })
     .from(schema.stores)
     .where(eq(schema.stores.id, STORE_ID))
-    .get();
+    .then((rows) => rows[0]);
   return row?.json ?? null;
 }
 

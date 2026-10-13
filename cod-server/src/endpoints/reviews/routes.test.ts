@@ -54,7 +54,8 @@ describe("Reviews routes (OpenAPIHono)", () => {
   beforeEach(() => {
     app = new OpenAPIHono<AppContext>({ defaultHook: openApiValidationHook });
     app.use("*", async (c, next) => {
-      c.env = { DB: mockDb } as any;
+      c.env = {} as never;
+      c.set("db", mockDb);
       c.set("user", mockUser as any);
       await next();
     });

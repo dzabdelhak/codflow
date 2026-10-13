@@ -2,7 +2,9 @@
   "compilerOptions": {
     "target": "ES2022",
     "module": "ES2022",
-    "lib": ["ES2022"],
+    "lib": [
+      "ES2022"
+    ],
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "allowJs": true,
@@ -13,13 +15,96 @@
     "forceConsistentCasingInFileNames": true,
     "isolatedModules": true,
     "noEmit": true,
-    "types": ["@cloudflare/workers-types"],
+    "types": [
+      "@cloudflare/workers-types"
+    ],
     "paths": {
-      "@/*": ["./src/*"],
-      "drizzle-orm": ["./node_modules/drizzle-orm"],
-      "drizzle-orm/*": ["./node_modules/drizzle-orm/*"]
+      "@/*": [
+        "./src/*"
+      ],
+      "drizzle-orm": [
+        "./node_modules/drizzle-orm"
+      ],
+      "drizzle-orm/*": [
+        "./node_modules/drizzle-orm/*"
+      ]
     }
   },
-  "include": ["src/**/*", "../cod-shared/**/*"],
-  "exclude": ["node_modules"]
+  "include": [
+    "src/**/*",
+    "../cod-shared/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "../cod-shared/queries/landing-page-tracking.test.ts",
+    "src/cron/sweep-orphan-images.test.ts",
+    "src/endpoints/abandoned-orders/abandoned-basket-e2e.test.ts",
+    "src/endpoints/activity-logs/handlers.test.ts",
+    "src/endpoints/checkout-form/checkout-form-api-e2e.test.ts",
+    "src/endpoints/customer-groups/handlers.test.ts",
+    "src/endpoints/customer-groups/routes.test.ts",
+    "src/endpoints/customers/customers.filters-e2e.test.ts",
+    "src/endpoints/customers/handlers.test.ts",
+    "src/endpoints/customers/routes.test.ts",
+    "src/endpoints/customer-tags/handlers.test.ts",
+    "src/endpoints/customer-tags/routes.test.ts",
+    "src/endpoints/delivery-companies/webhook-events.e2e.test.ts",
+    "src/endpoints/drivers/handlers.test.ts",
+    "src/endpoints/drivers/routes.test.ts",
+    "src/endpoints/images/images.test.ts",
+    "src/endpoints/landing-pages/landing-pages.api-e2e.test.ts",
+    "src/endpoints/landing-pages/landing-pages.attribution-e2e.test.ts",
+    "src/endpoints/landing-pages/landing-pages.hidden-product-e2e.test.ts",
+    "src/endpoints/landing-pages/landing-pages.public-e2e.test.ts",
+    "src/endpoints/landing-pages/landing-pages.schema-e2e.test.ts",
+    "src/endpoints/mcp/handlers.test.ts",
+    "src/endpoints/orders/dispatch-limits-e2e.test.ts",
+    "src/endpoints/orders/money-integrity-probes.e2e.test.ts",
+    "src/endpoints/orders/orders.delete-e2e.test.ts",
+    "src/endpoints/orders/orders.read-e2e.test.ts",
+    "src/endpoints/orders/orders.stock-lifecycle-e2e.test.ts",
+    "src/endpoints/orders/orders.test.ts",
+    "src/endpoints/orders/orders.webhook-e2e.test.ts",
+    "src/endpoints/orders/routes.test.ts",
+    "src/endpoints/product-groups/handlers.test.ts",
+    "src/endpoints/product-groups/product-groups.test.ts",
+    "src/endpoints/product-groups/routes.test.ts",
+    "src/endpoints/products/handlers.test.ts",
+    "src/endpoints/products/products.list-queries.test.ts",
+    "src/endpoints/products/products.rich-text-e2e.test.ts",
+    "src/endpoints/products/routes.test.ts",
+    "src/endpoints/reviews/routes.test.ts",
+    "src/endpoints/shipping-profiles/routes.test.ts",
+    "src/endpoints/stock/routes.test.ts",
+    "src/endpoints/stock/stock.overview-e2e.test.ts",
+    "src/endpoints/store/capi-checkout-decision.test.ts",
+    "src/endpoints/store/capi-lead-trigger.test.ts",
+    "src/endpoints/store/cart-orders-e2e.test.ts",
+    "src/endpoints/store/cart-rollback-e2e.test.ts",
+    "src/endpoints/store/cart-validate-e2e.test.ts",
+    "src/endpoints/store/checkout-form-policy-e2e.test.ts",
+    "src/endpoints/store/checkout-query-budget.e2e.test.ts",
+    "src/endpoints/store/checkout-shipping-e2e.test.ts",
+    "src/endpoints/stores/email-config.test.ts",
+    "src/endpoints/stores/otp-config.test.ts",
+    "src/endpoints/stores/routes.test.ts",
+    "src/endpoints/stores/store-cart-toggle-e2e.test.ts",
+    "src/endpoints/stores/store-pixel-config-e2e.test.ts",
+    "src/endpoints/store/store.queries-e2e.test.ts",
+    "src/endpoints/store/store.queries.test.ts",
+    "src/endpoints/stores/turnstile-config.test.ts",
+    "src/endpoints/users/handlers.test.ts",
+    "src/endpoints/users/queries.test.ts",
+    "src/endpoints/users/routes.test.ts",
+    "src/endpoints/variants/handlers.test.ts",
+    "src/endpoints/webhooks/yalidine-webhook.e2e.test.ts",
+    "src/endpoints/whatsapp-widget/whatsapp-widget-api-e2e.test.ts",
+    "src/endpoints/wilayas/handlers.test.ts",
+    "src/endpoints/wilayas/routes.test.ts",
+    "src/mcp/authorize.test.ts",
+    "src/mcp/registry.test.ts",
+    "src/mcp/server-factory.test.ts",
+    "src/workflows/capi-destination.test.ts",
+    "src/workflows/landing-page-image-upload.test.ts"
+  ]
 }

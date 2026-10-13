@@ -79,8 +79,7 @@ export async function listMcpConnections(
     })
     .from(oauthConsents)
     .innerJoin(oauthClients, eq(oauthConsents.clientId, oauthClients.clientId))
-    .where(consentWhere)
-    .all();
+    .where(consentWhere);
 
   if (consents.length === 0) return [];
 
@@ -93,8 +92,7 @@ export async function listMcpConnections(
     })
     .from(oauthAccessTokens)
     .where(filter.userId ? eq(oauthAccessTokens.userId, filter.userId) : undefined)
-    .groupBy(oauthAccessTokens.userId, oauthAccessTokens.clientId)
-    .all();
+    .groupBy(oauthAccessTokens.userId, oauthAccessTokens.clientId);
 
   const liveRefresh = await db
     .select({
@@ -104,14 +102,12 @@ export async function listMcpConnections(
     })
     .from(oauthRefreshTokens)
     .where(filter.userId ? eq(oauthRefreshTokens.userId, filter.userId) : undefined)
-    .groupBy(oauthRefreshTokens.userId, oauthRefreshTokens.clientId)
-    .all();
+    .groupBy(oauthRefreshTokens.userId, oauthRefreshTokens.clientId);
 
   const userRows = !filter.userId
     ? await db
         .select({ id: users.id, name: users.name, email: users.email })
         .from(users)
-        .all()
     : [];
   const userMap = new Map(userRows.map((u) => [u.id, u]));
 

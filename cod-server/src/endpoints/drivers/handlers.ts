@@ -18,7 +18,7 @@ import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
  * List all drivers with optional filters.
  */
 export async function listDrivers(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const query: any = (c.req as any).valid?.("query");
   const filters = query ?? validation.driverFiltersSchema.parse({
     wilayaId: c.req.query("wilayaId"),
@@ -37,7 +37,7 @@ export async function listDrivers(c: Context<AppContext>) {
  * Get a single driver by ID, including recent orders.
  */
 export async function getDriver(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const driverId = c.req.param("id");
 
   if (!driverId) {
@@ -58,7 +58,7 @@ export async function getDriver(c: Context<AppContext>) {
  * Create a new driver.
  */
 export async function createDriver(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const jsonBody: any = (c.req as any).valid?.("json");
   const body = jsonBody ?? validation.createDriverSchema.parse(await c.req.json());
   
@@ -86,7 +86,7 @@ export async function createDriver(c: Context<AppContext>) {
  * Update driver profile information.
  */
 export async function updateDriver(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const id = c.req.param("id")!;
   const jsonBody: any = (c.req as any).valid?.("json");
   const body = jsonBody ?? validation.updateDriverSchema.parse(await c.req.json());
@@ -117,7 +117,7 @@ export async function updateDriver(c: Context<AppContext>) {
  * Update driver availability status.
  */
 export async function updateDriverStatus(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const id = c.req.param("id")!;
   const jsonBody: any = (c.req as any).valid?.("json");
   const body = jsonBody ?? validation.updateDriverStatusSchema.parse(await c.req.json());
@@ -139,7 +139,7 @@ export async function updateDriverStatus(c: Context<AppContext>) {
  * Delete a driver (blocked if they have active orders).
  */
 export async function deleteDriver(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const id = c.req.param("id")!;
 
   const existing = await queries.getDriverById(db, id);
@@ -175,7 +175,7 @@ function parseWilayaId(raw: string | undefined): number {
  * Return all 58 wilayas with the driver's configured fee (null if no row).
  */
 export async function listCompensations(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const driverId = c.req.param("id")!;
 
   const driver = await queries.getDriverById(db, driverId);
@@ -192,7 +192,7 @@ export async function listCompensations(c: Context<AppContext>) {
  * Upsert the driver's per-delivery fee for one wilaya.
  */
 export async function setCompensation(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const driverId = c.req.param("id")!;
   const wilayaId = parseWilayaId(c.req.param("wilayaId"));
 
@@ -226,7 +226,7 @@ export async function setCompensation(c: Context<AppContext>) {
  * Returns 404 if no row existed.
  */
 export async function deleteCompensation(c: Context<AppContext>) {
-  const db = getDb(c.env.DB);
+  const db = c.get("db");
   const driverId = c.req.param("id")!;
   const wilayaId = parseWilayaId(c.req.param("wilayaId"));
 

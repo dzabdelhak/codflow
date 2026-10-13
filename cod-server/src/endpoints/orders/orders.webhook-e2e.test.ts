@@ -1,8 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { Miniflare } from "miniflare";
+import { createTestDb, type TestDb } from "@/test-utils/pg";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
-import { drizzle } from "drizzle-orm/d1";
 import { eq } from "drizzle-orm";
 import * as schema from "@/db/schema";
 import type { AppDb } from "@/db";
@@ -11,32 +10,12 @@ import { updateOrderStatusWebhook } from "../../../../cod-shared/queries/orders"
 let db: AppDb;
 
 beforeAll(async () => {
-  const mf = new Miniflare({
-    script: "export default { fetch() { return new Response('ok'); } }",
-    modules: true,
-    d1Databases: { DB: "test-db" },
-  });
-  const d1 = await mf.getD1Database("DB");
-  const dir = resolve(__dirname, "../../db/migrations");
-  const preparedStatements: D1PreparedStatement[] = [];
-  for (const file of readdirSync(dir).filter((f) => f.endsWith(".sql")).sort()) {
-    const statements = readFileSync(`${dir}/${file}`, "utf8")
-      .split("--> statement-breakpoint")
-      .flatMap((s) => s.split(/;\s*\n/))
-      .map((s) => s.replace(/;+\s*$/, "").trim())
-      .filter((s) => s.replace(/--[^\n]*/g, "").trim().length > 0);
-    for (const statement of statements) {
-      preparedStatements.push(d1.prepare(statement));
-    }
-  }
-  for (let i = 0; i < preparedStatements.length; i += 50) {
-    await d1.batch(preparedStatements.slice(i, i + 50));
-  }
-  db = drizzle(d1 as unknown as D1Database, { schema }) as unknown as AppDb;
-  registry.push(mf);
+  const harness = await createTestDb();
+  db = harness.db;
+  registry.push(harness);
 }, 120_000);
 
-const registry: Miniflare[] = [];
+const registry: TestDb[] = [];
 
 afterAll(async () => {
   for (const mf of registry) await mf.dispose();
@@ -79,17 +58,17 @@ describe("updateOrderStatusWebhook — real D1 batch (E2E)", () => {
 
     expect(await updateOrderStatusWebhook(db, "ord-e2e-2", "cancelled", "e2e")).toEqual({ updated: true });
 
-    const inv = await db.select().from(schema.products).where(eq(schema.products.id, pid)).get();
+    const inv = await db.select().from(schema.products).where(eq(schema.products.id, pid)).then((rows) => rows[0]);
     expect(inv?.inventory).toBe(7);
 
-    const movements = await db.select().from(schema.stockMovements).all();
+    const movements = await db.select().from(schema.stockMovements);
     expect(movements).toHaveLength(1);
     expect(movements[0]).toMatchObject({ type: "ORDER_CANCELLED", delta: 2, qtyBefore: 5, qtyAfter: 7 });
 
-    const line = await db.select().from(schema.orderProducts).where(eq(schema.orderProducts.id, "op-e2e-2")).get();
+    const line = await db.select().from(schema.orderProducts).where(eq(schema.orderProducts.id, "op-e2e-2")).then((rows) => rows[0]);
     expect(line).toMatchObject({ status: "returned", returnedQuantity: 2 });
 
-    const cust = await db.select().from(schema.customers).where(eq(schema.customers.id, "cust-e2e-1")).get();
+    const cust = await db.select().from(schema.customers).where(eq(schema.customers.id, "cust-e2e-1")).then((rows) => rows[0]);
     expect(cust?.totalSpent).toBe(0);
 
     let batchFailed = false;
@@ -109,7 +88,7 @@ describe("updateOrderStatusWebhook — real D1 batch (E2E)", () => {
       batchFailed = true;
     }
     expect(batchFailed).toBe(true);
-    expect(await db.select().from(schema.orders).where(eq(schema.orders.id, "ord-dupe")).get()).toBeUndefined();
-    expect(await db.select().from(schema.orderStatusHistory).where(eq(schema.orderStatusHistory.id, "hist-dupe")).get()).toBeUndefined();
+    expect(await db.select().from(schema.orders).where(eq(schema.orders.id, "ord-dupe")).then((rows) => rows[0])).toBeUndefined();
+    expect(await db.select().from(schema.orderStatusHistory).where(eq(schema.orderStatusHistory.id, "hist-dupe")).then((rows) => rows[0])).toBeUndefined();
   });
 });

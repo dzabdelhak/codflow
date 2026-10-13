@@ -35,10 +35,9 @@ export async function getAllGroups(db: AppDb, filters?: CustomerGroupFilters) {
       .from(customerGroups)
       .where(and(...conditions))
       .limit(limit)
-      .offset(offset)
-      .all();
+      .offset(offset);
   }
-  return await db.select().from(customerGroups).limit(limit).offset(offset).all();
+  return await db.select().from(customerGroups).limit(limit).offset(offset);
 }
 
 export async function getGroupById(db: AppDb, groupId: string) {
@@ -46,7 +45,7 @@ export async function getGroupById(db: AppDb, groupId: string) {
     .select()
     .from(customerGroups)
     .where(eq(customerGroups.id, groupId))
-    .get();
+    .then((rows) => rows[0]);
 }
 
 export async function getGroupWithMembers(db: AppDb, groupId: string) {
@@ -65,8 +64,7 @@ export async function getGroupWithMembers(db: AppDb, groupId: string) {
     })
     .from(customerGroupMembers)
     .innerJoin(customers, eq(customerGroupMembers.customerId, customers.id))
-    .where(eq(customerGroupMembers.groupId, groupId))
-    .all();
+    .where(eq(customerGroupMembers.groupId, groupId));
 
   return { ...group, members };
 }
@@ -119,7 +117,7 @@ export async function addMember(db: AppDb, groupId: string, customerId: string) 
     .select({ count: sql<number>`count(*)` })
     .from(customerGroupMembers)
     .where(eq(customerGroupMembers.groupId, groupId))
-    .get();
+    .then((rows) => rows[0]);
 
   await db
     .update(customerGroups)
@@ -142,7 +140,7 @@ export async function removeMember(db: AppDb, groupId: string, customerId: strin
     .select({ count: sql<number>`count(*)` })
     .from(customerGroupMembers)
     .where(eq(customerGroupMembers.groupId, groupId))
-    .get();
+    .then((rows) => rows[0]);
 
   await db
     .update(customerGroups)

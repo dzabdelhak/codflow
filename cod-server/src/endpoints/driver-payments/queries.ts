@@ -38,8 +38,7 @@ export async function createDriverPayment(
         eq(orders.driverId, driverId),
         eq(orders.status, "delivered")
       )
-    )
-    .all();
+    );
 
   if (selectedOrders.length !== orderIds.length) {
     throw new BusinessLogicError(

@@ -55,7 +55,8 @@ describe("Driver Payments routes (OpenAPIHono)", () => {
   beforeEach(() => {
     app = new OpenAPIHono<AppContext>({ defaultHook: openApiValidationHook });
     app.use("*", async (c, next) => {
-      c.env = { DB: mockDb } as any;
+      c.env = {} as never;
+      c.set("db", mockDb);
       c.set("user", {
         id: "admin_user_001",
         email: "admin@example.com",

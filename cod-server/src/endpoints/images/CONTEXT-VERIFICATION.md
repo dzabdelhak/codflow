@@ -11,7 +11,7 @@ Every file read in full:
 
 - `images/routes.ts` (both routers), `handlers.ts`, `presign.ts`, `openapi.ts` (existence + role), `README.md`
 - Schema: `productImages` table (schema.ts:630-645) — derivative fields and type column
-- Mount points verified in `src/index.ts`
+- Mount points verified in `src/app.ts`
 - Consumer flow cross-checked against `products/routes.ts` image endpoints
 
 ---

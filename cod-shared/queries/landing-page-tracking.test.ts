@@ -249,7 +249,7 @@ describe("the row's lifetime", () => {
       conversionEvent: "Purchase",
     });
 
-    await harness.raw.prepare("PRAGMA foreign_keys = ON").run();
+    await harness.raw.prepare("PRAGMA foreign_keys = ON");
     await harness.db.delete(schema.landingPages).where(eq(schema.landingPages.id, landingPageId));
 
     expect(await getLandingPageTracking(harness.db, landingPageId)).toBeUndefined();
