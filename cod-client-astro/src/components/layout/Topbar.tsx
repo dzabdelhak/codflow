@@ -7,6 +7,7 @@ import { useLocale, useT } from "@/i18n/react";
 import { Logo } from "@/components/brand/Logo";
 import LanguageSwitcher from "@/components/layout/LanguageSwitcher";
 import ThemeSwitcher from "@/components/layout/ThemeSwitcher";
+import { StoreSwitcher } from "@/features/stores/StoreSwitcher";
 
 export function Brand() {
   return (
@@ -109,6 +110,9 @@ export function DashboardTopbar({ onMenu }: { onMenu?: () => void }) {
           </button>
         )}
         <Brand />
+      </div>
+      <div className="min-w-0 shrink">
+        <StoreSwitcher />
       </div>
       <div className="hidden min-w-0 flex-1 justify-center sm:flex">
         <form

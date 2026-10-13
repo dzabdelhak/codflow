@@ -81,5 +81,25 @@
     "inventory": "المخزون",
     "dashboard": "لوحة التحكم"
   },
-  "dashboard_subtitle": "لوحة القيادة"
+  "dashboard_subtitle": "لوحة القيادة",
+  "stores": {
+    "switcher_label": "تبديل المتجر",
+    "loading": "جارٍ تحميل المتاجر…",
+    "none": "لا يوجد متجر بعد",
+    "create": "إنشاء متجر",
+    "create_title": "إنشاء متجر",
+    "create_description": "متجر جديد بمنتجاته ونطاقه وإعداداته الخاصة.",
+    "name_label": "اسم المتجر",
+    "name_placeholder": "مثال: بوتيك نور",
+    "subdomain_label": "العنوان",
+    "subdomain_hint": "سيكون متجرك على العنوان {address}",
+    "subdomain_rule": "أحرف لاتينية صغيرة وأرقام وشرطات.",
+    "create_submit": "إنشاء المتجر",
+    "creating": "جارٍ الإنشاء…",
+    "error_limit": "اشتراكك لا يسمح بمتجر آخر (مستخدم {used} من {limit}).",
+    "error_taken": "هذا العنوان مستخدم من طرف متجر آخر.",
+    "error_invalid": "استخدم من 3 إلى 40 حرفًا لاتينيًا صغيرًا أو رقمًا أو شرطة. بعض الأسماء محجوزة.",
+    "error_name": "أعطِ المتجر اسمًا.",
+    "error_generic": "تعذّر إنشاء المتجر. حاول مرة أخرى."
+  }
 }

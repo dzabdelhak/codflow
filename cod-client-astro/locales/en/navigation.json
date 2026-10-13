@@ -81,5 +81,25 @@
     "inventory": "Inventory",
     "dashboard": "Dashboard"
   },
-  "dashboard_subtitle": "Dashboard"
+  "dashboard_subtitle": "Dashboard",
+  "stores": {
+    "switcher_label": "Switch store",
+    "loading": "Loading stores…",
+    "none": "No store yet",
+    "create": "Create store",
+    "create_title": "Create a store",
+    "create_description": "A new store with its own products, domain and settings.",
+    "name_label": "Store name",
+    "name_placeholder": "e.g. Boutique Nour",
+    "subdomain_label": "Address",
+    "subdomain_hint": "Your store will be at {address}",
+    "subdomain_rule": "Lower-case letters, digits and hyphens.",
+    "create_submit": "Create store",
+    "creating": "Creating…",
+    "error_limit": "Your plan does not allow another store ({used} of {limit} used).",
+    "error_taken": "This address is already used by another store.",
+    "error_invalid": "Use 3 to 40 lower-case letters, digits or hyphens. Some names are reserved.",
+    "error_name": "Give the store a name.",
+    "error_generic": "The store could not be created. Try again."
+  }
 }

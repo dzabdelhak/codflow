@@ -12,16 +12,22 @@ import { createPortal } from "react-dom";
 
 const DropdownCloseContext = createContext<() => void>(() => undefined);
 
+const ICON_TRIGGER =
+  "grid size-9 place-items-center rounded-lg border border-border/80 bg-card text-muted-foreground shadow-2xs transition-all hover:bg-muted hover:text-foreground active:scale-[0.98]";
+
 export function DropdownMenu({
   trigger,
   triggerLabel,
   children,
   align = "end",
+  triggerClassName = ICON_TRIGGER,
 }: {
   trigger: ReactNode;
   triggerLabel: string;
   children: ReactNode;
   align?: "start" | "end";
+  /** Replaces the default square icon-button styling of the trigger. */
+  triggerClassName?: string;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -129,7 +135,7 @@ export function DropdownMenu({
         title={triggerLabel}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="grid size-9 place-items-center rounded-lg border border-border/80 bg-card text-muted-foreground shadow-2xs transition-all hover:bg-muted hover:text-foreground active:scale-[0.98]"
+        className={triggerClassName}
       >
         {trigger}
       </button>

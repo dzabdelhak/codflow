@@ -6,6 +6,7 @@
 import type { Context } from "hono";
 import type { AppContext } from "@/types";
 import { requestScope, type Scope } from "@/db/scope";
+import { ERROR_CODES } from "../../../cod-shared/errors/codes";
 import { listMerchantStores, merchantOwnsStore } from "@/platform/merchant-stores";
 
 export async function resolveDashboardScope(c: Context<AppContext>): Promise<Scope | Response> {
@@ -15,7 +16,7 @@ export async function resolveDashboardScope(c: Context<AppContext>): Promise<Sco
 
   if (requested) {
     if (!(await merchantOwnsStore(platform, merchantId, requested))) {
-      return c.json({ error: "This store is not one of yours" }, 403);
+      return c.json({ error: "This store is not one of yours", code: ERROR_CODES.STORE_NOT_OWNED, category: "AUTHENTICATION" }, 403);
     }
     return { merchantId, storeId: requested };
   }

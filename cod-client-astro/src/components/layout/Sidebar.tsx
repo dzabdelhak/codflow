@@ -7,7 +7,7 @@ import {
   Store,
   Sun,
 } from "lucide-react";
-import { useIdentity } from "@/features/auth/components/RequireAuth";
+import { useMerchantStores } from "@/features/stores/useMerchantStores";
 import { useT } from "@/i18n/react";
 import { toggleTheme, useTheme } from "@/theme/react";
 import { isCurrentPath, useNavSections } from "@/components/layout/nav";
@@ -30,7 +30,7 @@ export function SidebarWorkspaceCard({
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
 }) {
-  const identity = useIdentity();
+  const { active: activeStore } = useMerchantStores();
   const tN = useT("navigation");
 
   if (isCollapsed) {
@@ -58,7 +58,7 @@ export function SidebarWorkspaceCard({
           </div>
           <div className="min-w-0 flex-1 text-start">
             <div className="truncate text-[13px] font-semibold leading-snug text-foreground">
-              {identity?.user.name || tN("sidebar.store")}
+              {activeStore?.name || tN("sidebar.store")}
             </div>
           </div>
         </div>

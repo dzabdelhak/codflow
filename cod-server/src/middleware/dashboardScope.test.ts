@@ -66,6 +66,7 @@ describe("dashboard store selection", () => {
   it("refuses a store of another merchant, whatever the header says", async () => {
     const res = await call({ "X-API-Key": "key-mine", "X-Store-Id": "other-1" });
     expect(res.status).toBe(403);
+    expect(await res.json()).toMatchObject({ code: "STORE_NOT_OWNED" });
   });
 
   it("refuses an unknown store id", async () => {

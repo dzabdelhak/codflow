@@ -81,5 +81,25 @@
     "inventory": "Inventaire",
     "dashboard": "Tableau de bord"
   },
-  "dashboard_subtitle": "Tableau de bord"
+  "dashboard_subtitle": "Tableau de bord",
+  "stores": {
+    "switcher_label": "Changer de boutique",
+    "loading": "Chargement des boutiques…",
+    "none": "Aucune boutique",
+    "create": "Créer une boutique",
+    "create_title": "Créer une boutique",
+    "create_description": "Une nouvelle boutique avec ses propres produits, son domaine et ses réglages.",
+    "name_label": "Nom de la boutique",
+    "name_placeholder": "ex. Boutique Nour",
+    "subdomain_label": "Adresse",
+    "subdomain_hint": "Votre boutique sera à l'adresse {address}",
+    "subdomain_rule": "Lettres minuscules, chiffres et tirets.",
+    "create_submit": "Créer la boutique",
+    "creating": "Création…",
+    "error_limit": "Votre abonnement ne permet pas une autre boutique ({used} sur {limit} utilisées).",
+    "error_taken": "Cette adresse est déjà utilisée par une autre boutique.",
+    "error_invalid": "Utilisez 3 à 40 lettres minuscules, chiffres ou tirets. Certains noms sont réservés.",
+    "error_name": "Donnez un nom à la boutique.",
+    "error_generic": "La boutique n'a pas pu être créée. Réessayez."
+  }
 }

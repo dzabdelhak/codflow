@@ -1,6 +1,7 @@
 import { PUBLIC_API_URL } from "astro:env/client";
 
 import { currentJwt, refreshJwt } from "@/lib/session";
+import { setActiveStoreId, storeHeader } from "@/lib/active-store";
 
 /**
  * Resolve the cod-server origin for browser code.
@@ -9,19 +10,31 @@ import { currentJwt, refreshJwt } from "@/lib/session";
  * for a self-hosted deployment where the dashboard and API origins are known
  * when the bundle is produced. Platform deployments can't bake it: one build
  * serves many stores, each with its own API origin. Those deployments follow
- * the `app.<store-domain>` → `api.<store-domain>` subdomain convention, so we
- * derive the origin from `window.location.hostname` at request time and only
- * fall back to the baked value when the convention doesn't apply (localhost,
- * self-hosted domains that don't start with `app.`).
+ * the `app.<domain>` → `api.<domain>` subdomain convention, so we derive the
+ * origin from `window.location` at request time (same scheme and port) and
+ * only fall back to the baked value when the convention doesn't apply.
  */
 export function publicApiUrl(): string {
   if (typeof window !== "undefined") {
-    const hostname = window.location.hostname;
-    if (hostname.startsWith("app.")) {
-      return `https://api.${hostname.slice("app.".length)}`;
+    const { protocol, host } = window.location;
+    if (host.startsWith("app.")) {
+      return `${protocol}//api.${host.slice("app.".length)}`;
     }
   }
   return PUBLIC_API_URL;
+}
+
+/**
+ * A saved store the merchant no longer owns (or another merchant's) is
+ * answered 403 STORE_NOT_OWNED: forget it, and let the API pick the
+ * merchant's first store.
+ */
+async function forgetsUnownedStore(res: Response): Promise<boolean> {
+  if (res.status !== 403 || !storeHeader()["X-Store-Id"]) return false;
+  const body = (await res.clone().json().catch(() => null)) as { code?: string } | null;
+  if (body?.code !== "STORE_NOT_OWNED") return false;
+  setActiveStoreId(null);
+  return true;
 }
 
 export class ApiError extends Error {
@@ -46,6 +59,7 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
         credentials: "include",
         headers: {
           ...(init.headers ?? {}),
+          ...storeHeader(),
           ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
         },
       })
@@ -56,6 +70,7 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
     await refreshJwt();
     res = await call();
   }
+  if (await forgetsUnownedStore(res)) res = await call();
   if (!res.ok) {
     let message = `Request failed (${res.status})`;
     let code: string | undefined;
@@ -84,7 +99,7 @@ export async function apiFetchBlob(path: string): Promise<Blob> {
     currentJwt().then((jwt) =>
       fetch(`${apiUrl}${path}`, {
         credentials: "include",
-        headers: jwt ? { Authorization: `Bearer ${jwt}` } : undefined,
+        headers: { ...storeHeader(), ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}) },
       })
     );
 
@@ -93,6 +108,7 @@ export async function apiFetchBlob(path: string): Promise<Blob> {
     await refreshJwt();
     res = await call();
   }
+  if (await forgetsUnownedStore(res)) res = await call();
   if (!res.ok) {
     let message = `Request failed (${res.status})`;
     try {
