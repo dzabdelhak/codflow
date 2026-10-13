@@ -1,6 +1,7 @@
 # Self-hosted in Algeria: CodFlow moves off Cloudflare to Node.js + PostgreSQL, stores isolated by Row-Level Security
 
-**Status:** proposed — to confirm after a porting spike.
+**Status:** proposed — porting spike done (Oct 13 2026, see below); it
+supports accepting this ADR.
 
 The Aventy store platform runs on servers we operate ourselves, because
 customer personal data must stay in Algeria (law 18-07) and for cost and
@@ -44,11 +45,19 @@ syncs stores Aventy reports as changed.
 
 ## Consequences
 
-- Largest piece of work: D1 → PostgreSQL. 57 table definitions move from
-  `sqlite-core` to `pg-core`, 82 raw SQL fragments need review, migrations are
-  rewritten, and `store_id` + RLS policies are added to the business tables.
-  Most of the ~530 Drizzle query sites keep their shape.
-- `db.batch()` (27 sites, D1-only) becomes transactions.
+- D1 → PostgreSQL is mostly mechanical (measured by the spike): a codemod
+  ports the 57 tables and the 315 D1-only `.get()/.all()/.run()` calls; a
+  `batch()` on the PostgreSQL db (savepoint, all or nothing) keeps the 27
+  `db.batch()` call sites unchanged. `store_id` defaults to the request's
+  store, so inserts and selects need no edit for multi-store.
+- PostgreSQL runs READ COMMITTED where a D1 batch was serial. Guarded stock
+  writes (3 places) must lock the rows they check (`SELECT … FOR UPDATE`),
+  or concurrent orders oversell silently.
+- node-postgres returns `COUNT`/`SUM`/`AVG` as strings; one global type
+  parser restores numbers.
+- Some constraints exist only in D1 migration SQL (e.g. `customers.phone`
+  unique); the PostgreSQL baseline must re-add them. Unique keys such as
+  order number, handle and SKU become unique per store.
 - Cloudflare-specific code to replace: Workflows (CAPI, landing-page image
   upload), `cloudflare:workers` imports, `@astrojs/cloudflare` (8 places),
   `better-auth-cloudflare` and its KV secondary storage.
@@ -62,9 +71,26 @@ syncs stores Aventy reports as changed.
   (hashed personal data).
 - Supersedes the "multi-store isolation approach" open question in ADR-0002.
 
-## Next
+## Porting spike (Oct 13 2026)
 
-A porting spike: move one vertical slice (store resolution by hostname →
-product list → order creation into the outbound queue) to Node.js +
-PostgreSQL with RLS, to measure the real porting effort before confirming
-this ADR.
+Branch `spike/pg-port`, `spikes/pg-port-PROTOTYPE/README.md`. One vertical
+slice — store by hostname → product list → order creation → outbound Aventy
+queue — runs on Node.js + PostgreSQL 18 with RLS, using CodFlow's real
+`cod-shared` code:
+
+- All of cod-shared (69 files, 16.7k lines) typechecks against PostgreSQL
+  after the codemod and 3 hand edits (~8 lines).
+- RLS holds: a query without a store filter sees only the current store; a
+  write into another store is refused; no store set returns nothing.
+- Outbound queue: 300 orders drained by two "servers" while Aventy answered
+  503 a third of the time — each delivered once, never in flight twice; a
+  server dying mid-send releases its lock and the resend is deduplicated by
+  the ULID.
+- Estimate for the full port: **21–31 working days for one developer**.
+  Tests (229 files on miniflare/D1 and a positional mock db) and replacing
+  Cloudflare services (Workflows, R2, Images, KV, workers-oauth-provider)
+  are the largest items; the database is the easy part.
+- Found on the way, independent of the runtime: order numbers
+  (`ORD-<date>-<4 random digits>`) collide at ~150 orders/store/day and the
+  order fails — a lost sale; and CodFlow refuses orders on short stock or a
+  missing delivery rule, which the Aventy guide forbids.
