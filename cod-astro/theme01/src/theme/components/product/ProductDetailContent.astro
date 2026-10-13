@@ -46,7 +46,6 @@ const comparePrice = defaultVariant?.compareAtPrice ?? product.compareAtPrice;
 const hasDiscount  = comparePrice != null && comparePrice > basePrice;
 const discountPct  = hasDiscount ? Math.round((1 - basePrice / comparePrice!) * 100) : 0;
 
-const isOutOfStock = product.trackInventory && product.inventory === 0;
 const isLowStock   = product.trackInventory && product.inventory > 0 && product.inventory <= 5;
 const lowStockText = content.lowStock.replace("{n}", String(product.inventory));
 
@@ -80,8 +79,8 @@ const jsonLd = getProductJsonLd(product, basePrice);
   data-offer-add-one={content.offerAddOne}
   data-offer-you-get={content.offerYouGet}
   data-track-inventory={product.trackInventory ? "1" : "0"}
-  data-out-of-stock-label={content.outOfStock}
-  data-qty-max-stock={content.qtyMaxStock}
+  data-shipping-to-confirm={content.shippingToConfirm}
+  data-stock-not-guaranteed={content.stockNotGuaranteed}
   data-inventory={String(product.inventory)}
   data-pixel-id={config.pixelId ?? ""}
   data-phone-invalid={content.formPhoneInvalid}
@@ -142,7 +141,6 @@ const jsonLd = getProductJsonLd(product, basePrice);
         isRTL={isRTL}
         offers={product.offers}
         defaultVariantId={defaultVariantId}
-        isOutOfStock={isOutOfStock}
         otpEnabled={config.otpEnabled === true}
         turnstileEnabled={config.turnstileEnabled === true}
         turnstileSiteKey={config.turnstileSiteKey ?? null}
@@ -153,7 +151,7 @@ const jsonLd = getProductJsonLd(product, basePrice);
             Secondary by design: the direct order form stays the primary
             action. This serves the shopper who wants more than one product and
             never competes with the one-step checkout that converts. */}
-        {config.cartEnabled && !isOutOfStock && (
+        {config.cartEnabled && (
           <Fragment slot="secondary-action">
             <AddToCartButton
               product={product}
@@ -203,16 +201,14 @@ const jsonLd = getProductJsonLd(product, basePrice);
 {/* ── STICKY ORDER CTA — fixed to the bottom on mobile while the order form is out of
      view; sticky-cta.ts hides it via IntersectionObserver the moment the form enters the
      viewport. Mobile-only: hidden on desktop where the form is already sticky in column 2. ── */}
-{!isOutOfStock && (
-  <a
-    href="#order-section"
-    id="product-sticky-cta"
-    class="btn-primary product-sticky-cta lg:hidden"
-  >
-    <span>{content.orderCta}</span>
-    <Icon name="heroicons:chevron-down" class="w-5 h-5 shrink-0" />
-  </a>
-)}
+<a
+  href="#order-section"
+  id="product-sticky-cta"
+  class="btn-primary product-sticky-cta lg:hidden"
+>
+  <span>{content.orderCta}</span>
+  <Icon name="heroicons:chevron-down" class="w-5 h-5 shrink-0" />
+</a>
 
 <style>
   /* Sticky CTA — floats above content on mobile until the form scrolls into

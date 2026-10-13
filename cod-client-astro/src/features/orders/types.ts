@@ -56,6 +56,8 @@ export interface OrderBase {
   address: string | null;
   price: number;
   deliveryFee: number;
+  deliveryFeeToConfirm: boolean;
+  stockConfirmed: boolean;
   driverFee: number;
   codAmount: number | null;
   status: OrderStatus;

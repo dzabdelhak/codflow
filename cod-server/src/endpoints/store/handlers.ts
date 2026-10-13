@@ -527,6 +527,7 @@ export async function validateCart(c: Context<AppContext>) {
           lineTotal: entry.lineTotal,
           maxQuantity: entry.maxQuantity,
           blocker: entry.blocker,
+          stockNotGuaranteed: entry.stockNotGuaranteed,
         })),
         subtotal,
         rewards: earned.map((item) => ({

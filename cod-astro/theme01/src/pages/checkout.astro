@@ -16,6 +16,7 @@ import TurnstileField from "@/theme/components/order/TurnstileField.astro";
 import ShippingIsland from "@/theme/components/product/ShippingIsland.astro";
 import { getStoreContext } from "@/theme/config/store";
 import { actions, isInputError } from "astro:actions";
+import { thankYouUrl } from "@/core/utils/thank-you-url";
 import { Icon } from "astro-icon/components";
 
 const { config, content, isRTL } = await getStoreContext();
@@ -28,10 +29,7 @@ if (!config.cartEnabled) return Astro.redirect("/", 302);
 // the abandonment-conversion signal fires there.
 const result = Astro.getActionResult(actions.placeOrder);
 if (result?.data?.orderNumber) {
-  return Astro.redirect(
-    `/thank-you?order=${encodeURIComponent(result.data.orderNumber)}&total=${result.data.total}&oid=${encodeURIComponent(result.data.orderId ?? "")}`,
-    303,
-  );
+  return Astro.redirect(thankYouUrl(result.data), 303);
 }
 const fieldErrors = isInputError(result?.error) ? result.error.fields : {};
 const serverError = result?.error && !isInputError(result.error) ? result.error.message : null;
@@ -60,6 +58,7 @@ const turnstileEnabled = config.turnstileEnabled === true && Boolean(config.turn
     data-copy-free-earned={content.cartFreeDeliveryEarned}
     data-copy-free-remaining={content.cartFreeDeliveryRemaining}
     data-copy-shipping-calculated={content.shippingCalculated}
+    data-copy-shipping-to-confirm={content.shippingToConfirm}
     data-copy-shipping-free={content.shippingFree}
     data-copy-commune-loading={content.formCommuneLoading}
     data-copy-commune-placeholder={content.formCommunePlaceholder}

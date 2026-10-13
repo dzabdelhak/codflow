@@ -444,8 +444,9 @@ describe("server reconciliation", () => {
               quantity: 1,
               unitPrice: 1000,
               lineTotal: 1000,
-              maxQuantity: 0,
-              blocker: "out_of_stock",
+              maxQuantity: null,
+              blocker: "unlisted",
+              stockNotGuaranteed: false,
             },
           ],
           subtotal: 0,
@@ -459,7 +460,41 @@ describe("server reconciliation", () => {
     await vi.waitFor(() => expect(el("cart-blocked-note").hidden).toBe(false));
 
     expect(el<HTMLButtonElement>("cart-checkout").disabled).toBe(true);
-    expect(document.querySelector<HTMLElement>("[data-cart-warning]")!.textContent).toBe("Only 0 left");
+    expect(document.querySelector<HTMLElement>("[data-cart-warning]")!.textContent).toBe("No longer available");
+  });
+
+  it("warns but never blocks checkout when a line asks for more than the stock on hand", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() =>
+        validationResponse({
+          lines: [
+            {
+              productId: "p1",
+              variantId: "v-default",
+              quantity: 1,
+              unitPrice: 1000,
+              lineTotal: 1000,
+              maxQuantity: 0,
+              blocker: null,
+              stockNotGuaranteed: true,
+            },
+          ],
+          subtotal: 1000,
+          freeDelivery: { fromOffer: false, threshold: null, qualified: false, remaining: 0 },
+        }),
+      ),
+    );
+    await boot();
+
+    click(addButton());
+    await vi.waitFor(() =>
+      expect(document.querySelector<HTMLElement>("[data-cart-warning]")!.textContent).toBe("Only 0 left"),
+    );
+
+    expect(el("cart-blocked-note").hidden).toBe(true);
+    expect(el<HTMLButtonElement>("cart-checkout").disabled).toBe(false);
+    expect(document.querySelector<HTMLButtonElement>("[data-cart-increase]")!.disabled).toBe(false);
   });
 
   it("leaves the optimistic view intact when validation fails", async () => {
@@ -535,8 +570,9 @@ describe("checkout", () => {
               quantity: 1,
               unitPrice: 1000,
               lineTotal: 1000,
-              maxQuantity: 0,
-              blocker: "out_of_stock",
+              maxQuantity: null,
+              blocker: "unlisted",
+              stockNotGuaranteed: false,
             },
           ],
           subtotal: 0,

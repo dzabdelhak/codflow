@@ -167,6 +167,8 @@ export interface StoreFrontContent {
   qtyUnit: string;
   shippingLabel: string;
   shippingCalculated: string;
+  /** The chosen wilaya has no known fee: confirmed on the call, never shown as 0. */
+  shippingToConfirm: string;
   shippingFree: string;
   totalLabel: string;
   itemsLabel: string;
@@ -246,6 +248,10 @@ export interface StoreFrontContent {
   lowStock: string;
   outOfStock: string;
   qtyMaxStock: string;
+  /** Shown before validating when the quantity exceeds stock: the order is still taken. */
+  stockNotGuaranteed: string;
+  /** Thank-you page note when the delivery fee was unknown at order time. */
+  deliveryFeeToConfirmNote: string;
   freeShippingBadge: string;
   searchLabel: string;
   noResultsLabel: string;

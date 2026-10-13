@@ -12,6 +12,7 @@ import { Icon } from "astro-icon/components";
 import { getStoreContext } from "@/theme/config/store";
 import { fetchLandingPageBySlug } from "@/core/api/client";
 import { actions } from "astro:actions";
+import { thankYouUrl } from "@/core/utils/thank-you-url";
 import { isInputError } from "astro:actions";
 
 const { slug } = Astro.params;
@@ -33,10 +34,7 @@ const { config, content, isRTL } = storeCtx;
 // survives the redirect).
 const result = Astro.getActionResult(actions.placeOrder);
 if (result?.data?.orderNumber) {
-  return Astro.redirect(
-    `/thank-you?order=${encodeURIComponent(result.data.orderNumber)}&total=${result.data.total}&oid=${encodeURIComponent(result.data.orderId ?? "")}`,
-    303,
-  );
+  return Astro.redirect(thankYouUrl(result.data), 303);
 }
 const fieldErrors  = isInputError(result?.error) ? result.error.fields : {};
 const serverError  = result?.error && !isInputError(result.error) ? result.error.message : null;
@@ -55,7 +53,6 @@ const defaultVariant = product?.hasVariants
 const basePrice    = defaultVariant?.price ?? product?.price ?? 0;
 const comparePrice = defaultVariant?.compareAtPrice ?? product?.compareAtPrice ?? null;
 
-const isOutOfStock = product?.trackInventory && product.inventory === 0;
 const defaultVariantId = defaultVariant?.id ?? null;
 
 const images: Array<{
@@ -112,8 +109,8 @@ const metaDescription = lp.metaDescription || config.metaDescription || undefine
         data-offer-add-one={content.offerAddOne}
         data-offer-you-get={content.offerYouGet}
         data-track-inventory={product.trackInventory ? "1" : "0"}
-        data-out-of-stock-label={content.outOfStock}
-        data-qty-max-stock={content.qtyMaxStock}
+        data-shipping-to-confirm={content.shippingToConfirm}
+        data-stock-not-guaranteed={content.stockNotGuaranteed}
         data-inventory={String(product.inventory)}
         data-pixel-id={pageConfig.pixelId ?? ""}
         data-phone-invalid={content.formPhoneInvalid}
@@ -160,7 +157,6 @@ const metaDescription = lp.metaDescription || config.metaDescription || undefine
             isRTL={isRTL}
             offers={product.offers}
             defaultVariantId={defaultVariantId}
-            isOutOfStock={isOutOfStock}
             otpEnabled={config.otpEnabled === true}
             turnstileEnabled={config.turnstileEnabled === true}
             turnstileSiteKey={config.turnstileSiteKey ?? null}
@@ -174,12 +170,10 @@ const metaDescription = lp.metaDescription || config.metaDescription || undefine
       <!-- ── STICKY ORDER CTA — fixed to the bottom while the form is out of
            view; lp-sticky-cta.ts hides it via IntersectionObserver the moment
            the form enters the viewport. Anchor scroll (no JS) still works. ── -->
-      {!isOutOfStock && (
-        <a href="#order-section-wrapper" id="lp-sticky-cta" class="btn-primary lp-sticky-cta">
-          {content.orderCta}
-          <Icon name="heroicons:chevron-down" class="w-5 h-5" />
-        </a>
-      )}
+      <a href="#order-section-wrapper" id="lp-sticky-cta" class="btn-primary lp-sticky-cta">
+        {content.orderCta}
+        <Icon name="heroicons:chevron-down" class="w-5 h-5" />
+      </a>
     </div>
   )}
 

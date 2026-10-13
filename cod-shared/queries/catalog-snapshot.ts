@@ -334,15 +334,17 @@ export function priceCartLines(
 }
 
 /** Why a line cannot be ordered, or null when it can. */
-export type LineBlocker = "missing" | "unlisted" | "out_of_stock";
+export type LineBlocker = "missing" | "unlisted";
 
 /** A cart line as the storefront should display it right now. */
 export interface ResolvedLine extends PricedLine {
   productName: string;
-  /** Units the shopper may order. null when the product is not stock-tracked. */
+  /** Units on hand. null when the product is not stock-tracked. */
   maxQuantity: number | null;
   /** null when the line is orderable as requested. */
   blocker: LineBlocker | null;
+  /** More units asked than on hand: still ordered, availability confirmed on the call. */
+  stockNotGuaranteed: boolean;
 }
 
 /**
@@ -387,15 +389,14 @@ export function resolveCartLines(
         ? "missing"
         : !sellable
           ? "unlisted"
-          : maxQuantity != null && maxQuantity < line.quantity
-            ? "out_of_stock"
-            : null;
+          : null;
 
     return {
       ...entry,
       productName: product?.name ?? line.productName,
       maxQuantity,
       blocker,
+      stockNotGuaranteed: blocker === null && maxQuantity != null && maxQuantity < line.quantity,
     };
   });
 }

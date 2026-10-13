@@ -11,6 +11,7 @@ import {
   selectedWilayaId,
   currentDeliveryType,
   toggleAddressFields,
+  shippingText,
 } from "./delivery-fields";
 // fbq only exists when the merchant configured a pixel — one shared guard.
 import { trackAt } from "./pixel";
@@ -46,9 +47,10 @@ export function initProductPage() {
   const communeDisabled    = el.dataset.communeDisabled!;
   const isRTL              = el.dataset.isRtl === "1";
   const trackInventory     = el.dataset.trackInventory === "1";
-  const outOfStockLabel    = el.dataset.outOfStockLabel ?? "نفد المخزون";
-  const qtyMaxStockLabel   = el.dataset.qtyMaxStock ?? "آخر {n} قطعة فقط";
-  const productInventory   = parseInt(el.dataset.inventory ?? "100") || 100;
+  const shippingToConfirm  = el.dataset.shippingToConfirm ?? shippingCalc;
+  const stockNotGuaranteed = el.dataset.stockNotGuaranteed ?? "";
+  const parsedInventory    = parseInt(el.dataset.inventory ?? "", 10);
+  const productInventory   = Number.isNaN(parsedInventory) ? Infinity : parsedInventory;
 
   /** @type {Array<Object>} Active offers for this product */
   type OfferData = {
@@ -75,9 +77,11 @@ export function initProductPage() {
   /** Currently selected offer ID (if any) */
   let currentOfferId: string | null = null;
 
-  /** Maximum quantity allowed by stock; 100 = uncapped */
-  let currentVariantMax   = 100;
-  let hasStockCap         = false;
+  const MAX_QTY = 100;
+
+  /** Units on hand for the current selection; Infinity when stock is not tracked. */
+  let available           = Infinity;
+  let ratesKnown          = false;
 
   /**
    * Formats a number for currency display using Algerian locale.
@@ -98,8 +102,6 @@ export function initProductPage() {
   const dots      = document.querySelectorAll<HTMLButtonElement>(".gallery-dot");
   const thumbs    = document.querySelectorAll<HTMLButtonElement>(".gallery-thumb");
   const submitBtn     = document.getElementById("submit-btn") as HTMLButtonElement | null;
-  const submitLabel   = submitBtn?.textContent?.trim() ?? "";
-  const qtyPlusBtn    = document.getElementById("qty-plus") as HTMLButtonElement | null;
   const qtyStockHint  = document.getElementById("qty-stock-hint") as HTMLParagraphElement | null;
 
   // ── OFFER TIER SELECTION ───────────────────────────────────────────────────
@@ -291,16 +293,14 @@ export function initProductPage() {
 
     // 3. Handle shipping logic in summary
     if (shippingEl && totalEl) {
-      if (isNaN(currentShipping)) {
-        shippingEl.textContent = shippingCalc;
-        totalEl.textContent = `${fmt(itemTotal)} ${cur}`;
-      } else if (currentShipping === 0) {
-        shippingEl.textContent = shippingFree;
-        totalEl.textContent = `${fmt(itemTotal)} ${cur}`;
-      } else {
-        shippingEl.textContent = `${fmt(currentShipping)} ${cur}`;
-        totalEl.textContent = `${fmt(itemTotal + currentShipping)} ${cur}`;
-      }
+      shippingEl.textContent = shippingText(
+        currentShipping,
+        selectedWilayaId(),
+        ratesKnown,
+        { calculated: shippingCalc, toConfirm: shippingToConfirm, free: shippingFree },
+        (n) => `${fmt(n)} ${cur}`,
+      );
+      totalEl.textContent = `${fmt(itemTotal + (Number.isFinite(currentShipping) ? currentShipping : 0))} ${cur}`;
     }
 
     // 4. Show/hide relevant offer summary rows
@@ -325,11 +325,10 @@ export function initProductPage() {
     }
 
     btn.addEventListener("click", () => {
-      if (btn.dataset.oos === "1") return; // ignore out-of-stock pills
       const opt = btn.dataset.option!;
       selectedOpts[opt] = btn.dataset.value!;
 
-      // Reset siblings (skip OOS pills)
+      // Reset siblings
       document.querySelectorAll<HTMLButtonElement>(`.variant-opt[data-option="${opt}"]`).forEach((b) => {
         b.classList.remove("text-[var(--clr-primary)]", "bg-[var(--clr-primary)]/5", "border-[var(--clr-primary)]");
         b.classList.add("text-[var(--clr-text-2)]", "bg-[var(--clr-surface)]", "border-[var(--clr-border)]");
@@ -351,39 +350,15 @@ export function initProductPage() {
   }
 
   /**
-   * Toggles the submit button between normal and out-of-stock states.
-   * Called whenever the selected variant combination changes.
-   */
-  function setVariantOosState(oos: boolean) {
-    if (!submitBtn) return;
-    submitBtn.disabled = oos;
-    submitBtn.style.background = oos ? "var(--clr-disabled)" : "";
-    submitBtn.style.cursor     = oos ? "not-allowed" : "";
-    submitBtn.textContent      = oos ? outOfStockLabel : submitLabel;
-  }
-
-  /**
-   * Disables the + button and shows a stock-limit hint when qty reaches the cap.
+   * The order is taken whatever the stock; a quantity beyond what is on hand
+   * only warns that availability is confirmed on the call.
    */
   function updateQtyState() {
-    if (!qtyInput) return;
+    if (!qtyInput || !qtyStockHint) return;
     const qty = parseInt(qtyInput.value) || 1;
-    const atMax = hasStockCap && qty >= currentVariantMax;
-
-    if (qtyPlusBtn) {
-      qtyPlusBtn.disabled = atMax;
-      qtyPlusBtn.style.opacity = atMax ? "0.4" : "";
-      qtyPlusBtn.style.cursor  = atMax ? "not-allowed" : "";
-    }
-
-    if (qtyStockHint) {
-      if (atMax) {
-        qtyStockHint.textContent = qtyMaxStockLabel.replace("{n}", String(currentVariantMax));
-        qtyStockHint.classList.remove("hidden");
-      } else {
-        qtyStockHint.classList.add("hidden");
-      }
-    }
+    const beyondStock = qty > available;
+    qtyStockHint.textContent = beyondStock ? stockNotGuaranteed : "";
+    qtyStockHint.classList.toggle("hidden", !beyondStock);
   }
 
   /**
@@ -402,22 +377,7 @@ export function initProductPage() {
       variantLabelInput.value = Object.values(match.variations).join(" / ");
     }
 
-    // Combination-level OOS: disable submit if this exact variant is sold out
-    setVariantOosState(trackInventory && match.inventory === 0);
-
-    // Stock cap: prevent qty from exceeding available inventory
-    if (trackInventory && match.inventory > 0) {
-      currentVariantMax = match.inventory;
-      hasStockCap = true;
-    } else {
-      currentVariantMax = 100;
-      hasStockCap = false;
-    }
-    if (qtyInput) {
-      qtyInput.max = String(currentVariantMax);
-      const curQty = parseInt(qtyInput.value) || 1;
-      if (curQty > currentVariantMax) qtyInput.value = String(currentVariantMax);
-    }
+    available = trackInventory ? match.inventory : Infinity;
     updateQtyState();
 
     // Jump gallery to the variant's assigned image (if any)
@@ -448,12 +408,12 @@ export function initProductPage() {
   document.getElementById("qty-plus")?.addEventListener("click", () => {
     if (!qtyInput) return;
     const v = Math.max(1, parseInt(qtyInput.value) || 1);
-    if (v < currentVariantMax) { qtyInput.value = String(v + 1); updatePriceUI(); updateQtyState(); }
+    if (v < MAX_QTY) { qtyInput.value = String(v + 1); updatePriceUI(); updateQtyState(); }
   });
 
   qtyInput?.addEventListener("input", () => {
     if (!qtyInput) return;
-    const max = currentVariantMax;
+    const max = MAX_QTY;
     let v = parseInt(qtyInput.value) || 1;
     if (v > max) { v = max; qtyInput.value = String(max); }
     if (v < 1)   { v = 1;   qtyInput.value = "1"; }
@@ -472,6 +432,7 @@ export function initProductPage() {
   // included.)
   watchShippingRates((loaded) => {
     rates = loaded;
+    ratesKnown = true;
     refreshShipping();
   });
 
@@ -624,12 +585,7 @@ export function initProductPage() {
   if (variants.length > 0) {
     updateVariant();
   } else {
-    // Simple product — apply stock cap from product-level inventory
-    if (trackInventory && productInventory > 0) {
-      currentVariantMax = productInventory;
-      hasStockCap = true;
-      if (qtyInput) qtyInput.max = String(productInventory);
-    }
+    available = trackInventory ? productInventory : Infinity;
     updatePriceUI();
     updateQtyState();
   }

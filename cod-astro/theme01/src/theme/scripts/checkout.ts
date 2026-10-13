@@ -41,6 +41,7 @@ import {
   rateFor,
   selectedWilayaId,
   currentDeliveryType,
+  shippingText,
   type ShippingRates,
 } from "./delivery-fields";
 import { trackInitiateCheckout } from "./pixel";
@@ -92,8 +93,11 @@ export function initCheckout(): () => void {
     unavailable: root.dataset.copyUnavailable ?? "",
     freeEarned: root.dataset.copyFreeEarned ?? "",
     freeRemaining: root.dataset.copyFreeRemaining ?? "",
-    shippingCalculated: root.dataset.copyShippingCalculated ?? "",
-    shippingFree: root.dataset.copyShippingFree ?? "",
+    shipping: {
+      calculated: root.dataset.copyShippingCalculated ?? "",
+      toConfirm: root.dataset.copyShippingToConfirm ?? "",
+      free: root.dataset.copyShippingFree ?? "",
+    },
   };
 
   const aborter = new AbortController();
@@ -104,6 +108,7 @@ export function initCheckout(): () => void {
 
   let validated: ValidationResult | null = null;
   let rates: ShippingRates = {};
+  let ratesKnown = false;
 
   /**
    * NaN until the shopper has picked a wilaya the merchant priced — shown as
@@ -146,11 +151,7 @@ export function initCheckout(): () => void {
 
     if (subtotalEl) subtotalEl.textContent = money(subtotal);
     if (deliveryEl) {
-      deliveryEl.textContent = Number.isNaN(delivery)
-        ? copy.shippingCalculated
-        : delivery === 0
-          ? copy.shippingFree
-          : money(delivery);
+      deliveryEl.textContent = shippingText(delivery, selectedWilayaId(), ratesKnown, copy.shipping, money);
     }
     // An unknown delivery fee adds nothing rather than guessing: the shopper
     // sees the basket total and is told delivery is still to be calculated.
@@ -201,6 +202,7 @@ export function initCheckout(): () => void {
 
   const unwatchRates = watchShippingRates((loaded) => {
     rates = loaded;
+    ratesKnown = true;
     render();
   });
 

@@ -34,6 +34,7 @@ function buildDom(): void {
       data-copy-free-earned="Free delivery earned"
       data-copy-free-remaining="{amount} {currency} to free delivery"
       data-copy-shipping-calculated="Calculated after selecting wilaya"
+      data-copy-shipping-to-confirm="Confirmed on the call"
       data-copy-shipping-free="Free"
       data-copy-commune-loading="Loading"
       data-copy-commune-placeholder="Choose a commune"
@@ -255,6 +256,16 @@ describe("delivery", () => {
     expect(el("checkout-total").textContent).toBe(money(1400));
   });
 
+  it("is to be confirmed on the call — never free — for a wilaya the merchant has no rate for", async () => {
+    seedCart([line()]);
+    await boot();
+
+    chooseWilaya("1");
+
+    expect(el("checkout-delivery").textContent).toBe("Confirmed on the call");
+    expect(el("checkout-total").textContent).toBe(money(1000));
+  });
+
   it("charges the stop-desk rate when the shopper picks a stop desk", async () => {
     seedCart([line()]);
     await boot();
@@ -371,6 +382,7 @@ describe("the server's verdict", () => {
           lineTotal: 2400,
           maxQuantity: null,
           blocker: null,
+          stockNotGuaranteed: false,
         },
       ],
       subtotal: 2400,
@@ -393,8 +405,9 @@ describe("the server's verdict", () => {
           quantity: 1,
           unitPrice: 1000,
           lineTotal: 1000,
-          maxQuantity: 0,
-          blocker: "out_of_stock",
+          maxQuantity: null,
+          blocker: "unlisted",
+          stockNotGuaranteed: false,
         },
       ],
       subtotal: 0,
@@ -405,7 +418,33 @@ describe("the server's verdict", () => {
     await vi.waitFor(() => expect(el("checkout-blocked-note").hidden).toBe(false));
 
     expect(el<HTMLButtonElement>("submit-btn").disabled).toBe(true);
-    expect(document.querySelector("[data-cart-warning]")!.textContent).toBe("Only 0 left");
+    expect(document.querySelector("[data-cart-warning]")!.textContent).toBe("No longer available");
+  });
+
+  it("takes the order when a line asks for more than the stock on hand, with a warning", async () => {
+    seedCart([line()]);
+    serverSays({
+      lines: [
+        {
+          productId: "p1",
+          variantId: null,
+          quantity: 1,
+          unitPrice: 1000,
+          lineTotal: 1000,
+          maxQuantity: 0,
+          blocker: null,
+          stockNotGuaranteed: true,
+        },
+      ],
+      subtotal: 1000,
+      freeDelivery: { fromOffer: false, threshold: null, qualified: false, remaining: 0 },
+    });
+
+    await boot();
+    await vi.waitFor(() => expect(document.querySelector("[data-cart-warning]")!.textContent).toBe("Only 0 left"));
+
+    expect(el("checkout-blocked-note").hidden).toBe(true);
+    expect(el<HTMLButtonElement>("submit-btn").disabled).toBe(false);
   });
 
   it("keeps the optimistic view when validation fails", async () => {
@@ -569,6 +608,7 @@ describe("Meta Pixel", () => {
           lineTotal: 1200,
           maxQuantity: null,
           blocker: null,
+          stockNotGuaranteed: false,
         },
       ],
       subtotal: 1200,

@@ -96,14 +96,15 @@ describe("order numbers", () => {
     expect(Number(second.data.orderNumber.slice(5))).toBe(Number(first.data.orderNumber.slice(5)) + 1);
   });
 
-  it("never collide, even for orders placed at the same moment", async () => {
+  it("never collide, even for 300 orders placed in a burst", async () => {
     const results = await Promise.all(
-      Array.from({ length: 20 }, (_, i) => order({ phone: `05501${String(i).padStart(5, "0")}` })),
+      Array.from({ length: 300 }, (_, i) => order({ phone: `05501${String(i).padStart(5, "0")}` })),
     );
-    expect(results.map((r) => r.status)).toEqual(Array(20).fill(201));
+    expect(results.map((r) => r.status)).toEqual(Array(300).fill(201));
     const numbers = await Promise.all(results.map(async (r) => ((await r.json()) as { data: { orderNumber: string } }).data.orderNumber));
-    expect(new Set(numbers).size).toBe(20);
-  });
+    expect(new Set(numbers).size).toBe(300);
+    expect(numbers.every((n) => /^NOUR-\d{5}$/.test(n))).toBe(true);
+  }, 60_000);
 });
 
 describe("the outbound queue", () => {
@@ -180,6 +181,19 @@ describe("never refused for uncertain stock (guide rule 1, §6)", () => {
       (await harness.db.select({ id: schema.products.id, inventory: schema.products.inventory }).from(schema.products)).map((p) => [p.id, p.inventory]),
     );
     expect(inventory).toEqual({ "p-shirt": 8, "p-last": 1 });
+  });
+
+  it("gives the last unit to exactly one of two concurrent buyers — the other is taken, not guaranteed", async () => {
+    const results = await Promise.all([
+      order({ productId: "p-last", productName: "Last one", pricePerUnit: 4000, phone: "0550000001" }),
+      order({ productId: "p-last", productName: "Last one", pricePerUnit: 4000, phone: "0550000002" }),
+    ]);
+    expect(results.map((r) => r.status)).toEqual([201, 201]);
+    const confirmed = await Promise.all(results.map(async (r) => ((await r.json()) as { data: { stockConfirmed: boolean } }).data.stockConfirmed));
+    expect(confirmed.sort()).toEqual([false, true]);
+
+    const product = await harness.db.select().from(schema.products).where(eq(schema.products.id, "p-last")).then((r) => r[0]);
+    expect(product?.inventory).toBe(0);
   });
 
   it("confirms stock when every line is covered", async () => {

@@ -1,12 +1,12 @@
 import { Package } from "lucide-react";
-import { Card } from "@/components/ui";
+import { Badge, Card } from "@/components/ui";
 import { useT } from "@/i18n/react";
 import { formatMoney, orderTotal } from "@/features/orders/model";
 import type { OrderDetail } from "@/features/orders/types";
 import type { Locale } from "@/i18n/config";
 
 interface OrderProductsCardProps {
-  order: Pick<OrderDetail, "products" | "price" | "deliveryFee">;
+  order: Pick<OrderDetail, "products" | "price" | "deliveryFee" | "deliveryFeeToConfirm" | "stockConfirmed">;
   locale: Locale;
 }
 
@@ -15,6 +15,11 @@ export function OrderProductsCard({ order, locale }: OrderProductsCardProps) {
 
   return (
     <Card title={t("form.products_section")}>
+      {!order.stockConfirmed && (
+        <div className="mb-3">
+          <Badge tone="warning">{t("detail.stock_not_guaranteed")}</Badge>
+        </div>
+      )}
       <div className="divide-y divide-border">
         {order.products.map((product) => {
           const free =
@@ -60,7 +65,11 @@ export function OrderProductsCard({ order, locale }: OrderProductsCardProps) {
         </div>
         <div className="flex justify-between text-muted-foreground">
           <span>{t("detail.delivery_fee")}</span>
-          <span className="tabular-nums">{formatMoney(order.deliveryFee, locale)}</span>
+          {order.deliveryFeeToConfirm ? (
+            <Badge tone="warning">{t("detail.fee_to_confirm")}</Badge>
+          ) : (
+            <span className="tabular-nums">{formatMoney(order.deliveryFee, locale)}</span>
+          )}
         </div>
         <div className="flex justify-between border-t border-border pt-3 font-bold">
           <span>{t("detail.total_price")}</span>

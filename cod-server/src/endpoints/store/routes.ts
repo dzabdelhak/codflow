@@ -357,11 +357,12 @@ const validateCartRoute = defineRoute({
   description: [
     "Read-only. Returns what the catalog says about a basket right now, so the cart can show the truth before the shopper commits. Nothing is written and no stock is reserved.",
     "",
-    "Every line comes back with its CURRENT catalog price, the units still available (`maxQuantity`, null when the product is not stock-tracked), and a `blocker` when it cannot be ordered as requested:",
+    "Every line comes back with its CURRENT catalog price, the units on hand (`maxQuantity`, null when the product is not stock-tracked), and a `blocker` when it cannot be ordered:",
     "",
     "- `missing`: the product no longer exists",
     "- `unlisted`: it is no longer on sale (draft, hidden or removed)",
-    "- `out_of_stock`: fewer units are available than requested",
+    "",
+    "A line asking for more units than are on hand is not blocked: it is ordered with `stockNotGuaranteed: true` and availability is confirmed on the call.",
     "",
     "Blocked lines are excluded from `subtotal`, from offer evaluation and from the free-delivery calculation, so the basket never promises something checkout would refuse.",
     "",
@@ -386,9 +387,8 @@ const validateCartRoute = defineRoute({
                 unitPrice: z.number(),
                 lineTotal: z.number(),
                 maxQuantity: z.number().int().nullable(),
-                blocker: z
-                  .enum(["missing", "unlisted", "out_of_stock"])
-                  .nullable(),
+                blocker: z.enum(["missing", "unlisted"]).nullable(),
+                stockNotGuaranteed: z.boolean(),
               }),
             ),
             subtotal: z.number(),

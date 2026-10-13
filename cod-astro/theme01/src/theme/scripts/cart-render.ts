@@ -21,7 +21,8 @@ export interface ValidatedLine {
   unitPrice: number;
   lineTotal: number;
   maxQuantity: number | null;
-  blocker: "missing" | "unlisted" | "out_of_stock" | null;
+  blocker: "missing" | "unlisted" | null;
+  stockNotGuaranteed: boolean;
 }
 
 export interface ValidationResult {
@@ -145,17 +146,12 @@ export function renderCartLine(
   node.querySelector("[data-cart-total]")!.textContent = money(unit * line.quantity);
 
   const warn = node.querySelector<HTMLElement>("[data-cart-warning]")!;
-  if (server?.blocker === "out_of_stock" && server.maxQuantity != null) {
-    warn.textContent = fill(copy.outOfStock, { n: server.maxQuantity });
-    warn.hidden = false;
-  } else if (server?.blocker) {
+  if (server?.blocker) {
     warn.textContent = copy.unavailable;
     warn.hidden = false;
-  }
-
-  const increase = node.querySelector<HTMLButtonElement>("[data-cart-increase]")!;
-  if (server?.maxQuantity != null && line.quantity >= server.maxQuantity) {
-    increase.disabled = true;
+  } else if (server?.stockNotGuaranteed && server.maxQuantity != null) {
+    warn.textContent = fill(copy.outOfStock, { n: server.maxQuantity });
+    warn.hidden = false;
   }
 
   return node;

@@ -8,6 +8,7 @@ import StoreLayout from "@/theme/layouts/StoreLayout.astro";
 import ProductDetailContent from "@/theme/components/product/ProductDetailContent.astro";
 import { getStoreContext } from "@/theme/config/store";
 import { actions } from "astro:actions";
+import { thankYouUrl } from "@/core/utils/thank-you-url";
 import { isInputError } from "astro:actions";
 
 const { slug } = Astro.params;
@@ -25,10 +26,7 @@ const { config, content, isRTL } = await getStoreContext();
 // signal fires on the thank-you page (sessionStorage survives the redirect).
 const result = Astro.getActionResult(actions.placeOrder);
 if (result?.data?.orderNumber) {
-  return Astro.redirect(
-    `/thank-you?order=${encodeURIComponent(result.data.orderNumber)}&total=${result.data.total}&oid=${encodeURIComponent(result.data.orderId ?? "")}`,
-    303,
-  );
+  return Astro.redirect(thankYouUrl(result.data), 303);
 }
 const fieldErrors  = isInputError(result?.error) ? result.error.fields : {};
 const serverError  = result?.error && !isInputError(result.error) ? result.error.message : null;

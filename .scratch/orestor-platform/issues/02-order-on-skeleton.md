@@ -4,11 +4,11 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] A checkout on a channel creates the order and exactly one queue entry in the same transaction; a failure leaves neither
-- [ ] 300 orders placed in a burst all succeed with distinct order numbers carrying the channel prefix
-- [ ] With no delivery fee configured the order is accepted and marked "frais à confirmer"; the customer is never shown 0 DA
-- [ ] Short stock does not refuse the order; the customer sees the not-guaranteed notice before validating
-- [ ] Two concurrent buyers of the last unit never produce a silent oversell (the guarded stock writes lock their rows)
-- [ ] Checkout and cart tests run on PostgreSQL
+- [x] A checkout on a channel creates the order and exactly one queue entry in the same transaction; a failure leaves neither
+- [x] 300 orders placed in a burst all succeed with distinct order numbers carrying the channel prefix
+- [x] With no delivery fee configured the order is accepted and marked "frais à confirmer"; the customer is never shown 0 DA
+- [x] Short stock does not refuse the order; the customer sees the not-guaranteed notice before validating
+- [x] Two concurrent buyers of the last unit never produce a silent oversell (the guarded stock writes lock their rows)
+- [x] Checkout and cart tests run on PostgreSQL

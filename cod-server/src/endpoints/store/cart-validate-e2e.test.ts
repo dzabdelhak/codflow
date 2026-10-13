@@ -214,15 +214,17 @@ describe("POST /store/cart/validate — blocked lines", () => {
     expect(body.data.lines[0].blocker).toBe(body.data.lines[1].blocker);
   });
 
-  it("flags a line asking for more units than exist, and reports the cap", async () => {
+  it("keeps a line asking for more units than exist orderable, marked stock not guaranteed", async () => {
     const id = await seedProduct({ price: 1000, inventory: 3 });
 
     const { body } = await validate([{ productId: id, productName: "P", quantity: 5 }]);
 
     expect(body.data.lines[0]).toMatchObject({
-      blocker: "out_of_stock",
+      blocker: null,
+      stockNotGuaranteed: true,
       maxQuantity: 3,
     });
+    expect(body.data.subtotal).toBe(5000);
   });
 
   it("allows exactly the available quantity", async () => {
@@ -230,7 +232,7 @@ describe("POST /store/cart/validate — blocked lines", () => {
 
     const { body } = await validate([{ productId: id, productName: "P", quantity: 3 }]);
 
-    expect(body.data.lines[0].blocker).toBeNull();
+    expect(body.data.lines[0]).toMatchObject({ blocker: null, stockNotGuaranteed: false });
   });
 
   it("reports no cap for a product that is not stock-tracked", async () => {
@@ -301,14 +303,23 @@ describe("POST /store/cart/validate — offers and free delivery", () => {
   });
 
   it("does not let a blocked line earn a reward", async () => {
+    const id = await seedProduct({ price: 1000, status: "DRAFT" });
+    await seedOffer({ triggerProductId: id, triggerQuantity: 2, rewardProductId: id });
+
+    const { body } = await validate([{ productId: id, productName: "P", quantity: 2 }]);
+
+    expect(body.data.lines[0].blocker).toBe("unlisted");
+    expect(body.data.rewards).toHaveLength(0);
+  });
+
+  it("lets a line beyond the stock on hand earn its reward, as the order will", async () => {
     const id = await seedProduct({ price: 1000, inventory: 1 });
     await seedOffer({ triggerProductId: id, triggerQuantity: 2, rewardProductId: id });
 
-    // Asking for 2 when 1 exists: the line is blocked, so nothing is earned.
     const { body } = await validate([{ productId: id, productName: "P", quantity: 2 }]);
 
-    expect(body.data.lines[0].blocker).toBe("out_of_stock");
-    expect(body.data.rewards).toHaveLength(0);
+    expect(body.data.lines[0]).toMatchObject({ blocker: null, stockNotGuaranteed: true });
+    expect(body.data.rewards).toHaveLength(1);
   });
 
   it("reports free delivery from a single-product offer", async () => {

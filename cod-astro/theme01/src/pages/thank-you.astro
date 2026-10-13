@@ -6,6 +6,7 @@ import { Icon } from "astro-icon/components";
 
 const orderNumber = Astro.url.searchParams.get("order") ?? "";
 const orderId = Astro.url.searchParams.get("oid") ?? "";
+const feeToConfirm = Astro.url.searchParams.get("fee") === "confirm";
 
 // Which pixel this ORDER belongs to, and whether a browser event fires for it.
 //
@@ -100,6 +101,12 @@ const steps = [
             {totalFormatted} <span class="text-sm opacity-60 font-bold tracking-tighter uppercase">{config.currencySymbol}</span>
           </span>
         </div>
+      )}
+
+      {feeToConfirm && (
+        <p id="delivery-fee-to-confirm" class="-mt-3 mb-6 text-sm font-bold" style="color: var(--clr-text-2)">
+          {content.deliveryFeeToConfirmNote}
+        </p>
       )}
 
       {/* WhatsApp inline button for thank-you page */}

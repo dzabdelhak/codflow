@@ -670,3 +670,93 @@ describe("Shipping rates bridge", () => {
     expect(document.getElementById("summary-shipping")!.textContent).toContain("400");
   });
 });
+
+describe("An uncertain stock or fee never refuses the order", () => {
+  let container: HTMLElement;
+
+  beforeEach(() => {
+    container = document.createElement("div");
+    document.body.appendChild(container);
+  });
+
+  afterEach(() => {
+    container?.parentNode?.removeChild(container);
+  });
+
+  function mount(opts: { inventory: number; variants?: unknown[]; wilaya?: string }) {
+    container.innerHTML = `
+      <div id="page-data"
+        data-variants='${JSON.stringify(opts.variants ?? [])}'
+        data-base-price="2500"
+        data-cur="DA"
+        data-is-rtl="0"
+        data-shipping-calc="Calculated at checkout"
+        data-shipping-to-confirm="Confirmed on the call"
+        data-shipping-free="Free"
+        data-stock-not-guaranteed="Stock not guaranteed"
+        data-track-inventory="1"
+        data-inventory="${opts.inventory}"
+        data-commune-placeholder="Commune"
+        data-commune-loading="Loading"
+        data-commune-disabled="Pick a wilaya"
+        data-offers="[]"></div>
+      <div id="shipping-rates-data" data-rates='{"16":{"home":400,"stopDesk":250}}'></div>
+      <input type="number" id="qty-input" value="1" />
+      <button id="qty-minus">-</button>
+      <button id="qty-plus">+</button>
+      <p id="qty-stock-hint" class="hidden"></p>
+      <button class="variant-opt" data-option="Size" data-value="M" data-first="1">M</button>
+      <button class="variant-opt" data-option="Size" data-value="L" data-oos="1">L</button>
+      <div id="summary-shipping"></div>
+      <div id="summary-total"></div>
+      <input id="f-wilaya" value="${opts.wilaya ?? ""}" />
+      <form method="POST"><button type="submit" id="submit-btn">Confirm</button></form>
+    `;
+    initProductPage();
+  }
+
+  const el = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
+
+  it("keeps the order button live for a sold-out product and warns stock is not guaranteed", () => {
+    mount({ inventory: 0 });
+
+    expect(el<HTMLButtonElement>("submit-btn").disabled).toBe(false);
+    expect(el("qty-stock-hint").classList.contains("hidden")).toBe(false);
+    expect(el("qty-stock-hint").textContent).toBe("Stock not guaranteed");
+  });
+
+  it("lets the quantity go past the stock on hand, warning only once it does", () => {
+    mount({ inventory: 1 });
+    expect(el("qty-stock-hint").classList.contains("hidden")).toBe(true);
+
+    el("qty-plus").click();
+
+    expect(el<HTMLInputElement>("qty-input").value).toBe("2");
+    expect(el<HTMLButtonElement>("qty-plus").disabled).toBe(false);
+    expect(el("qty-stock-hint").textContent).toBe("Stock not guaranteed");
+  });
+
+  it("lets the shopper pick a sold-out variant", () => {
+    mount({
+      inventory: 0,
+      variants: [
+        { id: "v-m", price: 2500, compareAtPrice: null, inventory: 4, variations: { Size: "M" }, isDefault: true, imageId: null },
+        { id: "v-l", price: 2700, compareAtPrice: null, inventory: 0, variations: { Size: "L" }, isDefault: false, imageId: null },
+      ],
+    });
+
+    container.querySelector<HTMLButtonElement>(".variant-opt[data-value='L']")!.click();
+
+    expect(el<HTMLButtonElement>("submit-btn").disabled).toBe(false);
+    expect(el("qty-stock-hint").textContent).toBe("Stock not guaranteed");
+  });
+
+  it("says the fee is confirmed on the call — never free — for a wilaya with no rate", async () => {
+    mount({ inventory: 5, wilaya: "1" });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(el("summary-shipping").textContent).toBe("Confirmed on the call");
+    expect(el("summary-total").textContent).toContain("2");
+    expect(el("summary-total").textContent).not.toContain("NaN");
+  });
+});

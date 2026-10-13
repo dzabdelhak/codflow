@@ -33,6 +33,8 @@ const order = (overrides: Partial<OrderListItem> = {}): OrderListItem => ({
   address: null,
   price: 9000,
   deliveryFee: 400,
+  deliveryFeeToConfirm: false,
+  stockConfirmed: true,
   driverFee: 0,
   codAmount: 9400,
   status: "new",

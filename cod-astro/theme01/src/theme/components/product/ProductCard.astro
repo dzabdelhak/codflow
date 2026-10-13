@@ -134,15 +134,11 @@ const lowStockTx   = content?.lowStock
     <!-- CTA button -->
     <div
       class="w-full h-10 rounded-xl flex items-center justify-center gap-2 font-black text-sm text-white mt-0.5 transition-all duration-200 ease-out hover:brightness-110"
-      style={isOutOfStock
-        ? "background: var(--clr-disabled)"
-        : "background: var(--clr-primary)"}
+      style="background: var(--clr-primary)"
       aria-hidden="true"
     >
-      {!isOutOfStock && (
-        <Icon name="heroicons:shopping-bag" class="w-4 h-4" aria-hidden="true" />
-      )}
-      {isOutOfStock ? outOfStockTx : ctaText}
+      <Icon name="heroicons:shopping-bag" class="w-4 h-4" aria-hidden="true" />
+      {ctaText}
     </div>
   </div>
 </a>

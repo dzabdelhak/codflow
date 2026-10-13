@@ -114,6 +114,28 @@ export function rateFor(
   return typeof value === "number" && Number.isFinite(value) ? value : NaN;
 }
 
+export interface ShippingCopy {
+  calculated: string;
+  toConfirm: string;
+  free: string;
+}
+
+/**
+ * NaN before a wilaya is chosen reads "calculated after selecting wilaya"; NaN
+ * once the wilaya is chosen and the rates are in reads "confirmed on the call".
+ * An unknown fee is never shown as 0.
+ */
+export function shippingText(
+  fee: number,
+  wilayaId: string,
+  ratesKnown: boolean,
+  copy: ShippingCopy,
+  money: (n: number) => string,
+): string {
+  if (Number.isNaN(fee)) return wilayaId && ratesKnown ? copy.toConfirm : copy.calculated;
+  return fee === 0 ? copy.free : money(fee);
+}
+
 const SELECTED_CLASSES = [
   "border-[var(--clr-primary)]",
   "text-[var(--clr-primary)]",
