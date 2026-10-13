@@ -120,11 +120,6 @@ export interface ShippingCopy {
   free: string;
 }
 
-/**
- * NaN before a wilaya is chosen reads "calculated after selecting wilaya"; NaN
- * once the wilaya is chosen and the rates are in reads "confirmed on the call".
- * An unknown fee is never shown as 0.
- */
 export function shippingText(
   fee: number,
   wilayaId: string,

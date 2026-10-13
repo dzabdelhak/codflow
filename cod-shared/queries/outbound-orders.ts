@@ -13,11 +13,6 @@ export interface OutboundOrderInput {
   userAgent: string | null;
 }
 
-/**
- * The queue row for an order (Aventy guide §5.2). `id` is the send id: a ULID
- * made once, reused on every retry, so Aventy can recognise a resend. The
- * versions stay null until catalogue and delivery-grid sync (ticket 15).
- */
 export function outboundOrderRow(input: OutboundOrderInput): typeof outboundOrders.$inferInsert {
   const sendId = ulid();
   return {

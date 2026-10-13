@@ -235,6 +235,14 @@ export async function dispatchToCompany(c: Context<AppContext>) {
     );
   }
 
+  if (order.deliveryFeeToConfirm) {
+    throw new ValidationError(
+      "The delivery fee of this order is still to be confirmed. Set it on the order before dispatching.",
+      ERROR_CODES.DELIVERY_FEE_TO_CONFIRM,
+      { orderId }
+    );
+  }
+
   // Get provider adapter (throws if unsupported or missing credentials)
   let provider;
   try {

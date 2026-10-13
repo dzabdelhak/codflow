@@ -1,6 +1,5 @@
 const ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 
-/** A ULID: 48-bit millisecond time + 80 random bits, Crockford base32, sortable by creation time. */
 export function ulid(now: number = Date.now()): string {
   let time = "";
   let t = now;

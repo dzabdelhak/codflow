@@ -18,6 +18,9 @@ import { NotFoundError, BusinessLogicError } from "@/lib/errors/classes";
 vi.mock("../../../../cod-shared/queries/order-numbers", () => ({
   allocateOrderNumber: vi.fn(async () => "CMD-00001"),
 }));
+vi.mock("../../../../cod-shared/queries/catalog-snapshot", () => ({
+  lockStock: vi.fn(async () => new Map()),
+}));
 vi.mock("@/db", () => ({ getDb: vi.fn(() => mockDb) }));
 vi.mock("./queries");
 vi.mock("./resolve-fee");

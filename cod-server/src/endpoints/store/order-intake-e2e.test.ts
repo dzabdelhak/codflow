@@ -13,6 +13,7 @@ import { openApiValidationHook } from "@/openapi/validation-hook";
 import { createTestDb, TEST_MERCHANT_ID, TEST_STORE_ID, type TestDb } from "@/test-utils/pg";
 import * as schema from "@/db/schema";
 import storeRouter from "./routes";
+import { updateOrder } from "../../../../cod-shared/queries/orders";
 
 let harness: TestDb;
 const NOW = () => new Date().toISOString();
@@ -74,7 +75,7 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-  for (const table of [schema.outboundOrders, schema.orderProducts, schema.orderStatusHistory, schema.stockMovements, schema.orders, schema.customers, schema.productVariants, schema.products, schema.shippingRules, schema.shippingProfiles]) {
+  for (const table of [schema.outboundOrders, schema.orderProducts, schema.orderStatusHistory, schema.stockMovements, schema.orders, schema.customers, schema.offers, schema.productVariants, schema.products, schema.shippingRules, schema.shippingProfiles]) {
     await harness.db.delete(table);
   }
   await harness.setStore({ name: "Nour", orderPrefix: "NOUR", createdAt: NOW(), updatedAt: NOW() });
@@ -155,6 +156,15 @@ describe("never refused for an uncertain delivery fee (guide rule 3)", () => {
     expect(row?.deliveryFeeToConfirm).toBe(true);
     expect((await queueRowFor(data.orderId))?.payload).toMatchObject({ delivery: { fee: null, feeToConfirm: true } });
   });
+
+  it("settles once the merchant sets the fee confirmed on the call", async () => {
+    const { data } = (await (await order({ wilayaId: 1, communeId: "c-01-001" })).json()) as { data: { orderId: string; price: number } };
+
+    await updateOrder(harness.db, data.orderId, { deliveryFee: 600 });
+
+    const row = await harness.db.select().from(schema.orders).where(eq(schema.orders.id, data.orderId)).then((r) => r[0]);
+    expect(row).toMatchObject({ deliveryFee: 600, deliveryFeeToConfirm: false, codAmount: data.price + 600 });
+  });
 });
 
 describe("never refused for uncertain stock (guide rule 1, §6)", () => {
@@ -194,6 +204,24 @@ describe("never refused for uncertain stock (guide rule 1, §6)", () => {
 
     const product = await harness.db.select().from(schema.products).where(eq(schema.products.id, "p-last")).then((r) => r[0]);
     expect(product?.inventory).toBe(0);
+  });
+
+  it("takes orders whose offers reward each other's product, placed at the same moment", async () => {
+    await harness.db.insert(schema.offers).values([
+      { id: "o-shirt", name: "Shirt gives last", triggerProductId: "p-shirt", triggerQuantity: 1, rewardProductId: "p-last", rewardQuantity: 1, discountType: "free", status: "active", createdAt: NOW(), updatedAt: NOW() },
+      { id: "o-last", name: "Last gives shirt", triggerProductId: "p-last", triggerQuantity: 1, rewardProductId: "p-shirt", rewardQuantity: 1, discountType: "free", status: "active", createdAt: NOW(), updatedAt: NOW() },
+    ]);
+    await harness.db.update(schema.products).set({ inventory: 50 });
+
+    const results = await Promise.all(
+      Array.from({ length: 10 }, (_, i) =>
+        i % 2
+          ? order({ phone: `05502${String(i).padStart(5, "0")}` })
+          : order({ productId: "p-last", productName: "Last one", pricePerUnit: 4000, phone: `05502${String(i).padStart(5, "0")}` }),
+      ),
+    );
+
+    expect(results.map((r) => r.status)).toEqual(Array(10).fill(201));
   });
 
   it("confirms stock when every line is covered", async () => {

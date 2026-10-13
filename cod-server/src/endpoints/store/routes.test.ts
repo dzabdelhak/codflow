@@ -219,7 +219,6 @@ describe("Store API routes (OpenAPIHono)", () => {
         products: new Map(), variants: new Map(), offers: [],
       } as any);
       vi.mocked(queries.findMissingSku).mockReturnValue(null as any);
-      vi.mocked(queries.findStockShortfall).mockReturnValue(null as any);
       vi.mocked(queries.findOrCreateCustomer).mockResolvedValue({
         id: "cust_1",
         name: "أحمد بن علي",
@@ -305,7 +304,6 @@ describe("Store API routes (OpenAPIHono)", () => {
         products: new Map(), variants: new Map(), offers: [],
       } as any);
       vi.mocked(queries.findMissingSku).mockReturnValue(null as any);
-      vi.mocked(queries.findStockShortfall).mockReturnValue(null as any);
 
       const res = await app.request("/store/orders", {
         method: "POST",

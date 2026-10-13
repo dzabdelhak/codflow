@@ -51,6 +51,8 @@ import {
   loadCatalogSnapshot,
   extendSnapshot,
   priceCartLines,
+  lockStock,
+  stockKey,
   type CatalogSnapshot,
 } from "./catalog-snapshot";
 import { resolveCartOffers } from "./offers-cart";
@@ -143,7 +145,6 @@ export async function getStoreConfig(db: AppDb, storeId: string) {
   // whole store row, so a column is public the moment it exists unless it is
   // removed by name here — the storefront gets the resolved projection instead,
   // which is also the only shape a theme should ever have to understand.
-  // orderSeq would tell anyone the store's order volume; merchantId is platform data.
   const { checkoutFormJson, whatsappWidgetJson, orderSeq: _seq, merchantId: _merchant, ...publicStore } = store;
 
   return {
@@ -656,7 +657,6 @@ export async function createStoreOrder(
   data: StoreOrderData & {
     customerId: string;
     customerName: string;
-    /** null: no fee is known — the order is taken with the fee to confirm (guide rule 3). */
     deliveryFee: number | null;
   },
   /**
@@ -675,7 +675,7 @@ export async function createStoreOrder(
   const lines = normalizeOrderLines(data);
 
   // ── Resolve phase (reads — one batched round trip, or none when shared) ───
-  const snapshot = preloaded ?? (await loadCatalogSnapshot(db, lines, now, { lock: true }));
+  const snapshot = preloaded ?? (await loadCatalogSnapshot(db, lines, now));
 
   // Server-authoritative pricing: the catalog row is the ONLY source of a unit
   // price. The client's pricePerUnit is display-only and NEVER trusted — it
@@ -699,30 +699,84 @@ export async function createStoreOrder(
   const finalDeliveryFee = freeShipping ? 0 : data.deliveryFee;
   const feeToConfirm = finalDeliveryFee === null;
 
+  // ── Reward lines ─────────────────────────────────────────────────────────
+  //
+  // A reward whose stock cannot cover it is skipped and the order still
+  // succeeds: revenue first, promotion second. That is the existing contract.
+  const rewardLines: Array<typeof orderProducts.$inferInsert> = [];
+  const rewardDeducts: DeductStockInput[] = [];
+
+  // Rewards can point outside the basket — another product, a specific variant,
+  // or "the default variant of that product". One batched top-up covers all
+  // three; a basket whose rewards are all in-basket adds no round trip at all.
+  if (earned.length > 0) {
+    await extendSnapshot(db, snapshot, {
+      productIds: earned
+        .map((e) => e.offer.rewardProductId)
+        .filter((id): id is string => !!id),
+      variantIds: earned
+        .map((e) => e.offer.rewardVariantId)
+        .filter((id): id is string => !!id),
+      variantsOfProducts: earned
+        .filter((e) => e.offer.rewardProductId && !e.offer.rewardVariantId)
+        .map((e) => e.offer.rewardProductId!),
+    });
+  }
+
+  const defaultVariantFor = (productId: string) =>
+    [...snapshot.variants.values()]
+      .filter((v) => v.productId === productId && v.active)
+      .sort((a, b) => a.id.localeCompare(b.id))[0];
+
+  const labelOf = (variations: string | undefined) => {
+    if (!variations) return null;
+    try {
+      return Object.values(JSON.parse(variations) as Record<string, string>).join(" / ");
+    } catch {
+      return null;
+    }
+  };
+
+  const rewards = earned.flatMap(({ offer, line }) => {
+    const rewardProductId = offer.rewardProductId;
+    if (!rewardProductId) return [];
+    const rewardProduct = snapshot.products.get(rewardProductId);
+    if (!rewardProduct) return [];
+
+    let rewardVariantId: string | null = offer.rewardVariantId ?? null;
+    let rewardVariantLabel: string | null = null;
+
+    if (!rewardVariantId && rewardProductId === line.productId) {
+      // Reward is the product ordered — mirror the variant the shopper chose.
+      rewardVariantId = line.variantId;
+      rewardVariantLabel = line.variantLabel;
+    } else if (!rewardVariantId) {
+      const fallback = defaultVariantFor(rewardProductId);
+      if (fallback) {
+        rewardVariantId = fallback.id;
+        rewardVariantLabel = labelOf(fallback.variations);
+      }
+    }
+
+    const rewardVariant = rewardVariantId ? snapshot.variants.get(rewardVariantId) : undefined;
+    if (rewardVariantId && !rewardVariantLabel) {
+      rewardVariantLabel = labelOf(rewardVariant?.variations);
+    }
+    return [{ offer, rewardProductId, rewardProduct, rewardVariantId, rewardVariantLabel, rewardVariant }];
+  });
+
   // ── Stock ────────────────────────────────────────────────────────────────
   //
-  // An order is never refused for stock (Aventy guide rule 1): a line the
-  // stock covers is deducted, one it does not is taken unconfirmed — never
-  // driving stock negative. The snapshot rows are locked, so these decisions
-  // hold until commit; `remaining` keeps lines and rewards on one item honest.
-  // trackInventory is the parent product's master switch.
-  const remaining = new Map<string, number>();
-  const stockKey = (productId: string, variantId: string | null) =>
-    variantId ? `v:${variantId}` : `p:${productId}`;
-  const onHand = (productId: string, variantId: string | null) => {
-    const key = stockKey(productId, variantId);
-    if (!remaining.has(key)) {
-      remaining.set(
-        key,
-        variantId
-          ? (snapshot.variants.get(variantId)?.inventory ?? 0)
-          : (snapshot.products.get(productId)?.inventory ?? 0),
-      );
-    }
-    return remaining.get(key)!;
-  };
+  // trackInventory is the parent product's master switch: false excludes the
+  // product AND all of its variants from stock entirely.
+  const stock = await lockStock(db, [
+    ...lines.map((line) => ({ productId: line.productId, variantId: line.variantId })),
+    ...rewards.map((r) => ({ productId: r.rewardProductId, variantId: r.rewardVariantId })),
+  ]);
+  const onHand = (productId: string, variantId: string | null) =>
+    stock.get(stockKey(productId, variantId)) ?? 0;
   const take = (productId: string, variantId: string | null, quantity: number) =>
-    remaining.set(stockKey(productId, variantId), onHand(productId, variantId) - quantity);
+    stock.set(stockKey(productId, variantId), onHand(productId, variantId) - quantity);
 
   const deductions: DeductStockInput[] = [];
   let stockConfirmed = true;
@@ -745,78 +799,16 @@ export async function createStoreOrder(
     });
   }
 
-  // ── Reward lines ─────────────────────────────────────────────────────────
-  //
-  // A reward whose stock cannot cover it is skipped and the order still
-  // succeeds: revenue first, promotion second. That is the existing contract.
-  const rewardLines: Array<typeof orderProducts.$inferInsert> = [];
-  const rewardDeducts: DeductStockInput[] = [];
-
-  // Rewards can point outside the basket — another product, a specific variant,
-  // or "the default variant of that product". One batched top-up covers all
-  // three; a basket whose rewards are all in-basket adds no round trip at all.
-  if (earned.length > 0) {
-    await extendSnapshot(db, snapshot, {
-      productIds: earned
-        .map((e) => e.offer.rewardProductId)
-        .filter((id): id is string => !!id),
-      variantIds: earned
-        .map((e) => e.offer.rewardVariantId)
-        .filter((id): id is string => !!id),
-      variantsOfProducts: earned
-        .filter((e) => e.offer.rewardProductId && !e.offer.rewardVariantId)
-        .map((e) => e.offer.rewardProductId!),
-    }, { lock: true });
-  }
-
-  const defaultVariantFor = (productId: string) =>
-    [...snapshot.variants.values()]
-      .filter((v) => v.productId === productId && v.active)
-      .sort((a, b) => a.id.localeCompare(b.id))[0];
-
-  const labelOf = (variations: string | undefined) => {
-    if (!variations) return null;
-    try {
-      return Object.values(JSON.parse(variations) as Record<string, string>).join(" / ");
-    } catch {
-      return null;
-    }
-  };
-
-  for (const { offer, line } of earned) {
-    if (!offer.rewardProductId) continue;
-    const rewardProduct = snapshot.products.get(offer.rewardProductId);
-    if (!rewardProduct) continue;
-
-    let rewardVariantId: string | null = offer.rewardVariantId ?? null;
-    let rewardVariantLabel: string | null = null;
-
-    if (!rewardVariantId && offer.rewardProductId === line.productId) {
-      // Reward is the product ordered — mirror the variant the shopper chose.
-      rewardVariantId = line.variantId;
-      rewardVariantLabel = line.variantLabel;
-    } else if (!rewardVariantId) {
-      const fallback = defaultVariantFor(offer.rewardProductId);
-      if (fallback) {
-        rewardVariantId = fallback.id;
-        rewardVariantLabel = labelOf(fallback.variations);
-      }
-    }
-
-    const rewardVariant = rewardVariantId ? snapshot.variants.get(rewardVariantId) : undefined;
-    if (rewardVariantId && !rewardVariantLabel) {
-      rewardVariantLabel = labelOf(rewardVariant?.variations);
-    }
-
+  for (const { offer, rewardProductId, rewardProduct, rewardVariantId, rewardVariantLabel, rewardVariant } of rewards) {
     if (rewardProduct.trackInventory) {
-      if (onHand(offer.rewardProductId, rewardVariantId) < offer.rewardQuantity) continue; // silently skipped
-      take(offer.rewardProductId, rewardVariantId, offer.rewardQuantity);
+      if (onHand(rewardProductId, rewardVariantId) < offer.rewardQuantity) continue; // silently skipped
+      take(rewardProductId, rewardVariantId, offer.rewardQuantity);
     }
 
     rewardLines.push({
       id: crypto.randomUUID(),
       orderId: id,
-      productId: offer.rewardProductId,
+      productId: rewardProductId,
       productName: rewardProduct.name,
       variantId: rewardVariantId,
       variantLabel: rewardVariantLabel
@@ -831,7 +823,7 @@ export async function createStoreOrder(
 
     if (rewardProduct.trackInventory) {
       rewardDeducts.push({
-        productId: offer.rewardProductId,
+        productId: rewardProductId,
         variantId: rewardVariantId,
         quantity: offer.rewardQuantity,
         orderId: id,
@@ -846,7 +838,6 @@ export async function createStoreOrder(
 
   // ── Commit phase (one atomic batch) ──────────────────────────────────────
 
-  // Last, so the store's counter stays locked as briefly as possible.
   const orderNumber = await allocateOrderNumber(db);
   const outbound = outboundOrderRow({
     orderId: id,
@@ -886,7 +877,6 @@ export async function createStoreOrder(
       orderType: "online",
       deliveryMethod: "driver",
       deliveryType: data.deliveryType,
-      // A fee to confirm is stored as 0 with the flag; it is never shown as 0 DA.
       deliveryFee: finalDeliveryFee ?? 0,
       driverFee: 0,
       codAmount: price + (finalDeliveryFee ?? 0),
@@ -904,7 +894,6 @@ export async function createStoreOrder(
       deliveryFeeToConfirm: feeToConfirm,
       stockConfirmed,
     }),
-    // Recorded with the order, sent after (guide §5): an order never exists without it.
     db.insert(outboundOrders).values(outbound),
   ];
 

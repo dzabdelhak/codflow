@@ -279,6 +279,7 @@
     "error_wilaya": "Please select a wilaya",
     "error_commune": "Please select a commune",
     "error_address": "Address is required for home delivery",
+    "error_delivery_fee": "Enter the fee in DA (whole number)",
     "error_delivery_unavailable": "This delivery method is not available for the selected wilaya",
     "new_order_subtitle": "Fill in the customer info and add products to create a new order"
   },

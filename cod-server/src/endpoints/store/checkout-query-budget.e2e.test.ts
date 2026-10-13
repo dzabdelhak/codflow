@@ -27,10 +27,16 @@ let sqlLog: string[] = [];
 
 const WILAYA = 16;
 
-/** SELECTs issued against one table. Writes are excluded. */
+/** Catalog SELECTs issued against one table. Writes and stock locks are excluded. */
 function selectsAgainst(table: string): string[] {
   const pattern = new RegExp(`\\bfrom\\s+"${table}"`, "i");
-  return sqlLog.filter((q) => /^\s*select\b/i.test(q) && pattern.test(q));
+  return sqlLog.filter((q) => /^\s*select\b/i.test(q) && pattern.test(q) && !/for no key update\s*$/i.test(q));
+}
+
+/** Stock-row lock reads against one table. */
+function locksAgainst(table: string): string[] {
+  const pattern = new RegExp(`\\bfrom\\s+"${table}"`, "i");
+  return sqlLog.filter((q) => /^\s*select\b/i.test(q) && pattern.test(q) && /for no key update\s*$/i.test(q));
 }
 
 beforeAll(async () => {
@@ -135,6 +141,7 @@ describe("createStoreOrder — query budget", () => {
       reads.length,
       `products SELECTs:\n${reads.join("\n")}`,
     ).toBeLessThanOrEqual(1);
+    expect(locksAgainst("products")).toHaveLength(1);
   });
 
   it("reads the variant row at most twice for a variant product", async () => {
@@ -193,7 +200,6 @@ describe("createStoreOrder — query budget", () => {
 import {
   loadCatalogSnapshot,
   findMissingSku,
-  findStockShortfall,
 } from "../../../../cod-shared/queries/catalog-snapshot";
 import { normalizeOrderLines } from "../../../../cod-shared/queries/cart";
 
@@ -217,7 +223,6 @@ describe("checkout path — total catalog reads per order", () => {
     } as any);
     const snapshot = await loadCatalogSnapshot(db, lines, new Date().toISOString());
     findMissingSku(snapshot, lines);
-    findStockShortfall(snapshot, lines);
     await createStoreOrder(db, {
       customerId: customer.id,
       customerName: customer.name,

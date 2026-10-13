@@ -96,7 +96,6 @@ function stubSuccessfulOrderFlow(orderId: string) {
     offers: [],
   } as never);
   vi.mocked(storeQueries.findMissingSku).mockReturnValue(null as never);
-  vi.mocked(storeQueries.findStockShortfall).mockReturnValue(null as never);
   vi.mocked(storeQueries.findOrCreateCustomer).mockResolvedValue({
     id: "cust-1",
     name: "Karim Benali",

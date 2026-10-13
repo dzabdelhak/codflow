@@ -82,7 +82,6 @@ function stubSuccessfulOrderFlow() {
     products: new Map(), variants: new Map(), offers: [],
   } as any);
   vi.mocked(storeQueries.findMissingSku).mockReturnValue(null as any);
-  vi.mocked(storeQueries.findStockShortfall).mockReturnValue(null as any);
   vi.mocked(storeQueries.findOrCreateCustomer).mockResolvedValue({ id: "cust-1", name: "Karim Benali" } as any);
   vi.mocked(storeQueries.resolveDeliveryFee).mockResolvedValue(600 as any);
   // The order path loads the store's Checkout Form Policy. Mocked to the

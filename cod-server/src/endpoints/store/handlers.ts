@@ -283,12 +283,10 @@ export async function createStoreOrder(c: Context<AppContext>) {
   // ONE catalog read for the whole checkout. The SKU check, the stock check and
   // the order engine all answer their questions from this same snapshot, so a
   // product row is fetched once per order instead of once per question.
-  // Locked: the stock decisions taken from it hold until the order commits.
   const snapshot = await queries.loadCatalogSnapshot(
     db,
     lines,
-    new Date().toISOString(),
-    { lock: true },
+    new Date().toISOString()
   );
 
   const skuMissing = queries.findMissingSku(snapshot, lines);
@@ -318,8 +316,6 @@ export async function createStoreOrder(c: Context<AppContext>) {
     storeId: c.get("storeId"),
     subtotal,
   });
-  // null: no fee known for this wilaya/type — the order is still taken, with
-  // the fee to confirm on the call (Aventy guide rule 3), never 0 DA.
 
   const customer = await queries.findOrCreateCustomer(db, {
     phone: data.phone,
@@ -440,11 +436,9 @@ export async function createStoreOrder(c: Context<AppContext>) {
         orderId: order.id,
         orderNumber: order.orderNumber,
         price: order.price,
-        // null with feeToConfirm: the fee is confirmed on the call (guide rule 3).
         deliveryFee: order.deliveryFee,
         feeToConfirm: order.feeToConfirm,
         total: order.price + (order.deliveryFee ?? 0),
-        // false: a line exceeded the stock on hand; availability is confirmed on the call.
         stockConfirmed: order.stockConfirmed,
       },
     },

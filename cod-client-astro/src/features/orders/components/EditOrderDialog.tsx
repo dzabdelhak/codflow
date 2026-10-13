@@ -41,6 +41,7 @@ export function EditOrderDialog({
   const [address, setAddress] = useState(order.address ?? "");
   const [deliveryType, setDeliveryType] = useState(order.deliveryType);
   const [notes, setNotes] = useState(order.notes ?? "");
+  const [deliveryFee, setDeliveryFee] = useState("");
   const [wilayas, setWilayas] = useState<Wilaya[]>([]);
   const [communes, setCommunes] = useState<Commune[]>([]);
   const [loadingCommunes, setLoadingCommunes] = useState(false);
@@ -95,6 +96,9 @@ export function EditOrderDialog({
       nextErrors.communeId = t("form.error_commune");
     if (deliveryType === "home" && !address.trim())
       nextErrors.address = t("form.error_address");
+    const trimmedFee = deliveryFee.trim();
+    if (trimmedFee !== "" && !/^\d+$/.test(trimmedFee))
+      nextErrors.deliveryFee = t("form.error_delivery_fee");
     if (Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors);
       return;
@@ -119,6 +123,7 @@ export function EditOrderDialog({
     const trimmedNotes = notes.trim();
     if (trimmedNotes !== (order.notes ?? ""))
       patch.notes = trimmedNotes === "" ? null : trimmedNotes;
+    if (order.deliveryFeeToConfirm && trimmedFee !== "") patch.deliveryFee = Number(trimmedFee);
 
     if (Object.keys(patch).length === 0) {
       onClose();
@@ -235,6 +240,17 @@ export function EditOrderDialog({
             placeholder={t("form.address_placeholder")}
           />
         </Field>
+        {order.deliveryFeeToConfirm && (
+          <Field label={t("detail.delivery_fee")} error={errors.deliveryFee}>
+            <Input
+              value={deliveryFee}
+              onChange={(event) => setDeliveryFee(event.currentTarget.value)}
+              placeholder={t("detail.fee_to_confirm")}
+              inputMode="numeric"
+              dir="ltr"
+            />
+          </Field>
+        )}
         <Field label={t("form.notes_label")}>
           <Textarea
             value={notes}

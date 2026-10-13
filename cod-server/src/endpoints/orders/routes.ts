@@ -121,6 +121,8 @@ const updateOrderRoute = defineRoute({
 
 This is how a merchant records an address collected over the phone when the checkout hid the address field.
 
+\`deliveryFee\` sets the fee confirmed on the call: \`codAmount\` becomes price + fee and the order is no longer marked fee-to-confirm. Dispatch refuses a fee-to-confirm order (400 DELIVERY_FEE_TO_CONFIRM) until it is set.
+
 The linked customer record is updated in the same operation with the fields this request changes (name, phone, wilaya/commune, address) — an order and its customer never disagree on contact details. If the corrected phone already belongs to a different customer record, the order is re-pointed to that record instead of overwriting its phone. \`customerEmail\` is stored on the order only.
 
 \`customerEmail\` / \`address\`: an empty (or whitespace) value clears the field; a value is stored trimmed (email also lower-cased), matching POST /orders.

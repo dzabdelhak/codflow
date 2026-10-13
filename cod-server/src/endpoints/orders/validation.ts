@@ -111,6 +111,7 @@ export const updateOrderSchema = z.object({
   ),
   deliveryType: z.enum(["home", "stop_desk"]).optional(),
   notes: z.string().nullish(),
+  deliveryFee: z.number().int().min(0).optional(),
 });
 
 export const assignDriverSchema = z.object({

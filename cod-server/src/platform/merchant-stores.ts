@@ -79,11 +79,15 @@ export async function createMerchantStore(
       return { ok: false, reason: "subdomain_taken" };
     }
 
+    const prefixes = await client.query<{ order_prefix: string }>(
+      "select order_prefix from stores where merchant_id = $1",
+      [input.merchantId],
+    );
     const id = randomUUID();
     const now = new Date().toISOString();
     await client.query(
       "insert into stores (id, name, merchant_id, order_prefix, created_at, updated_at) values ($1, $2, $3, $4, $5, $5)",
-      [id, input.name.trim(), input.merchantId, orderPrefixFor(subdomain), now],
+      [id, input.name.trim(), input.merchantId, orderPrefixFor(subdomain, prefixes.rows.map((r) => r.order_prefix)), now],
     );
     await client.query(
       "insert into store_domains (hostname, store_id, kind, created_at) values ($1, $2, 'subdomain', $3)",

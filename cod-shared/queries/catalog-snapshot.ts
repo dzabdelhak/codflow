@@ -85,26 +85,20 @@ export async function loadCatalogSnapshot(
   db: AppDb,
   lines: CartLine[],
   now: string,
-  opts: { lock?: boolean } = {},
 ): Promise<CatalogSnapshot> {
   const productIds = productIdsOf(lines);
   const variantIds = variantIdsOf(lines);
 
-  // An order locks the rows it will deduct from (in id order, so two orders
-  // never deadlock): its stock decisions then hold until it commits.
-  const productStatements = chunkIds(productIds).map((chunk) => {
-    const query = db.select(PRODUCT_COLUMNS).from(products).where(inArray(products.id, chunk)).orderBy(products.id);
-    return opts.lock ? query.for("no key update") : query;
-  });
+  const productStatements = chunkIds(productIds).map((chunk) =>
+    db.select(PRODUCT_COLUMNS).from(products).where(inArray(products.id, chunk)),
+  );
 
-  const variantStatements = chunkIds(variantIds).map((chunk) => {
-    const query = db
+  const variantStatements = chunkIds(variantIds).map((chunk) =>
+    db
       .select(VARIANT_COLUMNS)
       .from(productVariants)
-      .where(inArray(productVariants.id, chunk))
-      .orderBy(productVariants.id);
-    return opts.lock ? query.for("no key update") : query;
-  });
+      .where(inArray(productVariants.id, chunk)),
+  );
 
   // Selection among these is decided in memory — see resolveCartOffers. The
   // database only narrows to what is active and in schedule right now.
@@ -163,7 +157,6 @@ export async function extendSnapshot(
   db: AppDb,
   snapshot: CatalogSnapshot,
   extra: { productIds?: string[]; variantIds?: string[]; variantsOfProducts?: string[] },
-  opts: { lock?: boolean } = {},
 ): Promise<void> {
   const missingProducts = (extra.productIds ?? []).filter(
     (id) => !snapshot.products.has(id),
@@ -173,20 +166,17 @@ export async function extendSnapshot(
   );
   const variantsOf = extra.variantsOfProducts ?? [];
 
-  const productStatements = chunkIds(missingProducts).map((chunk) => {
-    const query = db.select(PRODUCT_COLUMNS).from(products).where(inArray(products.id, chunk)).orderBy(products.id);
-    return opts.lock ? query.for("no key update") : query;
-  });
-  const variantStatements = chunkIds(missingVariants).map((chunk) => {
-    const query = db
+  const productStatements = chunkIds(missingProducts).map((chunk) =>
+    db.select(PRODUCT_COLUMNS).from(products).where(inArray(products.id, chunk)),
+  );
+  const variantStatements = chunkIds(missingVariants).map((chunk) =>
+    db
       .select(VARIANT_COLUMNS)
       .from(productVariants)
-      .where(inArray(productVariants.id, chunk))
-      .orderBy(productVariants.id);
-    return opts.lock ? query.for("no key update") : query;
-  });
-  const siblingStatements = chunkIds(variantsOf).map((chunk) => {
-    const query = db
+      .where(inArray(productVariants.id, chunk)),
+  );
+  const siblingStatements = chunkIds(variantsOf).map((chunk) =>
+    db
       .select(VARIANT_COLUMNS)
       .from(productVariants)
       .where(
@@ -194,10 +184,8 @@ export async function extendSnapshot(
           inArray(productVariants.productId, chunk),
           eq(productVariants.active, true),
         ),
-      )
-      .orderBy(productVariants.id);
-    return opts.lock ? query.for("no key update") : query;
-  });
+      ),
+  );
 
   const statements = [
     ...productStatements,
@@ -240,47 +228,6 @@ export function findMissingSku(
       return { missing: "product", id: line.productId };
     }
   }
-  return null;
-}
-
-/**
- * A customer-facing Arabic message naming the first line that cannot be
- * satisfied, or null when the whole basket can.
- *
- * This is a *pre-flight* courtesy so the shopper gets a clear message instead
- * of a rollback. It is NOT the safety net: two shoppers can pass it at the
- * same instant for the last unit. The real guarantee is the guarded deduction
- * in the commit batch, which is race-free.
- *
- * A product the snapshot does not know is passed over rather than blocked —
- * the order engine refuses it for real, with a precise error code.
- */
-export function findStockShortfall(
-  snapshot: CatalogSnapshot,
-  lines: CartLine[],
-): string | null {
-  const basket = lines.length > 1;
-
-  for (const line of lines) {
-    const product = snapshot.products.get(line.productId);
-    // trackInventory is the parent's master switch: false exempts the product
-    // AND every one of its variants.
-    if (!product?.trackInventory) continue;
-
-    if (line.variantId) {
-      const available = snapshot.variants.get(line.variantId)?.inventory ?? 0;
-      if (available < line.quantity) {
-        return basket
-          ? `"${product.name}" غير متوفر بالكمية المطلوبة بالخيار المحدد.`
-          : "هذا المنتج غير متوفر بالخيار المطلوب. يرجى اختيار خياراً آخر.";
-      }
-    } else if (product.inventory < line.quantity) {
-      return basket
-        ? `"${product.name}" غير متوفر بالكمية المطلوبة.`
-        : "هذا المنتج غير متوفر حالياً.";
-    }
-  }
-
   return null;
 }
 
@@ -339,11 +286,10 @@ export type LineBlocker = "missing" | "unlisted";
 /** A cart line as the storefront should display it right now. */
 export interface ResolvedLine extends PricedLine {
   productName: string;
-  /** Units on hand. null when the product is not stock-tracked. */
+  /** Units the shopper may order. null when the product is not stock-tracked. */
   maxQuantity: number | null;
   /** null when the line is orderable as requested. */
   blocker: LineBlocker | null;
-  /** More units asked than on hand: still ordered, availability confirmed on the call. */
   stockNotGuaranteed: boolean;
 }
 
@@ -399,4 +345,38 @@ export function resolveCartLines(
       stockNotGuaranteed: blocker === null && maxQuantity != null && maxQuantity < line.quantity,
     };
   });
+}
+
+export interface StockRef {
+  productId: string;
+  variantId: string | null;
+}
+
+export function stockKey(productId: string, variantId: string | null): string {
+  return variantId ? `v:${variantId}` : `p:${productId}`;
+}
+
+export async function lockStock(db: AppDb, refs: StockRef[]): Promise<Map<string, number>> {
+  const productIds = [...new Set(refs.filter((r) => !r.variantId).map((r) => r.productId))].sort();
+  const variantIds = [...new Set(refs.flatMap((r) => (r.variantId ? [r.variantId] : [])))].sort();
+  const onHand = new Map<string, number>();
+  for (const chunk of chunkIds(productIds)) {
+    const rows = await db
+      .select({ id: products.id, inventory: products.inventory })
+      .from(products)
+      .where(inArray(products.id, chunk))
+      .orderBy(products.id)
+      .for("no key update");
+    for (const row of rows) onHand.set(stockKey(row.id, null), row.inventory);
+  }
+  for (const chunk of chunkIds(variantIds)) {
+    const rows = await db
+      .select({ id: productVariants.id, inventory: productVariants.inventory })
+      .from(productVariants)
+      .where(inArray(productVariants.id, chunk))
+      .orderBy(productVariants.id)
+      .for("no key update");
+    for (const row of rows) onHand.set(stockKey(row.id, row.id), row.inventory);
+  }
+  return onHand;
 }

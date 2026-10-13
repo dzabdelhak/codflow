@@ -234,8 +234,6 @@ export async function createOrder(
     // stock is insufficient (or a concurrent writer already took it), the
     // subselects return NULL, the movement insert violates NOT NULL, and the
     // ENTIRE batch rolls back — no oversell floor, no lost-update race.
-    // FOR NO KEY UPDATE makes the guard wait for a concurrent order and re-check the
-    // committed stock (PostgreSQL READ COMMITTED; D1 batches were serial).
     if (item.variantId) {
       statements.push(
         db.insert(stockMovements).values({
@@ -493,6 +491,7 @@ export interface UpdateOrderData {
   address?: string | null;
   deliveryType?: "home" | "stop_desk";
   notes?: string | null;
+  deliveryFee?: number;
 }
 
 /**
@@ -539,6 +538,11 @@ export async function updateOrder(
   if (updates.address !== undefined) patch.address = updates.address;
   if (updates.deliveryType !== undefined) patch.deliveryType = updates.deliveryType;
   if (updates.notes !== undefined) patch.notes = updates.notes;
+  if (updates.deliveryFee !== undefined) {
+    patch.deliveryFee = updates.deliveryFee;
+    patch.deliveryFeeToConfirm = false;
+    patch.codAmount = sql`${orders.price} + ${updates.deliveryFee}`;
+  }
 
   const customerUpdates: UpdateCustomerData = {};
   if (current) {

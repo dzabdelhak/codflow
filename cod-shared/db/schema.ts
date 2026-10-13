@@ -600,18 +600,12 @@ export const orders = pgTable("orders", {
    * against the live policy. Carriers and pricing never read it.
    */
   customFieldsJson: text("custom_fields_json"),
-  /** No delivery fee was known when the order was taken: the fee is confirmed on the call, never shown as 0 DA. */
   deliveryFeeToConfirm: boolean("delivery_fee_to_confirm").notNull().default(false),
-  /** False when a line exceeded the stock on hand: the order was taken, availability is confirmed on the call. */
   stockConfirmed: boolean("stock_confirmed").notNull().default(true),
 }, (t) => ({
   orderNumberPerStore: uniqueIndex("orders_store_order_number_unique").on(t.storeId, t.orderNumber),
 }));
 
-/**
- * Orders waiting to be sent to Aventy (guide §5–6). Written in the same
- * transaction as the order; the id is the ULID send id, reused on every retry.
- */
 export const outboundOrders = pgTable("outbound_orders", {
   storeId: storeIdColumn(),
   id: text("id").primaryKey(),
@@ -1042,9 +1036,7 @@ export const stores = pgTable("stores", {
    * Last for the same positional reason as the columns above.
    */
   whatsappWidgetJson: text("whatsapp_widget_json"),
-  /** Prefix of this store's order numbers (e.g. "NOUR" → NOUR-00042). */
   orderPrefix: text("order_prefix").notNull().default("CMD"),
-  /** Last order sequence number handed out; the next order takes this + 1. */
   orderSeq: integer("order_seq").notNull().default(0),
   /** The merchant that owns this store. Last for the same positional reason. */
   merchantId: text("merchant_id").notNull().references(() => merchants.id),

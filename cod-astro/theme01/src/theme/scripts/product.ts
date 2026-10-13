@@ -79,7 +79,6 @@ export function initProductPage() {
 
   const MAX_QTY = 100;
 
-  /** Units on hand for the current selection; Infinity when stock is not tracked. */
   let available           = Infinity;
   let ratesKnown          = false;
 
@@ -349,10 +348,6 @@ export function initProductPage() {
     if (icon) icon.classList.replace('opacity-0', 'opacity-100');
   }
 
-  /**
-   * The order is taken whatever the stock; a quantity beyond what is on hand
-   * only warns that availability is confirmed on the call.
-   */
   function updateQtyState() {
     if (!qtyInput || !qtyStockHint) return;
     const qty = parseInt(qtyInput.value) || 1;

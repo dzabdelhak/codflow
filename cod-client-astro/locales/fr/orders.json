@@ -279,6 +279,7 @@
     "error_wilaya": "Veuillez sélectionner une wilaya",
     "error_commune": "Veuillez sélectionner une commune",
     "error_address": "L'adresse est obligatoire pour la livraison à domicile",
+    "error_delivery_fee": "Saisissez les frais en DA (nombre entier)",
     "error_delivery_unavailable": "Cette méthode de livraison n'est pas disponible pour la wilaya sélectionnée",
     "new_order_subtitle": "Remplissez les informations du client et ajoutez des produits pour créer une nouvelle commande"
   },

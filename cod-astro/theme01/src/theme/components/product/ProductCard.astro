@@ -20,10 +20,8 @@ const image        = product.coverImage ?? product.images?.[0];
 const hasDiscount  = product.compareAtPrice != null && product.compareAtPrice > product.price;
 const discountPct  = hasDiscount ? Math.round((1 - product.price / product.compareAtPrice!) * 100) : 0;
 const isLowStock   = product.trackInventory && product.inventory > 0 && product.inventory <= 5;
-const isOutOfStock = product.trackInventory && product.inventory === 0;
 
 const ctaText      = content?.orderCta    ?? "اطلب الآن";
-const outOfStockTx = content?.outOfStock  ?? "نفد المخزون";
 const lowStockTx   = content?.lowStock
   ? content.lowStock.replace("{n}", String(product.inventory))
   : `آخر ${product.inventory} قطع`;
@@ -68,17 +66,8 @@ const lowStockTx   = content?.lowStock
       </div>
     )}
 
-    <!-- Out of stock overlay -->
-    {isOutOfStock && (
-      <div class="absolute inset-0 bg-black/50 flex items-center justify-center" aria-hidden="true">
-        <span class="bg-black/80 text-white text-sm font-black px-4 py-2 rounded-xl">
-          {outOfStockTx}
-        </span>
-      </div>
-    )}
-
     <!-- Low stock strip at bottom of image -->
-    {!isOutOfStock && isLowStock && (
+    {isLowStock && (
       <div class="absolute bottom-0 inset-x-0 px-3 py-2.5"
         style="background: linear-gradient(to top, var(--overlay-dark), transparent)"
         aria-hidden="true">

@@ -39,6 +39,9 @@ import * as carrierGeo from "../../../../cod-shared/queries/carrier-geo";
 vi.mock("../../../../cod-shared/queries/order-numbers", () => ({
   allocateOrderNumber: vi.fn(async () => "CMD-00001"),
 }));
+vi.mock("../../../../cod-shared/queries/catalog-snapshot", () => ({
+  lockStock: vi.fn(async () => new Map()),
+}));
 vi.mock("@/db", () => ({ getDb: vi.fn(() => mockDb) }));
 vi.mock("./queries");
 vi.mock("./resolve-fee");
@@ -484,6 +487,28 @@ describe("Orders — targeted business-logic tests", () => {
       expect(res.status).toBe(400);
       const body: any = await res.json();
       expect(body.code).toBe(ERROR_CODES.MISSING_ADDRESS);
+    });
+
+    it("returns 400 while the delivery fee is still to be confirmed", async () => {
+      vi.mocked(queries.getOrderById).mockResolvedValue(
+        orderRow({ deliveryFeeToConfirm: true }) as any
+      );
+      vi.mocked(deliveryCompanyQueries.getDeliveryCompanyRaw).mockResolvedValue(
+        companyRow() as any
+      );
+      mockDb = {
+        select: vi.fn(() => ({
+          from: vi.fn(() => ({
+            where: vi.fn(() => (rowsOf(vi.fn(async () => ({ name: "Alger", nameAr: "الجزائر" }))))),
+          })),
+        })),
+      };
+
+      const res = await app.request("/api/orders/ord_1/dispatch", { method: "POST" });
+
+      expect(res.status).toBe(400);
+      const body: any = await res.json();
+      expect(body.code).toBe(ERROR_CODES.DELIVERY_FEE_TO_CONFIRM);
     });
   });
 

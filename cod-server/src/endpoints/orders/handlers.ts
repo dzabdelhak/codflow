@@ -19,6 +19,7 @@ import { NotFoundError, ValidationError, BusinessLogicError } from "@/lib/errors
 import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
 import { first } from "../../../../cod-shared/db/client";
 import { allocateOrderNumber } from "../../../../cod-shared/queries/order-numbers";
+import { lockStock } from "../../../../cod-shared/queries/catalog-snapshot";
 
 /**
  * GET /orders
@@ -85,7 +86,6 @@ export async function createOrder(c: Context<AppContext>) {
       bodyData ?? validation.createOrderSchema.parse(await c.req.json());
 
     const date = new Date();
-    const orderNumber = await allocateOrderNumber(db);
 
     const now = date.toISOString();
     const orderId = crypto.randomUUID();
@@ -158,6 +158,9 @@ export async function createOrder(c: Context<AppContext>) {
         lastOrderAt: null,
       });
     }
+
+    await lockStock(db, validated.products.map((p) => ({ productId: p.productId, variantId: p.variantId || null })));
+    const orderNumber = await allocateOrderNumber(db);
 
     // Prepare order data
     const orderData = {
@@ -330,6 +333,7 @@ export async function updateOrder(c: Context<AppContext>) {
     address: validated.address,
     deliveryType: validated.deliveryType,
     notes: validated.notes,
+    deliveryFee: validated.deliveryFee,
   });
 
   const actor = c.get("user");

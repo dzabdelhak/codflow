@@ -308,9 +308,9 @@ const createStoreOrderRoute = defineRoute({
 
 **Pricing is server-authoritative.** \`pricePerUnit\` is accepted for UI continuity and never trusted; every line is priced from the catalog row.
 
-**All or nothing.** If any line cannot be satisfied — insufficient stock, missing SKU — the whole order is refused and nothing is written.
+**Never refused for stock.** A line the stock on hand covers is deducted; a line it does not cover is still ordered, without driving stock negative, and the order comes back with \`stockConfirmed: false\` — availability is confirmed on the call. A missing SKU still refuses the whole order and nothing is written.
 
-**Delivery fee** is resolved per basket: a product's own shipping profile overrides the store default, a commune-level override beats the wilaya rule, and a basket spanning two profiles pays the highest applicable rate. Delivery is refused (not silently free) when any product cannot be shipped to the destination.
+**Delivery fee** is resolved per basket: a product's own shipping profile overrides the store default, a commune-level override beats the wilaya rule, and a basket spanning two profiles pays the highest applicable rate. When no fee is known for the destination the order is still taken with \`deliveryFee: null\` and \`feeToConfirm: true\` — the fee is confirmed on the call, never charged as 0.
 
 **Offer selection:** send \`offerId\` to explicitly select the tier the customer chose. It is honoured only if it independently qualifies; otherwise the server picks the highest \`triggerQuantity\` actually satisfied. Trigger quantity counts a product across all its lines, so two variants of one shirt are two shirts.
 
@@ -329,19 +329,18 @@ const createStoreOrderRoute = defineRoute({
           success: z.boolean().openapi({ example: true }),
           data: z.object({
             orderId: z.string(),
-            orderNumber: z.string().openapi({ example: "ORD-20260327-0042" }),
+            orderNumber: z.string().openapi({ example: "NOUR-00042" }),
             price: z.number(),
-            deliveryFee: z.number(),
-            total: z.number().openapi({ description: "price + deliveryFee (after any offer)" }),
+            deliveryFee: z.number().nullable().openapi({ description: "null when the fee is to be confirmed on the call" }),
+            feeToConfirm: z.boolean(),
+            total: z.number().openapi({ description: "price + deliveryFee (after any offer); price alone while the fee is to be confirmed" }),
+            stockConfirmed: z.boolean().openapi({ description: "false when a line exceeded the stock on hand" }),
           }),
         })
       ),
     },
     404: { description: "Referenced SKU/product record missing (REQUIRED_FIELD_MISSING)" },
-    422: {
-      description:
-        "Insufficient stock (INSUFFICIENT_STOCK) or missing SKU before accepting orders",
-    },
+    422: { description: "Missing SKU before accepting orders" },
   },
   handler: h.createStoreOrder,
 });
