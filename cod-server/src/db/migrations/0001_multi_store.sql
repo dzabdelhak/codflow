@@ -64,7 +64,13 @@ BEGIN
     'store_api_keys','reviews','store_pixel_config','store_otp_config','store_email_config',
     'store_turnstile_config','store_pages','store_legal_profile'
   ] LOOP
-    EXECUTE format('ALTER TABLE %I ADD CONSTRAINT %I FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE CASCADE', t, t || '_store_fk');
+    -- Tables that had store_id before already reference stores.
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_constraint
+      WHERE conrelid = t::regclass AND contype = 'f' AND confrelid = 'stores'::regclass
+    ) THEN
+      EXECUTE format('ALTER TABLE %I ADD CONSTRAINT %I FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE CASCADE', t, t || '_store_fk');
+    END IF;
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
     EXECUTE format('ALTER TABLE %I FORCE ROW LEVEL SECURITY', t);
     EXECUTE format($p$CREATE POLICY store_isolation ON %I

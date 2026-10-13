@@ -430,7 +430,7 @@ export async function findOrCreateCustomer(
       createdAt: now,
     })
     .onConflictDoUpdate({
-      target: customers.phone,
+      target: [customers.storeId, customers.phone],
       set: {
         name: data.name,
         wilayaId: data.wilayaId,

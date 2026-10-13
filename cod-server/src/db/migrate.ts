@@ -21,8 +21,18 @@ export async function runMigrations(connectionString: string): Promise<void> {
   await client.connect();
   try {
     await migrate(drizzle(client), { migrationsFolder: here("migrations") });
-    const { rows } = await client.query<{ n: number }>("select count(*)::int as n from wilayas");
-    if (rows[0].n === 0) await client.query(readFileSync(here("seed/geo.sql"), "utf8"));
+    const { rows } = await client.query<{ n: number }>("select count(*)::int as n from communes");
+    if (rows[0].n === 0) {
+      await client.query("begin");
+      try {
+        await client.query("delete from wilayas");
+        await client.query(readFileSync(here("seed/geo.sql"), "utf8"));
+        await client.query("commit");
+      } catch (err) {
+        await client.query("rollback");
+        throw err;
+      }
+    }
   } finally {
     await client.end();
   }
