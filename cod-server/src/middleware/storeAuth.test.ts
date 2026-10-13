@@ -7,7 +7,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { Hono } from "hono";
 import { sql } from "drizzle-orm";
 import type { AppContext } from "@/types";
-import { products } from "@/db/schema";
+import { products, users } from "@/db/schema";
 import { createPool, type Database } from "@/db/scope";
 import { createTestDb, type TestDb } from "@/test-utils/pg";
 import { storeAuthMiddleware } from "./storeAuth";
@@ -29,6 +29,10 @@ app.post("/store/products/:id/then-fail", async (c) => {
 app.post("/store/products/:id/rename", async (c) => {
   await c.get("db").execute(sql`update products set name = 'renamed' where id = ${c.req.param("id")}`);
   return c.json({ ok: true });
+});
+app.get("/store/user-ids", async (c) => {
+  const rows = await c.get("db").select({ id: users.id }).from(users);
+  return c.json(rows.map((r) => r.id).sort());
 });
 app.onError((_err, c) => c.json({ error: "failed" }, 500));
 
@@ -52,6 +56,13 @@ beforeAll(async () => {
   await seedProduct("shop-a", "a-1");
   await seedProduct("shop-a", "a-2");
   await seedProduct("shop-b", "b-1");
+  const other = await harness.createMerchant("other-merchant");
+  await harness.createStore("shop-c", ["shop-c.localhost"], other);
+  await harness.platform.query(
+    `insert into users (id, name, email, merchant_id, created_at, updated_at) values
+       ('u-test', 'T', 't@x.test', 'test-merchant', now(), now()),
+       ('u-other', 'O', 'o@x.test', 'other-merchant', now(), now())`,
+  );
   const app = createPool(harness.url, "codflow_app");
   const platform = createPool(harness.url, "codflow_platform");
   database = { app, platform, close: async () => void (await Promise.all([app.end(), platform.end()])) };
@@ -85,6 +96,13 @@ describe("storefront channel resolution", () => {
     expect(a).toEqual({ storeId: "shop-a", ids: ["a-1", "a-2"] });
     expect(aOwnDomain).toEqual(a);
     expect(b).toEqual({ storeId: "shop-b", ids: ["b-1"] });
+  });
+});
+
+describe("merchant of the channel", () => {
+  it("lets a storefront request see its own merchant's users, and only those", async () => {
+    expect(await (await call("/store/user-ids", asStorefront("shop-a.localhost"))).json()).toEqual(["u-test"]);
+    expect(await (await call("/store/user-ids", asStorefront("shop-c.localhost"))).json()).toEqual(["u-other"]);
   });
 });
 

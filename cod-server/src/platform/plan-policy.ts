@@ -1,10 +1,3 @@
-/**
- * May this merchant have another store? One seam: today the merchant's own
- * store limit, later Aventy's plan (ticket 15) behind the same interface.
- *
- * `decide` runs inside the creation transaction, after the merchant row is
- * locked, so two simultaneous creations cannot both take the last slot.
- */
 import type pg from "pg";
 
 export type PlanDecision =

@@ -1,8 +1,3 @@
-/**
- * Dashboard request scope. Runs after authMiddleware: the user's merchant is
- * known, and the active store comes from `X-Store-Id` — accepted only when
- * that merchant owns it. Without the header, the merchant's first store.
- */
 import type { Context } from "hono";
 import type { AppContext } from "@/types";
 import { requestScope, type Scope } from "@/db/scope";

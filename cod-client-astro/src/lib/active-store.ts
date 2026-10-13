@@ -1,7 +1,3 @@
-/**
- * The store the dashboard works in, remembered per browser. The API checks
- * on every call that the user's merchant owns it (X-Store-Id).
- */
 const KEY = "codflow.activeStoreId";
 
 export function activeStoreId(): string | null {

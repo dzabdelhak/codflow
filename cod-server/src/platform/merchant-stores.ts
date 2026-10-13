@@ -1,7 +1,3 @@
-/**
- * A merchant's stores — platform code: it runs on the platform pool (outside
- * Row-Level Security) and filters by merchant explicitly.
- */
 import { randomUUID } from "node:crypto";
 import type pg from "pg";
 import { getDb } from "../../../cod-shared/db/client";
@@ -13,8 +9,7 @@ export interface MerchantStore {
   name: string;
   status: string;
   logoUrl: string | null;
-  /** The store's free subdomain, or its first hostname; null when it has none. */
-  hostname: string | null;
+    hostname: string | null;
 }
 
 const RESERVED_SUBDOMAINS = new Set(["www", "api", "app", "admin", "dashboard", "mail", "static", "cdn", "assets"]);
@@ -38,7 +33,6 @@ export async function listMerchantStores(platform: pg.Pool, merchantId: string):
   return rows;
 }
 
-/** The merchant's first store (the switcher lists stores in this order), or null. */
 export async function firstStoreId(platform: pg.Pool, merchantId: string): Promise<string | null> {
   const { rows } = await platform.query<{ id: string }>(
     "select id from stores where merchant_id = $1 order by created_at, id limit 1",
@@ -47,7 +41,6 @@ export async function firstStoreId(platform: pg.Pool, merchantId: string): Promi
   return rows[0]?.id ?? null;
 }
 
-/** Does `storeId` belong to `merchantId`? */
 export async function merchantOwnsStore(platform: pg.Pool, merchantId: string, storeId: string): Promise<boolean> {
   const { rowCount } = await platform.query("select 1 from stores where id = $1 and merchant_id = $2", [storeId, merchantId]);
   return rowCount === 1;
@@ -59,10 +52,6 @@ export type CreateStoreResult =
   | { ok: false; reason: "subdomain_taken" }
   | { ok: false; reason: "plan_limit"; limit: number; used: number };
 
-/**
- * Creates a store with its free subdomain and its four legal pages, in one
- * transaction: all of it exists, or none of it.
- */
 export async function createMerchantStore(
   platform: pg.Pool,
   input: { merchantId: string; name: string; subdomain: string; baseDomain: string },
@@ -99,7 +88,6 @@ export async function createMerchantStore(
       "insert into store_domains (hostname, store_id, kind, created_at) values ($1, $2, 'subdomain', $3)",
       [hostname, id, now],
     );
-    // Store-owned rows take their store_id from the transaction's store.
     await client.query("select set_config('app.store_id', $1, true)", [id]);
     await seedStorePages(getDb(client, { inTransaction: true }), id);
     await client.query("commit");

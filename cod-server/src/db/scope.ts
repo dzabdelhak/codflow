@@ -9,13 +9,15 @@ import { getDb } from "../../../cod-shared/db/client";
 import type { AppContext } from "@/types";
 
 export { createPool, createDatabase, withStore, type Database, type DbRole } from "../../../cod-shared/db/pools";
-/** A store's id for a hostname, or null. Platform routing, so no store is set yet. */
-export async function storeIdForHost(pool: pg.Pool, hostname: string): Promise<string | null> {
-  const { rows } = await pool.query<{ store_id: string }>(
-    "select store_id from store_domains where hostname = $1",
+
+/** The store a hostname serves, with its merchant, or null. */
+export async function scopeForHost(platform: pg.Pool, hostname: string): Promise<Scope | null> {
+  const { rows } = await platform.query<{ store_id: string; merchant_id: string }>(
+    `select d.store_id, s.merchant_id from store_domains d join stores s on s.id = d.store_id
+      where d.hostname = $1`,
     [hostname.split(":")[0].toLowerCase()],
   );
-  return rows[0]?.store_id ?? null;
+  return rows[0] ? { storeId: rows[0].store_id, merchantId: rows[0].merchant_id } : null;
 }
 
 /**
@@ -24,8 +26,8 @@ export async function storeIdForHost(pool: pg.Pool, hostname: string): Promise<s
  * shows nothing rather than guessing). Their own tickets replace this.
  */
 export async function soleStoreId(platform: pg.Pool): Promise<Scope> {
-  const { rows } = await platform.query<{ id: string }>("select id from stores limit 2");
-  return { storeId: rows.length === 1 ? rows[0].id : null };
+  const { rows } = await platform.query<{ id: string; merchant_id: string }>("select id, merchant_id from stores limit 2");
+  return rows.length === 1 ? { storeId: rows[0].id, merchantId: rows[0].merchant_id } : { storeId: null };
 }
 
 /** The store (and, for dashboard requests, the merchant) a request works in. */

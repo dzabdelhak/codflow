@@ -1,8 +1,3 @@
-/**
- * The dashboard server's database pools and Redis client — one per process.
- * Identity (users, sessions, credentials) is platform data, read through the
- * platform pool; anything store-owned goes through `withStore` on the app pool.
- */
 import { createClient } from "redis";
 import { createDatabase, type Database } from "../../../cod-shared/db/pools";
 import { serverEnv } from "./server-env";
