@@ -1,4 +1,5 @@
 import { pgTable, text, integer, doublePrecision, boolean, timestamp, jsonb, uniqueIndex, index, primaryKey } from "drizzle-orm/pg-core";
+import { CHANNEL_STATUSES } from "../channels/lifecycle";
 import { sql } from "drizzle-orm";
 
 /**
@@ -994,7 +995,7 @@ export const stores = pgTable("stores", {
     .notNull()
     .default("highest"),
 
-  status: text("status", { enum: ["active", "inactive"] }).notNull().default("active"),
+  status: text("status", { enum: CHANNEL_STATUSES }).notNull().default("draft"),
   /** Plaintext storefront API key — written on every provision so the merchant can view it in settings. */
   storeApiKey: text("store_api_key"),
   createdAt: text("created_at").notNull(),

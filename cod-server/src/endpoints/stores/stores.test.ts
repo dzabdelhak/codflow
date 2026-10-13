@@ -44,7 +44,7 @@ function storeRow(overrides: Record<string, any> = {}) {
     // reviewsEnabled and before status.
     freeShippingThreshold: null,
     cartShippingMode: "highest",
-    status: "active",
+    status: "published",
     // storeApiKey sits between status and createdAt in the schema. It was
     // missing here, which silently shifted every value after it by one slot.
     storeApiKey: "sk_store_abc123",
@@ -76,7 +76,7 @@ describe("getStore", () => {
     expect(result?.id).toBe("store_1");
     expect(result?.name).toBe("My Shop");
     expect(result?.lang).toBe("ar");
-    expect(result?.status).toBe("active");
+    expect(result?.status).toBe("published");
   });
 });
 

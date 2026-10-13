@@ -29,6 +29,13 @@
       "when": 1791917881488,
       "tag": "0003_orders_outbound",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791926098854,
+      "tag": "0004_channel_status",
+      "breakpoints": true
     }
   ]
 }

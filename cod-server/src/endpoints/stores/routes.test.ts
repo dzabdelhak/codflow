@@ -53,7 +53,7 @@ function storeRow(overrides: Record<string, any> = {}) {
     // threshold, and a mixed basket pays the highest applicable rate.
     freeShippingThreshold: null,
     cartShippingMode: "highest" as const,
-    status: "active" as const,
+    status: "published" as const,
     storeApiKey: "sk_store_abc123",
     createdAt: NOW,
     updatedAt: NOW,
@@ -99,7 +99,7 @@ describe("Stores routes (OpenAPIHono)", () => {
         email: "admin@example.com",
         name: "Admin User",
         role: "admin",
-        status: "active",
+        status: "published",
         apiKey: null,
         createdAt: NOW,
         updatedAt: NOW,

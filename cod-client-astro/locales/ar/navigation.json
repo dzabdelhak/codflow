@@ -29,7 +29,8 @@
     "mcp": "وكلاء الذكاء الاصطناعي",
     "store_pages": "الصفحات",
     "checkout_form": "نموذج الطلب",
-    "whatsapp": "واتساب"
+    "whatsapp": "واتساب",
+    "stores": "المتاجر"
   },
   "navbar": {
     "search_placeholder": "البحث عن طلبات، عملاء...",
@@ -101,6 +102,56 @@
     "error_invalid": "استخدم من 3 إلى 40 حرفًا لاتينيًا صغيرًا أو رقمًا أو شرطة. بعض الأسماء محجوزة.",
     "error_name": "أعطِ المتجر اسمًا.",
     "error_generic": "تعذّر إنشاء المتجر. حاول مرة أخرى.",
-    "load_failed": "تعذّر تحميل المتاجر — أعد التحميل"
+    "load_failed": "تعذّر تحميل المتاجر — أعد التحميل",
+    "manage": "إدارة المتاجر",
+    "page_title": "المتاجر",
+    "page_subtitle": "كل متاجر حسابك وعناوينها وحالة نشرها.",
+    "status": {
+      "draft": "مسودة",
+      "configuring": "قيد الإعداد",
+      "ready": "جاهز للنشر",
+      "published": "منشور",
+      "suspended": "موقوف",
+      "archived": "مؤرشف"
+    },
+    "move": {
+      "draft": "إرجاع إلى مسودة",
+      "configuring": "بدء الإعداد",
+      "ready": "تحديد كجاهز للنشر",
+      "published": "نشر",
+      "suspended": "إيقاف",
+      "archived": "أرشفة"
+    },
+    "status_all": "كل الحالات",
+    "status_filter": "تصفية حسب الحالة",
+    "search_placeholder": "ابحث عن متجر بالاسم…",
+    "no_match": "لا يوجد متجر مطابق.",
+    "column_store": "المتجر",
+    "column_status": "الحالة",
+    "column_created": "تاريخ الإنشاء",
+    "column_actions": "إجراءات",
+    "active": "الحالي",
+    "open": "فتح",
+    "actions_label": "إجراءات {name}",
+    "history": "سجل الحالات",
+    "history_title": "سجل الحالات",
+    "history_empty": "لا يوجد تغيير في الحالة بعد.",
+    "history_failed": "تعذر تحميل السجل.",
+    "history_by": "بواسطة {name} · {date}",
+    "confirm_published_title": "نشر {name}؟",
+    "confirm_published_description": "تصبح صفحاته العامة متاحة على عنوانه.",
+    "confirm_suspended_title": "إيقاف {name}؟",
+    "confirm_suspended_description": "يرى الزوار صفحة «غير متاح». تُحفظ الطلبات والمنتجات والإعدادات، ويمكنك إعادة تفعيله في أي وقت.",
+    "confirm_archived_title": "أرشفة {name}؟",
+    "confirm_archived_description": "يختفي من الويب العام. تُحفظ طلباته وسجلاته.",
+    "status_changed": "تم تحديث الحالة",
+    "action_failed": "تعذر حفظ التغيير. حاول مرة أخرى.",
+    "delete": "حذف نهائي",
+    "delete_title": "حذف هذا المتجر نهائياً؟",
+    "delete_description": "لا يمكن حذف إلا متجر مؤرشف لم يستقبل أي طلب. لا يمكن التراجع.",
+    "delete_confirm_label": "اكتب «{name}» للتأكيد",
+    "delete_submit": "حذف المتجر",
+    "delete_refused": "لا يمكن حذف هذا المتجر: لديه طلبات، أو غير مؤرشف، أو هو متجرك الوحيد.",
+    "deleted": "تم حذف المتجر"
   }
 }

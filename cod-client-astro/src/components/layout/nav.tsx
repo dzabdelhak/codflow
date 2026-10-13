@@ -205,6 +205,12 @@ export function useNavSections(): NavSection[] {
       items: [
         {
           kind: "leaf",
+          href: "/stores",
+          label: tN("sidebar.stores"),
+          icon: Store,
+        },
+        {
+          kind: "leaf",
           href: "/team",
           label: tN("sidebar.team"),
           icon: Shield,

@@ -1,5 +1,7 @@
+import type { ChannelStatus } from "../../../../cod-shared/channels/lifecycle";
+
 export type StoreLang = "ar" | "en" | "fr";
-export type StoreStatus = "active" | "inactive";
+export type StoreStatus = ChannelStatus;
 
 /** The single tenant's configuration as returned by the stores API. */
 export interface StoreConfig {
@@ -54,7 +56,6 @@ export type UpdateStoreData = Partial<
     | "cartEnabled"
     | "freeShippingThreshold"
     | "cartShippingMode"
-    | "status"
   >
 >;
 

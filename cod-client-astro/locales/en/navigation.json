@@ -29,7 +29,8 @@
     "mcp": "AI Agents",
     "store_pages": "Pages",
     "checkout_form": "Checkout form",
-    "whatsapp": "WhatsApp"
+    "whatsapp": "WhatsApp",
+    "stores": "Stores"
   },
   "navbar": {
     "search_placeholder": "Search for orders, customers...",
@@ -101,6 +102,56 @@
     "error_invalid": "Use 3 to 40 lower-case letters, digits or hyphens. Some names are reserved.",
     "error_name": "Give the store a name.",
     "error_generic": "The store could not be created. Try again.",
-    "load_failed": "Stores unavailable — reload"
+    "load_failed": "Stores unavailable — reload",
+    "manage": "Manage stores",
+    "page_title": "Stores",
+    "page_subtitle": "Every store of your account, its address and its publication state.",
+    "status": {
+      "draft": "Draft",
+      "configuring": "Setting up",
+      "ready": "Ready to publish",
+      "published": "Published",
+      "suspended": "Suspended",
+      "archived": "Archived"
+    },
+    "move": {
+      "draft": "Back to draft",
+      "configuring": "Start setting up",
+      "ready": "Mark ready to publish",
+      "published": "Publish",
+      "suspended": "Suspend",
+      "archived": "Archive"
+    },
+    "status_all": "All statuses",
+    "status_filter": "Filter by status",
+    "search_placeholder": "Search a store by name…",
+    "no_match": "No store matches.",
+    "column_store": "Store",
+    "column_status": "Status",
+    "column_created": "Created",
+    "column_actions": "Actions",
+    "active": "Current",
+    "open": "Open",
+    "actions_label": "Actions for {name}",
+    "history": "Status history",
+    "history_title": "Status history",
+    "history_empty": "No status change yet.",
+    "history_failed": "The history could not be loaded.",
+    "history_by": "By {name} · {date}",
+    "confirm_published_title": "Publish {name}?",
+    "confirm_published_description": "Its public pages go online at its address.",
+    "confirm_suspended_title": "Suspend {name}?",
+    "confirm_suspended_description": "Visitors see an \"unavailable\" page. Orders, products and settings are kept; you can reactivate it at any time.",
+    "confirm_archived_title": "Archive {name}?",
+    "confirm_archived_description": "It disappears from the public web. Its orders and logs are kept.",
+    "status_changed": "Status updated",
+    "action_failed": "The change could not be saved. Try again.",
+    "delete": "Delete permanently",
+    "delete_title": "Delete this store permanently?",
+    "delete_description": "Only an archived store that never received an order can be deleted. This cannot be undone.",
+    "delete_confirm_label": "Type “{name}” to confirm",
+    "delete_submit": "Delete store",
+    "delete_refused": "This store cannot be deleted: it has orders, is not archived, or is your only store.",
+    "deleted": "Store deleted"
   }
 }

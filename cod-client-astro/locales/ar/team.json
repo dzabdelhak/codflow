@@ -115,7 +115,8 @@
       "user.api_key_revoked": "أبطل مفتاح API",
       "review.approved": "وافق على تقييم",
       "review.rejected": "رفض تقييمًا",
-      "review.deleted": "حذف تقييمًا"
+      "review.deleted": "حذف تقييمًا",
+      "store.status_changed": "غيّر حالة المتجر"
     },
     "table": {
       "action": "الإجراء",

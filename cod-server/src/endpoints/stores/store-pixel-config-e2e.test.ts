@@ -42,7 +42,7 @@ beforeAll(async () => {
       email: "admin@example.com",
       name: "Admin User",
       role: "admin",
-      status: "active",
+      status: "published",
       apiKey: "cod_admin_key",
       scopes: ["*"],
     } as never);

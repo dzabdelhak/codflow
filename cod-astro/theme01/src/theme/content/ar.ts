@@ -214,6 +214,8 @@ export const ar: StoreFrontContent = {
   qtyMaxStock: "آخر {n} قطعة فقط",
   stockNotGuaranteed: "المخزون غير مضمون — سيؤكد لك أحد أعواننا توفّر المنتج عند الاتصال.",
   deliveryFeeToConfirmNote: "سيتم تأكيد تكاليف التوصيل عند الاتصال بك.",
+  channelUnavailableTitle: "المتجر غير متاح حالياً",
+  channelUnavailableBody: "هذا المتجر متوقف مؤقتاً. يرجى المحاولة لاحقاً.",
   freeShippingBadge: "شحن مجاني",
   searchLabel: "بحث...",
   noResultsLabel: "لا توجد نتائج مطابقة",

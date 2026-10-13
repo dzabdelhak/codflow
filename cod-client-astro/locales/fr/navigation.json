@@ -29,7 +29,8 @@
     "mcp": "Agents IA",
     "store_pages": "Pages",
     "checkout_form": "Formulaire de commande",
-    "whatsapp": "WhatsApp"
+    "whatsapp": "WhatsApp",
+    "stores": "Boutiques"
   },
   "navbar": {
     "search_placeholder": "Rechercher des commandes, clients...",
@@ -101,6 +102,56 @@
     "error_invalid": "Utilisez 3 à 40 lettres minuscules, chiffres ou tirets. Certains noms sont réservés.",
     "error_name": "Donnez un nom à la boutique.",
     "error_generic": "La boutique n'a pas pu être créée. Réessayez.",
-    "load_failed": "Boutiques indisponibles — rechargez"
+    "load_failed": "Boutiques indisponibles — rechargez",
+    "manage": "Gérer les boutiques",
+    "page_title": "Boutiques",
+    "page_subtitle": "Toutes les boutiques de votre compte, leur adresse et leur état de publication.",
+    "status": {
+      "draft": "Brouillon",
+      "configuring": "En configuration",
+      "ready": "Prêt à publier",
+      "published": "Publié",
+      "suspended": "Suspendu",
+      "archived": "Archivé"
+    },
+    "move": {
+      "draft": "Repasser en brouillon",
+      "configuring": "Passer en configuration",
+      "ready": "Marquer prêt à publier",
+      "published": "Publier",
+      "suspended": "Suspendre",
+      "archived": "Archiver"
+    },
+    "status_all": "Tous les statuts",
+    "status_filter": "Filtrer par statut",
+    "search_placeholder": "Rechercher une boutique par nom…",
+    "no_match": "Aucune boutique ne correspond.",
+    "column_store": "Boutique",
+    "column_status": "Statut",
+    "column_created": "Créée le",
+    "column_actions": "Actions",
+    "active": "Actuelle",
+    "open": "Ouvrir",
+    "actions_label": "Actions pour {name}",
+    "history": "Historique des statuts",
+    "history_title": "Historique des statuts",
+    "history_empty": "Aucun changement de statut.",
+    "history_failed": "L'historique n'a pas pu être chargé.",
+    "history_by": "Par {name} · {date}",
+    "confirm_published_title": "Publier {name} ?",
+    "confirm_published_description": "Ses pages publiques sont mises en ligne à son adresse.",
+    "confirm_suspended_title": "Suspendre {name} ?",
+    "confirm_suspended_description": "Les visiteurs voient une page « indisponible ». Commandes, produits et réglages sont conservés ; vous pouvez la réactiver à tout moment.",
+    "confirm_archived_title": "Archiver {name} ?",
+    "confirm_archived_description": "Elle disparaît du web public. Ses commandes et journaux sont conservés.",
+    "status_changed": "Statut mis à jour",
+    "action_failed": "La modification n'a pas pu être enregistrée. Réessayez.",
+    "delete": "Supprimer définitivement",
+    "delete_title": "Supprimer définitivement cette boutique ?",
+    "delete_description": "Seule une boutique archivée qui n'a jamais reçu de commande peut être supprimée. Action irréversible.",
+    "delete_confirm_label": "Saisissez « {name} » pour confirmer",
+    "delete_submit": "Supprimer la boutique",
+    "delete_refused": "Cette boutique ne peut pas être supprimée : elle a des commandes, n'est pas archivée ou est votre seule boutique.",
+    "deleted": "Boutique supprimée"
   }
 }

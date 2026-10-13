@@ -115,7 +115,8 @@
       "user.api_key_revoked": "A révoqué une clé API",
       "review.approved": "A approuvé un avis",
       "review.rejected": "A rejeté un avis",
-      "review.deleted": "A supprimé un avis"
+      "review.deleted": "A supprimé un avis",
+      "store.status_changed": "A changé le statut de la boutique"
     },
     "table": {
       "action": "Action",

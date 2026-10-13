@@ -214,6 +214,8 @@ export const en: StoreFrontContent = {
   qtyMaxStock: "Only {n} left",
   stockNotGuaranteed: "Stock not guaranteed — an agent will confirm availability when calling you.",
   deliveryFeeToConfirmNote: "Delivery fees will be confirmed when we call you.",
+  channelUnavailableTitle: "Store unavailable",
+  channelUnavailableBody: "This store is temporarily unavailable. Please try again later.",
   freeShippingBadge: "Free shipping",
   searchLabel: "Search...",
   noResultsLabel: "No results found",

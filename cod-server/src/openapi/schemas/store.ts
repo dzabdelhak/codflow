@@ -5,6 +5,7 @@
  */
 
 import { z } from "@hono/zod-openapi";
+import { CHANNEL_STATUSES } from "../../../../cod-shared/channels/lifecycle";
 import { ProductCategoryRowSchema } from "./products";
 
 export const StoreSchema = z
@@ -55,7 +56,7 @@ export const StoreSchema = z
       description: "Which rate a basket spanning several shipping profiles pays",
       example: "highest",
     }),
-    status: z.enum(["active", "inactive"]).openapi({ example: "active" }),
+    status: z.enum(CHANNEL_STATUSES).openapi({ example: "published" }),
     storeApiKey: z.string().nullable().openapi({
       description:
         "Plaintext storefront API key — visible to the merchant in Store Settings. Not the dashboard API key.",
@@ -476,7 +477,7 @@ export const StoreConfigSchema = z
         "null when Turnstile is disabled. The siteverify secret key is never exposed.",
       example: "0x4AAAAAAAxxxxxxxxxxxx",
     }),
-    status: z.enum(["active", "inactive"]),
+    status: z.enum(CHANNEL_STATUSES),
     createdAt: z.string().datetime(),
     updatedAt: z.string().datetime(),
     pages: z

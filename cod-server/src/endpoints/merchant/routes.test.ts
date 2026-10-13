@@ -99,3 +99,95 @@ describe("POST /api/merchant/stores", () => {
     expect(res.status).toBe(400);
   });
 });
+
+describe("store lifecycle", () => {
+  const send = (key: string, method: string, path: string, body?: unknown) =>
+    app.request(
+      `/api/merchant/stores${path}`,
+      {
+        method,
+        headers: { "X-API-Key": key, "Content-Type": "application/json" },
+        body: body === undefined ? undefined : JSON.stringify(body),
+      },
+      env(),
+    );
+  const setStatus = (key: string, id: string, status: string) => send(key, "PATCH", `/${id}/status`, { status });
+
+  it("starts a new store as draft and takes it to published step by step, logging who and when", async () => {
+    const created = (await (await create("key-admin", { name: "Lifecycle", subdomain: "lifecycle-shop" })).json()) as {
+      data?: { id: string; status: string };
+    };
+    const id = created.data?.id ?? (await harness.createStore("lifecycle-1", [], merchant));
+    if (created.data) expect(created.data.status).toBe("draft");
+    await harness.platform.query("update stores set status = 'draft' where id = $1", [id]);
+
+    for (const status of ["configuring", "ready", "published"]) {
+      const res = await setStatus("key-admin", id, status);
+      expect(res.status).toBe(200);
+      expect(await res.json()).toMatchObject({ data: { id, status } });
+    }
+
+    const history = (await (await send("key-staff", "GET", `/${id}/status-history`)).json()) as {
+      data: Array<{ actorName: string; from: string; to: string; createdAt: string }>;
+    };
+    expect(history.data.map((h) => [h.from, h.to])).toEqual([
+      ["ready", "published"],
+      ["configuring", "ready"],
+      ["draft", "configuring"],
+    ]);
+    expect(history.data.every((h) => h.actorName === "Admin" && h.createdAt)).toBe(true);
+  });
+
+  it("refuses a move the lifecycle does not allow, and changes nothing", async () => {
+    await harness.platform.query("update stores set status = 'draft' where id = 'routes-1'");
+    const res = await setStatus("key-admin", "routes-1", "published");
+    expect(res.status).toBe(422);
+    expect(await res.json()).toMatchObject({ code: "INVALID_STATUS_TRANSITION" });
+    const { rows } = await harness.platform.query("select status from stores where id = 'routes-1'");
+    expect(rows[0].status).toBe("draft");
+    await harness.platform.query("update stores set status = 'published' where id = 'routes-1'");
+  });
+
+  it("is for admins only, and never reaches another merchant's store", async () => {
+    expect((await setStatus("key-staff", "routes-1", "suspended")).status).toBe(403);
+    expect((await setStatus("key-admin", "stranger-1", "archived")).status).toBe(404);
+    expect((await send("key-admin", "GET", "/stranger-1/status-history")).status).toBe(404);
+  });
+
+  it("deletes only an archived store that never received an order, once its name is typed", async () => {
+    const id = await harness.createStore("to-delete", ["to-delete.codflow.test"], merchant);
+    expect(await (await send("key-admin", "DELETE", `/${id}`, { confirmName: `Store ${id}` })).json()).toMatchObject({
+      code: "STORE_NOT_DELETABLE",
+      context: { reason: "not_archived" },
+    });
+
+    await setStatus("key-admin", id, "archived");
+    expect((await send("key-admin", "DELETE", `/${id}`, { confirmName: "wrong" })).status).toBe(400);
+
+    const res = await send("key-admin", "DELETE", `/${id}`, { confirmName: `Store ${id}` });
+    expect(res.status).toBe(200);
+    const { rowCount } = await harness.platform.query("select 1 from stores where id = $1", [id]);
+    expect(rowCount).toBe(0);
+  });
+
+  it("keeps an archived store that has orders, with its orders and logs", async () => {
+    const id = await harness.createStore("with-orders", [], merchant);
+    await harness.platform.query(
+      `insert into customers (id, store_id, name, phone, wilaya, created_at) values ('c-wo', $1, 'C', '0550000000', 'Alger', now())`,
+      [id],
+    );
+    await harness.platform.query(
+      `insert into orders (id, store_id, order_number, customer_id, customer_name, phone, price, created_at, updated_at)
+       values ('o-wo', $1, 'WO-00001', 'c-wo', 'C', '0550000000', 1000, now(), now())`,
+      [id],
+    );
+    await setStatus("key-admin", id, "archived");
+
+    const res = await send("key-admin", "DELETE", `/${id}`, { confirmName: `Store ${id}` });
+    expect(await res.json()).toMatchObject({ code: "STORE_NOT_DELETABLE", context: { reason: "has_orders" } });
+    const { rowCount } = await harness.platform.query("select 1 from orders where id = 'o-wo'");
+    expect(rowCount).toBe(1);
+    const logs = await harness.platform.query("select 1 from activity_logs where store_id = $1", [id]);
+    expect(logs.rowCount).toBe(1);
+  });
+});

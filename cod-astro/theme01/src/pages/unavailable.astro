@@ -1,0 +1,37 @@
+---
+import "@/theme/styles/global.css";
+import { ar } from "@/theme/content/ar";
+import { fr } from "@/theme/content/fr";
+import { en } from "@/theme/content/en";
+
+Astro.cache.set(false);
+Astro.response.status = 503;
+Astro.response.headers.set("Retry-After", "3600");
+Astro.response.headers.set("Cache-Control", "no-store");
+
+const messages = [
+  { lang: "ar", dir: "rtl", pack: ar },
+  { lang: "fr", dir: "ltr", pack: fr },
+  { lang: "en", dir: "ltr", pack: en },
+] as const;
+---
+
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>{ar.channelUnavailableTitle}</title>
+  </head>
+  <body class="min-h-screen flex items-center justify-center px-4 py-16" style="background: var(--clr-bg); color: var(--clr-text);">
+    <main class="w-full max-w-md space-y-8 text-center">
+      {messages.map(({ lang, dir, pack }) => (
+        <section lang={lang} dir={dir} class="space-y-2">
+          <h1 class="text-xl font-black">{pack.channelUnavailableTitle}</h1>
+          <p class="text-sm font-medium leading-relaxed" style="color: var(--clr-text-2);">{pack.channelUnavailableBody}</p>
+        </section>
+      ))}
+    </main>
+  </body>
+</html>

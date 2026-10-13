@@ -16,6 +16,8 @@ export interface Env {
   STOREFRONT_SERVICE_KEY?: string;
   /** Free subdomains are `<subdomain>.<STORE_BASE_DOMAIN>` (default "localhost"). */
   STORE_BASE_DOMAIN?: string;
+  /** The storefront as reached from the API (e.g. http://storefront:4321), to purge a channel's cached pages. */
+  STOREFRONT_INTERNAL_URL?: string;
   /** R2 bucket for product images */
   IMAGES: R2Bucket;
   /**

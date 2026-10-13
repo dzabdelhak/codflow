@@ -4,9 +4,9 @@
 
 **Blocked by:** 03
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Public pages answer only for a published channel
-- [ ] Suspending a channel takes its storefront offline without losing data; reactivating restores it
-- [ ] Archiving keeps orders and logs; deletion asks for confirmation
-- [ ] Every status change appears in the channel's activity log with who and when
+- [x] Public pages answer only for a published channel
+- [x] Suspending a channel takes its storefront offline without losing data; reactivating restores it
+- [x] Archiving keeps orders and logs; deletion asks for confirmation
+- [x] Every status change appears in the channel's activity log with who and when

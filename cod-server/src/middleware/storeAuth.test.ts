@@ -127,3 +127,34 @@ describe("request transaction", () => {
     expect(rows[0].name).toBe("b-1");
   });
 });
+
+describe("channel status", () => {
+  async function setStatus(storeId: string, status: string) {
+    await harness.platform.query("update stores set status = $2 where id = $1", [storeId, status]);
+  }
+
+  it("answers only for a published channel; a channel not yet published is unknown", async () => {
+    for (const status of ["draft", "configuring", "ready"]) {
+      await setStatus("shop-b", status);
+      expect((await call("/store/products", asStorefront("shop-b.localhost"))).status).toBe(404);
+    }
+    await setStatus("shop-b", "published");
+    expect((await call("/store/products", asStorefront("shop-b.localhost"))).status).toBe(200);
+  });
+
+  it("takes a suspended channel offline with an unavailable answer, keeps its data and restores it on reactivation", async () => {
+    await setStatus("shop-b", "suspended");
+    const res = await call("/store/products", asStorefront("shop-b.localhost"));
+    expect(res.status).toBe(503);
+    expect(await res.json()).toMatchObject({ code: "CHANNEL_UNAVAILABLE" });
+
+    await setStatus("shop-b", "published");
+    expect(await (await call("/store/products", asStorefront("shop-b.localhost"))).json()).toMatchObject({ ids: ["b-1"] });
+  });
+
+  it("removes an archived channel from the public web", async () => {
+    await setStatus("shop-b", "archived");
+    expect((await call("/store/products", asStorefront("shop-b.localhost"))).status).toBe(404);
+    await setStatus("shop-b", "published");
+  });
+});

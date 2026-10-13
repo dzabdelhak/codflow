@@ -142,7 +142,7 @@ export async function createTestDb(): Promise<TestDb> {
   ) {
     const now = new Date().toISOString();
     await platform.query(
-      "insert into stores (id, name, merchant_id, created_at, updated_at) values ($1, $2, $3, $4, $4)",
+      "insert into stores (id, name, merchant_id, status, created_at, updated_at) values ($1, $2, $3, 'published', $4, $4)",
       [id, `Store ${id}`, merchantId, now],
     );
     for (const hostname of hostnames) {
@@ -177,13 +177,13 @@ export async function createTestDb(): Promise<TestDb> {
     await platform.query<{ column_name: string }>(
       `select column_name from information_schema.columns
         where table_name = 'stores' and table_schema = 'public'
-          and column_name not in ('id', 'merchant_id')
+          and column_name not in ('id', 'merchant_id', 'status')
           and (column_default is not null or is_nullable = 'YES')`,
     )
   ).rows.map((r) => `"${r.column_name}" = DEFAULT`);
 
   async function setStore(values: Partial<typeof stores.$inferInsert>) {
-    await platform.query(`update stores set ${resettable.join(", ")} where id = $1`, [TEST_STORE_ID]);
+    await platform.query(`update stores set ${resettable.join(", ")}, status = 'published' where id = $1`, [TEST_STORE_ID]);
     const { id: _ignored, ...columns } = values;
     if (Object.keys(columns).length) await db.update(stores).set(columns).where(eq(stores.id, TEST_STORE_ID));
     return TEST_STORE_ID;

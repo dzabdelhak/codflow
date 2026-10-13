@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Check, ChevronsUpDown, Plus, Store } from "lucide-react";
-import { DropdownItem, DropdownMenu } from "@/components/ui";
+import { Check, ChevronsUpDown, Plus, Settings2, Store } from "lucide-react";
+import { DropdownItem, DropdownLink, DropdownMenu } from "@/components/ui";
 import { useIdentity } from "@/features/auth/components/RequireAuth";
 import { useT } from "@/i18n/react";
 import { baseDomainOf } from "./store-choice";
 import { switchToStore, useMerchantStores } from "./useMerchantStores";
 import { CreateStoreDialog } from "./CreateStoreDialog";
+import { StoreStatusBadge } from "./StoreManager";
 
 /** Header dropdown: the active store, the merchant's other stores, and "Create store". */
 export function StoreSwitcher() {
@@ -55,16 +56,19 @@ export function StoreSwitcher() {
                 </span>
               )}
             </span>
+            <StoreStatusBadge status={store.status} />
           </DropdownItem>
         ))}
+        <div role="separator" className="my-1 h-px bg-border" />
+        <DropdownLink href="/stores">
+          <Settings2 size={15} aria-hidden="true" className="shrink-0" />
+          {t("stores.manage")}
+        </DropdownLink>
         {isAdmin && (
-          <>
-            <div role="separator" className="my-1 h-px bg-border" />
-            <DropdownItem onClick={() => setCreating(true)}>
-              <Plus size={15} aria-hidden="true" className="shrink-0" />
-              {t("stores.create")}
-            </DropdownItem>
-          </>
+          <DropdownItem onClick={() => setCreating(true)}>
+            <Plus size={15} aria-hidden="true" className="shrink-0" />
+            {t("stores.create")}
+          </DropdownItem>
         )}
       </DropdownMenu>
       {creating && <CreateStoreDialog baseDomain={baseDomainOf(stores ?? [])} onClose={() => setCreating(false)} />}

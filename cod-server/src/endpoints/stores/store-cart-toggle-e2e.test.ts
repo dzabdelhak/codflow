@@ -53,7 +53,7 @@ async function seedLegacyStore() {
                          reviews_enabled, cart_shipping_mode, status, created_at, updated_at)
      VALUES ($1, 'Legacy Store', 'test-merchant', 'theme01', '#7c3aed', '#f59e0b', '#f8f8f8',
              'Cairo, sans-serif', 'ar', 'DZD', 'دج',
-             true, 'highest', 'active', $2, $2)`,
+             true, 'highest', 'published', $2, $2)`,
     [id, now()],
   );
   db = await harness.connect(id);
@@ -85,7 +85,7 @@ describe("cart switch — defaults to off", () => {
     const config = await getStoreConfig(db, id);
     expect(config).toMatchObject({
       reviewsEnabled: true,
-      status: "active",
+      status: "published",
       lang: "ar",
       freeShippingThreshold: null,
       cartShippingMode: "highest",

@@ -125,6 +125,14 @@ other is how these drift.
   (`STOREFRONT_SERVICE_KEY`, identical on cod-server and theme01); cod-server
   trusts the hostname only with the key. Hostname → store lives in
   `store_domains`.
+- **A channel serves its public pages only when `published`**
+  (`cod-shared/channels/lifecycle.ts`): `suspended` answers the storefront
+  with 503 `CHANNEL_UNAVAILABLE` (theme01 renders a neutral page), every
+  other status with 404. Status changes go through
+  `PATCH /api/merchant/stores/:id/status`, which logs them and asks the
+  storefront to drop that channel's cached pages
+  (`STOREFRONT_INTERNAL_URL`, `POST /api/channel-cache`). Without that URL a
+  change shows on cached pages only once their `maxAge` runs out.
 - **A merchant owns stores and users** (`merchants`; `merchant_id` on `users`
   and `stores`). Every user of a merchant may open all of its stores. The
   dashboard sends the active store as `X-Store-Id`; `/api/*` runs auth (on the

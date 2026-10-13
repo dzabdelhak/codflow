@@ -249,6 +249,8 @@ export interface StoreFrontContent {
   qtyMaxStock: string;
   stockNotGuaranteed: string;
   deliveryFeeToConfirmNote: string;
+  channelUnavailableTitle: string;
+  channelUnavailableBody: string;
   freeShippingBadge: string;
   searchLabel: string;
   noResultsLabel: string;

@@ -67,6 +67,7 @@ services:
       STOREFRONT_SERVICE_KEY: *storefront-key
       ENVIRONMENT: development
       STORE_BASE_DOMAIN: localhost
+      STOREFRONT_INTERNAL_URL: http://storefront:4321
       ALLOWED_ORIGINS: "http://app.localhost:${COD_HTTP_PORT:-8090}"
       WORKER_SELF_URL: "http://api.localhost:${COD_HTTP_PORT:-8090}"
       BETTER_AUTH_URL: "http://app.localhost:${COD_HTTP_PORT:-8090}"
