@@ -2,13 +2,13 @@ import { fileURLToPath } from "node:url";
 import { defineConfig, envField } from "astro/config";
 import react from "@astrojs/react";
 import tailwindcss from "@tailwindcss/vite";
-import cloudflare from "@astrojs/cloudflare";
+import node from "@astrojs/node";
 
 const orderDetailFallback = {
   name: "order-detail-static-fallback",
   // Vite resolves plugin hooks (including configureServer) in enforce-sorted
-  // order: pre plugins install their dev middleware before the Cloudflare
-  // runtime proxy, which otherwise handles every request first.
+  // order: pre plugins install their dev middleware before the adapter's
+  // request handling.
   enforce: "en",
   configureServer(server) {
     server.middlewares.use(async (request, response, next) => {
@@ -26,9 +26,8 @@ const orderDetailFallback = {
        const isTeamMemberRoute = /^\/team\/[^/]+\/?$/.test(pathname);
        const isLandingPageStudio = /^\/landing-pages\/[^/]+\/studio\/?$/.test(pathname);
        const isDetail = isOrderDetail || isCustomerDetail || isCustomerGroupDetail || isCustomerTagDetail || isProductDetail || isProductGroupEdit || isOfferEdit || isDriverRoute || isDeliveryCompanyRoute || isShippingProfileRoute || isTeamMemberRoute || isLandingPageStudio;
-       // Host-level SPA fallback: mirror production's
-       // assets.not_found_handling = "single-page-application" (wrangler.toml)
-       // by serving the client index for detail loads. Mutating-and-forwarding
+       // SPA fallback in dev, as src/pages/[...spa].ts does in production:
+       // serve the client index for detail loads. Mutating-and-forwarding
        // cannot work here: the adapter stack restores the request URL after
        // the middleware chain, so we serve the proven root page directly.
        if (!isDetail || request.method !== "GET") return next();
@@ -47,12 +46,11 @@ const orderDetailFallback = {
 };
 
 // Static-first: every page prerenders at build time except routes that opt out
-// with `export const prerender = false` (currently only /api/auth/*).
+// with `export const prerender = false` (/api/auth/*, the MCP login relay,
+// the reset-password link, and the SPA fallback).
 export default defineConfig({
   output: "static",
-  // No Astro.session usage (auth is better-auth + its own KV) — docs:
-  // session:false skips SESSION KV provisioning and drops the session
-  // runtime from the Worker bundle.
+  // No Astro.session usage (auth is better-auth + Redis).
   session: false,
   env: {
     schema: {
@@ -60,18 +58,10 @@ export default defineConfig({
     },
   },
   integrations: [react()],
-  adapter: cloudflare({
-    // No astro:assets usage yet — noop image service per adapter docs.
-    imageService: "passthrough",
-    // Share one local D1/KV state with cod-server (`npm run dev` there uses
-    // --persist-to ../.wrangler-shared): without this, astro dev gets its own
-    // empty SQLite and sign-in fails against an unmigrated database.
-    persistState: { path: "../.wrangler-shared" },
-  }),
+  adapter: node({ mode: "standalone" }),
   vite: {
-    // Mirror production's assets.not_found_handling = "single-page-application"
-    // (wrangler.toml): Vite's first-class SPA fallback serves the client index
-    // for unmatched HTML requests during astro dev only.
+    // Vite's SPA fallback serves the client index for unmatched HTML requests
+    // during astro dev only; production uses src/pages/[...spa].ts.
     appType: "spa",
     plugins: [orderDetailFallback, tailwindcss()],
     resolve: {

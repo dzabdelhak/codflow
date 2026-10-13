@@ -25,6 +25,19 @@ describe("CORS Middleware", () => {
       app.get("/test", (c) => c.json({ ok: true }));
     });
 
+    it("lets the dashboard send the active store header on a preflight", async () => {
+      const res = await app.request("/test", {
+        method: "OPTIONS",
+        headers: {
+          origin: "http://localhost:3000",
+          "Access-Control-Request-Method": "GET",
+          "Access-Control-Request-Headers": "x-store-id, authorization",
+        },
+      });
+
+      expect(res.headers.get("Access-Control-Allow-Headers")).toContain("X-Store-Id");
+    });
+
     it("should allow any origin in development", async () => {
       const res = await app.request("/test", {
         method: "GET",

@@ -1,6 +1,6 @@
 import type { APIRoute } from "astro";
-import { env } from "cloudflare:workers";
-import { createAuth, type AuthEnv } from "@/lib/auth/server";
+import { createAuth } from "@/lib/auth/server";
+import { serverEnv } from "@/lib/server-env";
 import {
   mintLoginTicket,
   LOGIN_TICKET_MIN_KEY_BYTES,
@@ -18,8 +18,8 @@ export const prerender = false;
  * the ticket before rendering consent.
  */
 const ALL: APIRoute = async (ctx) => {
-  const req = ctx.request as Request & { cf?: unknown };
-  const authEnv = env as unknown as AuthEnv;
+  const req = ctx.request;
+  const authEnv = serverEnv();
   const secret = authEnv.MCP_LOGIN_TICKET_SECRET;
 
   if (!secret || secret.length < LOGIN_TICKET_MIN_KEY_BYTES) {
@@ -31,7 +31,7 @@ const ALL: APIRoute = async (ctx) => {
     return new Response("Invalid next URL", { status: 400 });
   }
 
-  const auth = createAuth(authEnv, { cf: req.cf });
+  const auth = createAuth();
   const session = await auth.api.getSession({ headers: req.headers });
   if (!session?.user) {
     const back = `${ctx.url.pathname}?next=${encodeURIComponent(next)}`;

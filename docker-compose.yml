@@ -3,7 +3,9 @@
 #   docker compose up --build
 #
 # then open http://shop1.localhost:8090 and http://shop2.localhost:8090 — two
-# demo channels served by the same storefront, each showing only its own data.
+# demo channels served by the same storefront, each showing only its own data —
+# and the dashboard at http://app.localhost:8090 (admin@example.com, password
+# COD_ADMIN_PASSWORD, default "admin-dev-password").
 #
 # Host ports are overridable: COD_HTTP_PORT, COD_PG_PORT, COD_REDIS_PORT.
 # The storefront key is a local-only default; set COD_STOREFRONT_SERVICE_KEY
@@ -12,6 +14,8 @@
 name: codflow
 
 x-storefront-key: &storefront-key ${COD_STOREFRONT_SERVICE_KEY:-local-dev-storefront-key}
+x-auth-secret: &auth-secret ${COD_BETTER_AUTH_SECRET:-local-dev-better-auth-secret-0123456789abcdef}
+x-ticket-secret: &ticket-secret ${COD_MCP_LOGIN_TICKET_SECRET:-local-dev-mcp-login-ticket-secret-0123456789}
 
 services:
   db:
@@ -44,12 +48,31 @@ services:
     depends_on:
       db: { condition: service_healthy }
 
+  # The demo merchant's admin, for the dashboard. Resets its password each run.
+  admin:
+    build:
+      context: .
+      dockerfile: docker/dashboard.Dockerfile
+      args: { PUBLIC_API_URL: "http://api.localhost:${COD_HTTP_PORT:-8090}" }
+    command: ["node", "scripts/seed-admin.mjs", "${COD_ADMIN_PASSWORD:-admin-dev-password}", "--merchant=demo-merchant"]
+    environment:
+      DATABASE_URL: postgres://codflow:codflow@db:5432/codflow
+    depends_on:
+      setup: { condition: service_completed_successfully }
+
   api:
     build: { context: ., dockerfile: docker/api.Dockerfile }
     environment:
       DATABASE_URL: postgres://codflow:codflow@db:5432/codflow
       STOREFRONT_SERVICE_KEY: *storefront-key
       ENVIRONMENT: development
+      STORE_BASE_DOMAIN: localhost
+      ALLOWED_ORIGINS: "http://app.localhost:${COD_HTTP_PORT:-8090}"
+      WORKER_SELF_URL: "http://api.localhost:${COD_HTTP_PORT:-8090}"
+      BETTER_AUTH_URL: "http://app.localhost:${COD_HTTP_PORT:-8090}"
+      BETTER_AUTH_JWKS_URL: http://dashboard:4321/api/auth/jwks
+      BETTER_AUTH_SECRET: *auth-secret
+      MCP_LOGIN_TICKET_SECRET: *ticket-secret
     depends_on:
       setup: { condition: service_completed_successfully }
     healthcheck:
@@ -65,11 +88,27 @@ services:
     depends_on:
       api: { condition: service_healthy }
 
+  dashboard:
+    build:
+      context: .
+      dockerfile: docker/dashboard.Dockerfile
+      args: { PUBLIC_API_URL: "http://api.localhost:${COD_HTTP_PORT:-8090}" }
+    environment:
+      DATABASE_URL: postgres://codflow:codflow@db:5432/codflow
+      REDIS_URL: redis://redis:6379
+      PUBLIC_APP_URL: "http://app.localhost:${COD_HTTP_PORT:-8090}"
+      PUBLIC_API_URL: "http://api.localhost:${COD_HTTP_PORT:-8090}"
+      BETTER_AUTH_SECRET: *auth-secret
+      MCP_LOGIN_TICKET_SECRET: *ticket-secret
+    depends_on:
+      admin: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+
   caddy:
     image: caddy:2-alpine
     ports: ["${COD_HTTP_PORT:-8090}:80"]
     volumes: ["./docker/Caddyfile:/etc/caddy/Caddyfile:ro"]
-    depends_on: [api, storefront]
+    depends_on: [api, storefront, dashboard]
 
 volumes:
   pgdata:

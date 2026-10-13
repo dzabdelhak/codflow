@@ -1,93 +1,48 @@
 import { betterAuth } from "better-auth";
-import { withCloudflare } from "better-auth-cloudflare";
+import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { customSession, jwt } from "better-auth/plugins";
-import { drizzle } from "drizzle-orm/d1";
-import type { AppDb } from "../../../../cod-shared/db/client";
-import { userScopes } from "../../../../cod-shared/db/schema";
+import { eq } from "drizzle-orm";
+import { getDb } from "../../../../cod-shared/db/client";
+import { withStore } from "../../../../cod-shared/db/pools";
+import { users, sessions, accounts, verifications, jwkss, userScopes } from "../../../../cod-shared/db/schema";
 import { getStore } from "../../../../cod-shared/queries/stores";
 import { renderPasswordResetEmail } from "../../../../cod-shared/lib/email-templates";
 import { sendTransactionalEmail } from "../../../../cod-shared/lib/transactional-email";
-import { eq } from "drizzle-orm";
+import { dashboardDatabase, dashboardRedis } from "../server-db";
+import { serverEnv, type ServerEnv } from "../server-env";
+import { redisSecondaryStorage } from "./redis-storage";
 
-export interface AuthEnv {
-  DB: D1Database;
-  RATE_LIMIT_KV: KVNamespace;
-  PUBLIC_APP_URL: string;
-  PUBLIC_API_URL: string;
-  PUBLIC_TRUSTED_ORIGINS?: string;
-  BETTER_AUTH_SECRET: string;
-  /**
-   * HMAC secret (>= 32 bytes) shared with cod-server for the MCP OAuth login
-   * tickets minted after a successful sign-in. Optional: when missing or too
-   * short, the MCP authorize relay fails closed.
-   */
-  MCP_LOGIN_TICKET_SECRET?: string;
+/** The store whose name and email settings a merchant's account emails use: its first store. */
+async function firstStoreOf(userId: string): Promise<{ storeId: string; merchantId: string } | null> {
+  const { rows } = await dashboardDatabase().platform.query<{ store_id: string; merchant_id: string }>(
+    `select s.id as store_id, s.merchant_id from users u join stores s on s.merchant_id = u.merchant_id
+      where u.id = $1 order by s.created_at, s.id limit 1`,
+    [userId],
+  );
+  return rows[0] ? { storeId: rows[0].store_id, merchantId: rows[0].merchant_id } : null;
 }
 
-interface AuthCloudflareContext {
-  /** Incoming-request metadata (Request.cf) for IP/geo resolution.
-   *  NOTE: withCloudflare@0.3.1 has no ctx/waitUntil option — background
-   *  task survival lands when the package gains it (backlog). */
-  cf?: {
-    country?: string;
-    city?: string;
-    latitude?: string;
-    longitude?: string;
-    [key: string]: unknown;
-  };
+let instance: ReturnType<typeof buildAuth> | undefined;
+
+/** The better-auth instance — one per process, on the platform pool and Redis. */
+export function createAuth() {
+  instance ??= buildAuth(serverEnv());
+  return instance;
 }
 
-// One instance per request — never a module singleton. Two Drizzle wrappers
-// around the same D1 binding contend on SQLite's write lock (documented
-// better-auth-on-Workers failure mode).
-export function createAuth(env: AuthEnv, cloudflare?: AuthCloudflareContext) {
-  // Still the Cloudflare D1 binding: the platform database is PostgreSQL now,
-  // so dashboard sign-in is down until ticket 03 moves auth to PostgreSQL +
-  // Redis. cod-shared's queries are typed for PostgreSQL; the cast below goes
-  // with this function in ticket 03.
-  const d1 = drizzle(env.DB);
-  const db = d1 as unknown as AppDb;
-
-  const kv = env.RATE_LIMIT_KV;
-  const secondaryStorage = {    get: (key: string) => kv.get(key),
-    getAndDelete: async (key: string) => {
-      const value = await kv.get(key);
-      await kv.delete(key);
-      return value;
-    },
-    set: (key: string, value: string, ttl?: number) =>
-      kv.put(key, value, ttl ? { expirationTtl: Math.max(60, Math.ceil(ttl)) } : undefined),
-    delete: (key: string) => kv.delete(key),
-    increment: async (key: string, ttl?: number): Promise<number> => {
-      const previous = await kv.get(key);
-      const next = (previous ? Number.parseInt(previous, 10) : 0) + 1;
-      await kv.put(
-        key,
-        String(next),
-        previous ? undefined : { expirationTtl: Math.max(60, Math.ceil(ttl ?? 60)) }
-      );
-      return next;
-    },
-  };
+function buildAuth(env: ServerEnv) {
+  const { app, platform } = dashboardDatabase();
+  const db = getDb(platform);
 
   return betterAuth({
-    ...withCloudflare(
-      {
-        cf: cloudflare?.cf,
-        autoDetectIpAddress: false,
-        geolocationTracking: false,
-        d1: {
-          db: d1,
-          options: {
-            usePlural: true,
-            transaction: false,
-          },
-        },
-      },
-      {
+        database: drizzleAdapter(db, {
+          provider: "pg",
+          usePlural: true,
+          schema: { users, sessions, accounts, verifications, jwkss },
+        }),
         baseURL: env.PUBLIC_APP_URL,
         secret: env.BETTER_AUTH_SECRET,
-        secondaryStorage,
+        secondaryStorage: redisSecondaryStorage(dashboardRedis),
         trustedOrigins: [
           ...(import.meta.env.DEV ? ["http://localhost:4321"] : []),
           ...(env.PUBLIC_TRUSTED_ORIGINS ?? "")
@@ -105,7 +60,8 @@ export function createAuth(env: AuthEnv, cloudflare?: AuthCloudflareContext) {
         },
         advanced: {
           ipAddress: {
-            ipAddressHeaders: ["cf-connecting-ip", "x-forwarded-for"],
+            // Caddy, our own front proxy, sets X-Forwarded-For from the connection.
+            ipAddressHeaders: ["x-forwarded-for"],
           },
         },
         rateLimit: {
@@ -136,21 +92,30 @@ export function createAuth(env: AuthEnv, cloudflare?: AuthCloudflareContext) {
            */
           sendResetPassword: async ({ user, url, token }) => {
             try {
-              const store = await getStore(db);
-              const language = (user as { language?: string }).language === "ar" ? "ar" : "en";
-              const email = renderPasswordResetEmail({
-                storeName: store?.name ?? "CodFlow",
-                userName: user.name,
-                resetUrl: url,
-                language,
-              });
-              const outcome = await sendTransactionalEmail(db, {
-                to: user.email,
-                subject: email.subject,
-                html: email.html,
-                text: email.text,
-                idempotencyKey: `reset-${user.id}-${token.slice(0, 12)}`,
-              });
+              const home = await firstStoreOf(user.id);
+              if (!home) return;
+              const outcome = await withStore(
+                app,
+                home.storeId,
+                async (storeDb) => {
+                  const store = await getStore(storeDb);
+                  const language = (user as { language?: string }).language === "ar" ? "ar" : "en";
+                  const email = renderPasswordResetEmail({
+                    storeName: store?.name ?? "CodFlow",
+                    userName: user.name,
+                    resetUrl: url,
+                    language,
+                  });
+                  return sendTransactionalEmail(storeDb, {
+                    to: user.email,
+                    subject: email.subject,
+                    html: email.html,
+                    text: email.text,
+                    idempotencyKey: `reset-${user.id}-${token.slice(0, 12)}`,
+                  });
+                },
+                home.merchantId,
+              );
               if (!outcome.sent && outcome.error) {
                 console.error("[auth] password-reset email failed:", outcome.error);
               }
@@ -166,7 +131,7 @@ export function createAuth(env: AuthEnv, cloudflare?: AuthCloudflareContext) {
              * session-authenticated /update-user must never accept them, or
              * any staff member could self-promote (`{role:"admin"}` was
              * accepted before this). Admin-side changes go through
-             * cod-server's PATCH /api/users/:id, which writes D1 directly.
+             * cod-server's PATCH /api/users/:id.
              */
             role:     { type: "string", defaultValue: "staff",  required: false, input: false },
             status:   { type: "string", defaultValue: "active", required: false, input: false },
@@ -211,8 +176,6 @@ export function createAuth(env: AuthEnv, cloudflare?: AuthCloudflareContext) {
             },
           }),
         ],
-      }
-    ),
   });
 }
 

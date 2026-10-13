@@ -34,8 +34,8 @@ export async function corsMiddleware(c: Context<AppContext>, next: Next) {
   const applyCorsHeaders = () => {
     c.header("Access-Control-Allow-Origin", allowedOrigin);
     c.header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
-    c.header("Access-Control-Allow-Headers", "Content-Type, X-API-Key, X-Store-API-Key, Accept, Authorization");
-    c.header("Access-Control-Expose-Headers", "Content-Type, X-API-Key, X-Store-API-Key");
+    c.header("Access-Control-Allow-Headers", "Content-Type, X-API-Key, X-Store-Id, Accept, Authorization");
+    c.header("Access-Control-Expose-Headers", "Content-Type, X-API-Key");
     c.header("Access-Control-Max-Age", "86400");
 
     // Only set credentials header if origin is specific (not *)
@@ -51,7 +51,7 @@ export async function corsMiddleware(c: Context<AppContext>, next: Next) {
     return c.body(null, 204, {
       "Access-Control-Allow-Origin": allowedOrigin,
       "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, X-API-Key, X-Store-API-Key, Accept, Authorization",
+      "Access-Control-Allow-Headers": "Content-Type, X-API-Key, X-Store-Id, Accept, Authorization",
       "Access-Control-Max-Age": "86400",
     });
   }

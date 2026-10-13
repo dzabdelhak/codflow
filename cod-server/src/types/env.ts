@@ -56,6 +56,8 @@ export interface Env {
    * Partner-server sets this per-tenant during provisioning.
    */
   BETTER_AUTH_URL: string;
+  /** JWKS endpoint as reachable from this server; defaults to `${BETTER_AUTH_URL}/api/auth/jwks`. */
+  BETTER_AUTH_JWKS_URL?: string;
   /**
    * This Worker's own public origin. Used as the required `aud` claim when
    * verifying MCP bearer tokens — stops a token minted for tenant A from

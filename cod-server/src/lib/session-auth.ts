@@ -23,6 +23,8 @@ export interface SessionJwtPayload {
 interface Env {
   BETTER_AUTH_URL: string;
   WORKER_SELF_URL: string;
+  /** Where to fetch the JWKS when the public auth URL is not reachable from here (e.g. inside Docker). */
+  BETTER_AUTH_JWKS_URL?: string;
 }
 
 const JWKS_TTL_MS = 5 * 60 * 1000;
@@ -36,7 +38,7 @@ function authBaseUrl(env: Env): string {
 
 async function fetchJwks(env: Env, force = false): Promise<void> {
   if (!force && jwksCache && Date.now() - jwksCache.fetchedAt < JWKS_TTL_MS) return;
-  const res = await fetch(`${authBaseUrl(env)}/api/auth/jwks`);
+  const res = await fetch(env.BETTER_AUTH_JWKS_URL ?? `${authBaseUrl(env)}/api/auth/jwks`);
   if (!res.ok) throw new Error(`Failed to fetch JWKS (${res.status})`);
   const body = (await res.json()) as { keys: Array<JsonWebKey & { kid?: string }> };
   const kidByKeyId = new Map<string, number>();

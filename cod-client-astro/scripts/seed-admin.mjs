@@ -1,36 +1,20 @@
 #!/usr/bin/env node
 /**
- * Seed the admin user into D1 (local and/or remote).
+ * Seed (or reset) a merchant's admin user.
  *
  * Usage (run from cod-client-astro/):
- *   node scripts/seed-admin.mjs [password]            # local only
- *   node scripts/seed-admin.mjs [password] --remote   # local + remote
+ *   DATABASE_URL=postgres://… node scripts/seed-admin.mjs [password] [--merchant=<id>]
  *
  * The admin email/name come from $ADMIN_EMAIL / $ADMIN_NAME (defaults to
- * admin@example.com / Admin). Set them when you run the script:
- *   ADMIN_EMAIL=you@example.com ADMIN_NAME=You node scripts/seed-admin.mjs
- *
- * The D1 database name comes from the unified root .env (COD_DB_NAME, via
- * ../../cod-server/scripts/cloud-env.mjs) and must match the binding in
- * cod-server/wrangler.toml.
- *
- * Local state is the repo-shared ../.wrangler-shared (same file cod-server
- * migrates to — persist-to is resolved relative to this package's cwd — and
- * astro dev reads via persistState).
+ * admin@example.com / Admin). Without --merchant, the database must hold
+ * exactly one merchant. Re-running resets the password and API key.
  *
  * Uses the same scrypt params as @better-auth/utils/password so the hash
- * is verifiable by better-auth at runtime (both Node.js and CF Workers).
+ * is verifiable by better-auth at runtime.
  */
-
 import { scrypt, randomBytes } from "node:crypto";
 import { promisify } from "node:util";
-import { writeFileSync, unlinkSync } from "node:fs";
-import { execSync } from "node:child_process";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { getCloudEnv } from "../../cod-server/scripts/cloud-env.mjs";
-
-const { dbName } = getCloudEnv();
+import pg from "pg";
 
 const scryptAsync = promisify(scrypt);
 
@@ -48,88 +32,71 @@ async function hashPassword(password) {
   return `${salt}:${key.toString("hex")}`;
 }
 
-function uid() {
-  // better-auth uses nanoid-style IDs; a 32-hex is compatible with most adapters
-  return randomBytes(16).toString("hex");
-}
-
-function run(cmd, opts = {}) {
-  console.log(`\n$ ${cmd}`);
-  execSync(cmd, { stdio: "inherit", ...opts });
-}
+const uid = () => randomBytes(16).toString("hex");
 
 async function main() {
+  const url = process.env.DATABASE_URL;
+  if (!url) throw new Error("DATABASE_URL is required");
   const args = process.argv.slice(2);
-  const remote = args.includes("--remote");
-  const passwordArg = args.find((a) => !a.startsWith("--"));
-  const password = passwordArg ?? randomBytes(12).toString("base64url");
+  const password = args.find((a) => !a.startsWith("--")) ?? randomBytes(12).toString("base64url");
+  const merchantArg = args.find((a) => a.startsWith("--merchant="))?.slice("--merchant=".length);
 
   const email = process.env.ADMIN_EMAIL ?? "admin@example.com";
-  const name  = process.env.ADMIN_NAME ?? "Admin";
-  const now   = Date.now();
+  const name = process.env.ADMIN_NAME ?? "Admin";
+  const apiKey = `cod_${randomBytes(16).toString("hex")}`;
+  const hashedPw = await hashPassword(password);
+  const now = new Date();
 
-  const userId    = uid();
-  const accountId = uid();
-  const apiKey    = `cod_${randomBytes(16).toString("hex")}`;
-  const hashedPw  = await hashPassword(password);
-
-  // Build idempotent SQL
-  // INSERT OR IGNORE so re-running doesn't fail if admin already exists.
-  // UPDATE ensures api_key is always refreshed to the new value so it's shown to the admin.
-  //
-  // Credential accounts must match Better Auth >= 1.7 lookup semantics
-  // (see better-auth/dist/api/routes/sign-in.mjs): provider_id = 'credential',
-  // issuer = 'local:credential', account_id = user id (NOT the email).
-  const sql = `
-INSERT OR IGNORE INTO users
-  (id, name, email, email_verified, role, status, api_key, created_at, updated_at)
-VALUES
-  ('${userId}', '${name}', '${email}', 1, 'admin', 'active', '${apiKey}', ${now}, ${now});
-
-UPDATE users SET api_key = '${apiKey}', updated_at = ${now}
-WHERE email = '${email}';
-
-INSERT OR IGNORE INTO accounts
-  (id, user_id, account_id, provider_id, issuer, password, created_at, updated_at)
-SELECT '${accountId}', u.id, u.id, 'credential', 'local:credential', '${hashedPw}', ${now}, ${now}
-FROM   users u
-WHERE  u.email = '${email}'
-  AND  NOT EXISTS (
-    SELECT 1 FROM accounts a WHERE a.user_id = u.id AND a.provider_id = 'credential'
-  );
-
-UPDATE accounts SET password = '${hashedPw}', issuer = 'local:credential', account_id = user_id, updated_at = ${now}
-WHERE user_id = (SELECT id FROM users WHERE email = '${email}') AND provider_id = 'credential';
-`.trim();
-
-  // Write SQL to a temp file (wrangler --file is more reliable than --command for multi-line)
-  const tmpFile = join(tmpdir(), `seed-admin-${Date.now()}.sql`);
-  writeFileSync(tmpFile, sql, "utf8");
-
+  // Identity is platform data: written as the platform role.
+  const client = new pg.Client({ connectionString: url, options: "-c role=codflow_platform" });
+  await client.connect();
   try {
-    console.log("\n=== Seeding admin (local) ===");
-    run(`npx wrangler d1 execute ${dbName} --local --persist-to ../.wrangler-shared --file "${tmpFile}"`);
-
-    if (remote) {
-      console.log("\n=== Seeding admin (remote) ===");
-      run(`npx wrangler d1 execute ${dbName} --remote --file "${tmpFile}"`);
+    let merchantId = merchantArg;
+    if (!merchantId) {
+      const { rows } = await client.query("select id from merchants order by created_at limit 2");
+      if (rows.length !== 1) {
+        throw new Error(`Pass --merchant=<id>: the database has ${rows.length} merchants (run cod-server db:setup first).`);
+      }
+      merchantId = rows[0].id;
     }
-  } finally {
-    unlinkSync(tmpFile);
-  }
 
-  console.log("\n╔══════════════════════════════════════════════════════════╗");
-  console.log("║                 Admin user seeded                       ║");
-  console.log("╠══════════════════════════════════════════════════════════╣");
-  console.log(`║  Email    : ${email.padEnd(44)} ║`);
-  console.log(`║  Password : ${password.padEnd(44)} ║`);
-  console.log(`║  API Key  : ${apiKey.padEnd(44)} ║`);
-  console.log(`║  Role     : admin                                        ║`);
-  console.log("╚══════════════════════════════════════════════════════════╝");
-  console.log("\nSave these credentials — they won't be shown again.\n");
+    await client.query("begin");
+    // Credential accounts must match Better Auth >= 1.7 lookup semantics:
+    // provider_id = 'credential', issuer = 'local:credential', account_id = user id.
+    const { rows } = await client.query(
+      `insert into users (id, name, email, email_verified, role, status, api_key, merchant_id, created_at, updated_at)
+       values ($1, $2, $3, true, 'admin', 'active', $4, $5, $6, $6)
+       on conflict (email) do update set api_key = excluded.api_key, updated_at = excluded.updated_at
+       returning id, merchant_id`,
+      [uid(), name, email, apiKey, merchantId, now],
+    );
+    const userId = rows[0].id;
+    await client.query("delete from accounts where user_id = $1 and provider_id = 'credential'", [userId]);
+    await client.query(
+      `insert into accounts (id, user_id, account_id, provider_id, issuer, password, created_at, updated_at)
+       values ($1, $2, $2, 'credential', 'local:credential', $3, $4, $4)`,
+      [uid(), userId, hashedPw, now],
+    );
+    await client.query("commit");
+
+    console.log("\n╔══════════════════════════════════════════════════════════╗");
+    console.log("║                 Admin user seeded                       ║");
+    console.log("╠══════════════════════════════════════════════════════════╣");
+    console.log(`║  Email    : ${email.padEnd(44)} ║`);
+    console.log(`║  Password : ${password.padEnd(44)} ║`);
+    console.log(`║  API Key  : ${apiKey.padEnd(44)} ║`);
+    console.log(`║  Merchant : ${rows[0].merchant_id.padEnd(44)} ║`);
+    console.log("╚══════════════════════════════════════════════════════════╝");
+    console.log("\nSave these credentials — they won't be shown again.\n");
+  } catch (err) {
+    await client.query("rollback").catch(() => {});
+    throw err;
+  } finally {
+    await client.end();
+  }
 }
 
 main().catch((err) => {
-  console.error(err);
+  console.error(err.message ?? err);
   process.exit(1);
 });
