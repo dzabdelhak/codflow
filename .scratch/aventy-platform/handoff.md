@@ -41,5 +41,11 @@ Found independently of the runtime: order-number collisions (lost sales) and
 refusals on short stock / missing fee grid (against the Aventy guide).
 
 ## Next step
-1. ~~User confirms ADR-0003~~ — accepted Oct 13.
-2. Plan tickets (`to-tickets`) for the port + the two runtime-independent fixes.
+Plan published (Oct 13): `.scratch/orestor-platform/spec.md` + 17 tickets in
+`.scratch/orestor-platform/issues/`. Goal: a running self-hosted multi-channel
+platform with two seams (catalogue source, order destination) so Aventy plugs in
+later. Decisions: platform replaces CodFlow on Cloudflare; one catalogue per
+account, channels select from it; MCP server kept. Functional spec
+"Orestor X Aventy 1.0" is in `docs/ORESTOR-X-AVENTY-1.0.pdf`.
+Start with ticket 01 (walking skeleton). Ticket 15 (Aventy connector) waits on
+Aventy's API reference.
