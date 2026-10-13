@@ -8,7 +8,7 @@ click (several stores per user, subdomain or own domain). We build it on CodFlow
 - `docs/AVENTY-INTEGRATION.md` — Aventy's integration guide = binding contract
 - `docs/CAHIER-DES-CHARGES-ZIMOU-MARKET-V2.md` — functional spec (V1 kept for history)
 - `docs/adr/0002-aventy-store-platform-scope.md` — scope + 15 product decisions
-- `docs/adr/0003-self-hosted-postgres-multi-store.md` — PROPOSED: self-hosted in
+- `docs/adr/0003-self-hosted-postgres-multi-store.md` — ACCEPTED (Oct 13): self-hosted in
   Algeria, Node.js + PostgreSQL + Row-Level Security, Redis, MinIO, Caddy, Docker
 
 ## Branches
@@ -41,5 +41,5 @@ Found independently of the runtime: order-number collisions (lost sales) and
 refusals on short stock / missing fee grid (against the Aventy guide).
 
 ## Next step
-1. User confirms ADR-0003 (status still "proposed"; the spike supports accepting).
+1. ~~User confirms ADR-0003~~ — accepted Oct 13.
 2. Plan tickets (`to-tickets`) for the port + the two runtime-independent fixes.

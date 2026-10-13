@@ -1,7 +1,6 @@
 # Self-hosted in Algeria: CodFlow moves off Cloudflare to Node.js + PostgreSQL, stores isolated by Row-Level Security
 
-**Status:** proposed — porting spike done (Oct 13 2026, see below); it
-supports accepting this ADR.
+**Status:** accepted (Oct 13 2026), after the porting spike below.
 
 The Aventy store platform runs on servers we operate ourselves, because
 customer personal data must stay in Algeria (law 18-07) and for cost and
