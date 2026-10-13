@@ -13,10 +13,7 @@
  */
 
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from "vitest";
-import { Miniflare } from "miniflare";
-import { readFileSync, readdirSync } from "node:fs";
-import { resolve } from "node:path";
-import { drizzle } from "drizzle-orm/d1";
+import { createTestDb, type TestDb } from "@/test-utils/pg";
 import * as schema from "@/db/schema";
 import type { AppDb } from "@/db";
 import {
@@ -24,32 +21,11 @@ import {
   findOrCreateCustomer,
 } from "../../../../cod-shared/queries/store";
 
-const registry: Miniflare[] = [];
-let rawD1: D1Database;
+let harness: TestDb;
 let db: AppDb;
 let sqlLog: string[] = [];
 
 const WILAYA = 16;
-
-/**
- * Wraps the D1 binding so every prepared statement is recorded. Drizzle
- * prepares each statement it sends, including the ones inside a batch, so this
- * sees the full traffic without changing any behaviour.
- */
-function recordingD1(d1: D1Database, log: string[]): D1Database {
-  return new Proxy(d1, {
-    get(target, prop, receiver) {
-      const value = Reflect.get(target, prop, receiver);
-      if (prop === "prepare") {
-        return (query: string) => {
-          log.push(query);
-          return (value as D1Database["prepare"]).call(target, query);
-        };
-      }
-      return typeof value === "function" ? (value as Function).bind(target) : value;
-    },
-  }) as D1Database;
-}
 
 /** SELECTs issued against one table. Writes are excluded. */
 function selectsAgainst(table: string): string[] {
@@ -58,28 +34,10 @@ function selectsAgainst(table: string): string[] {
 }
 
 beforeAll(async () => {
-  const mf = new Miniflare({
-    script: "export default { fetch() { return new Response('ok'); } }",
-    modules: true,
-    d1Databases: { DB: "budget-db" },
-  });
-  registry.push(harness);
-  const d1 = await mf.getD1Database("DB");
-  const dir = resolve(__dirname, "../../db/migrations");
-  const prepared: D1PreparedStatement[] = [];
-  for (const file of readdirSync(dir).filter((f) => f.endsWith(".sql")).sort()) {
-    const statements = readFileSync(`${dir}/${file}`, "utf8")
-      .split("--> statement-breakpoint")
-      .flatMap((s) => s.split(/;\s*\n/))
-      .map((s) => s.replace(/;+\s*$/, "").trim())
-      .filter((s) => s.replace(/--[^\n]*/g, "").trim().length > 0);
-    for (const statement of statements) prepared.push(d1.prepare(statement));
-  }
-  for (let i = 0; i < prepared.length; i += 50) {
-    await d1.batch(prepared.slice(i, i + 50));
-  }
-  rawD1 = d1 as unknown as D1Database;
-  db = drizzle(recordingD1(rawD1, sqlLog), { schema }) as unknown as AppDb;
+  harness = await createTestDb();
+  // Every statement sent, including the ones inside a batch.
+  harness.recordQueries((query) => sqlLog.push(query));
+  db = harness.db;
 });
 
 // Child rows first: order lines and stock movements hold FKs onto products.
@@ -91,11 +49,11 @@ beforeEach(async () => {
   await db.delete(schema.offers);
   await db.delete(schema.productVariants);
   await db.delete(schema.products);
-  sqlLog.length = 0;
+  sqlLog = [];
 });
 
 afterAll(async () => {
-  for (const mf of registry) await mf.dispose();
+  await harness?.dispose();
 });
 
 const now = () => new Date().toISOString();
@@ -150,7 +108,7 @@ async function placeOrder(extra: Record<string, unknown>) {
     name: "Budget Buyer",
     wilayaId: WILAYA,
   });
-  sqlLog.length = 0; // measure the order placement only
+  sqlLog = []; // measure the order placement only
   return createStoreOrder(db, {
     customerId: customer.id,
     customerName: customer.name,
@@ -239,6 +197,7 @@ import {
 } from "../../../../cod-shared/queries/catalog-snapshot";
 import { normalizeOrderLines } from "../../../../cod-shared/queries/cart";
 
+
 describe("checkout path — total catalog reads per order", () => {
   async function runHandlerSequence(items: Array<{ productId: string; productName: string; variantId?: string; quantity: number }>) {
     const customer = await findOrCreateCustomer(db, {
@@ -246,7 +205,7 @@ describe("checkout path — total catalog reads per order", () => {
       name: "Budget Buyer",
       wilayaId: WILAYA,
     });
-    sqlLog.length = 0; // measure the checkout only, not the customer upsert
+    sqlLog = []; // measure the checkout only, not the customer upsert
 
     // Exactly what the handler does: normalise, load ONCE, then ask each
     // question of that one snapshot and hand it to the engine.

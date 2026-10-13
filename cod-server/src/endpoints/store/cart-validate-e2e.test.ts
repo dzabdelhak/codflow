@@ -24,6 +24,8 @@ import type { AppDb } from "@/db";
 import storeRouter from "./routes";
 import { first } from "../../../../cod-shared/db/client";
 
+let harness: TestDb;
+
 const registry: TestDb[] = [];
 let db: AppDb;
 let storeId: string;
@@ -31,7 +33,7 @@ let storeId: string;
 vi.mock("@/db", () => ({ getDb: () => db }));
 
 beforeAll(async () => {
-  const harness = await createTestDb();
+  harness = await createTestDb();
   registry.push(harness);
   db = harness.db;
 });
@@ -40,8 +42,7 @@ beforeEach(async () => {
   await db.delete(schema.offers);
   await db.delete(schema.productVariants);
   await db.delete(schema.products);
-  storeId = `store-${crypto.randomUUID().slice(0, 8)}`;
-  await harness.setStore({
+  storeId = await harness.setStore({
     id: storeId,
     name: "Validate Store",
     createdAt: now(),
@@ -60,7 +61,7 @@ function makeApp() {
   const app = new OpenAPIHono<AppContext>({ defaultHook: openApiValidationHook });
   app.use("*", async (c, next) => {
     c.env = {} as any;
-    c.set("db", {} as any);
+    c.set("db", db);
     c.set("storeId", storeId);
     await next();
   });

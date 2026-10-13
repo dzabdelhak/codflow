@@ -52,7 +52,7 @@ function makeApp() {
   const app = new OpenAPIHono<AppContext>({ defaultHook: openApiValidationHook });
   app.use("*", async (c, next) => {
     c.env = {} as any;
-    c.set("db", {} as any);
+    c.set("db", db);
     c.set("storeId", "store-1");
     await next();
   });

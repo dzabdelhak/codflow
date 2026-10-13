@@ -30,6 +30,8 @@ import {
 } from "../../../../cod-shared/queries/store";
 import { first } from "../../../../cod-shared/db/client";
 
+let harness: TestDb;
+
 const registry: TestDb[] = [];
 let db: AppDb;
 let storeId: string;
@@ -39,7 +41,7 @@ const now = () => new Date().toISOString();
 const uid = (p: string) => `${p}-${crypto.randomUUID().slice(0, 8)}`;
 
 beforeAll(async () => {
-  const harness = await createTestDb();
+  harness = await createTestDb();
   registry.push(harness);
   db = harness.db;
 });
@@ -51,8 +53,7 @@ beforeEach(async () => {
   await db.delete(schema.orders);
   await db.delete(schema.products);
 
-  storeId = uid("store");
-  await harness.setStore({
+  storeId = await harness.setStore({
     id: storeId,
     name: "Pilot Store",
     cartEnabled: true,

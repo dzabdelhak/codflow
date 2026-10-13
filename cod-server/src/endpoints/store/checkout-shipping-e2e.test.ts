@@ -31,6 +31,8 @@ import * as schema from "@/db/schema";
 import type { AppDb } from "@/db";
 import { resolveDeliveryFee } from "../../../../cod-shared/queries/shipping-resolution";
 
+let harness: TestDb;
+
 const registry: TestDb[] = [];
 let db: AppDb;
 
@@ -38,7 +40,7 @@ const WILAYA = 16;
 const OTHER_WILAYA = 31;
 
 beforeAll(async () => {
-  const harness = await createTestDb();
+  harness = await createTestDb();
   registry.push(harness);
   db = harness.db;
   // The 58 wilayas are reference data seeded by the migrations themselves.
@@ -545,16 +547,13 @@ async function seedStore(settings: {
   freeShippingThreshold?: number | null;
   cartShippingMode?: "highest" | "default_profile";
 } = {}) {
-  const id = uid("store");
-  await harness.setStore({
-    id,
+  return harness.setStore({
     name: "Test Store",
     freeShippingThreshold: settings.freeShippingThreshold ?? null,
     cartShippingMode: settings.cartShippingMode ?? "highest",
     createdAt: now(),
     updatedAt: now(),
   });
-  return id;
 }
 
 describe("resolveDeliveryFee — free-delivery threshold", () => {

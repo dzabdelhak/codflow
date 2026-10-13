@@ -56,7 +56,7 @@ export const MOCK_STORE_ID = "test-store";
 
 function withStoreId(sqlText: string, row: Record<string, unknown>): unknown[] {
   const values = Object.values(row);
-  const startsWithStoreId = /^\s*select\s+(?:"[a-z_]+"\.)?"store_id"\s*,/i.test(sqlText);
+  const startsWithStoreId = /(^\s*select|\breturning)\s+(?:"[a-z_]+"\.)?"store_id"\s*,/i.test(sqlText);
   return startsWithStoreId && !("store_id" in row) ? [MOCK_STORE_ID, ...values] : values;
 }
 
