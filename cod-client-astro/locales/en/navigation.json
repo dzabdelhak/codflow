@@ -100,6 +100,7 @@
     "error_taken": "This address is already used by another store.",
     "error_invalid": "Use 3 to 40 lower-case letters, digits or hyphens. Some names are reserved.",
     "error_name": "Give the store a name.",
-    "error_generic": "The store could not be created. Try again."
+    "error_generic": "The store could not be created. Try again.",
+    "load_failed": "Stores unavailable — reload"
   }
 }

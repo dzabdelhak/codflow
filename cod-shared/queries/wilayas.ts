@@ -5,7 +5,7 @@
  * Consumed by cod-server handlers and dashboard components.
  */
 
-import { eq, like, asc, or } from "drizzle-orm";
+import { eq, ilike, asc, or } from "drizzle-orm";
 import { wilayas, communes } from "../db/schema";
 import type { AppDb } from "../db/client";
 import { first } from "../db/client";
@@ -19,7 +19,7 @@ export async function getAllWilayas(db: AppDb, filters?: WilayaFilters) {
     return await db
       .select()
       .from(wilayas)
-      .where(or(like(wilayas.name, `%${filters.search}%`), like(wilayas.nameAr, `%${filters.search}%`)))
+      .where(or(ilike(wilayas.name, `%${filters.search}%`), ilike(wilayas.nameAr, `%${filters.search}%`)))
       .orderBy(asc(wilayas.id));
   }
 

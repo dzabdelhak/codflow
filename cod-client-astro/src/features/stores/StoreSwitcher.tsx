@@ -11,7 +11,7 @@ import { CreateStoreDialog } from "./CreateStoreDialog";
 export function StoreSwitcher() {
   const t = useT("navigation");
   const identity = useIdentity();
-  const { stores, active } = useMerchantStores();
+  const { stores, active, failed } = useMerchantStores();
   const [creating, setCreating] = useState(false);
   const isAdmin = identity?.role === "admin";
 
@@ -20,7 +20,7 @@ export function StoreSwitcher() {
       <Store size={16} aria-hidden="true" className="shrink-0 text-white/75" />
       <span className="min-w-0">
         <span className="block max-w-40 truncate text-[13px] font-semibold leading-tight">
-          {active?.name ?? (stores ? t("stores.none") : t("stores.loading"))}
+          {active?.name ?? (stores ? t("stores.none") : failed ? t("stores.load_failed") : t("stores.loading"))}
         </span>
         {active?.hostname && (
           <span className="hidden max-w-40 truncate text-[11px] leading-tight text-white/60 lg:block" dir="ltr">

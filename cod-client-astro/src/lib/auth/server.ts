@@ -93,7 +93,11 @@ function buildAuth(env: ServerEnv) {
           sendResetPassword: async ({ user, url, token }) => {
             try {
               const home = await firstStoreOf(user.id);
-              if (!home) return;
+              if (!home) {
+                // Account emails go out through a store's email settings.
+                console.error("[auth] password-reset email not sent: the user's merchant has no store");
+                return;
+              }
               const outcome = await withStore(
                 app,
                 home.storeId,

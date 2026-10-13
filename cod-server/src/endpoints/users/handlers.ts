@@ -106,6 +106,8 @@ export async function createUser(c: Context<AppContext>) {
   }
 
   // 5. Insert user + credential account + scopes
+  // Email is a global sign-in identity, but request code only sees its own
+  // merchant's users: another merchant's address surfaces at the insert.
   const user = await queries.createUser(
     db,
     {
@@ -120,7 +122,15 @@ export async function createUser(c: Context<AppContext>) {
     },
     validated.scopes,
     actor.id,
-  );
+  ).catch((err: unknown) => {
+    const cause = (err as { cause?: { code?: string; constraint?: string } }).cause ?? (err as { code?: string; constraint?: string });
+    if (cause?.code === "23505" && cause.constraint === "users_email_unique") {
+      throw new ConflictError("A user with this email already exists", ERROR_CODES.DUPLICATE_EMAIL, {
+        email: validated.email,
+      });
+    }
+    throw err;
+  });
 
   if (!user) {
     throw new SystemError("Failed to create user");

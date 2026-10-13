@@ -23,16 +23,7 @@ import {
   webhookEvents,
 } from "../db/schema";
 import type { OrderStatus } from "../db/schema";
-import {
-  eq,
-  desc,
-  and,
-  like,
-  or,
-  sql,
-  getTableColumns,
-  aliasedTable,
-} from "drizzle-orm";
+import { eq, desc, and, ilike, or, sql, getTableColumns, aliasedTable } from "drizzle-orm";
 
 const driversAlias = aliasedTable(drivers, "d");
 
@@ -97,9 +88,9 @@ export async function getAllOrders(db: AppDb, filters: OrderFilters = {}) {
     const term = `%${safeLikeTerm(filters.search)}%`;
     conditions.push(
       or(
-        like(orders.orderNumber, term),
-        like(orders.customerName, term),
-        like(orders.phone, term),
+        ilike(orders.orderNumber, term),
+        ilike(orders.customerName, term),
+        ilike(orders.phone, term),
       ),
     );
   }

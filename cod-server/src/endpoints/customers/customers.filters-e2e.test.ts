@@ -105,7 +105,15 @@ afterAll(async () => {
   for (const mf of registry) await mf.dispose();
 });
 
-describe("getAllCustomers — real D1", () => {
+describe("getAllCustomers — real PostgreSQL", () => {
+  it("searches names regardless of case, as SQLite's LIKE did", async () => {
+    const sample = (await getAllCustomers(db, { limit: 1 }))[0];
+    const lower = await getAllCustomers(db, { search: sample.name.toLowerCase(), limit: 500 });
+    const upper = await getAllCustomers(db, { search: sample.name.toUpperCase(), limit: 500 });
+    expect(lower.map((c) => c.id)).toContain(sample.id);
+    expect(upper.map((c) => c.id)).toContain(sample.id);
+  });
+
   it("THE CRASH CASE: filters by a group with 150 members (no param explosion)", async () => {
     const rows = await getAllCustomers(db, { groupId: "grp-big", limit: 200 });
     expect(rows).toHaveLength(CRASH_GROUP_MEMBERS);

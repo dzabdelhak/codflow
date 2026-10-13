@@ -38,6 +38,15 @@ export async function listMerchantStores(platform: pg.Pool, merchantId: string):
   return rows;
 }
 
+/** The merchant's first store (the switcher lists stores in this order), or null. */
+export async function firstStoreId(platform: pg.Pool, merchantId: string): Promise<string | null> {
+  const { rows } = await platform.query<{ id: string }>(
+    "select id from stores where merchant_id = $1 order by created_at, id limit 1",
+    [merchantId],
+  );
+  return rows[0]?.id ?? null;
+}
+
 /** Does `storeId` belong to `merchantId`? */
 export async function merchantOwnsStore(platform: pg.Pool, merchantId: string, storeId: string): Promise<boolean> {
   const { rowCount } = await platform.query("select 1 from stores where id = $1 and merchant_id = $2", [storeId, merchantId]);
@@ -98,7 +107,8 @@ export async function createMerchantStore(
     return { ok: true, store: { id, name: input.name.trim(), status: "active", logoUrl: null, hostname } };
   } catch (err) {
     await client.query("rollback").catch(() => {});
-    if ((err as { code?: string }).code === "23505") return { ok: false, reason: "subdomain_taken" };
+    const { code, constraint } = err as { code?: string; constraint?: string };
+    if (code === "23505" && constraint === "store_domains_pkey") return { ok: false, reason: "subdomain_taken" };
     throw err;
   } finally {
     client.release();

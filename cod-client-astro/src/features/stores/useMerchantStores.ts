@@ -12,7 +12,10 @@ export function useMerchantStores() {
 
   useEffect(() => {
     let alive = true;
-    loading ??= listMyStores();
+    loading ??= listMyStores().catch((err) => {
+      loading = undefined;
+      throw err;
+    });
     loading.then(
       (list) => alive && setStores(list),
       () => alive && setFailed(true),

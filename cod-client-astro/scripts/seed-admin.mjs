@@ -60,6 +60,11 @@ async function main() {
       merchantId = rows[0].id;
     }
 
+    const owner = await client.query("select merchant_id from users where email = $1", [email]);
+    if (owner.rows[0] && owner.rows[0].merchant_id !== merchantId) {
+      throw new Error(`${email} already belongs to merchant ${owner.rows[0].merchant_id}; use another ADMIN_EMAIL.`);
+    }
+
     await client.query("begin");
     // Credential accounts must match Better Auth >= 1.7 lookup semantics:
     // provider_id = 'credential', issuer = 'local:credential', account_id = user id.

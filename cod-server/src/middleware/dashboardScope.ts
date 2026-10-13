@@ -7,7 +7,7 @@ import type { Context } from "hono";
 import type { AppContext } from "@/types";
 import { requestScope, type Scope } from "@/db/scope";
 import { ERROR_CODES } from "../../../cod-shared/errors/codes";
-import { listMerchantStores, merchantOwnsStore } from "@/platform/merchant-stores";
+import { firstStoreId, merchantOwnsStore } from "@/platform/merchant-stores";
 
 export async function resolveDashboardScope(c: Context<AppContext>): Promise<Scope | Response> {
   const { merchantId } = c.get("user");
@@ -20,8 +20,7 @@ export async function resolveDashboardScope(c: Context<AppContext>): Promise<Sco
     }
     return { merchantId, storeId: requested };
   }
-  const [first] = await listMerchantStores(platform, merchantId);
-  return { merchantId, storeId: first?.id ?? null };
+  return { merchantId, storeId: await firstStoreId(platform, merchantId) };
 }
 
 export const dashboardScope = requestScope(resolveDashboardScope);

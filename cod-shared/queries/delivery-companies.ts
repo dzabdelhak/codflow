@@ -4,7 +4,7 @@
  * CRUD operations for third-party delivery company management.
  */
 
-import { eq, and, like, desc, count, notInArray } from "drizzle-orm";
+import { eq, and, ilike, desc, count, notInArray } from "drizzle-orm";
 import { deliveryCompanies, orders } from "../db/schema";
 import type { AppDb } from "../db/client";
 import { first } from "../db/client";
@@ -69,7 +69,7 @@ export async function getAllDeliveryCompanies(
   }
 
   if (filters?.search) {
-    conditions.push(like(deliveryCompanies.name, `%${filters.search}%`));
+    conditions.push(ilike(deliveryCompanies.name, `%${filters.search}%`));
   }
 
   const limit = filters?.limit ?? 50;
