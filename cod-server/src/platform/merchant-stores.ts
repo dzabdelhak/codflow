@@ -3,6 +3,7 @@ import type pg from "pg";
 import { getDb } from "../../../cod-shared/db/client";
 import { seedStorePages } from "../../../cod-shared/queries/store-pages";
 import type { PlanPolicy } from "./plan-policy";
+import { orderPrefixFor } from "../../../cod-shared/queries/order-numbers";
 
 export interface MerchantStore {
   id: string;
@@ -64,7 +65,7 @@ export async function createMerchantStore(
   const client = await platform.connect();
   try {
     await client.query("begin");
-    await client.query("select 1 from merchants where id = $1 for update", [input.merchantId]);
+    await client.query("select 1 from merchants where id = $1 for no key update", [input.merchantId]);
 
     const decision = await policy.canCreateStore(client, input.merchantId);
     if (!decision.allowed) {
@@ -81,8 +82,8 @@ export async function createMerchantStore(
     const id = randomUUID();
     const now = new Date().toISOString();
     await client.query(
-      "insert into stores (id, name, merchant_id, created_at, updated_at) values ($1, $2, $3, $4, $4)",
-      [id, input.name.trim(), input.merchantId, now],
+      "insert into stores (id, name, merchant_id, order_prefix, created_at, updated_at) values ($1, $2, $3, $4, $5, $5)",
+      [id, input.name.trim(), input.merchantId, orderPrefixFor(subdomain), now],
     );
     await client.query(
       "insert into store_domains (hostname, store_id, kind, created_at) values ($1, $2, 'subdomain', $3)",

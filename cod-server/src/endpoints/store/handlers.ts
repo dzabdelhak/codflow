@@ -283,10 +283,12 @@ export async function createStoreOrder(c: Context<AppContext>) {
   // ONE catalog read for the whole checkout. The SKU check, the stock check and
   // the order engine all answer their questions from this same snapshot, so a
   // product row is fetched once per order instead of once per question.
+  // Locked: the stock decisions taken from it hold until the order commits.
   const snapshot = await queries.loadCatalogSnapshot(
     db,
     lines,
-    new Date().toISOString()
+    new Date().toISOString(),
+    { lock: true },
   );
 
   const skuMissing = queries.findMissingSku(snapshot, lines);
@@ -296,11 +298,6 @@ export async function createStoreOrder(c: Context<AppContext>) {
       ERROR_CODES.REQUIRED_FIELD_MISSING,
       { [skuMissing.missing === "variant" ? "variantId" : "productId"]: skuMissing.id }
     );
-  }
-
-  const stockError = queries.findStockShortfall(snapshot, lines);
-  if (stockError) {
-    throw new BusinessLogicError(stockError, ERROR_CODES.INSUFFICIENT_STOCK);
   }
 
   await assertOtpVerification(c, db, data);
@@ -321,19 +318,8 @@ export async function createStoreOrder(c: Context<AppContext>) {
     storeId: c.get("storeId"),
     subtotal,
   });
-
-  if (deliveryFee === null) {
-    // Delivery to this wilaya (or this delivery type) is not configured —
-    // refuse the order instead of silently shipping for free. Refusal must
-    // happen BEFORE the customer is created so no orphan customer rows.
-    throw new BusinessLogicError(
-      data.deliveryType === "home"
-        ? "Home delivery is not available to this wilaya"
-        : "Stop-desk delivery is not available to this wilaya",
-      ERROR_CODES.DELIVERY_NOT_AVAILABLE,
-      { wilayaId: data.wilayaId, deliveryType: data.deliveryType }
-    );
-  }
+  // null: no fee known for this wilaya/type — the order is still taken, with
+  // the fee to confirm on the call (Aventy guide rule 3), never 0 DA.
 
   const customer = await queries.findOrCreateCustomer(db, {
     phone: data.phone,
@@ -454,8 +440,12 @@ export async function createStoreOrder(c: Context<AppContext>) {
         orderId: order.id,
         orderNumber: order.orderNumber,
         price: order.price,
+        // null with feeToConfirm: the fee is confirmed on the call (guide rule 3).
         deliveryFee: order.deliveryFee,
-        total: order.price + order.deliveryFee,
+        feeToConfirm: order.feeToConfirm,
+        total: order.price + (order.deliveryFee ?? 0),
+        // false: a line exceeded the stock on hand; availability is confirmed on the call.
+        stockConfirmed: order.stockConfirmed,
       },
     },
     201

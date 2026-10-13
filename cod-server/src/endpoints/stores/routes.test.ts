@@ -27,6 +27,8 @@ const NOW = new Date().toISOString();
 function storeRow(overrides: Record<string, any> = {}) {
   return {
     merchantId: "test-merchant",
+    orderPrefix: "CMD",
+    orderSeq: 0,
     id: "store_1",
     name: "My Shop",
     domain: null,

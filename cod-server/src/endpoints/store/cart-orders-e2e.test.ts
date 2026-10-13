@@ -26,12 +26,13 @@ import { CartValidationError } from "../../../../cod-shared/queries/cart";
 import { first } from "../../../../cod-shared/db/client";
 
 const registry: TestDb[] = [];
+let harness: TestDb;
 let db: AppDb;
 
 const WILAYA = 16;
 
 beforeAll(async () => {
-  const harness = await createTestDb();
+  harness = await createTestDb();
   registry.push(harness);
   db = harness.db;
 });
@@ -274,34 +275,30 @@ describe("createStoreOrder — multi-product basket", () => {
 // ─── All-or-nothing: the failure paths ────────────────────────────────────────
 
 describe("createStoreOrder — a basket is all or nothing", () => {
-  it("rolls the WHOLE order back when one line lacks stock", async () => {
+  it("takes a basket when one line lacks stock: covered lines deducted, the short one not, order unconfirmed", async () => {
     const ok = await seedProduct({ price: 1000, inventory: 100 });
     const short = await seedProduct({ price: 1000, inventory: 1 });
 
-    await expect(
-      place({
-        items: [
-          { productId: ok, productName: "OK", quantity: 1 },
-          { productId: short, productName: "SHORT", quantity: 5 },
-        ],
-      }),
-    ).rejects.toThrow();
+    const result = await place({
+      items: [
+        { productId: ok, productName: "OK", quantity: 1 },
+        { productId: short, productName: "SHORT", quantity: 5 },
+      ],
+    });
 
-    // Nothing at all may survive: no order, no lines, no movements, and the
-    // healthy product's stock must be untouched.
-    expect(await db.select().from(schema.orders)).toHaveLength(0);
-    expect(await db.select().from(schema.orderProducts)).toHaveLength(0);
-    expect(await db.select().from(schema.stockMovements)).toHaveLength(0);
-    expect(await inventoryOf(ok)).toBe(100);
+    expect(result.stockConfirmed).toBe(false);
+    expect(await db.select().from(schema.orderProducts)).toHaveLength(2);
+    expect(await inventoryOf(ok)).toBe(99);
     expect(await inventoryOf(short)).toBe(1);
   });
 
-  it("does not bump customer stats when the order is rejected", async () => {
-    const short = await seedProduct({ price: 1000, inventory: 0 });
+  it("does not bump customer stats when the order is rejected — the queue row is part of the same commit", async () => {
+    const product = await seedProduct({ price: 1000, inventory: 5 });
     const customer = await seedCustomer();
+    const failing = await harness.connect(undefined, { failWhen: (q) => q.includes('insert into "outbound_orders"') });
 
     await expect(
-      createStoreOrder(db, {
+      createStoreOrder(failing, {
         customerId: customer.id,
         customerName: customer.name,
         phone: customer.phone,
@@ -309,8 +306,8 @@ describe("createStoreOrder — a basket is all or nothing", () => {
         communeId: "c-16-001",
         deliveryType: "home",
         deliveryFee: 600,
-        productId: short,
-        productName: "SHORT",
+        productId: product,
+        productName: "P",
         quantity: 1,
         pricePerUnit: 1000,
       } as any),
@@ -322,6 +319,8 @@ describe("createStoreOrder — a basket is all or nothing", () => {
       .where(eq(schema.customers.id, customer.id))
       .then(first);
     expect(after).toMatchObject({ totalOrders: 0, totalSpent: 0 });
+    expect(await db.select().from(schema.orders)).toHaveLength(0);
+    expect(await inventoryOf(product)).toBe(5);
   });
 
   it("refuses a basket over the line cap before touching the database", async () => {

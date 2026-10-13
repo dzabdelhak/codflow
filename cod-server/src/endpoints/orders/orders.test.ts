@@ -36,6 +36,9 @@ import * as shipments from "@/endpoints/delivery-companies/providers/shipments";
 import * as registry from "@/endpoints/delivery-companies/providers/registry";
 import * as carrierGeo from "../../../../cod-shared/queries/carrier-geo";
 
+vi.mock("../../../../cod-shared/queries/order-numbers", () => ({
+  allocateOrderNumber: vi.fn(async () => "CMD-00001"),
+}));
 vi.mock("@/db", () => ({ getDb: vi.fn(() => mockDb) }));
 vi.mock("./queries");
 vi.mock("./resolve-fee");

@@ -12,6 +12,7 @@ import {
 import { getDb } from "@/db";
 import { toolOutput, timestampSchema } from "@/lib/tool-output-schema";
 import { first } from "../../../../cod-shared/db/client";
+import { allocateOrderNumber } from "../../../../cod-shared/queries/order-numbers";
 
 /**
  * Layer-2 validation schemas, hoisted to module level and exported so the MCP
@@ -304,11 +305,8 @@ export const getOrderTools = (db: ReturnType<typeof getDb>) => ({
       }
 
       try {
-        // Generate order number
         const date = new Date();
-        const dateStr = date.toISOString().split("T")[0].replace(/-/g, "");
-        const random = Math.floor(Math.random() * 10000).toString().padStart(4, "0");
-        const orderNumber = `ORD-${dateStr}-${random}`;
+        const orderNumber = await allocateOrderNumber(db);
         const now = date.toISOString();
         const orderId = crypto.randomUUID();
 

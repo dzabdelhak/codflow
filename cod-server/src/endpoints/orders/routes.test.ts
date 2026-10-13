@@ -15,6 +15,9 @@ import * as queries from "./queries";
 import * as resolveFee from "./resolve-fee";
 import { NotFoundError, BusinessLogicError } from "@/lib/errors/classes";
 
+vi.mock("../../../../cod-shared/queries/order-numbers", () => ({
+  allocateOrderNumber: vi.fn(async () => "CMD-00001"),
+}));
 vi.mock("@/db", () => ({ getDb: vi.fn(() => mockDb) }));
 vi.mock("./queries");
 vi.mock("./resolve-fee");
@@ -226,7 +229,7 @@ describe("Orders routes (OpenAPIHono)", () => {
       expect(res.status).toBe(201);
       const body: any = await res.json();
       expect(body.data.codAmount).toBe(9600);
-      expect(body.data.orderNumber).toMatch(/^ORD-\d{8}-\d{4}$/);
+      expect(body.data.orderNumber).toBe("CMD-00001");
     });
 
     it("requires address for home delivery (superRefine)", async () => {

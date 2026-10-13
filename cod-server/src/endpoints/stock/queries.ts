@@ -107,8 +107,8 @@ export async function adjustStock(
   // the ledger row can never diverge from the applied change.
   const guard =
     variantId !== null
-      ? sql`FROM ${productVariants} WHERE ${productVariants.id} = ${variantId} AND ${productVariants.inventory} + ${delta} >= 0 FOR UPDATE`
-      : sql`FROM ${products} WHERE ${products.id} = ${productId} AND ${products.inventory} + ${delta} >= 0 FOR UPDATE`;
+      ? sql`FROM ${productVariants} WHERE ${productVariants.id} = ${variantId} AND ${productVariants.inventory} + ${delta} >= 0 FOR NO KEY UPDATE`
+      : sql`FROM ${products} WHERE ${products.id} = ${productId} AND ${products.inventory} + ${delta} >= 0 FOR NO KEY UPDATE`;
   const inventoryColumn =
     variantId !== null ? productVariants.inventory : products.inventory;
 

@@ -234,7 +234,7 @@ export async function createOrder(
     // stock is insufficient (or a concurrent writer already took it), the
     // subselects return NULL, the movement insert violates NOT NULL, and the
     // ENTIRE batch rolls back — no oversell floor, no lost-update race.
-    // FOR UPDATE makes the guard wait for a concurrent order and re-check the
+    // FOR NO KEY UPDATE makes the guard wait for a concurrent order and re-check the
     // committed stock (PostgreSQL READ COMMITTED; D1 batches were serial).
     if (item.variantId) {
       statements.push(
@@ -244,8 +244,8 @@ export async function createOrder(
           variantId: item.variantId,
           type: "ORDER_DEDUCTED",
           delta: -qty,
-          qtyBefore: sql`(SELECT inventory FROM product_variants WHERE id = ${item.variantId} AND inventory >= ${qty} FOR UPDATE)`,
-          qtyAfter: sql`(SELECT inventory - ${qty} FROM product_variants WHERE id = ${item.variantId} AND inventory >= ${qty} FOR UPDATE)`,
+          qtyBefore: sql`(SELECT inventory FROM product_variants WHERE id = ${item.variantId} AND inventory >= ${qty} FOR NO KEY UPDATE)`,
+          qtyAfter: sql`(SELECT inventory - ${qty} FROM product_variants WHERE id = ${item.variantId} AND inventory >= ${qty} FOR NO KEY UPDATE)`,
           reason: null,
           reference: orderData.id ?? null,
           createdBy: actor?.id ?? "system",
@@ -275,8 +275,8 @@ export async function createOrder(
           variantId: null,
           type: "ORDER_DEDUCTED",
           delta: -qty,
-          qtyBefore: sql`(SELECT inventory FROM products WHERE id = ${item.productId} AND inventory >= ${qty} FOR UPDATE)`,
-          qtyAfter: sql`(SELECT inventory - ${qty} FROM products WHERE id = ${item.productId} AND inventory >= ${qty} FOR UPDATE)`,
+          qtyBefore: sql`(SELECT inventory FROM products WHERE id = ${item.productId} AND inventory >= ${qty} FOR NO KEY UPDATE)`,
+          qtyAfter: sql`(SELECT inventory - ${qty} FROM products WHERE id = ${item.productId} AND inventory >= ${qty} FOR NO KEY UPDATE)`,
           reason: null,
           reference: orderData.id ?? null,
           createdBy: actor?.id ?? "system",

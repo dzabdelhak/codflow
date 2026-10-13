@@ -18,6 +18,7 @@ import { getDeliveryCompanyById } from "@/endpoints/delivery-companies/queries";
 import { NotFoundError, ValidationError, BusinessLogicError } from "@/lib/errors/classes";
 import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
 import { first } from "../../../../cod-shared/db/client";
+import { allocateOrderNumber } from "../../../../cod-shared/queries/order-numbers";
 
 /**
  * GET /orders
@@ -83,11 +84,8 @@ export async function createOrder(c: Context<AppContext>) {
     const validated: validation.CreateOrderInput =
       bodyData ?? validation.createOrderSchema.parse(await c.req.json());
 
-    // Generate order number (format: ORD-YYYYMMDD-XXXX)
     const date = new Date();
-    const dateStr = date.toISOString().split("T")[0].replace(/-/g, "");
-    const random = Math.floor(Math.random() * 10000).toString().padStart(4, "0");
-    const orderNumber = `ORD-${dateStr}-${random}`;
+    const orderNumber = await allocateOrderNumber(db);
 
     const now = date.toISOString();
     const orderId = crypto.randomUUID();

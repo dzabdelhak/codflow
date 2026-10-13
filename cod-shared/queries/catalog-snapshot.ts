@@ -85,20 +85,26 @@ export async function loadCatalogSnapshot(
   db: AppDb,
   lines: CartLine[],
   now: string,
+  opts: { lock?: boolean } = {},
 ): Promise<CatalogSnapshot> {
   const productIds = productIdsOf(lines);
   const variantIds = variantIdsOf(lines);
 
-  const productStatements = chunkIds(productIds).map((chunk) =>
-    db.select(PRODUCT_COLUMNS).from(products).where(inArray(products.id, chunk)),
-  );
+  // An order locks the rows it will deduct from (in id order, so two orders
+  // never deadlock): its stock decisions then hold until it commits.
+  const productStatements = chunkIds(productIds).map((chunk) => {
+    const query = db.select(PRODUCT_COLUMNS).from(products).where(inArray(products.id, chunk)).orderBy(products.id);
+    return opts.lock ? query.for("no key update") : query;
+  });
 
-  const variantStatements = chunkIds(variantIds).map((chunk) =>
-    db
+  const variantStatements = chunkIds(variantIds).map((chunk) => {
+    const query = db
       .select(VARIANT_COLUMNS)
       .from(productVariants)
-      .where(inArray(productVariants.id, chunk)),
-  );
+      .where(inArray(productVariants.id, chunk))
+      .orderBy(productVariants.id);
+    return opts.lock ? query.for("no key update") : query;
+  });
 
   // Selection among these is decided in memory — see resolveCartOffers. The
   // database only narrows to what is active and in schedule right now.
@@ -157,6 +163,7 @@ export async function extendSnapshot(
   db: AppDb,
   snapshot: CatalogSnapshot,
   extra: { productIds?: string[]; variantIds?: string[]; variantsOfProducts?: string[] },
+  opts: { lock?: boolean } = {},
 ): Promise<void> {
   const missingProducts = (extra.productIds ?? []).filter(
     (id) => !snapshot.products.has(id),
@@ -166,17 +173,20 @@ export async function extendSnapshot(
   );
   const variantsOf = extra.variantsOfProducts ?? [];
 
-  const productStatements = chunkIds(missingProducts).map((chunk) =>
-    db.select(PRODUCT_COLUMNS).from(products).where(inArray(products.id, chunk)),
-  );
-  const variantStatements = chunkIds(missingVariants).map((chunk) =>
-    db
+  const productStatements = chunkIds(missingProducts).map((chunk) => {
+    const query = db.select(PRODUCT_COLUMNS).from(products).where(inArray(products.id, chunk)).orderBy(products.id);
+    return opts.lock ? query.for("no key update") : query;
+  });
+  const variantStatements = chunkIds(missingVariants).map((chunk) => {
+    const query = db
       .select(VARIANT_COLUMNS)
       .from(productVariants)
-      .where(inArray(productVariants.id, chunk)),
-  );
-  const siblingStatements = chunkIds(variantsOf).map((chunk) =>
-    db
+      .where(inArray(productVariants.id, chunk))
+      .orderBy(productVariants.id);
+    return opts.lock ? query.for("no key update") : query;
+  });
+  const siblingStatements = chunkIds(variantsOf).map((chunk) => {
+    const query = db
       .select(VARIANT_COLUMNS)
       .from(productVariants)
       .where(
@@ -184,8 +194,10 @@ export async function extendSnapshot(
           inArray(productVariants.productId, chunk),
           eq(productVariants.active, true),
         ),
-      ),
-  );
+      )
+      .orderBy(productVariants.id);
+    return opts.lock ? query.for("no key update") : query;
+  });
 
   const statements = [
     ...productStatements,

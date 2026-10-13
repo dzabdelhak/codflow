@@ -246,6 +246,9 @@ export function orderRow(overrides: Record<string, unknown> = {}): Record<string
     // a missing one shifts every joined value by a slot.
     customer_email: null,
     custom_fields_json: null,
+    // Order intake flags (ticket 02), last again for the same reason.
+    delivery_fee_to_confirm: false,
+    stock_confirmed: true,
     ...overrides,
   };
 }

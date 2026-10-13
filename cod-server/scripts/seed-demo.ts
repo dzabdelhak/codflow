@@ -7,6 +7,7 @@
  */
 import { sql } from "drizzle-orm";
 import { createDatabase, withStore } from "../src/db/scope";
+import { orderPrefixFor } from "../../cod-shared/queries/order-numbers";
 import { products, productVariants, shippingProfiles, shippingRules } from "../src/db/schema";
 
 export const DEMO_MERCHANT_ID = "demo-merchant";
@@ -34,8 +35,8 @@ async function main() {
         continue;
       }
       await database.platform.query(
-        "insert into stores (id, name, merchant_id, created_at, updated_at) values ($1, $2, $3, $4, $4)",
-        [channel.id, channel.name, DEMO_MERCHANT_ID, now],
+        "insert into stores (id, name, merchant_id, order_prefix, created_at, updated_at) values ($1, $2, $3, $4, $5, $5)",
+        [channel.id, channel.name, DEMO_MERCHANT_ID, orderPrefixFor(channel.host.split(".")[0]), now],
       );
       await database.platform.query(
         "insert into store_domains (hostname, store_id, kind, created_at) values ($1, $2, 'subdomain', $3)",

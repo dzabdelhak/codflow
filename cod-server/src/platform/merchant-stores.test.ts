@@ -56,6 +56,14 @@ describe("createMerchantStore", () => {
     expect(pages.map((p) => p.kind)).toEqual(["privacy", "refund", "shipping", "terms"]);
   });
 
+  it("numbers the store's orders after its subdomain", async () => {
+    const merchant = await harness.createMerchant();
+    const result = await create(merchant, "Boutique Amel", "boutique-amel");
+    if (!result.ok) throw new Error("not created");
+    const { rows } = await harness.platform.query("select order_prefix from stores where id = $1", [result.store.id]);
+    expect(rows[0].order_prefix).toBe("BOUTIQUE");
+  });
+
   it("normalises the subdomain to lower case", async () => {
     const merchant = await harness.createMerchant();
     const result = await create(merchant, "Casing", "  MiXeD-Case ");

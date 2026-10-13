@@ -250,14 +250,21 @@ describe("Store API routes (OpenAPIHono)", () => {
       expect(body.data.total).toBe(9600);
     });
 
-    it("surfaces insufficient stock as 422", async () => {
+    it("takes an order beyond the stock on hand and says it is not guaranteed — never a 422", async () => {
       vi.mocked(queries.loadCatalogSnapshot).mockResolvedValue({
         products: new Map(), variants: new Map(), offers: [],
       } as any);
       vi.mocked(queries.findMissingSku).mockReturnValue(null as any);
-      vi.mocked(queries.findStockShortfall).mockReturnValue(
-        "Not enough stock — available: 1"
-      );
+      vi.mocked(queries.findOrCreateCustomer).mockResolvedValue({ id: "cust_1", name: "أحمد" } as any);
+      vi.mocked(queries.resolveDeliveryFee).mockResolvedValue(null as any);
+      vi.mocked(queries.createStoreOrder).mockResolvedValue({
+        id: "ord_1",
+        orderNumber: "CMD-00001",
+        price: 9000,
+        deliveryFee: null,
+        feeToConfirm: true,
+        stockConfirmed: false,
+      } as any);
 
       const res = await app.request("/store/orders", {
         method: "POST",
@@ -265,9 +272,9 @@ describe("Store API routes (OpenAPIHono)", () => {
         body: JSON.stringify(validOrder),
       });
 
-      expect(res.status).toBe(422);
+      expect(res.status).toBe(201);
       const body: any = await res.json();
-      expect(body.code).toBe(ERROR_CODES.INSUFFICIENT_STOCK);
+      expect(body.data).toMatchObject({ stockConfirmed: false, feeToConfirm: true, deliveryFee: null, total: 9000 });
     });
 
     it("rejects a cart over the line cap with 4xx, not a 500", async () => {

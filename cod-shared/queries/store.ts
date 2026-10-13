@@ -30,6 +30,7 @@ import {
   orders,
   orderProducts,
   orderStatusHistory,
+  outboundOrders,
   shippingProfiles,
   shippingRules,
   wilayas,
@@ -60,6 +61,8 @@ import {
   type CustomFieldAnswer,
 } from "../checkout-form/apply";
 import { first } from "../db/client";
+import { allocateOrderNumber } from "./order-numbers";
+import { outboundOrderRow } from "./outbound-orders";
 
 export interface StoreOrderData {
   customerName: string;
@@ -140,7 +143,8 @@ export async function getStoreConfig(db: AppDb, storeId: string) {
   // whole store row, so a column is public the moment it exists unless it is
   // removed by name here — the storefront gets the resolved projection instead,
   // which is also the only shape a theme should ever have to understand.
-  const { checkoutFormJson, whatsappWidgetJson, ...publicStore } = store;
+  // orderSeq would tell anyone the store's order volume; merchantId is platform data.
+  const { checkoutFormJson, whatsappWidgetJson, orderSeq: _seq, merchantId: _merchant, ...publicStore } = store;
 
   return {
     ...publicStore,
@@ -602,8 +606,8 @@ function buildDeductStatements(
 
   const guard =
     variantId !== null
-      ? sql`FROM ${productVariants} WHERE ${productVariants.id} = ${variantId} AND ${productVariants.inventory} >= ${quantity} FOR UPDATE`
-      : sql`FROM ${products} WHERE ${products.id} = ${productId} AND ${products.inventory} >= ${quantity} FOR UPDATE`;
+      ? sql`FROM ${productVariants} WHERE ${productVariants.id} = ${variantId} AND ${productVariants.inventory} >= ${quantity} FOR NO KEY UPDATE`
+      : sql`FROM ${products} WHERE ${products.id} = ${productId} AND ${products.inventory} >= ${quantity} FOR NO KEY UPDATE`;
   const inventoryColumn =
     variantId !== null ? productVariants.inventory : products.inventory;
 
@@ -652,7 +656,8 @@ export async function createStoreOrder(
   data: StoreOrderData & {
     customerId: string;
     customerName: string;
-    deliveryFee: number;
+    /** null: no fee is known — the order is taken with the fee to confirm (guide rule 3). */
+    deliveryFee: number | null;
   },
   /**
    * Catalog rows already loaded by the caller. The storefront handler loads
@@ -664,18 +669,13 @@ export async function createStoreOrder(
 ) {
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
-  const dateStr = now.split("T")[0].replace(/-/g, "");
-  const random = Math.floor(Math.random() * 10000)
-    .toString()
-    .padStart(4, "0");
-  const orderNumber = `ORD-${dateStr}-${random}`;
 
   // Every accepted request shape becomes one list here. The engine below knows
   // nothing about legacy fields, variantSelections, or carts.
   const lines = normalizeOrderLines(data);
 
   // ── Resolve phase (reads — one batched round trip, or none when shared) ───
-  const snapshot = preloaded ?? (await loadCatalogSnapshot(db, lines, now));
+  const snapshot = preloaded ?? (await loadCatalogSnapshot(db, lines, now, { lock: true }));
 
   // Server-authoritative pricing: the catalog row is the ONLY source of a unit
   // price. The client's pricePerUnit is display-only and NEVER trusted — it
@@ -697,6 +697,53 @@ export async function createStoreOrder(
 
   const { earned, freeShipping } = resolveCartOffers(lines, snapshot.offers);
   const finalDeliveryFee = freeShipping ? 0 : data.deliveryFee;
+  const feeToConfirm = finalDeliveryFee === null;
+
+  // ── Stock ────────────────────────────────────────────────────────────────
+  //
+  // An order is never refused for stock (Aventy guide rule 1): a line the
+  // stock covers is deducted, one it does not is taken unconfirmed — never
+  // driving stock negative. The snapshot rows are locked, so these decisions
+  // hold until commit; `remaining` keeps lines and rewards on one item honest.
+  // trackInventory is the parent product's master switch.
+  const remaining = new Map<string, number>();
+  const stockKey = (productId: string, variantId: string | null) =>
+    variantId ? `v:${variantId}` : `p:${productId}`;
+  const onHand = (productId: string, variantId: string | null) => {
+    const key = stockKey(productId, variantId);
+    if (!remaining.has(key)) {
+      remaining.set(
+        key,
+        variantId
+          ? (snapshot.variants.get(variantId)?.inventory ?? 0)
+          : (snapshot.products.get(productId)?.inventory ?? 0),
+      );
+    }
+    return remaining.get(key)!;
+  };
+  const take = (productId: string, variantId: string | null, quantity: number) =>
+    remaining.set(stockKey(productId, variantId), onHand(productId, variantId) - quantity);
+
+  const deductions: DeductStockInput[] = [];
+  let stockConfirmed = true;
+  for (const line of lines) {
+    const product = snapshot.products.get(line.productId);
+    if (!product?.trackInventory) continue;
+    if (onHand(line.productId, line.variantId) < line.quantity) {
+      stockConfirmed = false;
+      continue;
+    }
+    take(line.productId, line.variantId, line.quantity);
+    deductions.push({
+      productId: line.productId,
+      variantId: line.variantId,
+      quantity: line.quantity,
+      orderId: id,
+      customerId: data.customerId,
+      customerName: data.customerName,
+      now,
+    });
+  }
 
   // ── Reward lines ─────────────────────────────────────────────────────────
   //
@@ -719,7 +766,7 @@ export async function createStoreOrder(
       variantsOfProducts: earned
         .filter((e) => e.offer.rewardProductId && !e.offer.rewardVariantId)
         .map((e) => e.offer.rewardProductId!),
-    });
+    }, { lock: true });
   }
 
   const defaultVariantFor = (productId: string) =>
@@ -762,10 +809,8 @@ export async function createStoreOrder(
     }
 
     if (rewardProduct.trackInventory) {
-      const available = rewardVariantId
-        ? (rewardVariant?.inventory ?? 0)
-        : rewardProduct.inventory;
-      if (available < offer.rewardQuantity) continue; // silently skipped
+      if (onHand(offer.rewardProductId, rewardVariantId) < offer.rewardQuantity) continue; // silently skipped
+      take(offer.rewardProductId, rewardVariantId, offer.rewardQuantity);
     }
 
     rewardLines.push({
@@ -797,27 +842,33 @@ export async function createStoreOrder(
     }
   }
 
-  // ── Stock deductions ─────────────────────────────────────────────────────
-  //
-  // trackInventory is the parent product's master switch: false excludes the
-  // product AND all of its variants from stock entirely.
-  const deductions: DeductStockInput[] = [];
-  for (const line of lines) {
-    const product = snapshot.products.get(line.productId);
-    if (!product?.trackInventory) continue;
-    deductions.push({
-      productId: line.productId,
-      variantId: line.variantId,
-      quantity: line.quantity,
-      orderId: id,
-      customerId: data.customerId,
-      customerName: data.customerName,
-      now,
-    });
-  }
   deductions.push(...rewardDeducts);
 
   // ── Commit phase (one atomic batch) ──────────────────────────────────────
+
+  // Last, so the store's counter stays locked as briefly as possible.
+  const orderNumber = await allocateOrderNumber(db);
+  const outbound = outboundOrderRow({
+    orderId: id,
+    orderNumber,
+    lines: [...lineRows, ...rewardLines].map((line) => ({
+      sku: line.sku ?? null,
+      quantity: line.quantity,
+      unitPrice: line.pricePerUnit,
+    })),
+    delivery: { type: data.deliveryType, office: null, fee: finalDeliveryFee },
+    customer: {
+      name: data.customerName,
+      phone: data.phone,
+      wilayaId: data.wilayaId,
+      communeId: data.communeId,
+      address: data.address ?? null,
+    },
+    journey: data.items?.length ? "cart" : "direct",
+    stockNotGuaranteed: !stockConfirmed,
+    submittedAt: now,
+    userAgent: data.userAgent ?? null,
+  });
 
   const statements: BatchStatement[] = [
     db.insert(orders).values({
@@ -835,9 +886,10 @@ export async function createStoreOrder(
       orderType: "online",
       deliveryMethod: "driver",
       deliveryType: data.deliveryType,
-      deliveryFee: finalDeliveryFee,
+      // A fee to confirm is stored as 0 with the flag; it is never shown as 0 DA.
+      deliveryFee: finalDeliveryFee ?? 0,
       driverFee: 0,
-      codAmount: price + finalDeliveryFee,
+      codAmount: price + (finalDeliveryFee ?? 0),
       fbc: data.fbc ?? null,
       fbp: data.fbp ?? null,
       ipAddress: data.ipAddress ?? null,
@@ -849,7 +901,11 @@ export async function createStoreOrder(
       // one atomic batch and D1 caps how many statements it may carry.
       customerEmail: data.customerEmail ?? null,
       customFieldsJson: serializeCustomFieldAnswers(data.customFieldAnswers ?? []),
+      deliveryFeeToConfirm: feeToConfirm,
+      stockConfirmed,
     }),
+    // Recorded with the order, sent after (guide §5): an order never exists without it.
+    db.insert(outboundOrders).values(outbound),
   ];
 
   for (const line of [...lineRows, ...rewardLines]) {
@@ -887,6 +943,9 @@ export async function createStoreOrder(
     customerName: data.customerName,
     price,
     deliveryFee: finalDeliveryFee,
+    feeToConfirm,
+    stockConfirmed,
+    outboundId: outbound.id,
   };
 }
 

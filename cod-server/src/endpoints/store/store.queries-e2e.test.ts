@@ -136,7 +136,7 @@ describe("createStoreOrder — atomic commit + guarded deduction (BC-2)", () => 
 
     expect(result.price).toBe(4500);
     expect(result.deliveryFee).toBe(400);
-    expect(result.orderNumber).toMatch(/^ORD-\d{8}-\d{4}$/);
+    expect(result.orderNumber).toMatch(/^CMD-\d{5}$/);
 
     const order = await db.select().from(schema.orders).where(eq(schema.orders.id, result.id)).then(first);
     expect(order).toMatchObject({
@@ -179,38 +179,31 @@ describe("createStoreOrder — atomic commit + guarded deduction (BC-2)", () => 
     });
   });
 
-  it("rejects the whole order when inventory cannot cover it (no partial writes)", async () => {
+  it("takes an order inventory cannot cover, unconfirmed, without deducting or going negative", async () => {
     const productId = await seedTrackedProduct({ inventory: 1 });
     const customer = await seedCustomer("0661234599");
 
-    const ordersBefore = await db.select({ id: schema.orders.id }).from(schema.orders);
     const movementsBefore = await db
       .select({ id: schema.stockMovements.id })
       .from(schema.stockMovements);
 
-    let failed = false;
-    try {
-      await createStoreOrder(db, {
-        customerName: customer.name,
-        phone: "0661234599",
-        wilayaId: 16,
-        communeId: "c-16-001",
-        deliveryType: "home",
-        productId,
-        productName: "E2E Product",
-        quantity: 3,
-        pricePerUnit: 1500,
-        customerId: customer.id,
-        deliveryFee: 400,
-      });
-    } catch {
-      failed = true;
-    }
+    const result = await createStoreOrder(db, {
+      customerName: customer.name,
+      phone: "0661234599",
+      wilayaId: 16,
+      communeId: "c-16-001",
+      deliveryType: "home",
+      productId,
+      productName: "E2E Product",
+      quantity: 3,
+      pricePerUnit: 1500,
+      customerId: customer.id,
+      deliveryFee: 400,
+    });
 
-    expect(failed).toBe(true);
-
-    const ordersAfter = await db.select({ id: schema.orders.id }).from(schema.orders);
-    expect(ordersAfter.length).toBe(ordersBefore.length);
+    expect(result.stockConfirmed).toBe(false);
+    const order = await db.select().from(schema.orders).where(eq(schema.orders.id, result.id)).then(first);
+    expect(order?.stockConfirmed).toBe(false);
 
     const movementsAfter = await db
       .select({ id: schema.stockMovements.id })
@@ -221,7 +214,6 @@ describe("createStoreOrder — atomic commit + guarded deduction (BC-2)", () => 
     expect(product?.inventory).toBe(1);
 
     const cust = await db.select().from(schema.customers).where(eq(schema.customers.id, customer.id)).then(first);
-    expect(cust?.totalOrders).toBe(0);
-    expect(cust?.totalSpent).toBe(0);
+    expect(cust?.totalOrders).toBe(1);
   });
 });
