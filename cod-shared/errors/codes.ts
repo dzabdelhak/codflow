@@ -220,6 +220,14 @@ export const ERROR_CODES = {
   // ============================================================================
   INTERNAL_SERVER_ERROR: "INTERNAL_SERVER_ERROR",
   DATABASE_ERROR: "DATABASE_ERROR",
+  // ============================================================================
+  // BUSINESS LOGIC ERRORS - MERCHANT STORES
+  // ============================================================================
+  STORE_LIMIT_REACHED: "STORE_LIMIT_REACHED",
+  SUBDOMAIN_TAKEN: "SUBDOMAIN_TAKEN",
+  INVALID_SUBDOMAIN: "INVALID_SUBDOMAIN",
+  STORE_NOT_OWNED: "STORE_NOT_OWNED",
+
   EXTERNAL_API_FAILURE: "EXTERNAL_API_FAILURE",
   NETWORK_TIMEOUT: "NETWORK_TIMEOUT",
   SERVICE_UNAVAILABLE: "SERVICE_UNAVAILABLE",

@@ -71,34 +71,42 @@ export async function storeIdForHost(pool: pg.Pool, hostname: string): Promise<s
 }
 
 /**
- * Until accounts and the channel selector land (ticket 03), non-storefront
- * routes (dashboard API, webhooks, OAuth) serve the deployment's only store.
- * With several stores and no selector, they get no store — RLS then shows
- * nothing rather than guessing.
+ * Webhooks and image serving carry no user and no hostname yet: they serve
+ * the deployment's only store, and none when there are several (RLS then
+ * shows nothing rather than guessing). Their own tickets replace this.
  */
-export async function soleStoreId(pool: pg.Pool): Promise<string | null> {
-  const { rows } = await pool.query<{ id: string }>("select id from stores limit 2");
-  return rows.length === 1 ? rows[0].id : null;
+export async function soleStoreId(platform: pg.Pool): Promise<Scope> {
+  const { rows } = await platform.query<{ id: string }>("select id from stores limit 2");
+  return { storeId: rows.length === 1 ? rows[0].id : null };
 }
 
-type ResolveStore = (c: Context<AppContext>) => Promise<string | null | Response>;
+/** The store (and, for dashboard requests, the merchant) a request works in. */
+export interface Scope {
+  storeId: string | null;
+  merchantId?: string | null;
+}
+
+type ResolveScope = (c: Context<AppContext>) => Promise<Scope | Response>;
 
 /**
- * Opens the request's transaction. `resolve` returns the store id, or a
- * Response to answer immediately (unknown host, bad credentials).
- * Commits unless the handler threw or answered 5xx.
+ * Opens the request's transaction. `resolve` returns its scope, or a
+ * Response to answer immediately (unknown host, bad credentials, a store the
+ * user may not open). Commits unless the handler threw or answered 5xx.
  */
-export function requestScope(resolve: ResolveStore) {
+export function requestScope(resolve: ResolveScope) {
   return async (c: Context<AppContext>, next: Next) => {
-    const resolved = await resolve(c);
-    if (resolved instanceof Response) return resolved;
+    const scope = await resolve(c);
+    if (scope instanceof Response) return scope;
 
     const client = await c.env.DATABASE.app.connect();
     try {
       await client.query("begin");
-      if (resolved) {
-        await client.query("select set_config('app.store_id', $1, true)", [resolved]);
-        c.set("storeId", resolved);
+      if (scope.merchantId) {
+        await client.query("select set_config('app.merchant_id', $1, true)", [scope.merchantId]);
+      }
+      if (scope.storeId) {
+        await client.query("select set_config('app.store_id', $1, true)", [scope.storeId]);
+        c.set("storeId", scope.storeId);
       }
       c.set("db", getDb(client, { inTransaction: true }));
       await next();

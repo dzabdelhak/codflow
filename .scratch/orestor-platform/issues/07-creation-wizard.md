@@ -1,6 +1,6 @@
 # 07: Channel creation wizard and idempotent creation API
 
-**What to build:** From the channel manager, "Créer un canal de vente" opens a wizard that adapts to the chosen type: type → general information (name, wished subdomain, generated id) → product selection from the catalogue → delivery modes → template → summary → create. Creation generates the channel id, saves its configuration, selections and defaults, gives it a free subdomain, and opens its dashboard. The wizard calls a creation API that is idempotent on a client key, so a retried or resumed creation never makes a second channel; Aventy's own button will call the same API later. A failed step shows a clear error and keeps what was entered.
+**What to build:** From the header store dropdown, "Create store" (a name + subdomain form since ticket 03) grows into a wizard that adapts to the chosen type: type → general information (name, wished subdomain, generated id) → product selection from the catalogue → delivery modes → template → summary → create. It keeps ticket 03's plan check. Creation generates the channel id, saves its configuration, selections and defaults, gives it a free subdomain, and opens its dashboard. The wizard calls a creation API that is idempotent on a client key, so a retried or resumed creation never makes a second channel; Aventy's own button will call the same API later. A failed step shows a clear error and keeps what was entered.
 
 **Blocked by:** 04, 05, 06
 

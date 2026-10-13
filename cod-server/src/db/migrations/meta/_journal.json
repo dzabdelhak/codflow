@@ -15,6 +15,13 @@
       "when": 1791904823689,
       "tag": "0001_multi_store",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791913139101,
+      "tag": "0002_merchants",
+      "breakpoints": true
     }
   ]
 }

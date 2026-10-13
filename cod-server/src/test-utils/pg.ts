@@ -25,6 +25,7 @@ const ADMIN_URL = process.env.TEST_DATABASE_URL ?? "postgres://codflow:codflow@l
 const MIGRATIONS_DIR = resolve(__dirname, "../db/migrations");
 
 export const TEST_STORE_ID = "test-store";
+export const TEST_MERCHANT_ID = "test-merchant";
 
 function urlFor(database: string): string {
   const url = new URL(ADMIN_URL);
@@ -76,8 +77,10 @@ export interface TestDb {
   url: string;
   /** Another handle pinned to `storeId` — its own connection, for concurrency tests. */
   connect(storeId?: string): Promise<AppDb>;
-  /** Creates a store (as the platform would) and returns its id. */
-  createStore(id?: string, hostnames?: string[]): Promise<string>;
+  /** Creates a store (as the platform would) for `merchantId` (default: the test merchant) and returns its id. */
+  createStore(id?: string, hostnames?: string[], merchantId?: string): Promise<string>;
+  /** Creates a merchant and returns its id. */
+  createMerchant(id?: string, storeLimit?: number | null): Promise<string>;
   /**
    * Sets columns on the test's own store — what single-store tests used to do
    * by inserting a `stores` row, which request code may no longer do. Any `id`
@@ -105,23 +108,38 @@ export async function createTestDb(): Promise<TestDb> {
   const url = urlFor(database);
   const clients: pg.Client[] = [];
 
-  async function open(role: "codflow_app" | "codflow_platform", storeId?: string) {
+  async function open(role: "codflow_app" | "codflow_platform", storeId?: string, merchantId = TEST_MERCHANT_ID) {
     const client = new pg.Client({ connectionString: url });
     client.on("error", () => {});
     await client.connect();
     await client.query(`set role ${role}`);
-    if (storeId) await client.query("select set_config('app.store_id', $1, false)", [storeId]);
+    if (storeId) {
+      await client.query("select set_config('app.store_id', $1, false)", [storeId]);
+      await client.query("select set_config('app.merchant_id', $1, false)", [merchantId]);
+    }
     clients.push(client);
     return client;
   }
 
   const platform = await open("codflow_platform");
 
-  async function createStore(id = `store-${randomUUID().slice(0, 8)}`, hostnames: string[] = []) {
+  async function createMerchant(id = `merchant-${randomUUID().slice(0, 8)}`, storeLimit: number | null = null) {
+    await platform.query(
+      "insert into merchants (id, name, store_limit, created_at) values ($1, $2, $3, $4)",
+      [id, `Merchant ${id}`, storeLimit, new Date().toISOString()],
+    );
+    return id;
+  }
+
+  async function createStore(
+    id = `store-${randomUUID().slice(0, 8)}`,
+    hostnames: string[] = [],
+    merchantId = TEST_MERCHANT_ID,
+  ) {
     const now = new Date().toISOString();
     await platform.query(
-      "insert into stores (id, name, created_at, updated_at) values ($1, $2, $3, $3)",
-      [id, `Store ${id}`, now],
+      "insert into stores (id, name, merchant_id, created_at, updated_at) values ($1, $2, $3, $4, $4)",
+      [id, `Store ${id}`, merchantId, now],
     );
     for (const hostname of hostnames) {
       await platform.query(
@@ -132,10 +150,12 @@ export async function createTestDb(): Promise<TestDb> {
     return id;
   }
 
+  await createMerchant(TEST_MERCHANT_ID);
   await createStore(TEST_STORE_ID);
   let queryListener: ((sql: string) => void) | undefined;
   const connect = async (storeId = TEST_STORE_ID) => {
-    const client = await open("codflow_app", storeId);
+    const { rows } = await platform.query<{ merchant_id: string }>("select merchant_id from stores where id = $1", [storeId]);
+    const client = await open("codflow_app", storeId, rows[0]?.merchant_id ?? TEST_MERCHANT_ID);
     const query = client.query.bind(client) as (...args: unknown[]) => unknown;
     (client as { query: unknown }).query = (...args: unknown[]) => {
       const first = args[0] as string | { text?: string };
@@ -159,6 +179,7 @@ export async function createTestDb(): Promise<TestDb> {
     url,
     connect,
     createStore,
+    createMerchant,
     platform,
     recordQueries(listener) {
       queryListener = listener;

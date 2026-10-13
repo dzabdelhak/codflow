@@ -10,7 +10,7 @@
 import { timingSafeEqual } from "node:crypto";
 import type { Context } from "hono";
 import type { AppContext } from "@/types";
-import { requestScope, storeIdForHost } from "@/db/scope";
+import { requestScope, storeIdForHost, type Scope } from "@/db/scope";
 
 function sameSecret(given: string, expected: string): boolean {
   const a = Buffer.from(given);
@@ -18,7 +18,7 @@ function sameSecret(given: string, expected: string): boolean {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
-export async function resolveStorefrontStore(c: Context<AppContext>): Promise<string | Response> {
+export async function resolveStorefrontStore(c: Context<AppContext>): Promise<Scope | Response> {
   const expected = c.env.STOREFRONT_SERVICE_KEY;
   const key = c.req.header("X-Storefront-Key");
   if (!expected || !key || !sameSecret(key, expected)) {
@@ -28,7 +28,7 @@ export async function resolveStorefrontStore(c: Context<AppContext>): Promise<st
   if (!host) return c.json({ error: "Missing channel host" }, 400);
 
   const storeId = await storeIdForHost(c.env.DATABASE.app, host);
-  return storeId ?? c.json({ error: "Unknown store" }, 404);
+  return storeId ? { storeId } : c.json({ error: "Unknown store" }, 404);
 }
 
 export const storeAuthMiddleware = requestScope(resolveStorefrontStore);

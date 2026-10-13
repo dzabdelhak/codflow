@@ -18,7 +18,9 @@ export async function authMiddleware(c: Context<AppContext>, next: Next) {
   const bearerMatch = authHeader?.match(/^Bearer\s+(.+)$/i);
   const apiKey = c.req.header("X-API-Key");
 
-  const db = c.get("db");
+  // Identity is platform data: the user (and so their merchant) is known
+  // before any store is.
+  const db = getDb(c.env.DATABASE.platform);
   let user: typeof users.$inferSelect | undefined;
 
   if (bearerMatch) {

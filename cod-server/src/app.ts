@@ -10,6 +10,8 @@ import { OpenAPIHono } from "@hono/zod-openapi";
 import type { AppContext, Env } from "@/types";
 import { corsMiddleware } from "@/middleware/cors";
 import { authMiddleware } from "@/middleware/auth";
+import { dashboardScope } from "@/middleware/dashboardScope";
+import merchantRoutes from "@/endpoints/merchant/routes";
 import { storeAuthMiddleware } from "@/middleware/storeAuth";
 import { errorHandler } from "@/middleware/error";
 
@@ -57,12 +59,11 @@ const app = new OpenAPIHono<AppContext>({ defaultHook: openApiValidationHook });
 app.use("*", corsMiddleware);
 app.onError(errorHandler);
 
-// Non-storefront routes serve the deployment's only store until accounts and
-// the channel selector land (ticket 03).
+// Image serving and carrier webhooks have no user or hostname yet: they serve
+// the deployment's only store until their tickets give them one.
 const soleStoreScope = requestScope((c) => soleStoreId(c.env.DATABASE.platform));
 app.use("/images/*", soleStoreScope);
 app.use("/webhooks/*", soleStoreScope);
-app.use("/api/*", soleStoreScope);
 
 // Image serving — no auth required (public, cacheable)
 app.route("/images", serveRouter);
@@ -96,7 +97,9 @@ app.get("/health", (c) => {
 });
 
 // Protected routes (require authentication)
+// Dashboard: the user's merchant, then the store chosen in the header (X-Store-Id).
 app.use("/api/*", authMiddleware);
+app.use("/api/*", dashboardScope);
 
 // Mount endpoint routes
 app.route("/api/images", uploadRouter);
@@ -118,6 +121,7 @@ app.route("/api/whatsapp-widget", whatsappWidgetRoutes);
 app.route("/api/shipping-profiles", shippingProfilesRoutes);
 app.route("/api/driver-payments", driverPaymentsRoutes);
 app.route("/api/stores", storesRoutes);
+app.route("/api/merchant", merchantRoutes);
 app.route("/api/reviews", reviewsRoutes);
 app.route("/api/offers", offersRoutes);
 app.route("/api/stock", stockRouter);

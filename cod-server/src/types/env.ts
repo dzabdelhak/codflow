@@ -14,6 +14,8 @@ export interface Env {
    * API ignores `X-Channel-Host`. Server-to-server only, never in a browser.
    */
   STOREFRONT_SERVICE_KEY?: string;
+  /** Free subdomains are `<subdomain>.<STORE_BASE_DOMAIN>` (default "localhost"). */
+  STORE_BASE_DOMAIN?: string;
   /** R2 bucket for product images */
   IMAGES: R2Bucket;
   /**

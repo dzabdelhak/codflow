@@ -11,6 +11,18 @@ const storeIdColumn = () =>
 
 const authNow = sql`now()`;
 
+/**
+ * The merchant account (Aventy's account, later): owns its stores and its
+ * users. Platform data — outside Row-Level Security.
+ */
+export const merchants = pgTable("merchants", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  /** Most stores this merchant may have; null = no limit. The plan check reads it (see cod-server/src/platform/plan-policy.ts). */
+  storeLimit: integer("store_limit"),
+  createdAt: text("created_at").notNull(),
+});
+
 export const users = pgTable("users", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
@@ -28,7 +40,17 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at", { mode: "date", precision: 3 }).default(authNow).notNull(),
   /** UI language preference for emails: "ar" | "en" */
   language: text("language").notNull().default("en"),
-});
+  /**
+   * The merchant this user works for; they can open every store of it. Filled
+   * from the request's merchant like store_id. Last: mock-db fixtures are positional.
+   */
+  merchantId: text("merchant_id")
+    .notNull()
+    .default(sql`current_setting('app.merchant_id')`)
+    .references(() => merchants.id),
+}, (t) => ({
+  merchantIdx: index("users_merchant_idx").on(t.merchantId),
+}));
 
 export const userScopes = pgTable("user_scopes", {
   id: text("id").primaryKey(),
@@ -996,7 +1018,11 @@ export const stores = pgTable("stores", {
    * Last for the same positional reason as the columns above.
    */
   whatsappWidgetJson: text("whatsapp_widget_json"),
-});
+  /** The merchant that owns this store. Last for the same positional reason. */
+  merchantId: text("merchant_id").notNull().references(() => merchants.id),
+}, (t) => ({
+  merchantIdx: index("stores_merchant_idx").on(t.merchantId),
+}));
 
 /**
  * API keys issued to Astro storefronts.

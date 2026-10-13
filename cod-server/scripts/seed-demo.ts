@@ -1,13 +1,15 @@
 /**
- * Two demo channels for local development — shop1.localhost and
- * shop2.localhost — each with its own products and a delivery rule for
- * Algiers. Idempotent: a channel that already exists is left alone.
+ * A demo merchant owning two channels for local development —
+ * shop1.localhost and shop2.localhost — each with its own products and a
+ * delivery rule for Algiers. Idempotent: what already exists is left alone.
  *
  *   DATABASE_URL=postgres://… npx tsx scripts/seed-demo.ts
  */
 import { sql } from "drizzle-orm";
 import { createDatabase, withStore } from "../src/db/scope";
 import { products, productVariants, shippingProfiles, shippingRules } from "../src/db/schema";
+
+export const DEMO_MERCHANT_ID = "demo-merchant";
 
 const CHANNELS = [
   { id: "demo-shop1", name: "Shop 1", host: "shop1.localhost", items: ["Sac à main", "Montre"] },
@@ -21,6 +23,10 @@ async function main() {
   const now = new Date().toISOString();
 
   try {
+    await database.platform.query(
+      "insert into merchants (id, name, created_at) values ($1, 'Demo merchant', $2) on conflict (id) do nothing",
+      [DEMO_MERCHANT_ID, now],
+    );
     for (const channel of CHANNELS) {
       const { rowCount } = await database.platform.query("select 1 from stores where id = $1", [channel.id]);
       if (rowCount) {
@@ -28,8 +34,8 @@ async function main() {
         continue;
       }
       await database.platform.query(
-        "insert into stores (id, name, created_at, updated_at) values ($1, $2, $3, $3)",
-        [channel.id, channel.name, now],
+        "insert into stores (id, name, merchant_id, created_at, updated_at) values ($1, $2, $3, $4, $4)",
+        [channel.id, channel.name, DEMO_MERCHANT_ID, now],
       );
       await database.platform.query(
         "insert into store_domains (hostname, store_id, kind, created_at) values ($1, $2, 'subdomain', $3)",
