@@ -19,6 +19,7 @@ import { NotFoundError, ValidationError, BusinessLogicError } from "@/lib/errors
 import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
 import { first } from "../../../../cod-shared/db/client";
 import { allocateOrderNumber } from "../../../../cod-shared/queries/order-numbers";
+import { currentGridVersion } from "../../../../cod-shared/queries/shipping-resolution";
 import { lockStock } from "../../../../cod-shared/queries/catalog-snapshot";
 
 /**
@@ -102,6 +103,7 @@ export async function createOrder(c: Context<AppContext>) {
     // Dashboard orders (orderType="offline") may pass an explicit fee override.
     // Online orders always use the shipping profile to enforce coverage rules.
     let deliveryFee = validated.deliveryFee ?? 0;
+    let deliveryGridVersion: number | null = null;
     if (validated.wilayaId) {
       try {
         const productIds = validated.products.map((p) => p.productId);
@@ -115,6 +117,7 @@ export async function createOrder(c: Context<AppContext>) {
         // use the resolved fee unless admin explicitly passed a fee override.
         if (validated.orderType === "online" || validated.deliveryFee == null) {
           deliveryFee = resolved.deliveryFee;
+          deliveryGridVersion = await currentGridVersion(db);
         }
         // Apply free-shipping offer override
         const productQuantities = new Map(validated.products.map((p) => [p.productId, p.quantity]));
@@ -182,6 +185,7 @@ export async function createOrder(c: Context<AppContext>) {
       companyId: validated.companyId || null,
       deliveryType: validated.deliveryType,
       deliveryFee,
+      deliveryGridVersion,
       codAmount: validated.price + deliveryFee,  // driver collects price + delivery fee
       photos: null,
       createdAt: now,

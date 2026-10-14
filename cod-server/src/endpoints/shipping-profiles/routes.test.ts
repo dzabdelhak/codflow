@@ -11,6 +11,7 @@ import { ERROR_CODES, ERROR_CATEGORIES } from "../../../../cod-shared/errors/cod
 import { BusinessLogicError, ValidationError } from "@/lib/errors/classes";
 import shippingProfilesRouter from "./routes";
 import * as queries from "./queries";
+import { shippingProfileUsage } from "@/platform/catalogue";
 
 const mockDb = {
   select: vi.fn(),
@@ -20,6 +21,9 @@ vi.mock("@/db", () => ({
   getDb: vi.fn(() => mockDb),
 }));
 vi.mock("./queries");
+vi.mock("@/platform/catalogue", () => ({
+  shippingProfileUsage: vi.fn(async () => ({ products: 0, stores: 0 })),
+}));
 
 const mockUser = {
   id: "user_admin_001",
@@ -56,6 +60,7 @@ function ruleRow(overrides: Record<string, any> = {}) {
     homeEnabled: true,
     stopDeskEnabled: false,
     createdAt: NOW,
+    merchantId: "test-merchant",
     ...overrides,
   };
 }
@@ -66,7 +71,7 @@ describe("Shipping Profiles routes (OpenAPIHono)", () => {
   beforeEach(() => {
     app = new OpenAPIHono<AppContext>({ defaultHook: openApiValidationHook });
     app.use("*", async (c, next) => {
-      c.env = {} as never;
+      c.env = { DATABASE: { platform: {} } } as never;
       c.set("db", mockDb);
       c.set("user", mockUser as any);
       await next();
@@ -238,10 +243,9 @@ describe("Shipping Profiles routes (OpenAPIHono)", () => {
       expect(body).toEqual({ success: true });
     });
 
-    it("returns 422 PROFILE_IN_USE when profile is referenced by products", async () => {
-      vi.mocked(queries.getProfileById).mockResolvedValue(
-        profileWithRules({ productCount: 3 })
-      );
+    it("returns 422 PROFILE_IN_USE when products of any store use the profile", async () => {
+      vi.mocked(queries.getProfileById).mockResolvedValue(profileWithRules());
+      vi.mocked(shippingProfileUsage).mockResolvedValueOnce({ products: 3, stores: 0 });
 
       const res = await app.request("/api/shipping-profiles/profile_123", {
         method: "DELETE",

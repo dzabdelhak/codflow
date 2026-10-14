@@ -14,8 +14,8 @@
  */
 
 export interface ShippingRate {
-  home: number;
-  stopDesk: number;
+  home: number | null;
+  stopDesk: number | null;
 }
 
 export type ShippingRates = Record<string, ShippingRate>;
@@ -89,6 +89,31 @@ export function watchShippingRates(onRates: (rates: ShippingRates) => void): () 
     observer.disconnect();
     window.clearTimeout(timer);
   };
+}
+
+export function modesForWilaya(rates: ShippingRates, wilayaId: string): { home: boolean; stopDesk: boolean } {
+  const rate = wilayaId ? rates[wilayaId] : undefined;
+  if (!rate) return { home: true, stopDesk: true };
+  const home = typeof rate.home === "number";
+  const stopDesk = typeof rate.stopDesk === "number";
+  return home || stopDesk ? { home, stopDesk } : { home: true, stopDesk: true };
+}
+
+export function showWilayaModes(rates: ShippingRates, wilayaId: string): void {
+  const modes = modesForWilaya(rates, wilayaId);
+  const radios = [...document.querySelectorAll<HTMLInputElement>(".delivery-radio-input")];
+  for (const radio of radios) {
+    const allowed = radio.value === "stop_desk" ? modes.stopDesk : modes.home;
+    radio.disabled = !allowed;
+    const label = radio.closest<HTMLElement>("label");
+    if (label) label.style.display = allowed ? "" : "none";
+  }
+  const checked = radios.find((radio) => radio.checked);
+  const fallback = radios.find((radio) => !radio.disabled);
+  if (checked?.disabled && fallback) {
+    fallback.checked = true;
+    fallback.dispatchEvent(new Event("change", { bubbles: true }));
+  }
 }
 
 export function currentDeliveryType(): DeliveryType {

@@ -123,7 +123,7 @@ describe("the outbound queue", () => {
       sendId: entry?.id,
       reference: data.orderNumber,
       lines: [{ sku: "SHIRT", quantity: 2, unitPrice: 2500, catalogVersion: 1 }],
-      delivery: { type: "home", fee: 400, feeToConfirm: false, office: null, gridVersion: null },
+      delivery: { type: "home", fee: 400, feeToConfirm: false, office: null, gridVersion: expect.any(Number) },
       customer: { name: "Amina Test", phone: "0550123456", wilayaId: WILAYA, communeId: COMMUNE_ID, address: "Rue des tests" },
       journey: { kind: "cart", campaign: null },
       stockNotGuaranteed: false,

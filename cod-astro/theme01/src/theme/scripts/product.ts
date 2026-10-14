@@ -12,6 +12,7 @@ import {
   currentDeliveryType,
   toggleAddressFields,
   shippingText,
+  showWilayaModes,
 } from "./delivery-fields";
 // fbq only exists when the merchant configured a pixel — one shared guard.
 import { trackAt } from "./pixel";
@@ -36,7 +37,7 @@ export function initProductPage() {
   }> = JSON.parse(el.dataset.variants || "[]");
   
   /** @type {Record<string, Object>} Shipping rates per wilaya: { wilayaId: { home, stopDesk } } */
-  let rates: Record<string, { home: number; stopDesk: number }> = {};
+  let rates: Record<string, { home: number | null; stopDesk: number | null }> = {};
 
   // Localized strings and configuration
   const cur                = el.dataset.cur!;
@@ -442,6 +443,8 @@ export function initProductPage() {
    * Recalculates shipping cost based on selected wilaya and delivery type.
    */
   function refreshShipping() {
+    showWilayaModes(rates, selectedWilayaId());
+
     // 1. Check for free shipping offers
     const selOffer = allOffers.find(o => o.id === currentOfferId);
     if (selOffer?.discountType === "free_shipping") {

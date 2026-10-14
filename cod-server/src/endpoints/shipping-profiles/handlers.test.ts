@@ -11,9 +11,13 @@ import { errorHandler } from "@/middleware/error";
 import { ERROR_CODES, ERROR_CATEGORIES } from "../../../../cod-shared/errors/codes";
 import * as handlers from "./handlers";
 import * as queries from "./queries";
+import { shippingProfileUsage } from "@/platform/catalogue";
 
 // Mock the queries module
 vi.mock("./queries");
+vi.mock("@/platform/catalogue", () => ({
+  shippingProfileUsage: vi.fn(async () => ({ products: 0, stores: 0 })),
+}));
 
 // Mock the database
 const mockDb = {} as any;
@@ -29,7 +33,7 @@ describe("Shipping Profiles Endpoint - Error Scenarios", () => {
     
     // Add middleware to inject mock env and user
     app.use("*", async (c, next) => {
-      c.env = {} as never;
+      c.env = { DATABASE: { platform: {} } } as never;
       c.set("db", mockDb);
       c.set("user", {
         id: "user-123",
@@ -202,6 +206,7 @@ describe("Shipping Profiles Endpoint - Error Scenarios", () => {
         updatedAt: new Date("2024-01-01").toISOString(),
         rules: [],
       });
+      vi.mocked(shippingProfileUsage).mockResolvedValueOnce({ products: 3, stores: 0 });
 
       const res = await app.request("/shipping-profiles/profile_123", {
         method: "DELETE",
@@ -384,6 +389,7 @@ describe("Shipping Profiles Endpoint - Error Scenarios", () => {
         updatedAt: new Date("2024-01-01").toISOString(),
         rules: [],
       });
+      vi.mocked(shippingProfileUsage).mockResolvedValueOnce({ products: 5, stores: 0 });
 
       const res = await app.request("/shipping-profiles/profile_123", {
         method: "DELETE",

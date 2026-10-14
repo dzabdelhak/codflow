@@ -4,8 +4,8 @@
 
 **Blocked by:** 03
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Channel A offers home + stop-desk while channel B offers home only, from the same account grid
-- [ ] A customer never sees a mode the channel disabled
-- [ ] An order stores the fee shown and the grid version, or the "frais à confirmer" mark
+- [x] Channel A offers home + stop-desk while channel B offers home only, from the same account grid
+- [x] A customer never sees a mode the channel disabled
+- [x] An order stores the fee shown and the grid version, or the "frais à confirmer" mark

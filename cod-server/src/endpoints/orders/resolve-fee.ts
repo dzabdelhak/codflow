@@ -21,6 +21,7 @@ import {
 import { BusinessLogicError } from "@/lib/errors/classes";
 import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
 import { first } from "../../../../cod-shared/db/client";
+import { channelDefaultProfile } from "../../../../cod-shared/queries/shipping-resolution";
 
 type DB = AppDb;
 
@@ -83,11 +84,7 @@ export async function resolveDeliveryFee(
 
   // Step 2 — Fall back to store default profile.
   if (!profileId) {
-    const defaultProfile = await db
-      .select({ id: shippingProfiles.id })
-      .from(shippingProfiles)
-      .where(eq(shippingProfiles.isDefault, true))
-      .then(first);
+    const defaultProfile = await channelDefaultProfile(db).then(first);
     if (defaultProfile) {
       profileId = defaultProfile.id;
     }

@@ -40,7 +40,7 @@ export interface ProductContext {
   currentOfferId: string | null;
   currentVariantMax: number;
   hasStockCap: boolean;
-  rates: Record<string, { home: number; stopDesk: number }>;
+  rates: Record<string, { home: number | null; stopDesk: number | null }>;
 
   // -- DOM refs --
   tierLabels: NodeListOf<HTMLElement>;

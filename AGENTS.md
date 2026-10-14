@@ -155,6 +155,15 @@ other is how these drift.
   A product inserted while a store is set is added to that store by the
   `products_add_to_current_channel` trigger; catalogue rows carry a `version`
   raised by a trigger on every update — never set it by hand.
+- **The delivery grid belongs to the merchant too.** `shipping_profiles`,
+  `shipping_rules` and `shipping_rule_communes` are under merchant RLS; every
+  change raises `merchants.delivery_grid_version` (trigger), and an order
+  stores the version it was priced with (`orders.delivery_grid_version`,
+  null when the fee is to confirm). A store prices from
+  `stores.default_shipping_profile_id`, else the account's `is_default`
+  profile (`channelDefaultProfile`). The modes a store offers are its
+  checkout-form `deliveryOptions` intersected with what that profile
+  configures; the theme also hides a mode the chosen wilaya does not price.
 - Single-row reads end in `.then(first)` (row or undefined, D1's `.get()`);
   a write's `returning()` that must give a row ends in `.then(one)` (throws
   otherwise) — both from `cod-shared/db/client.ts`.

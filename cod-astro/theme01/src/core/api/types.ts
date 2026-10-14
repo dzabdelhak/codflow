@@ -159,7 +159,7 @@ export interface StorePagePublic {
 }
 
 export interface ShippingRates {
-  [wilayaId: string]: { home: number; stopDesk: number };
+  [wilayaId: string]: { home: number | null; stopDesk: number | null };
 }
 
 export interface Wilaya {

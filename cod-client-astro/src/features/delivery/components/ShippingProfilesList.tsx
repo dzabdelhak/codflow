@@ -27,6 +27,7 @@ import {
   ShippingProfileCardSkeleton,
 } from "@/features/delivery/components/ShippingProfileCard";
 import { notify } from "@/lib/notify";
+import { StoreDefaultProfileCard } from "@/features/delivery/components/StoreDefaultProfileCard";
 
 const PAGE_SIZE = 6;
 
@@ -140,6 +141,7 @@ export function ShippingProfilesList() {
           </button>
         </Alert>
       )}
+      <StoreDefaultProfileCard profiles={profiles} canManage={canManage} />
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <SearchInput
           value={query}

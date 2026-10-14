@@ -257,6 +257,7 @@ export function orderRow(overrides: Record<string, unknown> = {}): Record<string
     custom_fields_json: null,
     delivery_fee_to_confirm: false,
     stock_confirmed: true,
+    delivery_grid_version: null,
     ...overrides,
   };
 }

@@ -1,4 +1,5 @@
 import { Context } from "hono";
+import { assertStoreShippingProfile } from "@/lib/store-shipping-profile";
 import type { AppContext } from "@/types";
 import { getDb } from "@/db";
 import * as queries from "./queries";
@@ -37,6 +38,7 @@ export async function updateMyStore(c: Context<AppContext>) {
 
   const jsonBody: any = (c.req as any).valid?.("json");
   const validated = jsonBody ?? updateStoreSchema.parse(await c.req.json());
+  await assertStoreShippingProfile(db, validated.defaultShippingProfileId);
   const updated = await queries.updateStore(db, store.id, validated);
   if (!updated) {
     throw new SystemError("Failed to update store");

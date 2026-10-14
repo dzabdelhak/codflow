@@ -30,6 +30,7 @@ export interface StoreConfig {
   freeShippingThreshold: number | null;
   /** Which rate a basket spanning several shipping profiles pays. */
   cartShippingMode: "highest" | "default_profile";
+  defaultShippingProfileId?: string | null;
   status: StoreStatus;
   storeApiKey: string | null;
 }
@@ -56,6 +57,7 @@ export type UpdateStoreData = Partial<
     | "cartEnabled"
     | "freeShippingThreshold"
     | "cartShippingMode"
+    | "defaultShippingProfileId"
   >
 >;
 

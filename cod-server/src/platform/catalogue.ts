@@ -12,3 +12,15 @@ export async function productUsage(
   );
   return { hasOrders: rows[0].has_orders, otherStores: rows[0].other_stores };
 }
+
+export async function shippingProfileUsage(
+  platform: pg.Pool,
+  profileId: string,
+): Promise<{ products: number; stores: number }> {
+  const { rows } = await platform.query<{ products: number; stores: number }>(
+    `select (select count(*)::int from channel_products where shipping_profile_id = $1) as products,
+            (select count(*)::int from stores where default_shipping_profile_id = $1) as stores`,
+    [profileId],
+  );
+  return rows[0];
+}

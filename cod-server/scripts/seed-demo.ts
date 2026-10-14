@@ -9,7 +9,7 @@
 import { sql } from "drizzle-orm";
 import { createDatabase, withStore } from "../src/db/scope";
 import { orderPrefixFor } from "../../cod-shared/queries/order-numbers";
-import { channelProducts, products, productVariants, shippingProfiles, shippingRules } from "../src/db/schema";
+import { channelProducts, products, productVariants, shippingProfiles, shippingRules, stores } from "../src/db/schema";
 
 export const DEMO_MERCHANT_ID = "demo-merchant";
 
@@ -46,7 +46,11 @@ async function main() {
 
       await withStore(database.app, channel.id, async (db) => {
         const profileId = `${channel.id}-profile`;
-        await db.insert(shippingProfiles).values({ id: profileId, name: "Défaut", isDefault: true, createdAt: now, updatedAt: now });
+        const accountDefault = channel.id === CHANNELS[0].id;
+        await db.insert(shippingProfiles).values({ id: profileId, name: `Défaut ${channel.name}`, isDefault: accountDefault, createdAt: now, updatedAt: now });
+        if (!accountDefault) {
+          await db.update(stores).set({ defaultShippingProfileId: profileId }).where(sql`id = ${channel.id}`);
+        }
         await db.insert(shippingRules).values({
           id: `${channel.id}-rule-16`,
           profileId,

@@ -17,6 +17,8 @@ import {
   toggleAddressFields,
   bindDeliveryFields,
   watchShippingRates,
+  modesForWilaya,
+  showWilayaModes,
 } from "./delivery-fields";
 
 const COPY = {
@@ -438,5 +440,42 @@ describe("toggleAddressFields", () => {
       toggleAddressFields();
       expect(input.required).toBe(false);
     });
+  });
+});
+
+describe("delivery modes per wilaya", () => {
+  const rates = {
+    "16": { home: 400, stopDesk: 250 },
+    "1": { home: 900, stopDesk: null },
+    "2": { home: null, stopDesk: null },
+  };
+
+  it("offers only the modes the grid prices for the chosen wilaya", () => {
+    expect(modesForWilaya(rates, "16")).toEqual({ home: true, stopDesk: true });
+    expect(modesForWilaya(rates, "1")).toEqual({ home: true, stopDesk: false });
+  });
+
+  it("keeps every mode before a wilaya is chosen, for an unknown wilaya, or when none is priced", () => {
+    expect(modesForWilaya(rates, "")).toEqual({ home: true, stopDesk: true });
+    expect(modesForWilaya(rates, "40")).toEqual({ home: true, stopDesk: true });
+    expect(modesForWilaya(rates, "2")).toEqual({ home: true, stopDesk: true });
+  });
+
+  it("hides a mode the wilaya does not offer and moves the choice off it", () => {
+    buildFields();
+    pick("stop_desk");
+    const changed = vi.fn();
+    radio("home").addEventListener("change", changed);
+
+    showWilayaModes(rates, "1");
+
+    expect(radio("stop_desk").closest("label")!.style.display).toBe("none");
+    expect(radio("stop_desk").disabled).toBe(true);
+    expect(radio("home").checked).toBe(true);
+    expect(changed).toHaveBeenCalledOnce();
+
+    showWilayaModes(rates, "16");
+    expect(radio("stop_desk").closest("label")!.style.display).toBe("");
+    expect(radio("stop_desk").disabled).toBe(false);
   });
 });

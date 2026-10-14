@@ -42,6 +42,7 @@ import {
   selectedWilayaId,
   currentDeliveryType,
   shippingText,
+  showWilayaModes,
   type ShippingRates,
 } from "./delivery-fields";
 import { trackInitiateCheckout } from "./pixel";
@@ -147,6 +148,7 @@ export function initCheckout(): () => void {
     if (submitBtn) submitBtn.disabled = blocked;
 
     const subtotal = validated?.subtotal ?? cartSubtotal(lines);
+    showWilayaModes(rates, selectedWilayaId());
     const delivery = deliveryFee();
 
     if (subtotalEl) subtotalEl.textContent = money(subtotal);

@@ -20,12 +20,61 @@ import {
   products,
   channelProducts,
   stores,
+  merchants,
   shippingProfiles,
   shippingRules,
   shippingRuleCommunes,
 } from "../db/schema";
 import type { AppDb } from "../db/client";
+import { first } from "../db/client";
 import { chunkIds } from "./d1-limits";
+
+export interface DeliveryModes {
+  home: boolean;
+  stopDesk: boolean;
+}
+
+export interface GridModes extends DeliveryModes {
+  rules: number;
+}
+
+export function offeredDeliveryModes(enabled: DeliveryModes, grid: GridModes): DeliveryModes {
+  if (grid.rules === 0) return enabled;
+  const offered = { home: enabled.home && grid.home, stopDesk: enabled.stopDesk && grid.stopDesk };
+  return offered.home || offered.stopDesk ? offered : enabled;
+}
+
+export async function channelGridModes(db: AppDb, storeDefaultProfileId: string | null): Promise<GridModes> {
+  const row = await db
+    .select({
+      home: sql<boolean>`coalesce(bool_or(${shippingRules.homeEnabled}), false)`,
+      stopDesk: sql<boolean>`coalesce(bool_or(${shippingRules.stopDeskEnabled}), false)`,
+      rules: sql<number>`count(*)::int`,
+    })
+    .from(shippingRules)
+    .where(
+      eq(
+        shippingRules.profileId,
+        sql`coalesce(${storeDefaultProfileId}::text, (select p.id from shipping_profiles p where p.is_default order by p.created_at, p.id limit 1))`,
+      ),
+    )
+    .then(first);
+  return { home: !!row?.home, stopDesk: !!row?.stopDesk, rules: Number(row?.rules ?? 0) };
+}
+
+const DEFAULT_PROFILE_ID = sql<string | null>`coalesce(${stores.defaultShippingProfileId}, (select p.id from shipping_profiles p where p.is_default order by p.created_at, p.id limit 1))`;
+
+export function channelDefaultProfile(db: AppDb) {
+  return db
+    .select({ id: DEFAULT_PROFILE_ID })
+    .from(stores)
+    .where(eq(stores.id, sql`current_setting('app.store_id', true)`));
+}
+
+export async function currentGridVersion(db: AppDb): Promise<number | null> {
+  const row = await db.select({ version: merchants.deliveryGridVersion }).from(merchants).then(first);
+  return row?.version ?? null;
+}
 
 export interface DeliveryFeeParams {
   /**
@@ -99,13 +148,7 @@ export async function resolveDeliveryFee(
   //
   // Both are needed to pick the candidates and neither depends on the other,
   // so they go out together rather than in sequence.
-  type ProfileRow = { id: string };
   type ProductProfileRow = { productId: string; shippingProfileId: string | null };
-
-  const defaultProfileStatement = db
-    .select({ id: shippingProfiles.id })
-    .from(shippingProfiles)
-    .where(eq(shippingProfiles.isDefault, true));
 
   const productStatements = chunkIds(productIds).map((chunk) =>
     db
@@ -120,41 +163,37 @@ export async function resolveDeliveryFee(
   type SettingsRow = {
     freeShippingThreshold: number | null;
     cartShippingMode: "highest" | "default_profile";
+    defaultProfileId: string | null;
   };
-  const settingsStatement = storeId
-    ? db
-        .select({
-          freeShippingThreshold: stores.freeShippingThreshold,
-          cartShippingMode: stores.cartShippingMode,
-        })
-        .from(stores)
-        .where(eq(stores.id, storeId))
-    : null;
+  const settingsStatement = db
+    .select({
+      freeShippingThreshold: stores.freeShippingThreshold,
+      cartShippingMode: stores.cartShippingMode,
+      defaultProfileId: DEFAULT_PROFILE_ID,
+    })
+    .from(stores)
+    .where(eq(stores.id, storeId ?? sql`current_setting('app.store_id', true)`));
 
   type BatchStatement = Parameters<AppDb["batch"]>[0][number];
-  const statements = [
-    defaultProfileStatement,
-    ...productStatements,
-    ...(settingsStatement ? [settingsStatement] : []),
-  ] as unknown as [BatchStatement, ...BatchStatement[]];
+  const statements = [settingsStatement, ...productStatements] as unknown as [BatchStatement, ...BatchStatement[]];
 
-  const results = (await db.batch(statements)) as unknown as Array<
-    Array<ProfileRow | ProductProfileRow | SettingsRow>
-  >;
+  const results = (await db.batch(statements)) as unknown as Array<Array<ProductProfileRow | SettingsRow>>;
 
-  const defaultProfileId = (results[0] as ProfileRow[])[0]?.id ?? null;
-  const profileResultEnd = 1 + productStatements.length;
+  const settingsRow = (results[0] as SettingsRow[])[0];
+  const defaultProfileId = settingsRow?.defaultProfileId ?? null;
   const assigned = new Map(
-    (results.slice(1, profileResultEnd).flat() as ProductProfileRow[]).map((r) => [r.productId, r.shippingProfileId]),
+    (results.slice(1).flat() as ProductProfileRow[]).map((r) => [r.productId, r.shippingProfileId]),
   );
   const productProfileIds = productIds.map((id) => assigned.get(id) ?? null);
 
-  const settings: DeliveryPricingSettings = settingsStatement
-    ? {
-        ...PLATFORM_DEFAULTS,
-        ...((results[profileResultEnd] as SettingsRow[])?.[0] ?? {}),
-      }
-    : PLATFORM_DEFAULTS;
+  const settings: DeliveryPricingSettings =
+    storeId && settingsRow
+      ? {
+          ...PLATFORM_DEFAULTS,
+          freeShippingThreshold: settingsRow.freeShippingThreshold,
+          cartShippingMode: settingsRow.cartShippingMode,
+        }
+      : PLATFORM_DEFAULTS;
 
   // No existence check on a product's profile: channel_products.shipping_profile_id is
   // a foreign key with ON DELETE SET NULL, and D1 enforces it — a dangling

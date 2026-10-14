@@ -243,6 +243,12 @@
     "rate_cards": "grilles tarifaires",
     "toggle_on": "Activé",
     "toggle_off": "Désactivé",
-    "bulk_fill_success": "Tarifs appliqués à toutes les wilayas"
+    "bulk_fill_success": "Tarifs appliqués à toutes les wilayas",
+    "store_default_title": "Profil utilisé par cette boutique",
+    "store_default_hint": "Les profils de livraison et leurs tarifs appartiennent à votre compte et sont partagés par toutes vos boutiques. Choisissez celui que cette boutique utilise par défaut.",
+    "store_default_label": "Profil par défaut de cette boutique",
+    "store_default_account": "Profil par défaut du compte ({name})",
+    "store_default_saved": "Le profil par défaut de cette boutique a été enregistré",
+    "store_default_failed": "Le profil n’a pas pu être enregistré. Réessayez."
   }
 }

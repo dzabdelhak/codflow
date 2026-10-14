@@ -42,7 +42,15 @@ import {
 } from "../db/schema";
 import type { AppDb } from "../db/client";
 import { deriveDescriptionPlain } from "./products";
-import { resolveDeliveryFee } from "./shipping-resolution";
+import {
+  channelDefaultProfile,
+  channelGridModes,
+  currentGridVersion,
+  offeredDeliveryModes,
+  resolveDeliveryFee,
+  type DeliveryModes,
+  type GridModes,
+} from "./shipping-resolution";
 import { normalizeOrderLines } from "./cart";
 import { resolvePublicTracking } from "./tracking-config";
 import { chunkIds } from "./d1-limits";
@@ -116,10 +124,14 @@ export interface StoreOrderData {
   userAgent?: string;
 }
 
+function withOfferedModes<T extends { deliveryOptions: DeliveryModes }>(policy: T, grid: GridModes): T {
+  return { ...policy, deliveryOptions: offeredDeliveryModes(policy.deliveryOptions, grid) };
+}
+
 export async function getStoreConfig(db: AppDb, storeId: string) {
   const store = await db.select().from(stores).where(eq(stores.id, storeId)).then(first);
   if (!store) return null;
-  const [tracking, otpRow, turnstileRow, pages, legalContact] = await Promise.all([
+  const [tracking, otpRow, turnstileRow, pages, legalContact, gridModes] = await Promise.all([
     // Which pixel this storefront loads is resolved in one place for every
     // sender — see queries/tracking-config.ts. The public accessor cannot
     // return the Conversions API token, which is what keeps it out of the
@@ -141,6 +153,7 @@ export async function getStoreConfig(db: AppDb, storeId: string) {
     // rather than costing a second round trip per page view (plan D6/R7).
     getFooterPages(db, storeId, store.lang as PageLocale),
     getPublicLegalContact(db, storeId),
+    channelGridModes(db, store.defaultShippingProfileId),
   ]);
   // The raw policy column never leaves the server. This function spreads the
   // whole store row, so a column is public the moment it exists unless it is
@@ -150,7 +163,7 @@ export async function getStoreConfig(db: AppDb, storeId: string) {
 
   return {
     ...publicStore,
-    checkoutForm: parseCheckoutFormPolicy(checkoutFormJson),
+    checkoutForm: withOfferedModes(parseCheckoutFormPolicy(checkoutFormJson), gridModes),
     // Null whenever there is nothing to render — switched off, no number, or a
     // number that no longer normalises. The theme holds one rule about this
     // feature: render it, or don't. Costs no extra query: the column rides the
@@ -499,12 +512,8 @@ export async function getDeliveryFee(
 }
 
 export async function getShippingRates(db: AppDb) {
-  const profile = await db
-    .select()
-    .from(shippingProfiles)
-    .where(eq(shippingProfiles.isDefault, true))
-    .then(first);
-  if (!profile) return {};
+  const profile = await channelDefaultProfile(db).then(first);
+  if (!profile?.id) return {};
 
   const rules = await db
     .select()
@@ -512,7 +521,10 @@ export async function getShippingRates(db: AppDb) {
     .where(eq(shippingRules.profileId, profile.id));
 
   return Object.fromEntries(
-    rules.map((r) => [r.wilayaId, { home: r.homePrice, stopDesk: r.stopDeskPrice }]),
+    rules.map((r) => [
+      r.wilayaId,
+      { home: r.homeEnabled ? r.homePrice : null, stopDesk: r.stopDeskEnabled ? r.stopDeskPrice : null },
+    ]),
   );
 }
 
@@ -856,6 +868,7 @@ export async function createStoreOrder(
 
   // ── Commit phase (one atomic batch) ──────────────────────────────────────
 
+  const gridVersion = data.deliveryFee === null ? null : await currentGridVersion(db);
   const orderNumber = await allocateOrderNumber(db);
   const outbound = outboundOrderRow({
     orderId: id,
@@ -868,7 +881,7 @@ export async function createStoreOrder(
         (line.variantId ? snapshot.variants.get(line.variantId)?.version : snapshot.products.get(line.productId)?.version) ??
         null,
     })),
-    delivery: { type: data.deliveryType, office: null, fee: finalDeliveryFee },
+    delivery: { type: data.deliveryType, office: null, fee: finalDeliveryFee, gridVersion },
     customer: {
       name: data.customerName,
       phone: data.phone,
@@ -913,6 +926,7 @@ export async function createStoreOrder(
       customerEmail: data.customerEmail ?? null,
       customFieldsJson: serializeCustomFieldAnswers(data.customFieldAnswers ?? []),
       deliveryFeeToConfirm: feeToConfirm,
+      deliveryGridVersion: gridVersion,
       stockConfirmed,
     }),
     db.insert(outboundOrders).values(outbound),

@@ -243,6 +243,12 @@
     "rate_cards": "rate cards",
     "toggle_on": "ON",
     "toggle_off": "OFF",
-    "bulk_fill_success": "Rates applied to all wilayas"
+    "bulk_fill_success": "Rates applied to all wilayas",
+    "store_default_title": "Profile used by this store",
+    "store_default_hint": "Shipping profiles and their rates belong to your account and are shared by all your stores. Choose which one this store uses by default.",
+    "store_default_label": "Default profile for this store",
+    "store_default_account": "Account default ({name})",
+    "store_default_saved": "This store’s default profile was saved",
+    "store_default_failed": "The profile could not be saved. Try again."
   }
 }

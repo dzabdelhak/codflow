@@ -168,13 +168,13 @@ export async function fetchOrderTracking(
   }
 }
 
-export async function fetchShippingRates(): Promise<Record<string, { home: number; stopDesk: number }>> {
+export async function fetchShippingRates(): Promise<Record<string, { home: number | null; stopDesk: number | null }>> {
   try {
     const res = await fetch(`${COD_SERVER_URL}/store/shipping-rates`, {
       headers: storeHeaders(),
     });
     if (!res.ok) return {};
-    const json = (await res.json()) as { data: Record<string, { home: number; stopDesk: number }> };
+    const json = (await res.json()) as { data: Record<string, { home: number | null; stopDesk: number | null }> };
     return json.data ?? {};
   } catch {
     return {};

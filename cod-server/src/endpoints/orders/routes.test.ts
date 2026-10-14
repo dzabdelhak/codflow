@@ -15,6 +15,9 @@ import * as queries from "./queries";
 import * as resolveFee from "./resolve-fee";
 import { NotFoundError, BusinessLogicError } from "@/lib/errors/classes";
 
+vi.mock("../../../../cod-shared/queries/shipping-resolution", () => ({
+  currentGridVersion: vi.fn(async () => 1),
+}));
 vi.mock("../../../../cod-shared/queries/order-numbers", () => ({
   allocateOrderNumber: vi.fn(async () => "CMD-00001"),
 }));

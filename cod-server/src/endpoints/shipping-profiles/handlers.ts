@@ -3,6 +3,7 @@
  */
 
 import { Context } from "hono";
+import { shippingProfileUsage } from "@/platform/catalogue";
 import type { AppContext } from "@/types";
 import { getDb } from "@/db";
 import * as queries from "./queries";
@@ -85,15 +86,16 @@ export async function deleteProfile(c: Context<AppContext>) {
     throw new NotFoundError("shipping_profile", id);
   }
   
-  // Check if profile is in use by products
-  if (profile.productCount > 0) {
+  const usage = await shippingProfileUsage(c.env.DATABASE.platform, id);
+  if (usage.products > 0 || usage.stores > 0) {
     throw new BusinessLogicError(
       "Cannot delete shipping profile that is in use",
       ERROR_CODES.PROFILE_IN_USE,
       {
         profileId: id,
         profileName: profile.name,
-        productCount: profile.productCount,
+        productCount: usage.products,
+        storeCount: usage.stores,
       }
     );
   }

@@ -52,6 +52,10 @@ export const StoreSchema = z
       description: "Order subtotal (DZD) at or above which delivery is free. null = off",
       example: null,
     }),
+    defaultShippingProfileId: z.string().nullable().openapi({
+      description: "This store's default shipping profile; null = the account's default profile",
+      example: null,
+    }),
     cartShippingMode: z.enum(["highest", "default_profile"]).openapi({
       description: "Which rate a basket spanning several shipping profiles pays",
       example: "highest",

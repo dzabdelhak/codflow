@@ -43,6 +43,13 @@
       "when": 1791965226531,
       "tag": "0005_account_catalogue",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791968437683,
+      "tag": "0006_account_delivery_grid",
+      "breakpoints": true
     }
   ]
 }

@@ -27,6 +27,7 @@ export const merchants = pgTable("merchants", {
   /** Most stores this merchant may have; null = no limit. The plan check reads it (see cod-server/src/platform/plan-policy.ts). */
   storeLimit: integer("store_limit"),
   createdAt: text("created_at").notNull(),
+  deliveryGridVersion: integer("delivery_grid_version").notNull().default(1),
 });
 
 export const users = pgTable("users", {
@@ -228,7 +229,7 @@ export const carrierCommunes = pgTable("carrier_communes", {
  * reference these profiles — driver pay lives in driver_compensations.
  */
 export const shippingProfiles = pgTable("shipping_profiles", {
-  storeId: storeIdColumn(),
+  merchantId: merchantIdColumn(),
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   /** When true, rates from this profile are auto-applied on order creation. */
@@ -252,7 +253,7 @@ export const shippingProfiles = pgTable("shipping_profiles", {
  * Driver payroll is NOT stored here — see driver_compensations.
  */
 export const shippingRules = pgTable("shipping_rules", {
-  storeId: storeIdColumn(),
+  merchantId: merchantIdColumn(),
   id: text("id").primaryKey(),
   profileId: text("profile_id")
     .notNull()
@@ -282,7 +283,7 @@ export const shippingRules = pgTable("shipping_rules", {
  *   effective.stopDeskPrice   = commune.stopDeskPrice   ?? wilayaRule.stopDeskPrice
  */
 export const shippingRuleCommunes = pgTable("shipping_rule_communes", {
-  storeId: storeIdColumn(),
+  merchantId: merchantIdColumn(),
   id: text("id").primaryKey(),
   ruleId: text("rule_id")
     .notNull()
@@ -608,6 +609,7 @@ export const orders = pgTable("orders", {
   customFieldsJson: text("custom_fields_json"),
   deliveryFeeToConfirm: boolean("delivery_fee_to_confirm").notNull().default(false),
   stockConfirmed: boolean("stock_confirmed").notNull().default(true),
+  deliveryGridVersion: integer("delivery_grid_version"),
 }, (t) => ({
   orderNumberPerStore: uniqueIndex("orders_store_order_number_unique").on(t.storeId, t.orderNumber),
 }));
@@ -1054,6 +1056,7 @@ export const stores = pgTable("stores", {
   orderSeq: integer("order_seq").notNull().default(0),
   /** The merchant that owns this store. Last for the same positional reason. */
   merchantId: text("merchant_id").notNull().references(() => merchants.id),
+  defaultShippingProfileId: text("default_shipping_profile_id").references(() => shippingProfiles.id, { onDelete: "set null" }),
 }, (t) => ({
   merchantIdx: index("stores_merchant_idx").on(t.merchantId),
 }));
