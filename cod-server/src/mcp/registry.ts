@@ -65,8 +65,8 @@ export interface ToolRegistryEntry {
   requires: string[];
   /**
    * Factory that returns one or more tool definitions. Called only when
-   * scopes pass. Receives the Worker env so tool domains can reach bindings
-   * (R2) and deployment vars (STOREFRONT_URL) without
+   * scopes pass. Receives the server env so tool domains can reach the image
+   * store (IMAGE_STORE) and deployment vars (STOREFRONT_URL) without
    * restructuring.
    */
   build: ToolFactory;
@@ -406,7 +406,7 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
 /**
  * Compose the tool map Claude / any MCP client will see for this session.
  * Pure function over `TOOL_REGISTRY` + caller's scopes — safe to call
- * many times; `getDb` returns the same Drizzle wrapper for a given env.
+ * many times.
  */
 export function buildToolsForUser(env: Env, props: McpProps, db: AppDb): Record<string, Tool> {
   const out: Record<string, Tool> = {};

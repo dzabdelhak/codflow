@@ -22,7 +22,7 @@ body:
       label: Area
       description: Which part of the project is affected?
       options:
-        - cod-server (API / Workers)
+        - cod-server (API)
         - cod-client-astro (dashboard)
         - cod-astro/theme01 (storefront)
         - cod-shared (schema / queries)
@@ -59,6 +59,6 @@ body:
     id: environment
     attributes:
       label: Environment
-      description: Node version, browser, OS, wrangler/Next versions, etc.
+      description: Node and npm versions, Docker version, browser, OS, local stack or production install, etc.
     validations:
       required: false

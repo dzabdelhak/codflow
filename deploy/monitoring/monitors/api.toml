@@ -1,0 +1,10 @@
+type = "json-query"
+name = "API (https://api)"
+url = "https://api.{{ get_env(name='AUTOKUMA__ENV__BASE_DOMAIN') }}/health"
+json_path = "$.status"
+json_path_operator = "=="
+expected_value = "ok"
+expiry_notification = true
+interval = 60
+max_retries = 2
+notification_name_list = ["email"]

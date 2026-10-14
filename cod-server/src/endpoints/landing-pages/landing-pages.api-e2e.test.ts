@@ -462,7 +462,7 @@ describe("duplicate + shared R2-object guard", () => {
     expect(dup.data.stats).toMatchObject({ views: 0, orders: 0, revenue: 0 });
     expect(dup.data.images).toHaveLength(2);
 
-    // Images reference the SAME R2 keys (immutable objects shared)
+    // Images reference the SAME storage keys (immutable objects shared)
     const sourceImages = await db.select().from(schema.landingPageImages)
       .where(eq(schema.landingPageImages.landingPageId, sourceId));
     const dupImages = dup.data.images as Array<{ r2Key: string }>;
@@ -494,13 +494,13 @@ describe("duplicate + shared R2-object guard", () => {
     const del = await app.request(`/api/landing-pages/${sourceId}/images/${sourceImages[0].id}`, { method: "DELETE" });
     expect(del.status).toBe(200);
 
-    // R2 object NOT removed (the duplicate's row still references it)
+    // Storage object NOT removed (the duplicate's row still references it)
     expect(deletedKeys.length).toBe(deletedBefore);
     const dupImages = await db.select().from(schema.landingPageImages)
       .where(eq(schema.landingPageImages.landingPageId, dup.data.id));
     expect(dupImages.map((i) => i.r2Key)).toEqual([sharedKey]);
 
-    // Now delete the duplicate's image too — the last reference goes, R2 removed
+    // Now delete the duplicate's image too — the last reference goes, storage object removed
     const del2 = await app.request(`/api/landing-pages/${dup.data.id}/images/${dupImages[0].id}`, { method: "DELETE" });
     expect(del2.status).toBe(200);
     expect(deletedKeys).toContain(sharedKey);

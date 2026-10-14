@@ -46,7 +46,7 @@ import { channelDefaultProfile, lockDeliveryGrid, resolveDeliveryFee } from "./s
 import { normalizeOrderLines } from "./cart";
 import { publicTrackersFrom, resolvePublicTracking } from "./tracking-config";
 import { attributionColumns, campaignOf, type OrderAttribution } from "../tracking/attribution";
-import { chunkIds } from "./d1-limits";
+import { chunkIds } from "./id-chunks";
 import { getFooterPages, getPublicLegalContact } from "./store-pages";
 import { storefrontDesignSource } from "./channel-design";
 import { manifestFor } from "../channels/manifests";
@@ -649,7 +649,7 @@ type BatchStatement = Parameters<AppDb["batch"]>[0][number];
  * qtyAfter are subselects with the availability predicate
  * `inventory >= quantity` baked in. When stock cannot cover the deduction,
  * the subselects return NULL, the NOT NULL constraint on stock_movements
- * fails, and D1 rolls back the ENTIRE batch — order, lines, stats, and all.
+ * fails, and the batch rolls back ENTIRELY — order, lines, stats, and all.
  * One round trip, race-free, and the movement log values come from the
  * database itself rather than a racy pre-read.
  */
@@ -951,7 +951,7 @@ export async function createStoreOrder(
       createdAt: now,
       updatedAt: now,
       // Ride the existing insert rather than adding statements: the commit is
-      // one atomic batch and D1 caps how many statements it may carry.
+      // one atomic batch.
       customerEmail: data.customerEmail ?? null,
       customFieldsJson: serializeCustomFieldAnswers(data.customFieldAnswers ?? []),
       deliveryFeeToConfirm: feeToConfirm,
@@ -1037,11 +1037,10 @@ export async function getApprovedProductReviews(
  * Matches by the customer-facing order number (not the internal UUID)
  * because the storefront only ever exposes the number to the buyer.
  *
- * Tenancy note: `storeId` is accepted but not applied in the WHERE —
- * orders are isolated by database (one D1 per merchant), so filtering
+ * Tenancy note: `storeId` is accepted but not applied in the WHERE — the
+ * request runs pinned to its store under Row-Level Security, so filtering
  * again would be a no-op. The param is kept in the signature so the
- * handler contract stays honest about what scope it expects, and so
- * future multi-store-per-DB work has a single place to wire it up.
+ * handler contract stays honest about what scope it expects.
  *
  * Returns the internal `id` along with the number so the caller can
  * store the UUID on the review row as the stable FK.

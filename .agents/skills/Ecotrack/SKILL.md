@@ -73,7 +73,7 @@ POST /api/v1/create/order   (query params, Bearer auth)
    `adapter.test.ts`); when you touch the adapter, add/extend one using the same
    fetch-mock pattern.
 6. Live API verification only when the user explicitly provides a sandbox tenant
-   and token. Never commit credentials. `.dev.vars` only.
+   and token. Never commit credentials; keep them in your local environment.
 
 ## Workflow C — Extend the adapter
 
@@ -157,5 +157,5 @@ POST /api/v1/create/order   (query params, Bearer auth)
 - 429 and `success:false` + error-code responses are surfaced with their codes.
 - `npm run typecheck` and `npm test` pass in cod-server.
 - The adapter test file covers create/validate/update/delete/remarks/tracking.
-- No credentials, tokens, or tenant URLs in code or tests — only in
-  `wrangler secrets` / `.dev.vars`.
+- No credentials, tokens, or tenant URLs in code or tests — a merchant's token
+  lives on its delivery company record, entered through the API.

@@ -10,6 +10,7 @@ import {
 import { getDb } from "@/db";
 import { toolOutput, timestampSchema } from "@/lib/tool-output-schema";
 import { first } from "../../../../cod-shared/db/client";
+import { violatesUnique } from "../../../../cod-shared/db/errors";
 
 /**
  * Layer-2 validation schemas, hoisted to module level and exported so the MCP
@@ -275,14 +276,13 @@ export const getProductTools = (db: ReturnType<typeof getDb>) => ({
           message: `Product "${parsed.data.name}" created successfully`,
         };
       } catch (error: any) {
-        const msg = String(error?.message ?? error);
-        if (/UNIQUE constraint failed: products\.handle/i.test(msg)) {
+        if (violatesUnique(error, "products_merchant_handle_unique")) {
           return {
             success: false,
             error: `A product with handle "${parsed.data.handle}" already exists. Use a different handle, or omit it to auto-generate one.`,
           };
         }
-        if (/UNIQUE constraint failed: products\.sku/i.test(msg)) {
+        if (violatesUnique(error, "products_merchant_sku_unique")) {
           return {
             success: false,
             error: `A product with SKU "${parsed.data.sku}" already exists. Use a different SKU.`,
@@ -290,7 +290,7 @@ export const getProductTools = (db: ReturnType<typeof getDb>) => ({
         }
         return {
           success: false,
-          error: `Failed to create product: ${msg}`,
+          error: `Failed to create product: ${String(error?.message ?? error)}`,
         };
       }
     },

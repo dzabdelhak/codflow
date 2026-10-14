@@ -2,8 +2,8 @@
  * Stores (Management) Routes
  *
  * Dashboard endpoints for reading and updating the store configuration and
- * Meta pixel tracking config. Single-tenant: the store is resolved from the
- * D1 database, not from the path. All routes are admin-only.
+ * Meta pixel tracking config. The store is the request's active store
+ * (X-Store-Id), not taken from the path. All routes are admin-only.
  *
  * Not to be confused with /api/store/* — the public storefront API.
  * Built with defineRoute() — the standard route-builder pattern.

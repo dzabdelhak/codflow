@@ -105,7 +105,7 @@ Generate a new secure API key for the user, invalidating the old one. The new ra
 
 ## Implementation Details
 
-- **User Creation:** Creation involves generating a secure temporary password, hashing it with scrypt, creating the user record in D1, and inserting a credential account entry for Better Auth
+- **User Creation:** Creation involves generating a secure temporary password, hashing it with scrypt, creating the user record, and inserting a credential account entry for Better Auth
 - **Scope Caching:** Permissions are cached to ensure low-latency authorization. Modifying a user's role or scopes automatically clears their cache entry
 - **Audit Logging:** Every management action (creation, role change, scope grant/revoke, key rotation) is logged in the activity logs with the actor's details
 - **Security:** 

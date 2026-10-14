@@ -5,7 +5,7 @@ import * as schema from "./schema";
 
 type BatchItem = PromiseLike<unknown>;
 
-/** The first row, or undefined — D1's `.get()`: `await query.then(first)`. */
+/** The first row, or undefined: `await query.then(first)`. */
 export function first<T>(rows: T[]): T | undefined {
   return rows[0];
 }
@@ -26,9 +26,9 @@ let savepoints = 0;
  * the current store on it); `batch` then nests with a savepoint. Otherwise
  * (tests, scripts) `batch` opens its own transaction.
  *
- * `batch`, `all` and `get` keep the D1 call shapes the queries were written
- * against: `batch` is all-or-nothing, `all`/`get`/`run` run raw SQL (`run`
- * reports `meta.changes` like D1).
+ * `batch`, `all` and `get` keep the call shapes the queries were written
+ * against before PostgreSQL: `batch` runs its statements in order, all-or-nothing;
+ * `all`/`get`/`run` run raw SQL (`run` reports `meta.changes`).
  *
  * Platform code may pass a Pool for cross-store reads; `batch` then refuses,
  * because a pool cannot keep the statements on one connection.

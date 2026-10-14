@@ -4,9 +4,9 @@
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] A fresh server reaches a working platform from the repo and a secrets file alone
-- [ ] Stopping one app server does not interrupt the storefront or order transmission
-- [ ] A scheduled restore of last night's backup succeeds and is reported
-- [ ] No Cloudflare configuration remains in the repo
+- [x] A fresh server reaches a working platform from the repo and a secrets file alone
+- [x] Stopping one app server does not interrupt the storefront or order transmission
+- [x] A scheduled restore of last night's backup succeeds and is reported
+- [x] No Cloudflare configuration remains in the repo

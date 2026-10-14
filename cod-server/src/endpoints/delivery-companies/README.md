@@ -49,9 +49,9 @@ The system uses an **Adapter Pattern** to normalize diverse Algerian courier API
 * For EcoTrack carriers (e.g. Packers), `autoValidate` defaults to `false` so merchant teams can edit parcel contents post-dispatch before explicitly validating.
 
 ### 3. Stop-Desk (Pickup Point) Cache & Admin Controls
-* `POST /api/delivery-companies/:id/sync-stop-desks`: Fetches all carrier pickup points, resolves wilaya IDs against the wilayas table (unknown/out-of-range IDs are stored as null), and upserts them into `company_stop_desks` via D1 `batch()` chunks.
+* `POST /api/delivery-companies/:id/sync-stop-desks`: Fetches all carrier pickup points, resolves wilaya IDs against the wilayas table (unknown/out-of-range IDs are stored as null), and upserts them into `company_stop_desks` in `db.batch()` chunks inside the request's transaction.
 * **Admin Active Toggle**: Merchants can disable individual pickup points that cannot be serviced (`PATCH /:id/stop-desks/:code/toggle`). The `active` status survives re-syncs — but a desk deleted by the carrier is removed on the next sync, and if it reappears it comes back active.
-* `GET /api/delivery-companies/:id/stop-desks`: Reads fast from the local D1 cache without making outbound API requests.
+* `GET /api/delivery-companies/:id/stop-desks`: Reads fast from the local database cache without making outbound API requests.
 
 ### 4. Webhooks vs. Tracking Pull
 * **Inbound Webhook Receivers** exist exclusively for **Yalidine** (`/webhooks/yalidine`) and **ZR Express** (`/webhooks/zr_express`).
@@ -183,7 +183,7 @@ Delete a carrier integration.
 ---
 
 ### 6. Read Cached Stop-Desks
-Retrieve pickup points from local D1 storage.
+Retrieve pickup points from the local database.
 
 * **Route:** `GET /api/delivery-companies/:id/stop-desks`
 * **Authorization:** Requires `delivery:read` scope
@@ -225,7 +225,7 @@ Retrieve pickup points from local D1 storage.
 ---
 
 ### 7. Sync Stop-Desks from Carrier
-Pull all active pickup points from the carrier's live API and upsert into D1.
+Pull all active pickup points from the carrier's live API and upsert them into the database.
 
 * **Route:** `POST /api/delivery-companies/:id/sync-stop-desks`
 * **Authorization:** Requires `delivery:manage` scope

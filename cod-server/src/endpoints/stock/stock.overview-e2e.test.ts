@@ -1,7 +1,7 @@
 /**
- * getStockOverview + getStockAlerts — Slice 6 real-D1 E2E.
+ * getStockOverview + getStockAlerts — Slice 6 PostgreSQL E2E.
  *
- * Runs the real migrations on an in-memory miniflare D1 and verifies the
+ * Runs the real migrations on PostgreSQL and verifies the
  * SQL UNION replicates the original JS semantics EXACTLY, including the
  * edge cases:
  *   • negative inventory → out-of-stock bucket
@@ -89,7 +89,7 @@ afterAll(async () => {
   for (const mf of registry) await mf.dispose();
 });
 
-describe("getStockOverview — real D1", () => {
+describe("getStockOverview — real PostgreSQL", () => {
   it("replicates the original bucketing and totals exactly", async () => {
     const overview = await getStockOverview(db);
 
@@ -181,7 +181,7 @@ describe("getStockOverview — real D1", () => {
   }, 120_000);
 });
 
-describe("getStockAlerts — real D1", () => {
+describe("getStockAlerts — real PostgreSQL", () => {
   it("returns only alert SKUs, ordered, with the exact total", async () => {
     const result = await getStockAlerts(db, { limit: 100, offset: 0 });
 

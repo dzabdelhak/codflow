@@ -27,10 +27,10 @@ export interface InviteEmailInput {
 }
 
 /**
- * Derive the dashboard sign-in URL from BETTER_AUTH_URL. Its documented
- * shape is "<dashboard origin>/api/auth" (wrangler.toml.example) — strip the
- * suffix and point at the sign-in page. A value without the suffix is used
- * as the origin directly.
+ * Derive the dashboard sign-in URL from BETTER_AUTH_URL, which is either
+ * "<dashboard origin>/api/auth" or the bare origin (docker-compose.yml) —
+ * strip the suffix and point at the sign-in page. A value without the suffix
+ * is used as the origin directly.
  */
 export function dashboardSignInUrl(betterAuthUrl: string): string {
   const base = betterAuthUrl.replace(/\/api\/auth\/?$/, "").replace(/\/+$/, "");

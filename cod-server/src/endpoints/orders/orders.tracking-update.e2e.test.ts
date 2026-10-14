@@ -1,9 +1,9 @@
 /**
- * updateOrderTracking — deliveryType persistence (real D1, E2E).
+ * updateOrderTracking — deliveryType persistence (PostgreSQL, E2E).
  *
  * Slice Y2.1: the dispatch delivery-type override persists through
  * updateOrderTracking's optional 5th argument. Mock-based handler tests
- * prove the wiring; this proves the actual D1 write — the shared query is
+ * prove the wiring; this proves the actual database write — the shared query is
  * on every dispatch's hot path and a broken UPDATE (wrong column, bad
  * spread, silent no-op) would only surface on the real stack.
  */
@@ -52,7 +52,7 @@ async function getOrder(id: string) {
   return (await db.select().from(schema.orders).where(eq(schema.orders.id, id)).then(first))!;
 }
 
-describe("updateOrderTracking — deliveryType persistence (real D1)", () => {
+describe("updateOrderTracking — deliveryType persistence (real PostgreSQL)", () => {
   it("persists an override (stop_desk → home) together with the tracking number", async () => {
     await updateOrderTracking(db, "ord-tu-1", "yal-TU001", undefined, "home");
     const order = await getOrder("ord-tu-1");

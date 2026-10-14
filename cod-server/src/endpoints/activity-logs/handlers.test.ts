@@ -25,7 +25,7 @@ function makeMockD1(rows: unknown[] = []) {
     }),
     exec: () => Promise.resolve({ results: [] }),
     batch: () => Promise.resolve([]),
-  } as unknown as D1Database;
+  } as unknown as Parameters<typeof drizzle>[0];
 }
 
 // Create properly typed database mock

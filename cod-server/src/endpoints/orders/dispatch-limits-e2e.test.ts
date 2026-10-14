@@ -1,5 +1,5 @@
 /**
- * Carrier value ceiling at dispatch — real-D1 E2E.
+ * Carrier value ceiling at dispatch — PostgreSQL E2E.
  *
  * The rules themselves are unit-tested in carrier-limits.test.ts. What this
  * file proves is the WIRING, which is the part that actually protects a
@@ -185,7 +185,7 @@ function makeContext(orderId: string, body: Record<string, unknown> = {}) {
 }
 
 // The handler resolves its db through c.get("db"); point that at the real
-// Miniflare database so everything below the carrier is genuinely exercised.
+// PostgreSQL database so everything below the carrier is genuinely exercised.
 vi.mock("@/db", () => ({ getDb: () => db }));
 
 async function dispatch(orderId: string, body: Record<string, unknown> = {}) {

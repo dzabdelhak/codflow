@@ -4,7 +4,7 @@
  * Design: after a customer verifies their WhatsApp code, the server mints a
  * compact HMAC-SHA256 token binding the normalized E.164 phone to an expiry.
  * `POST /store/orders` verifies it without any server-side session state —
- * D1 stays untouched by the OTP flow.
+ * The database stays untouched by the OTP flow.
  *
  * Token shape (b64url): `{v,p,e,t}.{sig}`
  *   v = payload version ("1" — future format changes bump this and old

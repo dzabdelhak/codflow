@@ -1,5 +1,4 @@
 /**
- * Re-exported from cod-shared/queries/wilayas so the dashboard can consume
- * the same read functions directly from D1.
+ * Re-exported from cod-shared/queries/wilayas.
  */
 export * from "../../../../cod-shared/queries/wilayas";

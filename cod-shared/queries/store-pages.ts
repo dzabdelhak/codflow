@@ -3,7 +3,7 @@
  *
  * The single write chokepoint for `store_pages` / `store_page_translations` /
  * `store_legal_profile` (report-md/LEGAL_PAGES_PLAN.md). Every body that
- * reaches D1 — merchant-edited or template-seeded — passes through
+ * reaches the database — merchant-edited or template-seeded — passes through
  * `writeTranslation`: sanitised via `sanitizeRichText`, plain-text derived via
  * `toPlainText`. There is no second path to `body_html`.
  *

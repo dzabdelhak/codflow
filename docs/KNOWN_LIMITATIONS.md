@@ -4,16 +4,6 @@ Honest list of what needs more testing or improvement.
 
 ---
 
-## Platform Constraints
-
-### Cloudflare Workers
-
-- **Worker↔Worker on workers.dev blocked** — Both storefront and backend cannot be on `*.workers.dev`. Deploy at least one to a custom domain.
-- **D1 single-region** — Database is in one region, not globally distributed.
-- **D1 is beta** — No full-text search, limited storage (2GB free / 10GB paid).
-
----
-
 ## Not Fully Tested
 
 ### Server-side conversions

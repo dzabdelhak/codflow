@@ -24,7 +24,7 @@ export const LandingPageImageSchema = z
     id: z.string().openapi({ example: "lpimg_abc123" }),
     landingPageId: z.string().openapi({ example: "lp_abc123" }),
     r2Key: z.string().openapi({
-      description: "R2 object key under the landing/ namespace",
+      description: "Storage key under the landing/ namespace",
       example: "landing/abc123def456.jpg",
     }),
     src: z.string().openapi({

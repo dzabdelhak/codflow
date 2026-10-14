@@ -1,10 +1,10 @@
 # CodFlow — repository instructions for coding agents
 
 CodFlow is a cash-on-delivery (COD) e-commerce platform for Algeria. Monorepo,
-TypeScript. It is moving from Cloudflare to self-hosted Node.js + PostgreSQL
-(ADR-0003): the API, the storefront and the dashboard run on Node +
-PostgreSQL, images on S3-compatible storage, background jobs on a PostgreSQL
-job queue, the MCP server's OAuth on the dashboard's better-auth.
+TypeScript. It runs self-hosted (ADR-0003): Node.js apps on PostgreSQL, Redis,
+S3-compatible image storage (SeaweedFS) and Caddy, installed on our servers in
+Algeria with Docker Compose from `deploy/` (docs/DEPLOYMENT.md). No Cloudflare
+service is used except Turnstile.
 
 ## Layout
 
@@ -57,25 +57,22 @@ admin@example.com for the demo merchant).
 `cod-astro/theme01` has extra validators — see
 `cod-astro/theme01/AGENTS.md` for its commands.
 
-## Cloud resource configuration
+## Production
 
-The PostgreSQL scripts (`db:migrate`, `db:seed:*`) read `DATABASE_URL` from
-the environment. The remaining Cloudflare scripts (dashboard admin seed and
-deploy, carrier seeders) still read `<repo-root>/.env` through
-`cod-server/scripts/cloud-env.mjs`. Precedence is
-**`process.env` > `.env` > built-in default**; the committed template is
-`<repo-root>/.env.example`.
-
-Keys: `COD_ACCOUNT_ID`, `COD_DB_NAME`, `COD_SERVER_URL`. Add a key to `DEFAULTS` in
-`cloud-env.mjs` and to `.env.example` together — a key in one and not the
-other is how these drift.
+`deploy/install.sh` installs or upgrades a server from the checkout and
+`/etc/codflow/secrets.env` (template `deploy/secrets.env.example`); the stack
+is `deploy/compose.yml`, the proxy `deploy/caddy/Caddyfile`. Every setting is an
+environment variable listed in `docs/CONFIGURATION.md` — add a new one there,
+to `src/types/env.ts` (cod-server) and, when production needs it, to
+`deploy/compose.yml` and the secrets template together.
 
 ## Verification
 
 - After changing TypeScript: run `npm run typecheck` in the affected package.
 - After changing behavior: run `npm test` in the affected package.
 - Full CI runs typecheck + tests for cod-server and cod-client-astro, plus
-  `astro check` + tests for theme01 (`.github/workflows/ci.yml`).
+  `astro check` + tests for theme01, and checks `deploy/` (compose config,
+  Caddyfile, shellcheck) (`.github/workflows/ci.yml`).
 
 ## Conventions
 
@@ -149,6 +146,18 @@ other is how these drift.
   refusals). Handlers run on the platform pool and must filter by the job's
   `storeId`. Server-side conversions are the first kind
   (`cod-server/src/tracking/`); see `docs/TRACKING.md`.
+- **Nothing lives on one machine** (Aventy guide §8): every app runs as
+  several replicas behind Caddy. A periodic task is a `ScheduledTask`
+  (`cod-server/src/platform/schedule.ts`): every replica enqueues it into
+  `jobs` with a per-period dedup key and one job worker runs it — never put
+  periodic work in a bare `setInterval`. In-process caches must be purgeable
+  on every replica (`STOREFRONT_INTERNAL_URL` is expanded to every address
+  its name resolves to). `GET /platform/status` (private) is what monitoring
+  polls: database, orders waiting > 24 h, late jobs, and channel certificates
+  (`store_domains.certificate_*`, checked hourly through Caddy).
+- **A duplicate is PostgreSQL error 23505**, often wrapped by Drizzle: test
+  it with `violatesUnique(err, "<constraint>")` (`cod-shared/db/errors.ts`),
+  never by matching SQLite's "UNIQUE constraint failed".
 - **Tracking is per channel and resolved server-side.** `store_pixel_config`
   holds every platform's ids and secrets; `/store/config` exposes only
   `trackers` (public ids). The theme fires through
@@ -246,7 +255,9 @@ other is how these drift.
   installs parsers that turn them back into numbers. Several queries in one
   `Promise.all` share the request's single connection; pg queues them (it
   warns that pg 9 will not).
-- `PUBLIC_API_URL` is a **build-time** client value: `astro:env/client` inlines
+- `PUBLIC_API_URL` is the API's public origin on both sides: cod-server
+  reads it at run time (OpenAPI server, webhook and image URLs, MCP token
+  audience), while for the dashboard it is a **build-time** client value: `astro:env/client` inlines
   it into the browser bundle, so changing it requires a rebuild (the dashboard
   Docker image takes it as a build arg). At run time the dashboard reads its
   server settings from the environment (`cod-client-astro/.env.example`).
@@ -265,7 +276,7 @@ other is how these drift.
   the merchant picks the channel (`/mcp/channel`, kept in Redis for that
   authorization only) and consents; the consent's `reference_id` and the access token's
   `store_id` claim are that channel. cod-server (`src/mcp/access.ts`) accepts
-  a token only with `aud` = `${WORKER_SELF_URL}/mcp`, `iss` =
+  a token only with `aud` = `${PUBLIC_API_URL}/mcp`, `iss` =
   `${BETTER_AUTH_URL}/api/auth`, a live consent row older than the token and an active user of the
   channel's merchant, and grants token ∩ consent ∩ the user's current scopes —
   admins included. Every MCP request runs in `withStore` on the app pool, so
@@ -367,8 +378,7 @@ router.openapi(myRoute.route, myRoute.handler);
 | `improve-codebase-architecture` | Refactoring or architecture changes |
 | `tdd` | Test-driven development |
 | `wayfinder` | Navigating the codebase |
-| `codflow-setup` | Setting up the project (Cloudflare + Vercel) |
-| `storefront-vercel` | Deploying or configuring the customer storefront on Vercel |
+| `codflow-setup` | Setting up the project (local stack, production install) |
 | `whatsapp-otp` | WhatsApp OTP verification feature (dzverify) |
 | `Ecotrack` | EcoTrack carrier integration |
 | `zr-express` | ZR Express delivery platform integration (129 endpoints, organized per domain) |

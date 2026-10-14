@@ -28,7 +28,7 @@ export const ProductImageSchema = z
       example: "https://cdn.example.com/products/abc123.jpg",
     }),
     r2Key: z.string().nullable().openapi({
-      description: "R2 object key; null when the image is stored off-origin",
+      description: "Storage key; null when the image is stored off-origin",
       example: "products/abc123def456.jpg",
     }),
     srcSm: z.string().url().nullable().openapi({ example: null }),

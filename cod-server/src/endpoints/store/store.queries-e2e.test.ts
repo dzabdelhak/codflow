@@ -1,7 +1,7 @@
 /**
- * createStoreOrder + findOrCreateCustomer — Slice 3 real-D1 E2E.
+ * createStoreOrder + findOrCreateCustomer — Slice 3 PostgreSQL E2E.
  *
- * Runs the real migrations on an in-memory miniflare D1 and proves:
+ * Runs the real migrations on PostgreSQL and proves:
  *   • findOrCreateCustomer: concurrent same-phone calls converge to ONE row
  *     (UNIQUE index + ON CONFLICT), stats never split
  *   • createStoreOrder: one atomic batch — order + lines + history + customer

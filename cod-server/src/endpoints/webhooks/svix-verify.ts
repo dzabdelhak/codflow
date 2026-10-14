@@ -2,8 +2,8 @@
  * Svix Webhook Signature Verification
  *
  * Verifies the HMAC-SHA256 signature on inbound ZR Express webhook deliveries.
- * ZR Express uses Svix infrastructure. No Svix SDK is available on Cloudflare Workers,
- * so we implement the verification manually using the Web Crypto API.
+ * ZR Express uses Svix infrastructure. The verification is implemented manually
+ * with the Web Crypto API rather than through the Svix SDK.
  *
  * Docs: https://docs.svix.com/receiving/verifying-payloads/how-manual
  *
@@ -35,7 +35,7 @@ export async function verifySvixSignature(
 
   // Strip the "whsec_" prefix and base64-decode to get the raw key bytes
   const base64Secret = secret.startsWith("whsec_") ? secret.slice(6) : secret;
-  let keyBytes: Uint8Array;
+  let keyBytes: Uint8Array<ArrayBuffer>;
   try {
     keyBytes = Uint8Array.from(atob(base64Secret), (c) => c.charCodeAt(0));
   } catch {

@@ -126,9 +126,9 @@ Soft-delete a product — blocked with `422 PRODUCT_HAS_ORDERS` if any order lin
 
 ### Images (`/api/products/:id/images`)
 - `GET`: List all images for a product ordered by position.
-- `POST`: Associate an R2-uploaded image (`key`, `src`) with the product.
+- `POST`: Associate an uploaded image (`key`, `src`, from `POST /api/images/upload`) with the product.
 - `PATCH /reorder`: Set display order — send the complete ordered array of image IDs.
-- `DELETE /{imageId}`: Remove an image record and its corresponding R2 object.
+- `DELETE /{imageId}`: Remove an image record and its stored object.
 
 ### Variants (`/api/products/:productId/variants`)
 - `GET`: List all variants for a product (position order).
@@ -141,6 +141,6 @@ Soft-delete a product — blocked with `422 PRODUCT_HAS_ORDERS` if any order lin
 
 - **Handle Management:** Ensures SEO-friendly, unique URL slugs for every product.
 - **Hierarchical Inventory:** Automatically aggregates stock from variants to provide a high-level product inventory count.
-- **Media Integration:** Tight coupling with Cloudflare R2 for reliable, edge-cached product imagery.
+- **Media Integration:** Images live in the S3-compatible image store behind cod-server and are served, resized, from `/images/<key>?w=`.
 - **Review Aggregation:** Real-time calculation of average ratings and review counts for the product listing.
 - **RBAC:** Granular control over catalog reading (`products:read`) and management (`products:manage`).

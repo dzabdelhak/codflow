@@ -14,7 +14,8 @@ COPY cod-client-astro cod-client-astro
 ARG PUBLIC_API_URL
 ENV PUBLIC_API_URL=${PUBLIC_API_URL}
 RUN npm run build --workspace codflow-client-astro
+COPY docker/astro-server.mjs docker/astro-server.mjs
 WORKDIR /app/cod-client-astro
-ENV HOST=0.0.0.0 PORT=4321
+ENV HOST=0.0.0.0 PORT=4321 ASTRO_NODE_AUTOSTART=disabled
 EXPOSE 4321
-CMD ["node", "dist/server/entry.mjs"]
+CMD ["node", "../docker/astro-server.mjs", "dist/server/entry.mjs"]

@@ -66,8 +66,8 @@ Provider: dzverify, `https://api.dzverify.com`, REST + JSON.
    `enabled integer NOT NULL DEFAULT 1`, `language text NOT NULL DEFAULT 'ar'`,
    `api_key text NOT NULL`. **No row = feature fully disabled (safe
    default)** — new repos / fresh setups get the old behavior for free. The
-   dzverify key is merchant-managed integration config in D1 (same as carrier
-   tokens and the pixel access token), NOT a wrangler secret — that is what
+   dzverify key is merchant-managed integration config in the database (same as
+   carrier tokens and the pixel access token), NOT a deployment secret — that is what
    makes per-merchant enable + dashboard editing natural.
 
 2. **RBAC — new scope `SETTINGS_VERIFICATION: "settings:verification"`.**
@@ -139,12 +139,11 @@ Provider: dzverify, `https://api.dzverify.com`, REST + JSON.
    a 403 there means the key lacks `usage:read` — report "key OK, quota
    unavailable" rather than failing).
 
-10. **Cost-control guard on send (KV).** The `RATE_LIMIT` KV binding exists;
-    add a light phone cooldown (60 s per store+phone) and an hourly per-IP
-    cap (~20) before calling dzverify. KV is eventually consistent — fine for
-    cost control; dzverify's own limits remain the hard bound. Failure of the
-    KV write must never block a send (fire-and-forget reads/writes where
-    possible).
+10. **Cost-control guard on send (Redis).** A light phone cooldown (60 s per
+    store+phone) and an hourly per-IP cap (20) before calling dzverify, kept
+    in Redis (`src/endpoints/store-otp/guards.ts`). Best-effort: dzverify's own
+    limits remain the hard bound, and a missing Redis or a Redis error never
+    blocks a send.
 
 ## Design check (codebase-design)
 
@@ -197,9 +196,9 @@ Provider: dzverify, `https://api.dzverify.com`, REST + JSON.
 
 ### Slice 5 — Storefront send/verify endpoints
 - [ ] `endpoints/store-otp/store-routes.ts` + `handlers.ts` + `validation.ts`; mount at `/store` in `src/index.ts` (abandoned-orders precedent); tags `["Storefront"]`
-- [ ] `POST /store/otp/send`: load config (disabled → `OTP_NOT_ENABLED` 422); normalize phone; KV guards (60 s per store+phone, ~20/hr per IP — failures never block); call dzverify; map outcomes: 201 → `{status:"sent", requestId, expiresAt, maxAttempts}`; 402/5xx → `{status:"unavailable", reason, bypassToken}`; rate-limit 422 → `OTP_RATE_LIMITED` with `windowSeconds` context; delivery-failure 422 → surface message; 401/403 (bad merchant key) → `OTP_NOT_CONFIGURED`-style 502 (merchant misconfiguration, logged loudly)
+- [ ] `POST /store/otp/send`: load config (disabled → `OTP_NOT_ENABLED` 422); normalize phone; Redis guards (60 s per store+phone, ~20/hr per IP — failures never block); call dzverify; map outcomes: 201 → `{status:"sent", requestId, expiresAt, maxAttempts}`; 402/5xx → `{status:"unavailable", reason, bypassToken}`; rate-limit 422 → `OTP_RATE_LIMITED` with `windowSeconds` context; delivery-failure 422 → surface message; 401/403 (bad merchant key) → `OTP_NOT_CONFIGURED`-style 502 (merchant misconfiguration, logged loudly)
 - [ ] `POST /store/otp/verify`: validate, call dzverify; 200 → mint+return `otpToken`; wrong code → 422 with `attemptsRemaining` context; 409 → mapped terminal error; 404 → invalid request
-- [ ] Tests via fetch-mock (dzverify) + db mocks: full matrix incl. fail-open bypass minting, KV guard trips, disabled config
+- [ ] Tests via fetch-mock (dzverify) + db mocks: full matrix incl. fail-open bypass minting, guard trips, disabled config
 - [ ] Verify: green
 
 ### Slice 6 — Order-creation gate
@@ -239,7 +238,7 @@ Provider: dzverify, `https://api.dzverify.com`, REST + JSON.
 2. One slice = one coherent commit-sized unit (no commits unless asked).
 3. Green to move on: typecheck + tests in every touched package.
 4. New server endpoints use the route-builder skill (`defineRoute()`, SCOPES constants).
-5. No secrets in code/tests; the dzverify key lives only in D1 via the dashboard.
+5. No secrets in code/tests; the dzverify key lives only in the database, via the dashboard.
 6. No hardcoded UI strings — i18n packs ×3 (dashboard) and content packs ×3 (theme01), RTL verified.
 7. Fail-open only where this plan says so (quota / provider down at send); the verify flow itself is strict.
 8. theme01 core changes are additive-only; presentation stays in theme/.
@@ -282,18 +281,15 @@ Provider: dzverify, `https://api.dzverify.com`, REST + JSON.
 | cod-astro/theme01 | astro check + tests + validate (build) | ✅ 0 errors, 6 tests, build OK |
 
 Migration `0012_store_otp_config.sql` applied locally. No secrets committed;
-the dzverify key enters only via the dashboard → D1.
+the dzverify key enters only via the dashboard → database.
 
 ## Production rollout checklist (human steps)
 
-1. `cd cod-server && npm run db:migrate:remote`
-2. Deploy cod-server (`npx wrangler deploy --env production`)
-3. Build + deploy theme01 (`npm run build` + `wrangler deploy`) and
-   cod-client-astro (`npm run build` + `npx wrangler deploy`)
-4. Merchant onboarding: Dashboard → Settings → Verification → paste dzverify
+1. Deploy the release with its database migrations (`docs/DEPLOYMENT.md`).
+2. Merchant onboarding: Dashboard → Settings → Verification → paste dzverify
    key → "Check key" (balance/plan shown) → toggle Require verification →
    Save. Remove the row (or disable) to return to the old checkout instantly.
-5. When real keys exist: manual smoke — place a test storefront order through
+3. When real keys exist: manual smoke — place a test storefront order through
    the OTP step; simulate quota exhaustion (top up to < 5 DA) and confirm the
    order still places unverified.
 

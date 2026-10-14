@@ -11,9 +11,12 @@ import { createDatabase, createPool } from "@/db/scope";
 import type { Env } from "@/types";
 import { s3ImageStore } from "@/platform/image-store";
 import { runOrphanImageSweep } from "@/cron/sweep-orphan-images";
+import { sweepAbandonedOrders } from "@/cron/sweep-abandoned-orders";
 import { systemDns } from "@/platform/channel-domains";
 import { probeCertificate, type CertificateStatus } from "@/platform/tls-probe";
 import { pruneFinishedJobs, startJobWorker } from "@/platform/jobs";
+import { scheduledTaskHandlers, startScheduler, type ScheduledTask } from "@/platform/schedule";
+import { checkDomainCertificates } from "@/platform/domain-certificates";
 import { pruneBlockedAttempts } from "@/endpoints/store/order-flood";
 import { outboundOptionsFromEnv, startOutboundWorker } from "@/platform/outbound/worker";
 import { destinationFromEnv } from "@/platform/outbound/destination";
@@ -37,11 +40,13 @@ const imageStore = s3ImageStore({
   region: process.env.S3_REGION,
 });
 
+const probeHost =
+  process.env.TLS_PROBE_HOST?.trim() ||
+  process.env.CUSTOM_DOMAIN_TARGET?.trim() ||
+  process.env.CUSTOM_DOMAIN_IPV4?.split(",")[0].trim();
+
 function certificateProbe(): (hostname: string) => Promise<CertificateStatus> {
-  const host =
-    process.env.TLS_PROBE_HOST?.trim() ||
-    process.env.CUSTOM_DOMAIN_TARGET?.trim() ||
-    process.env.CUSTOM_DOMAIN_IPV4?.split(",")[0].trim();
+  const host = probeHost;
   if (!host) return async () => ({ status: "error", message: "probe_not_configured" });
   const port = Number(process.env.TLS_PROBE_PORT ?? 443);
   return (hostname) => probeCertificate(hostname, { host, port });
@@ -69,33 +74,56 @@ const executionCtx = {
 };
 
 const port = Number(process.env.PORT ?? 8787);
+let draining = false;
+
+async function handle(request: Request): Promise<Response> {
+  if (draining && new URL(request.url).pathname === "/health") return new Response("draining", { status: 503 });
+  const response = await app.fetch(request, env, executionCtx as never);
+  if (!draining) return response;
+  const closing = new Response(response.body, response);
+  closing.headers.set("Connection", "close");
+  return closing;
+}
 
 imageStore.ensureBucket().then(
   () => {
-    const server = serve({ fetch: (request) => app.fetch(request, env, executionCtx as never), port }, () =>
+    const server = serve({ fetch: handle, port }, () =>
       console.log(`cod-server listening on :${port}`),
     );
-    const sweep = () => void runOrphanImageSweep(env).catch((err) => console.error("[cron:sweep-orphan-images]", err));
-    setTimeout(sweep, 60_000).unref();
-    setInterval(sweep, 24 * 60 * 60 * 1000).unref();
-    const prune = () => {
-      void pruneFinishedJobs(database.platform).catch((err) => console.error("[cron:prune-jobs]", err));
-      void pruneBlockedAttempts(database.platform).catch((err) => console.error("[cron:prune-blocked-attempts]", err));
-    };
-    setInterval(prune, 24 * 60 * 60 * 1000).unref();
-    const stopJobs = startJobWorker(database.platform, { [CONVERSION_JOB]: conversionJobHandler(database.platform) });
+    const day = 24 * 60 * 60 * 1000;
+    const tasks: ScheduledTask[] = [
+      { kind: "task:sweep-orphan-images", everyMs: day, run: () => runOrphanImageSweep(env) },
+      { kind: "task:sweep-abandoned-orders", everyMs: 15 * 60 * 1000, run: () => sweepAbandonedOrders(env) },
+      {
+        kind: "task:prune",
+        everyMs: day,
+        run: async () => ({ jobs: await pruneFinishedJobs(database.platform), blockedAttempts: await pruneBlockedAttempts(database.platform) }),
+      },
+      ...(probeHost
+        ? [{
+            kind: "task:check-certificates",
+            everyMs: 60 * 60 * 1000,
+            run: () => checkDomainCertificates(database.platform, env.CERT_PROBE, { requireTrusted: env.ENVIRONMENT === "production" }),
+          }]
+        : []),
+    ];
+    const stopJobs = startJobWorker(database.platform, { [CONVERSION_JOB]: conversionJobHandler(database.platform), ...scheduledTaskHandlers(tasks) });
+    const stopScheduler = startScheduler(database.platform, tasks);
     const outboundOptions = outboundOptionsFromEnv(process.env);
     const outboundPool = createPool(required("DATABASE_URL"), "codflow_platform", outboundOptions.senders + 1);
     const stopOutbound = startOutboundWorker(outboundPool, outboundDestination, outboundOptions);
-    for (const signal of ["SIGINT", "SIGTERM"] as const) {
-      process.on(signal, () => {
-        stopJobs();
-        stopOutbound();
-        void outboundPool.end();
-        server.close();
-        void database.close().finally(() => process.exit(0));
-      });
-    }
+    const drain = () => {
+      if (draining) return;
+      draining = true;
+      stopScheduler();
+      stopJobs();
+      stopOutbound();
+      setTimeout(() => process.exit(1), 25_000).unref();
+      server.close(() => void Promise.allSettled([outboundPool.end(), database.close()]).finally(() => process.exit(0)));
+      if ("closeIdleConnections" in server) server.closeIdleConnections();
+    };
+    process.on("SIGINT", drain);
+    process.on("SIGTERM", drain);
   },
   (err) => {
     console.error("Image storage is unreachable", err);

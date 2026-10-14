@@ -3,8 +3,7 @@
  *
  * Checkout asks the same three questions of the same rows — does every line
  * have a SKU, is every line in stock, what does every line cost — and each
- * used to load its own copy. D1 bills by rows read and serialises on a single
- * thread, so that was paid for and waited on three times per order.
+ * used to load its own copy, so the same rows were read three times per order.
  *
  * Loading once and passing the result down turns those three questions into
  * pure functions over data: no database, no clock, no ordering constraints,
@@ -14,7 +13,7 @@
 import { eq, and, or, inArray, isNull, lte, gte, desc, sql } from "drizzle-orm";
 import { products, productVariants, offers } from "../db/schema";
 import type { AppDb } from "../db/client";
-import { chunkIds } from "./d1-limits";
+import { chunkIds } from "./id-chunks";
 import { productIdsOf, variantIdsOf, type CartLine } from "./cart";
 
 export interface CatalogProduct {

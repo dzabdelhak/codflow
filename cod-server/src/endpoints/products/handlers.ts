@@ -9,6 +9,7 @@ import * as validation from "./validation";
 import { logActivity, ACTIONS } from "@/lib/activity";
 import { NotFoundError, BusinessLogicError, ConflictError, SystemError } from "@/lib/errors/classes";
 import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
+import { violatesUnique } from "../../../../cod-shared/db/errors";
 
 export async function listProducts(c: Context<AppContext>) {
   const db = c.get("db");
@@ -36,9 +37,8 @@ export async function getProduct(c: Context<AppContext>) {
 }
 
 function isProductUniqueViolation(err: unknown): "handle" | "sku" | null {
-  const msg = err instanceof Error ? err.message : String(err);
-  if (/UNIQUE constraint failed: products\.handle/i.test(msg)) return "handle";
-  if (/UNIQUE constraint failed: products\.sku/i.test(msg)) return "sku";
+  if (violatesUnique(err, "products_merchant_handle_unique")) return "handle";
+  if (violatesUnique(err, "products_merchant_sku_unique")) return "sku";
   return null;
 }
 

@@ -107,10 +107,8 @@ export async function getStoreLandingPage(c: Context<AppContext>) {
       })
     : null;
 
-  // One render = one view. Atomic single-row UPDATE, deferred via waitUntil
-  // so the write never blocks the render response (Cloudflare's documented
-  // pattern for analytics-after-response; same seam the CAPI trigger uses).
-  // A counting failure is logged and swallowed — it must never break a render.
+  // One render = one view. Atomic single-row UPDATE handed to waitUntil, not
+  // awaited by the handler. A counting failure is logged and swallowed — it must never break a render.
   c.executionCtx.waitUntil(
     queries.incrementLandingPageViews(db, lp.id).catch((err) => {
       console.error("[landing-pages] view increment failed:", err);
@@ -257,7 +255,7 @@ export async function createStoreOrder(c: Context<AppContext>) {
     bodyData ?? storeOrderSchema.parse(await c.req.json());
 
   // Turnstile bot gate — runs before the SKU/stock lookups so bot traffic is
-  // rejected before spending D1 reads. No-op when the store has it disabled.
+  // rejected before spending database reads. No-op when the store has it disabled.
   await assertTurnstile(c, db, submitted);
 
   // ── Checkout Form Policy ─────────────────────────────────────────────────

@@ -8,7 +8,7 @@ All new endpoints use `defineRoute()`. No exceptions. Do not use raw `createRout
 cod-server/src/endpoints/my-resource/
 ├── handlers.ts        # Route handlers (thin, delegate to queries)
 ├── handlers.test.ts   # Tests
-├── queries.ts         # D1 database queries (via Drizzle)
+├── queries.ts         # Database queries (Drizzle on PostgreSQL; shared ones live in cod-shared/queries)
 ├── validation.ts      # Zod schemas for request input
 └── routes.ts          # defineRoute() definitions + router export
 ```
@@ -186,7 +186,7 @@ router.openapi(deleteRoute.route, deleteRoute.handler);
 export default router;
 ```
 
-### 5. Register in `src/index.ts`
+### 5. Register in `src/app.ts`
 
 ```typescript
 import myResourceRoutes from "@/endpoints/my-resource/routes";
@@ -238,5 +238,5 @@ router.openapi(route.route, route.handler, route.validationHook);
 ### Store (public) endpoint
 ```typescript
 auth: "store"
-// Uses X-Store-API-Key, security: [{ StoreAuth: [] }]
+// Uses X-Storefront-Key + X-Channel-Host, security: [{ StoreAuth: [] }]
 ```

@@ -37,7 +37,7 @@ import { OpenAPIHono } from "@hono/zod-openapi";
 import type { AppContext } from "@/types";
 import { errorHandler } from "@/middleware/error";
 import { openApiValidationHook } from "@/openapi/validation-hook";
-import { createTestD1, type TestD1 } from "@/test-utils/d1";
+import { createTestDb, type TestDb } from "@/test-utils/pg";
 import * as schema from "@/db/schema";
 import storeRouter from "./routes";
 import type pg from "pg";
@@ -45,7 +45,7 @@ import { createPool } from "@/db/scope";
 import { runDueJobs } from "@/platform/jobs";
 import { conversionJobHandler, enqueueConversions } from "@/tracking/conversions";
 
-let harness: TestD1;
+let harness: TestDb;
 let platform: pg.Pool;
 let app: OpenAPIHono<AppContext>;
 const NOW = () => new Date().toISOString();
@@ -53,7 +53,7 @@ const STORE_ID = "test-store";
 let seq = 0;
 
 beforeAll(async () => {
-  harness = await createTestD1();
+  harness = await createTestDb();
   platform = createPool(harness.url, "codflow_platform");
 
   app = new OpenAPIHono<AppContext>({ defaultHook: openApiValidationHook });

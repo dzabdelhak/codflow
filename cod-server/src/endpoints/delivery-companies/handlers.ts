@@ -172,14 +172,10 @@ export async function syncCompanyStopDesks(c: Context<AppContext>) {
     const safeWilayaId = (wid: number | null | undefined) =>
       wid != null && validWilayas.has(wid) ? wid : null;
 
-    // ── Upsert via D1 batch ──────────────────────────────────────────────────
-    // Every desk becomes one `INSERT ... ON CONFLICT DO UPDATE` statement.
-    // D1's native batch() groups them into a single round-trip per chunk,
-    // so a 1,359-desk Packers sync goes from ~10s → ~1s.
-    //
-    // Why not db.transaction()? D1 does not support Drizzle's transaction API
-    // (see feedback_d1_no_transactions memory). batch() is the D1-native
-    // atomic alternative and is fully supported.
+    // ── Upsert in batches ─────────────────────────────────────────────────────
+    // Every desk becomes one `INSERT ... ON CONFLICT DO UPDATE` statement,
+    // sent in chunks through db.batch() — each chunk all-or-nothing, inside
+    // the request's transaction.
     //
     // `active` is intentionally NOT in the `set` clause so admin toggles
     // survive re-syncs. On a brand-new row we default active=true; on an

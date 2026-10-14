@@ -117,7 +117,7 @@ type ProviderColumns = Pick<
   | "consentRequired"
 >;
 
-/** A store's row, as read from D1 or assembled by a caller that batched it. */
+/** A store's row, as read from the database or assembled by a caller that batched it. */
 export type StoreConfigRow = ConfigRow & StoreTrackingSwitches & Partial<ProviderColumns>;
 /** A landing page's row, same shape minus the store-level switches. */
 export type PageConfigRow = ConfigRow;

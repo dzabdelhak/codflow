@@ -15,7 +15,6 @@ import { first } from "../../../../cod-shared/db/client";
 import { deleteLandingPageWithGuard } from "./queries";
 
 let db: AppDb;
-let rawD1: D1Database;
 
 beforeAll(async () => {
   const harness = await createTestDb();

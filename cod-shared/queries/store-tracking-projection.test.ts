@@ -7,22 +7,21 @@
  * never leave the server, exactly like the Turnstile secret next door.
  *
  * Pinned here because this is the seam where the resolver's output becomes
- * HTML. Real D1: the payload is assembled from four tables and the mock db
+ * HTML. Real PostgreSQL: the payload is assembled from four tables and the mock db
  * cannot tell them apart.
  */
-/// <reference types="vitest/globals" />
 
 import { beforeAll, afterAll, beforeEach, describe, it, expect } from "vitest";
-import { createTestD1, type TestD1 } from "@/test-utils/d1";
+import { createTestDb, type TestDb } from "@/test-utils/pg";
 import * as schema from "@/db/schema";
 import { getStoreConfig } from "./store";
 
-let harness: TestD1;
+let harness: TestDb;
 const NOW = () => new Date().toISOString();
 const STORE_ID = "test-store";
 
 beforeAll(async () => {
-  harness = await createTestD1();
+  harness = await createTestDb();
 }, 120_000);
 
 afterAll(async () => {

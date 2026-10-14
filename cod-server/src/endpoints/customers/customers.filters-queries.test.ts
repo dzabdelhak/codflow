@@ -4,8 +4,8 @@
  * Call shape post-Slice 8: group/tag/wilaya filters are EXISTS subqueries
  * inside the SINGLE list query — no pre-fetch, no id list, no inArray.
  * Previously: a group/tag with >100 members crashed on D1's 100-bound-param
- * limit (miniflare enforces it — proven in the Slice 5 probe). The >100
- * case is verified against real D1 in customers.filters-e2e.test.ts.
+ * limit. The >100 case is verified against PostgreSQL in
+ * customers.filters-e2e.test.ts.
  */
 
 import { describe, it, expect } from "vitest";

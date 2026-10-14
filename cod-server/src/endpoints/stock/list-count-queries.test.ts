@@ -8,7 +8,7 @@
  *   • listAbandonedOrders      → [a(rows), count]
  *   • getAbandonedOrderStats   → [abandoned, converted, revenue]
  *
- * WHERE/ordering/pagination semantics verified against real D1 in
+ * WHERE/ordering/pagination semantics verified against PostgreSQL in
  * list-count-e2e.test.ts.
  */
 

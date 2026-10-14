@@ -1,5 +1,5 @@
 /**
- * The effective tracking configuration — resolved on a real D1.
+ * The effective tracking configuration — resolved on a real PostgreSQL.
  *
  * This module decides which Meta pixel an event belongs to. Meta deduplicates
  * a browser event against its server mirror only when both were sent to the
@@ -13,14 +13,13 @@
  * the behaviour that existed before this feature, because a merchant who never
  * opens the panel must see no change at all.
  *
- * Real D1, not the mock db: the mock maps a full-table select positionally by
+ * Real PostgreSQL, not the mock db: the mock maps a full-table select positionally by
  * schema column order and would happily agree with a resolver that read the
  * wrong row.
  */
-/// <reference types="vitest/globals" />
 
 import { beforeAll, afterAll, describe, it, expect } from "vitest";
-import { createTestD1, type TestD1 } from "@/test-utils/d1";
+import { createTestDb, type TestDb } from "@/test-utils/pg";
 import type { AppDb } from "../db/client";
 import * as schema from "@/db/schema";
 import {
@@ -29,7 +28,7 @@ import {
   overrideApplies,
 } from "./tracking-config";
 
-let harness: TestD1;
+let harness: TestDb;
 /** The connection of the store seeded last — RLS pins each store to its own. */
 let db: AppDb;
 const dbs = new Map<string, AppDb>();
@@ -37,7 +36,7 @@ const NOW = () => new Date().toISOString();
 let seq = 0;
 
 beforeAll(async () => {
-  harness = await createTestD1();
+  harness = await createTestDb();
 }, 120_000);
 
 afterAll(async () => {

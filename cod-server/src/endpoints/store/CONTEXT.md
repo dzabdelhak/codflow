@@ -6,8 +6,8 @@ The public storefront surface under `/store/*`: everything a shopper touches wit
 
 ### Access
 
-**Store API Key**:
-The single credential authenticating the entire storefront (`X-Store-API-Key`). A different secret from dashboard API keys; it determines which store's data every call sees.
+**Storefront Key**:
+The service credential authenticating the storefront (`X-Storefront-Key`, `STOREFRONT_SERVICE_KEY`). A different secret from dashboard API keys; with it, the visitor's hostname (`X-Channel-Host`) determines which store's data every call sees.
 _Avoid_: Admin key, session auth
 
 ### Catalog

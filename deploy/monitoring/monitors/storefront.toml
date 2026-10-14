@@ -1,0 +1,7 @@
+type = "keyword"
+name = "Storefront"
+url = "http://storefront:4321/healthz"
+keyword = "ok"
+interval = 60
+max_retries = 2
+notification_name_list = ["email"]

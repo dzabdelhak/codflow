@@ -45,7 +45,7 @@ router.openapi(myRoute.route, myRoute.handler);
 auth: "public"                            // No auth — no middleware, security omitted from spec (webhook receivers)
 auth: "api-key"                           // Any authenticated dashboard user
 auth: "admin"                             // Admin role only (stores, users)
-auth: "store"                             // Store API key (X-Store-API-Key) — store/*, abandoned-orders storefront
+auth: "store"                             // Storefront key (X-Storefront-Key + X-Channel-Host) — store/*, abandoned-orders storefront
 auth: { scope: SCOPES.ORDERS_READ }       // Specific scope (most common)
 auth: { anyOf: [SCOPES.READ, SCOPES.ALL] }   // Any of multiple scopes
 auth: { allOf: [SCOPES.READ, SCOPES.ADMIN] } // All scopes required

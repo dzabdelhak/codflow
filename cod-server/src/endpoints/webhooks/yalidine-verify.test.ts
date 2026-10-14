@@ -3,7 +3,7 @@
  *
  * The reference signatures are computed with Node's crypto.createHmac
  * (a completely separate implementation from our Web Crypto code path), so
- * agreement proves our Workers-runtime verifier produces exactly what
+ * agreement proves our Web Crypto verifier produces exactly what
  * Yalidine's PHP `hash_hmac("sha256", $payload, $secret_key)` produces.
  */
 import { describe, it, expect } from "vitest";

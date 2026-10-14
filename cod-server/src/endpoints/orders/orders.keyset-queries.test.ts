@@ -1,8 +1,8 @@
 /**
  * Slice 9 — keyset pagination + LIKE-pattern guard: unit + mock coverage.
  *
- *   • safeLikeTerm: D1 caps LIKE patterns at 50 bytes (verified: longer
- *     patterns throw "LIKE or GLOB pattern too complex"); the guard
+ *   • safeLikeTerm: LIKE patterns are capped at 50 bytes (a limit kept from
+ *     D1, which threw "LIKE or GLOB pattern too complex" past it); the guard
  *     truncates terms to 48 bytes on UTF-8 code-point boundaries.
  *   • encode/parseOrderCursor: opaque base64url cursor round-trip; garbage
  *     parses to null.
@@ -10,7 +10,7 @@
  *   • getAllOrders: cursor takes precedence over offset (defensive fallback
  *     to the first page for unparseable cursors at the query level).
  *
- * WHERE/ordering semantics verified against real D1 in orders.keyset-e2e.test.ts.
+ * WHERE/ordering semantics verified against PostgreSQL in orders.keyset-e2e.test.ts.
  */
 
 import { describe, it, expect } from "vitest";

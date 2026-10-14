@@ -175,7 +175,7 @@ export type WidgetPrefillToken = (typeof WIDGET_PREFILL_TOKENS)[number];
  *
  * Frozen because this object is handed out as the fallback on every read; a
  * caller that mutated it would change every store's defaults for the lifetime
- * of the isolate.
+ * of the process.
  */
 export const DEFAULT_WHATSAPP_WIDGET_CONFIG: WhatsAppWidgetConfig = {
   enabled: false,
@@ -267,7 +267,7 @@ function readSurfaces(raw: unknown): WidgetSurfaces {
  * Per-key leniency is deliberate: one unreadable value falls back to its
  * default rather than discarding the merchant's other settings. Unknown keys
  * are ignored so a config written by a newer deploy still parses on an older
- * one — a Worker rollback must not take the widget down with it.
+ * one — a server rollback must not take the widget down with it.
  */
 export function parseWhatsAppWidgetConfig(
   json: string | null | undefined,

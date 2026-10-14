@@ -256,7 +256,7 @@ describe("selectApplicableOffer — discount types", () => {
 // Moved to offers-stock-gate.e2e.test.ts. checkStoreOrderStock is now one
 // batched, id-keyed lookup rather than a read per product and per variant, so
 // the positional mock fixtures here would be pinning a query plan instead of
-// behaviour. All seven cases (E1–E7) run there against real D1 with the real
+// behaviour. All seven cases (E1–E7) run there against PostgreSQL with the real
 // migrations, under the same names, plus an E8 for baskets.
 
 // ─── SECTION F: edge / defensive ─────────────────────────────────────────────
@@ -333,7 +333,7 @@ describe("KickStore offer regression scenarios", () => {
   });
 
   // "Street Fighter qty=2 but variant OOS → stock gate blocks despite matching
-  // offer" now lives in offers-stock-gate.e2e.test.ts (real D1).
+  // offer" now lives in offers-stock-gate.e2e.test.ts (PostgreSQL).
 
   it("Night Rider offer is inactive → returns null regardless of qty", async () => {
     // inactive offers are filtered in DB query (eq(status, 'active'))

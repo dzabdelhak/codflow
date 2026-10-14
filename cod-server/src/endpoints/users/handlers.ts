@@ -70,7 +70,7 @@ async function hashPassword(password: string): Promise<string> {
  * Flow:
  *   1. Hash a generated temporary password (same scrypt as better-auth)
  *   2. Generate an API key
- *   3. Insert into D1: users + accounts (credential) + initial scopes
+ *   3. Insert into the database: users + accounts (credential) + initial scopes
  *   4. Best-effort invite email via Sendili (never blocks or fails creation)
  *
  * Returns the temp password and API key once — they cannot be retrieved again.

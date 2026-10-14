@@ -126,7 +126,7 @@ export const CUSTOM_FIELD_ID_PATTERN = /^cf_[a-z0-9]{8}$/;
  *
  * Frozen because this object is handed out as the fallback on every read; a
  * caller that mutated it would change every store's defaults for the lifetime
- * of the isolate.
+ * of the process.
  */
 export const DEFAULT_CHECKOUT_FORM_POLICY: CheckoutFormPolicy = {
   address: "optional",
@@ -202,7 +202,7 @@ function readCustomField(raw: unknown): CustomField | null {
  * Per-key leniency is deliberate: one unreadable field falls back to its
  * default rather than discarding the merchant's other settings. Unknown keys
  * are ignored so a policy written by a newer deploy still parses on an older
- * one — a Worker rollback must not take the storefront's form with it.
+ * one — a server rollback must not take the storefront's form with it.
  */
 export function parseCheckoutFormPolicy(json: string | null | undefined): CheckoutFormPolicy {
   if (typeof json !== "string" || json.trim() === "") return DEFAULT_CHECKOUT_FORM_POLICY;

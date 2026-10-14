@@ -8,7 +8,7 @@ import { createCodMcpHandler } from "./server-factory";
 import { recordMcpLastUsed } from "./last-used";
 
 function resourceMetadataUrl(c: Context<AppContext>): string {
-  return `${c.env.WORKER_SELF_URL.replace(/\/+$/, "")}/.well-known/oauth-protected-resource/mcp`;
+  return `${c.env.PUBLIC_API_URL.replace(/\/+$/, "")}/.well-known/oauth-protected-resource/mcp`;
 }
 
 function challenge(c: Context<AppContext>, status: 401 | 403, error?: string): Response {

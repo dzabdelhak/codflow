@@ -15,7 +15,8 @@ import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
 import { createDzverifyClient, DzverifyError, DZVERIFY_ERRORS } from "./dzverify";
 import { normalizeAlgerianPhone } from "../../../../cod-shared/lib/phone";
 import { signOtpToken } from "./token";
-import { createOtpSendGuards, recordOtpSend } from "./guards";
+import { recordOtpSend, trippedOtpGuard } from "./guards";
+import { platformRedis } from "@/platform/redis";
 import { visitorIp } from "@/lib/visitor-ip";
 
 const clientIp = visitorIp;
@@ -51,8 +52,8 @@ export async function sendOtp(c: Context<AppContext>) {
   const body = (c.req as any).valid?.("json") ?? (await c.req.json());
   const phone = requireNormalizedPhone(String(body.phone ?? ""));
 
-  const guards = createOtpSendGuards();
-  const tripped = await guards.check(c.env.RATE_LIMIT, storeId, phone, clientIp(c));
+  const redis = await platformRedis(c.env.REDIS_URL);
+  const tripped = await trippedOtpGuard(redis, storeId, phone, clientIp(c));
   if (tripped) {
     throw new BusinessLogicError(
       "Too many verification requests — try again shortly",
@@ -64,7 +65,7 @@ export async function sendOtp(c: Context<AppContext>) {
   const client = createDzverifyClient(config.apiKey);
   try {
     const request = await client.sendOtp(phone, { language: config.language });
-    await recordOtpSend(c.env.RATE_LIMIT, storeId, phone, clientIp(c));
+    await recordOtpSend(redis, storeId, phone, clientIp(c));
 
     return c.json(
       {

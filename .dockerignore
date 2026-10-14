@@ -1,11 +1,9 @@
 **/node_modules
 **/dist
 **/.astro
-**/.wrangler
-.wrangler-shared
 .git
 spikes
 .scratch
 report-md
 **/.env
-**/.dev.vars
+**/secrets.env

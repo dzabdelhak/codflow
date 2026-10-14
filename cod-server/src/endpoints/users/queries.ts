@@ -24,7 +24,6 @@ type Database = ReturnType<typeof getDb>;
 
 /**
  * Create new user with credential account + initial scope assignment.
- * D1 does not support transactions — sequential awaits.
  */
 export async function createUser(
   db: Database,

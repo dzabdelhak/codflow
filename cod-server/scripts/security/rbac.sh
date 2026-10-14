@@ -6,9 +6,11 @@
 #   ./rbac.sh orders               run ONE domain (~1 min)
 #   ./rbac.sh orders products      several domains, one after another
 #   ./rbac.sh all                  every domain sequentially
-#   ./rbac.sh --teardown           remove ALL sectest-% rows from remote D1
+#   ./rbac.sh --teardown           remove ALL sectest-% rows
 #
 # Options (env):
+#   DATABASE_URL=...   the API's database (default: the compose db, via docker compose exec)
+#   MERCHANT_ID=...    merchant the personas join (default: the only merchant)
 #   SKIP_SEED=1        personas already in DB, skip seeding step
 #   REFRESH_KEYS=1     refetch persona API keys into cache
 #   PARALLEL=12        concurrent probes per domain
@@ -22,9 +24,8 @@ DOMAINS="public wilayas orders products stock images customers customer-groups c
 GRAND_PASS=0; GRAND_FAIL=0; FAILED_DOMAINS=""
 
 if [[ "${1:-}" == "--teardown" ]]; then
-  echo "Removing sectest-% personas from $DB_NAME (remote)…"
-  (cd "$SERVER_DIR" && npx wrangler d1 execute "$DB_NAME" --remote --file "$SEC_DIR/teardown-personas.sql" -y) \
-    && echo "✓ teardown complete" || echo "✗ teardown failed"
+  echo "Removing sectest-% personas…"
+  sec_psql < "$SEC_DIR/teardown-personas.sql" && echo "✓ teardown complete" || echo "✗ teardown failed"
   rm -f "$KEYS_CACHE"
   exit 0
 fi

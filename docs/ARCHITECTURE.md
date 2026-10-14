@@ -7,23 +7,26 @@ System map and technical design.
 ## System Overview
 
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│                    Cloudflare Global Edge                        │
-│                                                                  │
-│  ┌─────────────┐     ┌──────────────┐     ┌─────────────────┐  │
-│  │ Storefront  │     │   Backend    │     │   Dashboard     │  │
-│  │ (Astro 7)   │──▶  │   (Hono 4)   │ ◀── │  (Astro 7)      │  │
-│  └─────────────┘ API └───┬─────┬────┘ JWT └─────────────────┘  │
-│                          │     │                                │
-│                    /webhooks   │ conversion jobs                │
-│                   carriers     └──────▶ Meta CAPI              │
-│                                                                  │
-│  ┌───────────────────┐  ┌────────┐  ┌──────────────────────┐  │
-│  │   D1 (SQLite)     │  │R2 (CDN)│  │   KV + OAuth         │  │
-│  │                   │  │Images  │  │   (MCP provider)     │  │
-│  └───────────────────┘  └────────┘  └──────────────────────┘  │
-└──────────────────────────────────────────────────────────────────┘
+                ┌────────────────────────────────────────────────────┐
+  visitors ────▶│ Caddy — on-demand TLS for merchant domains         │
+  merchants     └────┬──────────────────┬──────────────────┬─────────┘
+                     │ channel hosts    │ api.<domain>     │ app.<domain>
+              ┌──────▼──────┐    ┌──────▼───────┐   ┌──────▼──────────┐
+              │ Storefront  │───▶│   Backend    │◀──│   Dashboard     │
+              │ (Astro 7)   │API │   (Hono 4)   │JWT│ (Astro 7 +      │
+              └─────────────┘    │ + job worker │   │  Better Auth)   │
+                                 └──┬────┬────┬─┘   └───┬─────────────┘
+          carriers, Meta CAPI ◀─────┘    │    │         │
+          (webhooks in, jobs out)        │    │         │
+              ┌──────────────────────────▼─┐ ┌▼─────────▼┐ ┌───────────────┐
+              │ PostgreSQL (RLS per store) │ │   Redis   │ │ SeaweedFS (S3)│
+              │ data + job queue           │ │           │ │ images        │
+              └────────────────────────────┘ └───────────┘ └───────────────┘
 ```
+
+Every service runs in Docker Compose. Only the API reaches SeaweedFS; it
+serves images at `/images/<key>?w=<width>`. See
+[ADR-0003](./adr/0003-self-hosted-postgres-multi-store.md).
 
 ---
 
@@ -32,9 +35,9 @@ System map and technical design.
 ```
 codflow-os/
 ├── cod-shared/         # Shared schema, queries, RBAC scopes
-├── cod-server/         # Backend API (Cloudflare Worker + Hono)
-├── cod-client-astro/   # Dashboard (Astro, prerendered + auth worker)
-└── cod-astro/theme01/  # Storefront (Astro SSR)
+├── cod-server/         # Backend API (Hono on Node.js)
+├── cod-client-astro/   # Dashboard (Astro, prerendered + auth server routes)
+└── cod-astro/theme01/  # Storefront (Astro SSR, Node adapter)
 ```
 
 All packages import `cod-shared` via relative paths:
@@ -49,9 +52,9 @@ import { SCOPES } from "../../cod-shared/rbac/scopes";
 
 | Package | Stack | Runtime |
 | :--- | :--- | :--- |
-| **cod-astro/theme01** | Astro 7, Tailwind v4 | Cloudflare Workers + Static Assets |
-| **cod-server** | Hono 4, Drizzle ORM, Better Auth | Cloudflare Workers + D1 + R2 + KV |
-| **cod-client-astro** | Astro 7 (prerendered), React 19 islands | Cloudflare Workers + Static Assets + D1 + KV |
+| **cod-astro/theme01** | Astro 7, Tailwind v4 | Node.js |
+| **cod-server** | Hono 4, Drizzle ORM, Better Auth (JWT verification) | Node.js + PostgreSQL + Redis + SeaweedFS (S3) |
+| **cod-client-astro** | Astro 7 (prerendered), React 19 islands, Better Auth | Node.js + PostgreSQL + Redis |
 | **cod-shared** | Drizzle schema, RBAC, errors | Source-shared (no build) |
 
 ---
@@ -63,7 +66,7 @@ import { SCOPES } from "../../cod-shared/rbac/scopes";
 ```
 1. Customer submits order (storefront)
    └─▶ POST /store/orders (cod-server)
-       └─▶ Insert into D1
+       └─▶ Insert into PostgreSQL (the channel's RLS scope)
 
 2. Merchant confirms (dashboard)
    └─▶ PATCH /api/orders/:id
@@ -90,18 +93,20 @@ import { SCOPES } from "../../cod-shared/rbac/scopes";
 ## Backend (cod-server)
 
 **Framework:** Hono 4 + Zod OpenAPI  
-**Database:** Drizzle ORM + D1 (SQLite)  
+**Database:** Drizzle ORM + PostgreSQL, one transaction per request pinned to
+its store by Row-Level Security (`src/db/scope.ts`)  
 **Auth:** Better Auth 1.7 with JWT
 
 ### Endpoint Organization
 
 ```
-cod-server/src/endpoints/
-├── api/          # Merchant API (/api/*)
-├── store/        # Storefront API (/store/*)
-├── webhooks/     # Carrier webhooks
-├── images/       # R2 image proxy
-└── mcp/          # AI agent API
+cod-server/src/
+├── endpoints/<domain>/  # Merchant API (/api/*), one folder per domain
+├── endpoints/store/     # Storefront API (/store/*)
+├── endpoints/webhooks/  # Carrier webhooks
+├── endpoints/images/    # Image upload + resized serving (S3 storage)
+├── mcp/                 # AI agent API (/mcp)
+└── platform/            # Job queue, outbound orders, channel domains, image store
 ```
 
 ### Background jobs
@@ -115,11 +120,11 @@ conversions are its first job kind (`src/tracking/`, `docs/TRACKING.md`).
 
 ## Dashboard (cod-client-astro)
 
-**Framework:** Astro 7 (prerendered static + auth worker)  
+**Framework:** Astro 7 (prerendered static + Node server routes for auth)  
 **Rendering:** Pages are prerendered shells; React islands hydrate on the
 client and fetch data through the API seam  
-**Auth:** Better Auth on the Worker surface (`/api/auth/*`), sharing
-cod-server's D1; islands carry a short-lived JWT (`set-auth-jwt`) that
+**Auth:** Better Auth on the dashboard's server routes (`/api/auth/*`), on
+the shared PostgreSQL with Redis as secondary storage; islands carry a short-lived JWT (`set-auth-jwt`) that
 cod-server verifies against its JWKS
 
 All dashboard data flows browser → cod-server REST API with JWT
@@ -134,7 +139,8 @@ authentication. RBAC is enforced server-side in `cod-server`.
 **Rendering:** Server-rendered on-demand  
 **JavaScript:** Minimal — only interactive components
 
-All data fetched from `cod-server` API. No direct D1 access.
+All data fetched from the `cod-server` API. No direct database access. One
+running storefront serves every channel; the visitor's hostname picks it.
 
 ---
 
@@ -188,7 +194,7 @@ interface CarrierAdapter {
 **Webhooks (Yalidine, ZR Express):**
 1. Verify HMAC signature
 2. Update order status
-3. Trigger downstream workflows
+3. Queue the conversion jobs
 
 ---
 
@@ -221,12 +227,13 @@ handler itself is stateless. See `docs/MCP.md`.
 
 ## Deployment
 
-All three workers deploy to Cloudflare's global edge:
-- **cod-server** → `https://api.yourdomain.com`
-- **cod-client-astro** → `https://dashboard.yourdomain.com`
-- **cod-astro** → `https://shop.yourdomain.com`
+All services run in Docker Compose on one server, behind Caddy:
+- **cod-server** → `https://api.<domain>`
+- **cod-client-astro** → `https://app.<domain>`
+- **cod-astro/theme01** → every channel hostname (merchant domains get their
+  certificate on demand)
 
-Shared resources: D1, R2, KV (same Cloudflare account).
+See [DEPLOYMENT.md](./DEPLOYMENT.md).
 
 ---
 

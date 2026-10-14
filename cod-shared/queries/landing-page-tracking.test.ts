@@ -11,7 +11,6 @@
  * Real PostgreSQL: this is a two-table feature with a cascade, and the mock db
  * cannot model either.
  */
-/// <reference types="vitest/globals" />
 
 import { beforeAll, afterAll, describe, it, expect } from "vitest";
 import { createTestDb, type TestDb } from "@/test-utils/pg";

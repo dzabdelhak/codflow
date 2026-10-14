@@ -1,11 +1,11 @@
 /**
- * getAllCustomers + getAllDrivers — Slice 8 real-D1 E2E.
+ * getAllCustomers + getAllDrivers — Slice 8 PostgreSQL E2E.
  *
- * Verifies on a real engine (miniflare + real migrations, which ENFORCE the
- * 100-bound-parameter limit — the exact failure this slice removes):
+ * Verifies on a real engine (PostgreSQL + real migrations):
  *   • THE CRASH CASE: a customer group with 150 members filtered through
- *     the list endpoint — pre-Slice 8 this built inArray(…150 ids) and
- *     failed with "too many SQL variables"; the EXISTS subquery carries
+ *     the list endpoint — pre-Slice 8 this built inArray(…150 ids), which
+ *     D1's 100-bound-parameter limit rejected with "too many SQL
+ *     variables"; the EXISTS subquery carries
  *     a single bound param regardless of membership size.
  *   • group/tag filters return exactly the members, paginated
  *   • empty group → empty page; combined filters (AND semantics)
@@ -167,7 +167,7 @@ describe("getAllCustomers — real PostgreSQL", () => {
   });
 });
 
-describe("getAllDrivers — real D1", () => {
+describe("getAllDrivers — real PostgreSQL", () => {
   it("wilaya 16 filter returns only drv-16 with its compensation count", async () => {
     const rows = await getAllDrivers(db, { wilayaId: 16 });
     expect(rows.map((r) => r.id)).toEqual(["drv-16"]);

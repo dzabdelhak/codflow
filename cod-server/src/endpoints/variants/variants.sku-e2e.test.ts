@@ -1,5 +1,5 @@
 /**
- * Variant SKU uniqueness — real D1 (regression for the raw-500 crash)
+ * Variant SKU uniqueness — real PostgreSQL (regression for the raw-500 crash)
  *
  * The dashboard product editor sends variant creates/updates in a save
  * sequence. A SKU that collides with an existing variant previously crashed
@@ -22,7 +22,6 @@ import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
 import { first } from "../../../../cod-shared/db/client";
 
 let db: AppDb;
-let rawD1: D1Database;
 
 beforeAll(async () => {
   const harness = await createTestDb();

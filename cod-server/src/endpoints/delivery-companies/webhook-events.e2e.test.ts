@@ -1,9 +1,9 @@
 /**
- * GET /api/delivery-companies/:id/webhook/events — real-D1 E2E.
+ * GET /api/delivery-companies/:id/webhook/events — PostgreSQL E2E.
  *
  * Exercises the full route: RBAC middleware, zod query validation, the
  * joined read (events + orderNumber), result filtering, pagination, and
- * scope/company guards — against real D1 with real migrations and a real
+ * scope/company guards — against PostgreSQL with real migrations and a real
  * auth'd context. No mocked queries.
  */
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
@@ -111,7 +111,7 @@ function authAs(scopes: string[]) {
   currentScopes = scopes;
 }
 
-describe("GET /api/delivery-companies/:id/webhook/events — real D1", () => {
+describe("GET /api/delivery-companies/:id/webhook/events — real PostgreSQL", () => {
   it("lists newest-first with joined orderNumber and excludes rawPayload", async () => {
     authAs(READ_SCOPES);
     const res = await app.request("/api/delivery-companies/comp-events/webhook/events");

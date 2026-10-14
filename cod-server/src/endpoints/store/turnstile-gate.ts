@@ -13,7 +13,7 @@
  *     (revenue-first precedent, TURNSTILE_INTEGRATION_PLAN.md §2.2).
  *
  * Runs BEFORE the SKU/stock lookups in createStoreOrder so bot traffic is
- * rejected before spending D1 reads. Independent of the OTP gate — the two
+ * rejected before spending database reads. Independent of the OTP gate — the two
  * features compose.
  */
 

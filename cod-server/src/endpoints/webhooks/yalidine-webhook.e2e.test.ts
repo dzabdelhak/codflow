@@ -1,8 +1,8 @@
 /**
- * Yalidine webhook handler — real-D1 end-to-end.
+ * Yalidine webhook handler — PostgreSQL end-to-end.
  *
- * Posts real event payloads through handleYalidineWebhook against a real
- * Miniflare D1 with all real migrations applied — real company lookup, real
+ * Posts real event payloads through handleYalidineWebhook against
+ * PostgreSQL with all real migrations applied — real company lookup, real
  * webhook-events idempotency table, real mapper, real order-status path
  * (rank guard + inventory restore). No mocked queries.
  *
@@ -145,7 +145,7 @@ async function eventRow(eventId: string) {
     .then(first);
 }
 
-describe("handleYalidineWebhook — real D1, real mapper, real order path", () => {
+describe("handleYalidineWebhook — real PostgreSQL, real mapper, real order path", () => {
   it("the live return flow: transit no-ops never move the order, the terminal maps it returned + restores inventory", async () => {
     // Replay the EXACT observed sequence of a real returned parcel.
     const flow: Array<[string, string | null]> = [
@@ -243,7 +243,7 @@ describe("handleYalidineWebhook — real D1, real mapper, real order path", () =
   });
 });
 
-describe("handleYalidineWebhook — HMAC signature verification (real D1 + real crypto)", () => {
+describe("handleYalidineWebhook — HMAC signature verification (real PostgreSQL + real crypto)", () => {
   const body = JSON.stringify({
     type: "parcel_status_updated",
     events: [

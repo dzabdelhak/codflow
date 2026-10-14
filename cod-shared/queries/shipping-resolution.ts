@@ -27,7 +27,7 @@ import {
 } from "../db/schema";
 import type { AppDb } from "../db/client";
 import { first } from "../db/client";
-import { chunkIds } from "./d1-limits";
+import { chunkIds } from "./id-chunks";
 
 const DEFAULT_PROFILE_ID = sql<string | null>`coalesce(${stores.defaultShippingProfileId}, (select p.id from shipping_profiles p where p.is_default order by p.created_at, p.id limit 1))`;
 
@@ -168,7 +168,7 @@ export async function resolveDeliveryFee(
       : PLATFORM_DEFAULTS;
 
   // No existence check on a product's profile: channel_products.shipping_profile_id is
-  // a foreign key with ON DELETE SET NULL, and D1 enforces it — a dangling
+  // a foreign key with ON DELETE SET NULL, and PostgreSQL enforces it — a dangling
   // value cannot be written. Verifying it would cost a round trip per checkout
   // to rule out a state the database already prevents.
   const profileIds = candidateProfileIds(

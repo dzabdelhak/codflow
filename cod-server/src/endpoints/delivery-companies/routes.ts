@@ -447,7 +447,7 @@ const registerWebhookRoute = defineRoute({
       content: jsonContent(
         z.object({
           success: z.boolean(),
-          webhookUrl: z.string().url().openapi({ example: "https://your-worker.workers.dev/webhooks/zr_express" }),
+          webhookUrl: z.string().url().openapi({ example: "https://api.example.com/webhooks/zr_express" }),
           endpointId: z.string().openapi({ example: "ep_1234567890" }),
         })
       ),

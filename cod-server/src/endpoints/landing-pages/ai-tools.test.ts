@@ -15,7 +15,7 @@
  *   • getLandingPageImageUploadStatus: complete or unknown
  *
  * The queries module and the cod-shared URL helpers are mocked — these tests
- * cover the tool layer's own logic, not D1 behavior (that lives in the e2e
+ * cover the tool layer's own logic, not database behavior (that lives in the e2e
  * suites). Sniffing, minting, and base64 decoding run for real.
  */
 

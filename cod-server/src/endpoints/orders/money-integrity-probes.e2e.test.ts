@@ -1,8 +1,8 @@
 /**
- * Money & inventory integrity — real-D1 probe matrix (audit, red-first)
+ * Money & inventory integrity — PostgreSQL probe matrix (audit, red-first)
  *
  * Proves or refutes the four top audit findings against real migrations on
- * real D1. No mocks for the flows; fault injection only for atomicity probes.
+ * PostgreSQL. No mocks for the flows; fault injection only for atomicity probes.
  *
  * Probes:
  *   P1  storefront price forging — client pricePerUnit vs variant catalog price

@@ -1,0 +1,13 @@
+type = "notification"
+name = "Email to the operators"
+active = true
+
+[config]
+type = "smtp"
+smtpHost = "{{ get_env(name='AUTOKUMA__ENV__SMTP_HOST') }}"
+smtpPort = "{{ get_env(name='AUTOKUMA__ENV__SMTP_PORT') }}"
+smtpSecure = false
+smtpUsername = "{{ get_env(name='AUTOKUMA__ENV__SMTP_USER') }}"
+smtpPassword = "{{ get_env(name='AUTOKUMA__ENV__SMTP_PASSWORD') }}"
+smtpFrom = "{{ get_env(name='AUTOKUMA__ENV__ALERT_EMAIL_FROM') }}"
+smtpTo = "{{ get_env(name='AUTOKUMA__ENV__ALERT_EMAIL_TO') }}"

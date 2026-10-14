@@ -135,7 +135,7 @@ export function memoryImageStore(): ImageStore & { objects: Map<string, StoredIm
     },
     async open(key) {
       const object = objects.get(key);
-      return object ? { body: new Blob([object.body]).stream(), contentType: object.contentType, etag: object.etag } : null;
+      return object ? { body: new Blob([object.body as BlobPart]).stream(), contentType: object.contentType, etag: object.etag } : null;
     },
     async delete(keys) {
       for (const key of keys) objects.delete(key);

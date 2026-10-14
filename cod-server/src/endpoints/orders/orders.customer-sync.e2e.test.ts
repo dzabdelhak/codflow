@@ -1,10 +1,10 @@
 /**
- * Order-edit customer sync — real-D1 probe
+ * Order-edit customer sync — PostgreSQL probe
  *
  * Audit finding: PATCH /orders/:id updated only the orders row, leaving the
  * linked customers row with the old name/phone/wilaya — one phone on the
  * order, another on the customer. These probes prove the sync against real
- * migrations on real D1 (phone is the customer identity, UNIQUE since 0015):
+ * migrations on PostgreSQL (phone is the customer identity, UNIQUE):
  *
  *   S1  name/wilaya/commune/address edits flow into the linked customer
  *   S2  a corrected phone lands on the same customer when the number is new
@@ -95,7 +95,7 @@ async function getCustomer(id: string) {
   return db.select().from(schema.customers).where(eq(schema.customers.id, id)).then(first);
 }
 
-describe("updateOrder — customer sync (real D1)", () => {
+describe("updateOrder — customer sync (real PostgreSQL)", () => {
   it("S1: name/wilaya/commune/address edits flow into the linked customer", async () => {
     const { id: customerId, phone } = await seedCustomer();
     const orderId = await seedOrder(customerId, "Old Name", phone);

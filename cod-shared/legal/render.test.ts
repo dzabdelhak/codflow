@@ -2,10 +2,8 @@
  * Legal template pack — structure, parity, and the guarantees the storefront
  * depends on.
  *
- * Pure functions only, so this runs in the fast Node pool. The one thing it
- * cannot prove here is that the markup survives a real HTMLRewriter — that is
- * `templates.sanitize.test.ts`, which runs in workerd, because HTMLRewriter
- * does not exist in this pool.
+ * Pure functions only. That the markup survives the real sanitiser is
+ * `templates.sanitize.test.ts`.
  */
 
 import { describe, expect, it } from "vitest";

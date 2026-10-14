@@ -108,7 +108,7 @@ export async function getAllDrivers(db: AppDb, filters?: DriverFilters) {
  * Driver cash reconciliation: compares the driver's denormalized pendingCash
  * counter against the authoritative sum of delivered-but-unsettled orders.
  * drift ≠ 0 means the ledger and reality disagree — damage from an old bug,
- * a manual D1 edit, or a mid-settlement failure. Surfaced so ops can see it.
+ * a manual database edit, or a mid-settlement failure. Surfaced so ops can see it.
  */
 export async function getDriverCashReconciliation(db: AppDb, driverId: string) {
   const [driverRow, pendingRow] = await Promise.all([

@@ -1,0 +1,6 @@
+# Pushed every 10 minutes by deploy/backup/disk-check.sh; red above DISK_ALERT_PERCENT.
+type = "push"
+name = "Disk space"
+push_token = "CodflowDiskSpaceCheckPushToken03"
+interval = 1200
+notification_name_list = ["email"]

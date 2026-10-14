@@ -1,7 +1,7 @@
 /**
- * Slice 7 — count+rows in one round trip: real-D1 E2E.
+ * Slice 7 — count+rows in one round trip: PostgreSQL E2E.
  *
- * Verifies on a real engine (miniflare + real migrations) that the batched
+ * Verifies on a real engine (PostgreSQL + real migrations) that the batched
  * list+count pairs keep exact semantics:
  *   • totals stay correct on EMPTY pages (offset beyond the end) — the case
  *     that rules out COUNT(*) OVER() (verified: window returns no rows there)
@@ -88,7 +88,7 @@ afterAll(async () => {
   for (const mf of registry) await mf.dispose();
 });
 
-describe("getStockHistory — real D1", () => {
+describe("getStockHistory — real PostgreSQL", () => {
   it("pages movements newest-first with the exact total", async () => {
     const all = await getStockHistory(db, "prod-1", { limit: 20, offset: 0 });
     expect(all.movements).toHaveLength(4);
@@ -119,7 +119,7 @@ describe("getStockHistory — real D1", () => {
   });
 });
 
-describe("getApprovedProductReviews — real D1", () => {
+describe("getApprovedProductReviews — real PostgreSQL", () => {
   it("returns only approved reviews for the product, paginated", async () => {
     const result = await getApprovedProductReviews(db, "test-store", "prod-1", 20, 0);
     expect(result.rows.map((r) => r.id)).toEqual(["rev-2", "rev-1"]);
@@ -141,7 +141,7 @@ describe("getApprovedProductReviews — real D1", () => {
   });
 });
 
-describe("getAllReviews — real D1", () => {
+describe("getAllReviews — real PostgreSQL", () => {
   it("unfiltered returns all reviews newest-first with global pendingCount", async () => {
     const result = await getAllReviews(db, { limit: 20, offset: 0 });
     expect(result.rows).toHaveLength(5);
@@ -173,7 +173,7 @@ describe("getAllReviews — real D1", () => {
   });
 });
 
-describe("listAbandonedOrders — real D1", () => {
+describe("listAbandonedOrders — real PostgreSQL", () => {
   it("lists newest-first unfiltered with the exact total", async () => {
     const result = await listAbandonedOrders(db, { limit: 10, offset: 0 });
     expect(result.rows).toHaveLength(5);
@@ -202,7 +202,7 @@ describe("listAbandonedOrders — real D1", () => {
   });
 });
 
-describe("getAbandonedOrderStats — real D1", () => {
+describe("getAbandonedOrderStats — real PostgreSQL", () => {
   it("computes stats from real rows (3 abandoned, 1 converted → 25%)", async () => {
     const stats = await getAbandonedOrderStats(db);
     expect(stats).toEqual({

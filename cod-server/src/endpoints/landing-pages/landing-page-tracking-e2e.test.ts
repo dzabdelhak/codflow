@@ -1,5 +1,5 @@
 /**
- * The per-landing-page tracking API, on real D1 through the real route stack.
+ * The per-landing-page tracking API, on real PostgreSQL through the real route stack.
  *
  * Three endpoints and one rule that matters more than all of them: the
  * Conversions API access token goes IN and never comes back out. It is a
@@ -14,18 +14,18 @@ import { OpenAPIHono } from "@hono/zod-openapi";
 import type { AppContext } from "@/types";
 import { errorHandler } from "@/middleware/error";
 import { openApiValidationHook } from "@/openapi/validation-hook";
-import { createTestD1, type TestD1 } from "@/test-utils/d1";
+import { createTestDb, type TestDb } from "@/test-utils/pg";
 import * as schema from "@/db/schema";
 import landingPagesRouter from "./routes";
 import { first } from "../../../../cod-shared/db/client";
 
-let harness: TestD1;
+let harness: TestDb;
 let app: OpenAPIHono<AppContext>;
 const NOW = () => new Date().toISOString();
 let seq = 0;
 
 beforeAll(async () => {
-  harness = await createTestD1();
+  harness = await createTestDb();
 
   app = new OpenAPIHono<AppContext>({ defaultHook: openApiValidationHook });
   app.use("*", async (c, next) => {

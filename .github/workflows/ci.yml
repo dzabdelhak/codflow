@@ -82,3 +82,21 @@ jobs:
         working-directory: cod-astro/theme01
       - run: npm run build
         working-directory: cod-astro/theme01
+
+  deploy:
+    name: deploy (compose, Caddyfile, scripts)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: compose file resolves with the secrets template
+        run: |
+          sed -E 's/^([A-Z0-9_]*(PASSWORD|SECRET|KEY)[A-Z0-9_]*)=$/\1=ci-0123456789abcdef0123456789abcdef/' deploy/secrets.env.example > "$RUNNER_TEMP/secrets.env"
+          CODFLOW_SECRETS="$RUNNER_TEMP/secrets.env" docker compose -f deploy/compose.yml --env-file "$RUNNER_TEMP/secrets.env" config -q
+      - name: Caddyfile is valid
+        run: >-
+          docker run --rm -v "$PWD/deploy/caddy:/etc/caddy:ro"
+          -e BASE_DOMAIN=example.dz -e ACME_EMAIL=ops@example.dz
+          caddy:2.11-alpine caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+      - name: shell scripts
+        run: shellcheck -S warning -e SC2034 deploy/install.sh deploy/backup/*.sh
+

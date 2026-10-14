@@ -1,14 +1,14 @@
 /**
- * Abandoned baskets — real-D1 E2E.
+ * Abandoned baskets — PostgreSQL E2E.
  *
  * The whole point of this table is the callback: a merchant rings someone who
  * walked away and needs to say what they were buying. With the cart shipped,
  * "what they were buying" can be five things, and an abandoned record that
  * only remembers one of them makes that call useless.
  *
- * These run against a real D1 with the real migrations applied — including
- * 0028 — because the safety argument for that migration is entirely about what
- * the columns actually hold afterwards, and a mock cannot show that.
+ * These run against PostgreSQL with the real migrations applied, because the
+ * safety argument for the basket columns is entirely about what they actually
+ * hold, and a mock cannot show that.
  */
 
 import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from "vitest";

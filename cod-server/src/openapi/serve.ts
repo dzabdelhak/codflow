@@ -17,8 +17,7 @@ import { imagePaths } from "@/endpoints/images/openapi";
 
 function resolveBaseUrl(c: Context<AppContext>): string {
   return (
-    c.env.WORKER_URL ||
-    c.req.header("X-Worker-URL") ||
+    c.env.PUBLIC_API_URL ||
     `https://${c.req.header("host")}`
   );
 }

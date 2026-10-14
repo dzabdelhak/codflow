@@ -28,7 +28,7 @@ const env = () => ({
   DATABASE: database,
   BETTER_AUTH_URL: "http://app.test",
   BETTER_AUTH_JWKS_URL: JWKS_URL,
-  WORKER_SELF_URL: API,
+  PUBLIC_API_URL: API,
   ENVIRONMENT: "test",
 });
 

@@ -35,7 +35,7 @@ body:
       label: Area
       description: Which part of the project would this touch?
       options:
-        - cod-server (API / Workers)
+        - cod-server (API)
         - cod-client-astro (dashboard)
         - cod-astro/theme01 (storefront)
         - cod-shared (schema / queries)

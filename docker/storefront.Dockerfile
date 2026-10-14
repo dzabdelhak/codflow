@@ -12,6 +12,7 @@ RUN npm ci --ignore-scripts --workspace cod-astro-theme01
 COPY cod-shared cod-shared
 COPY cod-astro/theme01 cod-astro/theme01
 RUN npm run build --workspace cod-astro-theme01
-ENV HOST=0.0.0.0 PORT=4321
+COPY docker/astro-server.mjs docker/astro-server.mjs
+ENV HOST=0.0.0.0 PORT=4321 ASTRO_NODE_AUTOSTART=disabled
 EXPOSE 4321
-CMD ["node", "cod-astro/theme01/dist/server/entry.mjs"]
+CMD ["node", "docker/astro-server.mjs", "cod-astro/theme01/dist/server/entry.mjs"]

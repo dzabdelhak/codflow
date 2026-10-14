@@ -1,6 +1,6 @@
 ---
 name: codflow-governance
-description: CodFlow repository workflow — the process for making and shipping a change that meets this repo's standards. Use when making ANY change to CodFlow (cod-server, cod-client-astro, cod-shared, cod-astro/theme01, README, docs, CI), before committing or opening a PR, writing README feature claims, touching migrations or the D1 schema, adding dependencies, or reviewing contributions. Loads and defers to AGENTS.md for the repo contract; this skill is the step-by-step workflow, not a duplicate of it.
+description: CodFlow repository workflow — the process for making and shipping a change that meets this repo's standards. Use when making ANY change to CodFlow (cod-server, cod-client-astro, cod-shared, cod-astro/theme01, README, docs, CI), before committing or opening a PR, writing README feature claims, touching migrations or the database schema, adding dependencies, or reviewing contributions. Loads and defers to AGENTS.md for the repo contract; this skill is the step-by-step workflow, not a duplicate of it.
 ---
 
 # CodFlow Governance — change workflow
@@ -28,7 +28,7 @@ commands and boundaries live in each package's `AGENTS.md`
 - Respect the `cod-shared` boundary: schema, queries, RBAC scopes, and error
   codes are defined there and only there. Do not duplicate them in a package.
 - Migrations: add a new migration; never rewrite an already-applied one.
-- Ask before adding a production dependency or changing the D1 schema.
+- Ask before adding a production dependency or changing the database schema.
 - Keep engine logic out of `cod-astro/theme01` (swappable theme layer).
 
 ### 2. Install dependencies
@@ -46,7 +46,7 @@ npm ci
   (`feat:`, `fix:`, `docs:`, `chore:`, `refactor:`, `test:`, `ci:`).
 - No explanatory code comments unless asked.
 - Never commit secrets (API keys, carrier tokens, credentials). Real secrets go
-  in `wrangler secrets` / `.dev.vars` (gitignored).
+  in the deployment's environment; commit `.example` templates only.
 - Add or update a **focused test** for behavior changes.
 
 ### 4. Verify — never skip
@@ -64,8 +64,9 @@ npm ci
 - PRs must be small enough to review in one sitting (< ~500 lines).
 - The PR template checklist must pass: no secrets, tests cover the change,
   README claims match code, conventional commit message.
-- CI (typecheck + tests for cod-server, cod-client-astro, cod-client (legacy),
-  and astro check + tests for theme01) must be green.
+- CI (typecheck + tests for cod-server and cod-client-astro, and astro check +
+  tests for theme01) must be green. cod-server tests need PostgreSQL
+  (`docker compose up -d db`).
 - When reviewing: README claims only what code does? Secrets absent? Tests
   included? Migrations additive?
 

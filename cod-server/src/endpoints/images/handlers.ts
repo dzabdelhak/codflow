@@ -118,7 +118,7 @@ export async function serveImage(c: Context<AppContext>) {
   }
   const body = width === null ? null : await renderOnce(store, key, width);
   if (!body) throw new NotFoundError("Image", key);
-  return new Response(body, { headers: { ...IMAGE_HEADERS, "Content-Type": "image/webp" } });
+  return new Response(body as BodyInit, { headers: { ...IMAGE_HEADERS, "Content-Type": "image/webp" } });
 }
 
 /**

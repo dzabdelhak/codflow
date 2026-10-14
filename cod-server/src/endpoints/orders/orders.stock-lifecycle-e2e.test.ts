@@ -1,7 +1,7 @@
 /**
- * Stock & customer-stats lifecycle — real D1 (E2E diagnosis matrix)
+ * Stock & customer-stats lifecycle — real PostgreSQL (E2E diagnosis matrix)
  *
- * Runs every restock/stats path against real migrations on real D1 (FKs
+ * Runs every restock/stats path against real migrations on real PostgreSQL (FKs
  * enforced, exactly like production). No mocks for the flows themselves.
  *
  * Invariants under test (senior-dev checklist):
@@ -19,7 +19,6 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { createTestDb, type TestDb } from "@/test-utils/pg";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
-import { drizzle } from "drizzle-orm/d1";
 import { eq } from "drizzle-orm";
 import * as schema from "@/db/schema";
 import type { AppDb } from "@/db";
@@ -162,7 +161,7 @@ async function seedDriver() {
 // The matrix
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe("stock & customer stats — real D1 lifecycle matrix", () => {
+describe("stock & customer stats — real PostgreSQL lifecycle matrix", () => {
   it("T1: createOrder deducts stock, bumps stats, logs ledger (baseline)", async () => {
     const { orderId, productId, customerId } = await seedOrder();
 
@@ -316,7 +315,7 @@ describe("stock & customer stats — real D1 lifecycle matrix", () => {
     expect(await movementsFor(productId)).toHaveLength(0);
   });
 
-  // ── Atomicity (I5) — real D1 + fault injection ─────────────────────────────
+  // ── Atomicity (I5) — real PostgreSQL + fault injection ─────────────────────────────
 
   it("T12: manual cancel fault mid-sequence — must leave NO partial state", async () => {
     const { orderId, productId } = await seedOrder();

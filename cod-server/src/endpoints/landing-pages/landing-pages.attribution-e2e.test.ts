@@ -1,5 +1,5 @@
 /**
- * Landing Pages — Slice 5: order attribution on real D1.
+ * Landing Pages — Slice 5: order attribution on real PostgreSQL.
  *
  * Drives the real createStoreOrder query (the exact code the public order
  * endpoint runs) with a resolved landingPageId. The resolution + best-effort
@@ -18,7 +18,6 @@ import { findPublishedLandingPageIdBySlug } from "../../../../cod-shared/queries
 import { first } from "../../../../cod-shared/db/client";
 
 let db: AppDb;
-let rawD1: D1Database;
 
 beforeAll(async () => {
   const harness = await createTestDb();
@@ -82,7 +81,7 @@ async function placeOrder(productId: string, landingPageId: string | null) {
   } as any);
 }
 
-describe("Slice 5 — landing page order attribution (real D1)", () => {
+describe("Slice 5 — landing page order attribution (real PostgreSQL)", () => {
   it("resolver: published slug → id; draft/archived/unknown → null", async () => {
     const productId = await seedProduct();
     await seedLp("attr-live", productId, "published");

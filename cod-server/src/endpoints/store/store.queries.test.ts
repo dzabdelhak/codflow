@@ -8,7 +8,7 @@
  *     INSERT ... ON CONFLICT(phone) DO UPDATE ... RETURNING
  *   • return the RETURNING row — new or existing, race-free
  *
- * createStoreOrder's coverage moved to real D1 — see the note at the bottom.
+ * createStoreOrder's coverage moved to PostgreSQL — see the note at the bottom.
  */
 
 import { describe, it, expect } from "vitest";
@@ -64,16 +64,16 @@ describe("findOrCreateCustomer", () => {
   });
 });
 
-// ─── createStoreOrder — coverage moved to real D1 ────────────────────────────
+// ─── createStoreOrder — coverage moved to PostgreSQL ─────────────────────────
 //
 // These six cases used to live here as mock-queue tests. The queue is
 // call-ordered, so it encoded the engine's exact sequence of `.get()` calls —
-// and the engine no longer makes them: the resolve phase is now ONE batched
-// round trip (chunked `inArray` + `db.batch()`), because a sequential read per
-// product is pathological for a basket on a single-threaded D1.
+// and the engine no longer makes them: the resolve phase now reads the whole
+// basket at once (chunked `inArray` + `db.batch()`) rather than once per
+// product.
 //
 // Rather than re-encode a batched query plan positionally — which would test
-// the mock rather than the system — each case now runs against Miniflare D1
+// the mock rather than the system — each case now runs against PostgreSQL
 // with the real migrations:
 //
 //   catalog price is authoritative   → cart-orders-e2e: "ignores the client's

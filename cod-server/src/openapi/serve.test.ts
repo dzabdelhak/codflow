@@ -70,7 +70,7 @@ function buildApp() {
 describe("GET /api/openapi.json (merged spec)", () => {
   it("returns 200 with a JSON document", async () => {
     const app = buildApp();
-    const res = await app.request("/api/openapi.json", {}, { WORKER_URL: "https://api.example.com" } as any);
+    const res = await app.request("/api/openapi.json", {}, { PUBLIC_API_URL: "https://api.example.com" } as any);
 
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toContain("application/json");
@@ -78,9 +78,9 @@ describe("GET /api/openapi.json (merged spec)", () => {
     expect(spec.openapi).toBe("3.1.0");
   });
 
-  it("uses WORKER_URL as the server URL", async () => {
+  it("uses PUBLIC_API_URL as the server URL", async () => {
     const app = buildApp();
-    const res = await app.request("/api/openapi.json", {}, { WORKER_URL: "https://api.example.com" } as any);
+    const res = await app.request("/api/openapi.json", {}, { PUBLIC_API_URL: "https://api.example.com" } as any);
 
     const spec: any = await res.json();
     expect(spec.servers[0].url).toBe("https://api.example.com");
@@ -88,7 +88,7 @@ describe("GET /api/openapi.json (merged spec)", () => {
 
   it("documents the migrated wilayas endpoints from Zod schemas", async () => {
     const app = buildApp();
-    const res = await app.request("/api/openapi.json", {}, { WORKER_URL: "https://x" } as any);
+    const res = await app.request("/api/openapi.json", {}, { PUBLIC_API_URL: "https://x" } as any);
     const spec: any = await res.json();
 
     const list = spec.paths["/api/wilayas"]?.get;
@@ -115,7 +115,7 @@ describe("GET /api/openapi.json (merged spec)", () => {
 
   it("documents the migrated activity-logs endpoints from Zod schemas", async () => {
     const app = buildApp();
-    const res = await app.request("/api/openapi.json", {}, { WORKER_URL: "https://x" } as any);
+    const res = await app.request("/api/openapi.json", {}, { PUBLIC_API_URL: "https://x" } as any);
     const spec: any = await res.json();
 
     const listLogs = spec.paths["/api/activity-logs"]?.get;
@@ -133,7 +133,7 @@ describe("GET /api/openapi.json (merged spec)", () => {
 
   it("documents the migrated delivery-companies endpoints from Zod schemas", async () => {
     const app = buildApp();
-    const res = await app.request("/api/openapi.json", {}, { WORKER_URL: "https://x" } as any);
+    const res = await app.request("/api/openapi.json", {}, { PUBLIC_API_URL: "https://x" } as any);
     const spec: any = await res.json();
 
     // List endpoint
@@ -171,7 +171,7 @@ describe("GET /api/openapi.json (merged spec)", () => {
 
   it("documents the migrated reviews endpoints from Zod schemas", async () => {
     const app = buildApp();
-    const res = await app.request("/api/openapi.json", {}, { WORKER_URL: "https://x" } as any);
+    const res = await app.request("/api/openapi.json", {}, { PUBLIC_API_URL: "https://x" } as any);
     const spec: any = await res.json();
 
     const list = spec.paths["/api/reviews"]?.get;
@@ -198,7 +198,7 @@ describe("GET /api/openapi.json (merged spec)", () => {
 
   it("documents the migrated customer-groups endpoints from Zod schemas", async () => {
     const app = buildApp();
-    const res = await app.request("/api/openapi.json", {}, { WORKER_URL: "https://x" } as any);
+    const res = await app.request("/api/openapi.json", {}, { PUBLIC_API_URL: "https://x" } as any);
     const spec: any = await res.json();
 
     const list = spec.paths["/api/customer-groups"]?.get;
@@ -245,7 +245,7 @@ describe("GET /api/openapi.json (merged spec)", () => {
 
   it("documents the migrated customer-tags endpoints from Zod schemas", async () => {
     const app = buildApp();
-    const res = await app.request("/api/openapi.json", {}, { WORKER_URL: "https://x" } as any);
+    const res = await app.request("/api/openapi.json", {}, { PUBLIC_API_URL: "https://x" } as any);
     const spec: any = await res.json();
 
     const list = spec.paths["/api/customer-tags"]?.get;
@@ -292,7 +292,7 @@ describe("GET /api/openapi.json (merged spec)", () => {
 
   it("documents the migrated product-groups endpoints from Zod schemas", async () => {
     const app = buildApp();
-    const res = await app.request("/api/openapi.json", {}, { WORKER_URL: "https://x" } as any);
+    const res = await app.request("/api/openapi.json", {}, { PUBLIC_API_URL: "https://x" } as any);
     const spec: any = await res.json();
 
     const list = spec.paths["/api/product-groups"]?.get;
@@ -328,7 +328,7 @@ describe("GET /api/openapi.json (merged spec)", () => {
 
   it("documents the migrated customers endpoints from Zod schemas", async () => {
     const app = buildApp();
-    const res = await app.request("/api/openapi.json", {}, { WORKER_URL: "https://x" } as any);
+    const res = await app.request("/api/openapi.json", {}, { PUBLIC_API_URL: "https://x" } as any);
     const spec: any = await res.json();
 
     const list = spec.paths["/api/customers"]?.get;
@@ -383,7 +383,7 @@ describe("GET /api/openapi.json (merged spec)", () => {
 
   it("documents the migrated shipping-profiles endpoints from Zod schemas", async () => {
     const app = buildApp();
-    const res = await app.request("/api/openapi.json", {}, { WORKER_URL: "https://x" } as any);
+    const res = await app.request("/api/openapi.json", {}, { PUBLIC_API_URL: "https://x" } as any);
     const spec: any = await res.json();
 
     const list = spec.paths["/api/shipping-profiles"]?.get;
@@ -448,7 +448,7 @@ describe("GET /api/openapi.json (merged spec)", () => {
 
   it("documents the migrated drivers endpoints from Zod schemas", async () => {
     const app = buildApp();
-    const res = await app.request("/api/openapi.json", {}, { WORKER_URL: "https://x" } as any);
+    const res = await app.request("/api/openapi.json", {}, { PUBLIC_API_URL: "https://x" } as any);
     const spec: any = await res.json();
 
     const list = spec.paths["/api/drivers"]?.get;
@@ -509,7 +509,7 @@ describe("GET /api/openapi.json (merged spec)", () => {
 
   it("documents the migrated users endpoints from Zod schemas", async () => {
     const app = buildApp();
-    const res = await app.request("/api/openapi.json", {}, { WORKER_URL: "https://x" } as any);
+    const res = await app.request("/api/openapi.json", {}, { PUBLIC_API_URL: "https://x" } as any);
     const spec: any = await res.json();
 
     const list = spec.paths["/api/users"]?.get;
@@ -564,7 +564,7 @@ describe("GET /api/openapi.json (merged spec)", () => {
 
   it("documents the migrated stores endpoints from Zod schemas", async () => {
     const app = buildApp();
-    const res = await app.request("/api/openapi.json", {}, { WORKER_URL: "https://x" } as any);
+    const res = await app.request("/api/openapi.json", {}, { PUBLIC_API_URL: "https://x" } as any);
     const spec: any = await res.json();
 
     const getMe = spec.paths["/api/stores/me"]?.get;
@@ -596,7 +596,7 @@ describe("GET /api/openapi.json (merged spec)", () => {
 
   it("documents the migrated products endpoints from Zod schemas", async () => {
     const app = buildApp();
-    const res = await app.request("/api/openapi.json", {}, { WORKER_URL: "https://x" } as any);
+    const res = await app.request("/api/openapi.json", {}, { PUBLIC_API_URL: "https://x" } as any);
     const spec: any = await res.json();
 
     const list = spec.paths["/api/products"]?.get;
@@ -635,7 +635,7 @@ describe("GET /api/openapi.json (merged spec)", () => {
 
   it("documents the migrated stock endpoints from Zod schemas", async () => {
     const app = buildApp();
-    const res = await app.request("/api/openapi.json", {}, { WORKER_URL: "https://x" } as any);
+    const res = await app.request("/api/openapi.json", {}, { PUBLIC_API_URL: "https://x" } as any);
     const spec: any = await res.json();
 
     const overview = spec.paths["/api/stock/overview"]?.get;
@@ -662,7 +662,7 @@ describe("GET /api/openapi.json (merged spec)", () => {
 
   it("documents the migrated offers endpoints from Zod schemas", async () => {
     const app = buildApp();
-    const res = await app.request("/api/openapi.json", {}, { WORKER_URL: "https://x" } as any);
+    const res = await app.request("/api/openapi.json", {}, { PUBLIC_API_URL: "https://x" } as any);
     const spec: any = await res.json();
 
     const list = spec.paths["/api/offers"]?.get;
@@ -685,7 +685,7 @@ describe("GET /api/openapi.json (merged spec)", () => {
 
   it("documents the migrated driver-payments endpoints from Zod schemas", async () => {
     const app = buildApp();
-    const res = await app.request("/api/openapi.json", {}, { WORKER_URL: "https://x" } as any);
+    const res = await app.request("/api/openapi.json", {}, { PUBLIC_API_URL: "https://x" } as any);
     const spec: any = await res.json();
 
     const create = spec.paths["/api/driver-payments"]?.post;
@@ -709,7 +709,7 @@ describe("GET /api/openapi.json (merged spec)", () => {
 
   it("documents the images upload endpoint from Zod schemas", async () => {
     const app = buildApp();
-    const res = await app.request("/api/openapi.json", {}, { WORKER_URL: "https://x" } as any);
+    const res = await app.request("/api/openapi.json", {}, { PUBLIC_API_URL: "https://x" } as any);
     const spec: any = await res.json();
 
     const upload = spec.paths["/api/images/upload"]?.post;
@@ -728,7 +728,7 @@ describe("GET /api/openapi.json (merged spec)", () => {
 
   it("documents the migrated orders endpoints from Zod schemas", async () => {
     const app = buildApp();
-    const res = await app.request("/api/openapi.json", {}, { WORKER_URL: "https://x" } as any);
+    const res = await app.request("/api/openapi.json", {}, { PUBLIC_API_URL: "https://x" } as any);
     const spec: any = await res.json();
 
     const list = spec.paths["/api/orders"]?.get;
@@ -767,7 +767,7 @@ describe("GET /api/openapi.json (merged spec)", () => {
 
   it("documents the migrated webhook receiver endpoints from Zod schemas", async () => {
     const app = buildApp();
-    const res = await app.request("/api/openapi.json", {}, { WORKER_URL: "https://x" } as any);
+    const res = await app.request("/api/openapi.json", {}, { PUBLIC_API_URL: "https://x" } as any);
     const spec: any = await res.json();
 
     const challenge = spec.paths["/webhooks/yalidine"]?.get;
@@ -791,7 +791,7 @@ describe("GET /api/openapi.json (merged spec)", () => {
 
   it("documents the migrated abandoned-orders endpoints from Zod schemas", async () => {
     const app = buildApp();
-    const res = await app.request("/api/openapi.json", {}, { WORKER_URL: "https://x" } as any);
+    const res = await app.request("/api/openapi.json", {}, { PUBLIC_API_URL: "https://x" } as any);
     const spec: any = await res.json();
 
     const list = spec.paths["/api/abandoned-orders"]?.get;
@@ -818,7 +818,7 @@ describe("GET /api/openapi.json (merged spec)", () => {
 
   it("documents the migrated store API endpoints from Zod schemas", async () => {
     const app = buildApp();
-    const res = await app.request("/api/openapi.json", {}, { WORKER_URL: "https://x" } as any);
+    const res = await app.request("/api/openapi.json", {}, { PUBLIC_API_URL: "https://x" } as any);
     const spec: any = await res.json();
 
     const config = spec.paths["/store/config"]?.get;
@@ -852,7 +852,7 @@ describe("GET /api/openapi.json (merged spec)", () => {
 
   it("documents the migrated analytics endpoint from Zod schemas", async () => {
     const app = buildApp();
-    const res = await app.request("/api/openapi.json", {}, { WORKER_URL: "https://x" } as any);
+    const res = await app.request("/api/openapi.json", {}, { PUBLIC_API_URL: "https://x" } as any);
     const spec: any = await res.json();
 
     const stats = spec.paths["/api/analytics/dashboard-stats"]?.get;
@@ -865,7 +865,7 @@ describe("GET /api/openapi.json (merged spec)", () => {
 
   it("documents the plain-Hono /images/{key} route via its documentation-only stub", async () => {
     const app = buildApp();
-    const res = await app.request("/api/openapi.json", {}, { WORKER_URL: "https://x" } as any);
+    const res = await app.request("/api/openapi.json", {}, { PUBLIC_API_URL: "https://x" } as any);
     const spec: any = await res.json();
 
     // The regex-param serving route cannot be a createRoute — it is the one
@@ -878,7 +878,7 @@ describe("GET /api/openapi.json (merged spec)", () => {
 
   it("serves a purely generated document with no dangling legacy components", async () => {
     const app = buildApp();
-    const res = await app.request("/api/openapi.json", {}, { WORKER_URL: "https://x" } as any);
+    const res = await app.request("/api/openapi.json", {}, { PUBLIC_API_URL: "https://x" } as any);
     const spec: any = await res.json();
 
     // The generator's hand-written components (Order, Driver, Customer, Error,
@@ -898,7 +898,7 @@ describe("GET /api/openapi.json (merged spec)", () => {
 
   it("registers both security schemes on the served document", async () => {
     const app = buildApp();
-    const res = await app.request("/api/openapi.json", {}, { WORKER_URL: "https://x" } as any);
+    const res = await app.request("/api/openapi.json", {}, { PUBLIC_API_URL: "https://x" } as any);
     const spec: any = await res.json();
 
     expect(spec.components.schemas.ErrorResponse).toBeDefined();

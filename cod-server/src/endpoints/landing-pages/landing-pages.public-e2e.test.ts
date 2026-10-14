@@ -171,9 +171,8 @@ describe("Slice 4 — public GET /store/landing-pages/{slug} (real PostgreSQL + 
     const { id } = await seedProduct();
     await seedPublishedLp("counted-page", id);
 
-    // The view increment is deferred via waitUntil (docs: analytics writes
-    // never block the response) — getAndSettle settles every deferred write
-    // before the response is returned to the test.
+    // The view increment is handed to waitUntil — getAndSettle settles every
+    // deferred write before the response is returned to the test.
     await Promise.all(
       Array.from({ length: 25 }, () => getAndSettle("/store/landing-pages/counted-page")),
     );

@@ -105,5 +105,6 @@ reference + its `schemas/{domain}.json` before writing adapter code.
 
 ## Security
 
-Never commit ZR API keys or tenant IDs. They live in `wrangler secrets` /
-`.dev.vars` only (repo convention).
+Never commit ZR API keys or tenant IDs. A merchant's credentials live on its
+delivery company record, entered through the API; real secrets never enter the
+repository (repo convention).

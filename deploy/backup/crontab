@@ -1,0 +1,4 @@
+# UTC. Algeria is UTC+1: the dump runs at 01:30, its restore test at 03:30.
+30 0 * * * /opt/codflow/backup.sh >> /proc/1/fd/1 2>&1
+30 2 * * * /opt/codflow/restore-test.sh >> /proc/1/fd/1 2>&1
+*/10 * * * * /opt/codflow/disk-check.sh >> /proc/1/fd/1 2>&1

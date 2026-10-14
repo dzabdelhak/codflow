@@ -1,5 +1,5 @@
 /**
- * The store tracking settings, through the real route stack onto real D1.
+ * The store tracking settings, through the real route stack onto real PostgreSQL.
  *
  * `routes.test.ts` mocks the query layer, so it proves the handler was called
  * — never that what the merchant typed survived to the database. That gap hid
@@ -17,7 +17,7 @@ import { OpenAPIHono } from "@hono/zod-openapi";
 import type { AppContext } from "@/types";
 import { errorHandler } from "@/middleware/error";
 import { openApiValidationHook } from "@/openapi/validation-hook";
-import { createTestD1, type TestD1 } from "@/test-utils/d1";
+import { createTestDb, type TestDb } from "@/test-utils/pg";
 import * as schema from "@/db/schema";
 import storesRouter from "./routes";
 import { first } from "../../../../cod-shared/db/client";
@@ -25,13 +25,13 @@ import { first } from "../../../../cod-shared/db/client";
 const dbModule = vi.hoisted(() => ({ getDb: vi.fn() }));
 vi.mock("@/db", () => dbModule);
 
-let harness: TestD1;
+let harness: TestDb;
 let app: OpenAPIHono<AppContext>;
 const NOW = () => new Date().toISOString();
 const STORE_ID = "test-store";
 
 beforeAll(async () => {
-  harness = await createTestD1();
+  harness = await createTestDb();
 
   app = new OpenAPIHono<AppContext>({ defaultHook: openApiValidationHook });
   app.use("*", async (c, next) => {

@@ -378,7 +378,7 @@ lifecycle guards.
 6. **No new dependencies, no schema changes** without asking first
    (AGENTS.md boundary). The 82-company rollout needs NEITHER.
 7. **No secrets, ever.** Testing is mock-only until real tokens arrive, and
-   real tokens go in `wrangler secrets` / `.dev.vars` only.
+   real tokens never enter the repository.
 8. **Sibling providers are canaries.** If noest/yalidine/zr_express tests
    change behavior (not just move), the slice has a leak — fix before
    proceeding.

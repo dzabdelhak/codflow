@@ -1,9 +1,9 @@
 /**
- * GET / PUT /api/checkout-form — real-D1 E2E through the real router.
+ * GET / PUT /api/checkout-form — real-PostgreSQL E2E through the real router.
  *
  * The save path is where this feature could quietly corrupt itself: ids are
  * minted here, and an id is what every existing order's answer snapshot is
- * keyed by. So these run against real D1 and assert what actually landed in the
+ * keyed by. So these run against real PostgreSQL and assert what actually landed in the
  * column, not what a handler returned.
  */
 
@@ -13,7 +13,7 @@ import { eq } from "drizzle-orm";
 import type { AppContext } from "@/types";
 import { errorHandler } from "@/middleware/error";
 import { openApiValidationHook } from "@/openapi/validation-hook";
-import { createTestD1, type TestD1 } from "@/test-utils/d1";
+import { createTestDb, type TestDb } from "@/test-utils/pg";
 import * as schema from "@/db/schema";
 import checkoutFormRouter from "./routes";
 import {
@@ -22,7 +22,7 @@ import {
 } from "../../../../cod-shared/checkout-form/policy";
 import { first } from "../../../../cod-shared/db/client";
 
-let harness: TestD1;
+let harness: TestDb;
 let app: OpenAPIHono<AppContext>;
 /** Same router, mounted for a staff user who may look but not change. */
 let readOnlyApp: OpenAPIHono<AppContext>;
@@ -62,7 +62,7 @@ function mountWith(scopes: string[]) {
 }
 
 beforeAll(async () => {
-  harness = await createTestD1();
+  harness = await createTestDb();
   app = mountWith(["checkout_form:read", "checkout_form:manage"]);
   readOnlyApp = mountWith(["checkout_form:read"]);
 }, 120_000);

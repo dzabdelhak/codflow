@@ -1,0 +1,12 @@
+# cod-server's own checks: database, orders waiting more than 24 hours for
+# transmission, background jobs late by 30 minutes, channel certificates.
+# 503 with the failing check in the body when any is red.
+type = "json-query"
+name = "Platform status (queues, certificates)"
+url = "http://api:8787/platform/status"
+json_path = "$.ok"
+json_path_operator = "=="
+expected_value = "true"
+interval = 60
+max_retries = 2
+notification_name_list = ["email"]

@@ -81,8 +81,8 @@ function normaliseFormat(value: unknown): DescriptionFormat {
 }
 
 /**
- * Sanitise at the write chokepoint: an `html` description never reaches D1
- * unsanitised. `text` descriptions pass through untouched — legacy rows and
+ * Sanitise at the write chokepoint: an `html` description never reaches the
+ * database unsanitised. `text` descriptions pass through untouched — legacy rows and
  * text-mode merchants keep rendering exactly as before.
  */
 async function sanitiseForFormat(
@@ -97,7 +97,7 @@ async function sanitiseForFormat(
  * Tag-free rendering handed to clients for <meta name=description> and
  * JSON-LD. For `text` rows it is the raw column (meta output is unchanged
  * from today); for `html` rows it strips tags, drops images and decodes
- * entities. Runs in workerd — HTMLRewriter does not exist outside Workers.
+ * entities.
  */
 export async function deriveDescriptionPlain(
   description: string | null,
@@ -378,8 +378,7 @@ export async function deleteProduct(db: AppDb, productId: string) {
   // (delete is refused with PRODUCT_HAS_ORDERS otherwise), so removing the
   // row outright is safe and frees the unique handle/sku for reuse — a
   // soft-deleted row would keep blocking recreation at the DB's unique
-  // indexes (they span soft-deleted rows). Children are removed first:
-  // the D1 foreign keys have no ON DELETE cascade.
+  // indexes (they span soft-deleted rows).
   await db.delete(productVariants).where(eq(productVariants.productId, productId));
   await db.delete(productImages).where(eq(productImages.productId, productId));
   await db.delete(products).where(eq(products.id, productId));

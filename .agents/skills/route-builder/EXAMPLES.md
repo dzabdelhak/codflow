@@ -185,7 +185,7 @@ import {
 ```typescript
 auth: "api-key"                              // Any authenticated user, no scope check
 auth: "admin"                                // Requires admin role
-auth: "store"                                // X-Store-API-Key (storefront endpoints)
+auth: "store"                                // X-Storefront-Key + X-Channel-Host (storefront endpoints)
 auth: { scope: SCOPES.ORDERS_READ }          // Single scope (most common)
 auth: { anyOf: [SCOPES.READ, SCOPES.ALL] }   // Either scope works
 auth: { allOf: [SCOPES.READ, SCOPES.WRITE] } // Both scopes required

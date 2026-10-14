@@ -67,7 +67,7 @@ describe("parseCheckoutFormPolicy — leniency", () => {
   });
 
   it("ignores unknown keys so a newer deploy's policy still parses", () => {
-    // Rollback safety: an older Worker must read a blob written by a newer one.
+    // Rollback safety: an older server must read a blob written by a newer one.
     const policy = parseCheckoutFormPolicy(
       JSON.stringify({ email: "required", giftMessage: "required", version: 9 }),
     );

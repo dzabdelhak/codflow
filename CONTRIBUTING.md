@@ -1,7 +1,8 @@
 # Contributing to CodFlow
 
 Thanks for wanting to help! CodFlow is a COD-first e-commerce platform for the
-Algerian market, built as a monorepo of four packages running on Cloudflare.
+Algerian market, built as a monorepo of four packages running on Node.js +
+PostgreSQL (see [ADR-0003](./docs/adr/0003-self-hosted-postgres-multi-store.md)).
 
 ---
 
@@ -24,11 +25,11 @@ Algerian market, built as a monorepo of four packages running on Cloudflare.
 
 ```
 codflow-os/
-├── cod-server/        # Backend API  — Cloudflare Worker (Hono + D1 + R2)
-├── cod-client-astro/  # Merchant dashboard — Astro (prerendered + auth worker)
+├── cod-server/        # Backend API  — Hono on Node.js (PostgreSQL + S3 images)
+├── cod-client-astro/  # Merchant dashboard — Astro (prerendered + auth server routes)
 ├── cod-astro/         # Customer storefront — Astro, trilingual (AR/FR/EN)
 │   └── theme01/       #   the default theme (theme layer is swappable)
-└── cod-shared/        # Source-shared TS — D1 schema, RBAC scopes, read queries
+└── cod-shared/        # Source-shared TS — Drizzle schema, RBAC scopes, queries
 ```
 
 npm workspaces: one root `package.json` and a single root `package-lock.json`.
@@ -40,7 +41,7 @@ Install once at the repo root (`npm ci`) — never add per-package lockfiles.
 
 | Package             | Dev          | Test        | Build       |
 |---------------------|--------------|-------------|-------------|
-| `cod-server`        | `npm run dev`| `npm test`  | `npm run build:ci` |
+| `cod-server`        | `npm run dev`| `npm test`  | — (runs with `tsx`) |
 | `cod-client-astro`  | `npm run dev`| `npm test`  | `npm run build` |
 | `cod-astro/theme01` | `npm run dev`| `npm test`  | `npm run build` |
 
@@ -74,33 +75,22 @@ New here? Here's the shortest path to a merged change:
 >   start if you are new to the platform.
 > - The storefront's `src/core/` is **off-limits** (platform-owned engine). New
 >   storefront work goes in `src/theme/`.
-> - Never put a real secret in your PR — secrets live in `.dev.vars` and
->   `wrangler secret put`, never in a wrangler config file or source.
+> - Never put a real secret in your PR — secrets live in the deployment's
+>   environment, never in source or a committed config file.
 
 ## First-time setup
 
 ### Prerequisites
 
 - **Node.js 22.12+** and npm
-- The [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/) (`npm i -g wrangler`)
-- A Cloudflare account (D1 + R2 are free-tier friendly)
+- **Docker** with Docker Compose (PostgreSQL, Redis, SeaweedFS and the full stack)
 
 > The repo's `.nvmrc` pins Node 24; CI runs Node 24. Astro 7 (the storefront)
 > requires Node 22.12+.
 
-### ⚡ Fast Track: Setup Runbook (AI Agents & Contributors)
+> 🤖 **Working with an AI Coding Assistant?** Instruct your agent: *"Set up CodFlow"* and it will follow the [`codflow-setup` skill](./.agents/skills/codflow-setup/SKILL.md).
 
-Setup is a guided runbook — it creates the Cloudflare resources (D1, R2, KV),
-binds their real IDs into the `wrangler.toml` files, migrates and seeds the
-database, and verifies the deployment.
-
-> 🤖 **Working with an AI Coding Assistant?** CodFlow includes an autonomous setup skill. Instruct your agent: *"Set up CodFlow"* and it will follow the [`codflow-setup` runbook](./.agents/skills/codflow-setup/SKILL.md).
-
----
-
-### Manual Setup Step-by-Step
-
-#### 1. Install Dependencies
+#### 1. Install dependencies
 
 One install at the repo root covers every workspace (single root lockfile —
 never add per-package lockfiles):
@@ -109,68 +99,32 @@ never add per-package lockfiles):
 npm ci
 ```
 
-### 2. Create Cloudflare resources
+#### 2. Run the whole stack
 
 ```bash
-wrangler login
-wrangler d1 create <your-db-name>       # set COD_DB_NAME in the root .env
-wrangler r2 bucket create <your-bucket> # set COD_R2_BUCKET_NAME in the root .env
-wrangler kv namespace create RATE_LIMIT
-wrangler kv namespace create OAUTH_KV
+docker compose up --build
 ```
 
-### 3. Configure
+Storefronts at http://shop1.localhost:8090 and http://shop2.localhost:8090,
+dashboard at http://app.localhost:8090 (`admin@example.com` /
+`admin-dev-password`). Compose migrates the database, seeds two demo channels
+and the demo admin.
 
-Every package ships a Cloudflare config with placeholder values
-(`wrangler.toml` in cod-server/cod-client-astro, `wrangler.jsonc` in
-cod-astro/theme01) and a **`.dev.vars.example`**. Copy the example files and
-paste your own resource IDs:
+#### 3. Run the tests
+
+The cod-server tests run on a real PostgreSQL:
 
 ```bash
-# backend
-cd cod-server
-cp .dev.vars.example .dev.vars
-cp wrangler.toml.example wrangler.toml
-# paste your database_id / bucket_name / kv ids into wrangler.toml
-
-# dashboard
-cd ../cod-client-astro
-cp wrangler.toml.example wrangler.toml   # same D1 database_id as cod-server + your KV id
-cp .env.example .env
-cp .dev.vars.example .dev.vars
-# generate a secret: openssl rand -hex 32  →  BETTER_AUTH_SECRET (same as cod-server's)
-
-# storefront
-cd ../cod-astro/theme01
-cp .dev.vars.example .dev.vars
+docker compose up -d db
+cd cod-server && npm run typecheck && npm test
 ```
-
-`STORE_API_KEY` in the storefront's `.dev.vars` must match the key the backend
-seeds. The defaults (`codflow-dev-store-key`) already line up.
-
-### 4. Create the database + seed
-
-```bash
-cd cod-server
-npm run db:setup:local      # migrate + seed demo store (products, categories…)
-```
-
-### 5. Create an admin account
-
-```bash
-cd cod-client-astro
-ADMIN_EMAIL=you@example.com ADMIN_NAME=You npm run seed:admin
-```
-
-The script prints a generated password + API key. Without this you cannot sign
-into the dashboard — sign-up is disabled by design, admins are provisioned.
 
 ---
 
 ## Local development
 
-Open **three terminals**, one per package (D1 state is shared through
-`<repo-root>/.wrangler-shared` so they read the same local database):
+To work on one package outside Docker, keep the services it needs running
+(`docker compose up -d db redis objects`) and start it with `npm run dev`:
 
 | # | Command               | What runs                                 |
 |---|-----------------------|-------------------------------------------|
@@ -178,26 +132,22 @@ Open **three terminals**, one per package (D1 state is shared through
 | 2 | `cd cod-client-astro && npm run dev`        | Dashboard on `http://localhost:4321` |
 | 3 | `cd cod-astro/theme01 && npm run dev`       | Storefront on `http://localhost:4321` — run `astro dev --port 4322` when the dashboard is up |
 
-Inspect the shared DB any time:
-`cd cod-server && node scripts/d1.mjs execute --local --persist-to ../.wrangler-shared --command "…"`
-(DB name comes from `COD_DB_NAME` in the root `.env`)
+`cd cod-server && npm run db:setup` migrates the database named by
+`DATABASE_URL` and seeds the demo channels and their legal pages. Sign-up is
+disabled by design; provision a dashboard admin with
+`cd cod-client-astro && DATABASE_URL=… npm run seed:admin -- --merchant=<id>`
+(it prints a generated password and API key).
 
 ---
 
 ## Configuration
 
-**There is no hardcoded configuration.** URLs, domains, database IDs, and bucket
-names are placeholders in each package's Cloudflare config (`wrangler.toml` in
-cod-server/cod-client-astro, `wrangler.jsonc` in cod-astro/theme01); secrets go
-in gitignored `.dev.vars` files or `wrangler secret put` in production.
-
-| Variable | Owner | Purpose |
-|----------|-------|---------|
-| `WORKER_URL`, `MEDIA_DOMAIN`, `R2_BUCKET_NAME`, `BETTER_AUTH_URL`, `WORKER_SELF_URL` | `cod-server` | public URLs + R2 (see `src/types/env.ts`) |
-| `PUBLIC_APP_URL`, `PUBLIC_API_URL`, `PUBLIC_TRUSTED_ORIGINS` | `cod-client-astro` (wrangler `[vars]`) | dashboard origin, API origin, auth cookie origins |
-| `PUBLIC_API_URL` | `cod-client-astro` (`.dev.vars`, local only) | the API origin local development builds against — never in `.env`, where it is ignored |
-| `COD_SERVER_URL`, `STORE_API_KEY`, `MEDIA_DOMAIN` | `cod-astro/theme01` | backend base URL + store key + media CDN |
-| `BETTER_AUTH_SECRET`, `MCP_LOGIN_TICKET_SECRET`, R2 creds, `CF_ACCOUNT_ID` | all | secrets — never in a wrangler config file |
+**There is no hardcoded configuration.** Every package reads its URLs and
+secrets from the environment. [`docs/CONFIGURATION.md`](./docs/CONFIGURATION.md)
+lists every variable; `docker-compose.yml` carries local defaults, and
+`cod-client-astro/.env.example` the dashboard's. `BETTER_AUTH_SECRET` must be
+identical on cod-server and the dashboard, and `STOREFRONT_SERVICE_KEY` on
+cod-server and the storefront.
 
 ---
 
@@ -205,7 +155,7 @@ in gitignored `.dev.vars` files or `wrangler secret put` in production.
 
 ### The `cod-shared` boundary
 
-- **D1 schema** lives in `cod-shared/db/schema.ts` — one source of truth.
+- **Database schema** lives in `cod-shared/db/schema.ts` — one source of truth.
 - **Read queries** live in `cod-shared/queries/*.ts`; `cod-server` handlers
   consume them (and re-export per domain).
 - **RBAC scopes** live in `cod-shared/rbac/scopes.ts`.
@@ -226,9 +176,9 @@ orders/
 └── queries.ts      # THIN re-export of the shared query module
 ```
 
-- Mount routes in `src/index.ts`.
-- New env vars must be declared in **three** places: `src/types/env.ts`,
-  `wrangler.toml`, and this guide / the `cod-server/README.md`.
+- Mount routes in `src/app.ts`.
+- New env vars must be declared in `src/types/env.ts` and documented in
+  `docs/CONFIGURATION.md`.
 
 ### Dashboard (`cod-client-astro`)
 
@@ -236,7 +186,7 @@ orders/
   cod-server REST with a short-lived JWT. Components never call `fetch`
   directly.
 - Pages are prerendered shells; interactive regions are React islands.
-  Auth lives on the Worker surface (`/api/auth/*`) only.
+  Auth lives on the dashboard's server routes (`/api/auth/*`) only.
 - UI strings come from `locales/{ar,en,fr}/*.json` via `useT(namespace)` —
   never hardcoded. The i18n guard test enforces three-locale parity.
 
@@ -287,7 +237,7 @@ cd cod-astro/theme01 && npm test       # property + behavior tests
 2. Conventional Commits (see above). Reference the scope (e.g. `orders`, `mcp`,
    `capi`, `customers`) when it helps.
 3. Never commit:
-   - `.dev.vars`, `.env.local`, or any real secret / API key
+   - `.env`, `.env.local`, or any real secret / API key
    - real personal data (emails, names, phone numbers) in fixtures or docs
    - hardcoded production URLs or domain names — use placeholders + env vars
 4. Run `npm test` and the package build before opening the PR.
@@ -297,10 +247,10 @@ cd cod-astro/theme01 && npm test       # property + behavior tests
 
 ## Hard rules
 
-1. **No secrets in a wrangler config file** — they go in `.dev.vars` (local) or
-   `wrangler secret put` (prod).
+1. **No secrets in the repository** — they go in the deployment's environment;
+   commit `.example` templates only.
 2. **No hardcoded URLs/domains** in source or config. Everything must be swappable
-   so a fresh clone can run against its own Cloudflare account.
+   so a fresh clone can run on its own server.
 3. **A CAPI failure can never affect order state.** Analytics stays decoupled
    from business logic.
 

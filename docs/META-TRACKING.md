@@ -116,8 +116,8 @@ To verify the setup:
 ### The two channels
 
 ```
-Shopper's browser                     CodFlow server (Cloudflare)
-─────────────────                     ──────────────────────────
+Shopper's browser                     CodFlow server (cod-server)
+─────────────────                     ───────────────────────────
 Pixel script loaded
   └─ PageView          (every page)
   └─ ViewContent       (product page)

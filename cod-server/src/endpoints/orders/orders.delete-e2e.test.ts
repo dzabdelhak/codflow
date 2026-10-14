@@ -1,12 +1,12 @@
 /**
- * deleteOrder — real D1 (E2E)
+ * deleteOrder — PostgreSQL (E2E)
  *
  * Regression: deleting an order that has carrier-API audit rows
  * (company_api_logs) or inbound webhook rows (webhook_events) failed with
  * FOREIGN KEY constraint failed — both tables reference orders(id) with
  * ON DELETE no action and were not cleaned up by deleteOrder. Every
  * dispatched order creates company_api_logs rows, so deletion failed for
- * practically every real order (D1 enforces FKs; the mock-db unit tests
+ * practically every real order (the database enforces FKs; the mock-db unit tests
  * cannot catch this).
  */
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
@@ -76,7 +76,7 @@ async function seedOrder(id: string, withCarrierActivity: boolean) {
   }
 }
 
-describe("deleteOrder — real D1 (E2E)", () => {
+describe("deleteOrder — real PostgreSQL (E2E)", () => {
   beforeAll(async () => {
     const now = new Date().toISOString();
     await db.insert(schema.products).values({

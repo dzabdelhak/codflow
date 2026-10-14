@@ -36,7 +36,7 @@ cod-server is the resource server.
 `cod-server/src/mcp/route.ts` and `access.ts`:
 
 - The token's signature is checked against the dashboard's JWKS
-  (`BETTER_AUTH_JWKS_URL`). It must carry `aud` = `${WORKER_SELF_URL}/mcp`,
+  (`BETTER_AUTH_JWKS_URL`). It must carry `aud` = `${PUBLIC_API_URL}/mcp`,
   `iss` = `${BETTER_AUTH_URL}/api/auth`, `exp`, `azp` and `store_id`.
 - The user must still be active and belong to the merchant that owns the
   channel, and the channel must not be archived (`403` otherwise).
@@ -71,7 +71,7 @@ one uses it.
 
 | Where | Variable | |
 |---|---|---|
-| cod-server | `WORKER_SELF_URL` | the API's public origin — the token audience is `<it>/mcp` |
+| cod-server | `PUBLIC_API_URL` | the API's public origin — the token audience is `<it>/mcp` |
 | cod-server | `BETTER_AUTH_URL` | the dashboard's public origin — the issuer is `<it>/api/auth` |
 | cod-server | `BETTER_AUTH_JWKS_URL` | the JWKS as reachable from the API (in Docker `http://dashboard:4321/api/auth/jwks`) |
 | cod-server | `REDIS_URL` | rate limit and last-used times (optional) |

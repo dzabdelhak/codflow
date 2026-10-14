@@ -1,7 +1,7 @@
 /**
- * getAllProducts + getStoreProducts — Slice 5 real-D1 E2E.
+ * getAllProducts + getStoreProducts — Slice 5 PostgreSQL E2E.
  *
- * Runs the real migrations on an in-memory miniflare D1 and verifies the
+ * Runs the real migrations on PostgreSQL and verifies the
  * batched read shapes against a mixed catalog (30 products):
  *   • variant / no-variant products; active + inactive variants
  *   • approved / pending / zero reviews; avgRating rounding
@@ -10,8 +10,7 @@
  *   • featured-first ordering on the storefront list
  *   • pagination (limit/offset)
  *   • chunk boundary: a 91-product page issues two id-chunked variant
- *     queries and stays under D1's 100-bound-parameter limit (miniflare
- *     enforces it — verified by probe during implementation).
+ *     queries (90 ids per chunk).
  */
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
@@ -118,7 +117,7 @@ afterAll(async () => {
   for (const mf of registry) await mf.dispose();
 });
 
-describe("getAllProducts — real D1", () => {
+describe("getAllProducts — real PostgreSQL", () => {
   it("returns the full mixed catalog with correct derived fields", async () => {
     const rows = await getAllProducts(db, { limit: 200 });
 
@@ -192,7 +191,7 @@ describe("getAllProducts — real D1", () => {
   });
 });
 
-describe("getStoreProducts — real D1", () => {
+describe("getStoreProducts — real PostgreSQL", () => {
   it("lists the channel's published ACTIVE products in its display order", async () => {
     const rows = await getStoreProducts(db, { limit: 200 });
 

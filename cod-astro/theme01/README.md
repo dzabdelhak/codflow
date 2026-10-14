@@ -21,7 +21,7 @@ apps that make up the platform:
 - Abandoned-order tracking (`POST /store/abandoned`) with the Meta Pixel
 - Three locale packs: **Arabic, French, English** (RTL-first, default Arabic)
 - Partner-overridable design tokens (colors, font) injected at request time
-- Cloudflare Image Resizing optimization for R2 images (`MEDIA_DOMAIN`)
+- Resized images from cod-server's `/images/<key>?w=` widths (`MEDIA_URL`)
 
 ## Quick start
 
@@ -50,7 +50,7 @@ Defined in `astro.config.mjs` → `env.schema`, read from the environment.
 |----------|----------|---------|
 | `STOREFRONT_SERVICE_KEY` | yes | Shared secret sent as `X-Storefront-Key`; must match cod-server's. With it, cod-server trusts the visitor hostname sent as `X-Channel-Host`. |
 | `COD_SERVER_URL` | yes | Base URL of `cod-server` (dev: `http://localhost:8787`). |
-| `MEDIA_DOMAIN` | no | Media/CDN domain serving R2 images (no scheme). Unset → the image optimizer passes original URLs through unchanged. |
+| `MEDIA_URL` | no | cod-server's public `/images` base (e.g. `https://api.example.com/images`). Images under it are requested at a fixed width with `?w=`. Unset → the image optimizer passes original URLs through unchanged. |
 
 ## Scripts
 
@@ -74,7 +74,7 @@ src/
 │   ├── data/            #   wilayas.ts (58 wilayas)
 │   ├── endpoints/       #   communes, product-reviews, submit-review
 │   ├── middleware.ts    #   POST/Redirect/GET handler for Astro actions
-│   └── utils/           #   image-optimizer.ts (Cloudflare Image Resizing)
+│   └── utils/           #   image-optimizer.ts (`?w=` widths from cod-server's /images)
 ├── theme/               # Theme layer — everything customizable
 │   ├── components/      #   home/, layout/, order/, product/, products/, category/, ui/
 │   ├── content/         #   types.ts + ar.ts / fr.ts / en.ts (all UI strings)
@@ -97,7 +97,7 @@ inventory.
 
 `npm run build` produces a standalone Node server (`dist/server/entry.mjs`);
 `docker/storefront.Dockerfile` at the repo root packages it. Run it with
-`COD_SERVER_URL`, `STOREFRONT_SERVICE_KEY` (and optionally `MEDIA_DOMAIN`) in
+`COD_SERVER_URL`, `STOREFRONT_SERVICE_KEY` (and optionally `MEDIA_URL`) in
 the environment, behind the front proxy that routes every channel hostname to
 it (`docker/Caddyfile`).
 

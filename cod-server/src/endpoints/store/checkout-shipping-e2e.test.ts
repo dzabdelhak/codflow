@@ -1,5 +1,5 @@
 /**
- * Storefront delivery-fee resolution — real-D1 E2E.
+ * Storefront delivery-fee resolution — PostgreSQL E2E.
  *
  * Locks two rules that the schema documents but the checkout path did not
  * honour before this suite existed:
@@ -332,9 +332,9 @@ describe("resolveDeliveryFee — product-level shipping profile", () => {
 
   it("cannot hold a dangling profile reference — the FK forbids it", async () => {
     // Documents why resolveDeliveryFee does not verify the product's profile
-    // exists: D1 enforces the foreign key, so the state it would guard against
-    // is unwritable. Deleting a profile sets the column to NULL instead.
-    // D1 surfaces the constraint in the error's cause chain; that the write is
+    // exists: the database enforces the foreign key, so the state it would guard
+    // against is unwritable. Deleting a profile sets the column to NULL instead.
+    // The constraint surfaces in the error's cause chain; that the write is
     // rejected at all is the guarantee this test exists to record.
     await expect(seedProduct("prof-deleted")).rejects.toThrow();
   });

@@ -1,0 +1,6 @@
+# Pushed by deploy/backup/restore-test.sh after restoring last night's dump.
+type = "push"
+name = "Nightly restore test"
+push_token = "CodflowRestoreTestPushToken00002"
+interval = 93600
+notification_name_list = ["email"]

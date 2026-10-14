@@ -37,6 +37,14 @@ import { drizzle } from "drizzle-orm/d1";
 import * as schema from "@/db/schema";
 import type { AppDb } from "@/db";
 
+interface MockStatement {
+  bind(...args: unknown[]): MockStatement;
+  first<T = unknown>(colName?: string): Promise<T | null>;
+  all<T = unknown>(): Promise<{ results: T[]; success: boolean; meta: Record<string, unknown> }>;
+  run(): Promise<unknown>;
+  raw(...args: unknown[]): Promise<unknown[][]>;
+}
+
 export type Q =
   | { _: "f"; v: Record<string, unknown> | null }
   | { _: "a"; v: Record<string, unknown>[] };
@@ -78,8 +86,8 @@ export function makeMockDb(queue: Q[] = []): AppDb {
     return entry.v;
   }
 
-  function makeStmt(sqlText: string): D1PreparedStatement {
-    const stmt: D1PreparedStatement = {
+  function makeStmt(sqlText: string): MockStatement {
+    const stmt: MockStatement = {
       bind: (..._args: unknown[]) => makeStmt(sqlText),
 
       // Drizzle D1 never calls first() for standard or raw queries — kept
@@ -109,13 +117,13 @@ export function makeMockDb(queue: Q[] = []): AppDb {
             rows_read: rows.length,
             rows_written: 0,
           },
-        } as D1Result<T>);
+        });
       },
 
-      run: <T = Record<string, unknown>>() =>
+      run: () =>
         Promise.resolve({
           success: true,
-          results: [] as unknown as T,
+          results: [],
           meta: {
             changed_db: true,
             changes: 1,
@@ -126,7 +134,7 @@ export function makeMockDb(queue: Q[] = []): AppDb {
             rows_read: 0,
             rows_written: 1,
           },
-        } as unknown as D1Result<T>),
+        }),
 
       // Drizzle D1 routes ALL reads (get + all) through values() → raw().
       // raw() must return T[][] — column values in the SELECT clause order.
@@ -136,9 +144,9 @@ export function makeMockDb(queue: Q[] = []): AppDb {
       raw: ((..._args: unknown[]) => {
         const rows = consume();
         return Promise.resolve(rows.map((r) => withStoreId(sqlText, r)));
-      }) as D1PreparedStatement["raw"],
+      }),
     };
-    (stmt as D1PreparedStatement & { __sql: string }).__sql = sqlText;
+    (stmt as MockStatement & { __sql: string }).__sql = sqlText;
     return stmt;
   }
 
@@ -149,9 +157,9 @@ export function makeMockDb(queue: Q[] = []): AppDb {
     // statements consume one queue entry each (f → single row, a → rows);
     // writes return an empty result and never touch the queue — same
     // consumption model as sequential reads, in statement order.
-    batch: (stmts: D1PreparedStatement[]) => {
+    batch: (stmts: MockStatement[]) => {
       const results = stmts.map((stmt) => {
-        const sqlText = (stmt as D1PreparedStatement & { __sql?: string }).__sql ?? "";
+        const sqlText = (stmt as MockStatement & { __sql?: string }).__sql ?? "";
         const isSelect = /^\s*(select|with)\b/i.test(sqlText.trim());
         const rows = isSelect ? consume() : [];
         return {
@@ -175,8 +183,8 @@ export function makeMockDb(queue: Q[] = []): AppDb {
       });
       return Promise.resolve(results);
     },
-    exec: () => Promise.resolve({ count: 0, duration: 0 } as D1ExecResult),
-  } as unknown as D1Database;
+    exec: () => Promise.resolve({ count: 0, duration: 0 }),
+  } as unknown as Parameters<typeof drizzle>[0];
 
   return drizzle(d1, { schema }) as unknown as AppDb;
 }

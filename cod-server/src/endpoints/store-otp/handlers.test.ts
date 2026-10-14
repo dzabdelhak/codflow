@@ -3,7 +3,7 @@
  *
  * Pins the fail-open contract: quota/outage → bypass token (order proceeds),
  * everything else strict. Also: config-disabled rejection, phone
- * normalization, KV guard trips, and token minting on verify.
+ * normalization, Redis guard trips, and token minting on verify.
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
@@ -19,14 +19,17 @@ import { DzverifyError, DZVERIFY_ERRORS } from "./dzverify";
 import { verifyOtpToken } from "./token";
 
 vi.mock("@/db", () => ({ getDb: vi.fn(() => ({})) }));
+const redisMock = vi.hoisted(() => ({ current: null as unknown }));
+vi.mock("@/platform/redis", () => ({ platformRedis: async () => redisMock.current }));
 vi.mock("../../../../cod-shared/queries/otp-config");
 
 const API_KEY = "dz-config-key";
 
-function makeApp(kv?: KVNamespace) {
+function makeApp(redis: unknown = null) {
+  redisMock.current = redis;
   const app = new OpenAPIHono<AppContext>({ defaultHook: openApiValidationHook });
   app.use("*", async (c, next) => {
-    c.env = { ...(kv ? { RATE_LIMIT: kv } : {}) } as any;
+    c.env = { REDIS_URL: redis ? "redis://test" : undefined } as any;
     c.set("db", {} as any);
     c.set("storeId", "store-1");
     await next();
@@ -178,16 +181,16 @@ describe("POST /store/otp/send", () => {
     expect(body.code).toBe(ERROR_CODES.INVALID_PHONE_FORMAT);
   });
 
-  it("trips the KV phone-cooldown guard on rapid re-sends", async () => {
+  it("trips the phone-cooldown guard on rapid re-sends", async () => {
     vi.mocked(otpConfigQueries.getOtpConfigRaw).mockResolvedValue(enabledConfig as any);
     vi.spyOn(dzverifyModule, "createDzverifyClient").mockReturnValue(dzClient({}) as any);
 
-    const kv = {
-      get: vi.fn(async (key: string) => (key.includes("otp:cd:") ? String(Math.floor(Date.now() / 1000) + 30) : null)),
-      put: vi.fn(async () => undefined),
-    } as unknown as KVNamespace;
+    const redis = {
+      ttl: vi.fn(async (key: string) => (key.includes("otp:cd:") ? 30 : -2)),
+      get: vi.fn(async () => null),
+    };
 
-    const res = await makeApp(kv).request("/store/otp/send", {
+    const res = await makeApp(redis).request("/store/otp/send", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ phone: "0551234567" }),
@@ -199,17 +202,46 @@ describe("POST /store/otp/send", () => {
     expect(body.context.reason).toBe("phone_cooldown");
   });
 
-  it("a KV failure never blocks the send (guard is best-effort)", async () => {
+  it("records a minute's cooldown for the phone and counts the visitor's sends for an hour", async () => {
+    vi.mocked(otpConfigQueries.getOtpConfigRaw).mockResolvedValue(enabledConfig as any);
+    vi.spyOn(dzverifyModule, "createDzverifyClient").mockReturnValue(dzClient({}) as any);
+    const redis = {
+      ttl: vi.fn(async () => -2),
+      get: vi.fn(async () => "19"),
+      set: vi.fn(async () => "OK"),
+      incr: vi.fn(async () => 1),
+      expire: vi.fn(async () => true),
+    };
+
+    const res = await makeApp(redis).request("/store/otp/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Visitor-IP": "41.100.1.2" },
+      body: JSON.stringify({ phone: "0551234567" }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(redis.set).toHaveBeenCalledWith("otp:cd:store-1:+213551234567", "1", { EX: 60 });
+    expect(redis.incr).toHaveBeenCalledWith("otp:ip:store-1:41.100.1.2");
+    expect(redis.expire).toHaveBeenCalledWith("otp:ip:store-1:41.100.1.2", 3600);
+
+    redis.get.mockResolvedValue("20");
+    const blocked = await makeApp(redis).request("/store/otp/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Visitor-IP": "41.100.1.2" },
+      body: JSON.stringify({ phone: "0557654321" }),
+    });
+    expect(((await blocked.json()) as any).context.reason).toBe("ip_hourly");
+  });
+
+  it("a Redis failure never blocks the send (guard is best-effort)", async () => {
     vi.mocked(otpConfigQueries.getOtpConfigRaw).mockResolvedValue(enabledConfig as any);
     const client = dzClient({});
     vi.spyOn(dzverifyModule, "createDzverifyClient").mockReturnValue(client as any);
 
-    const kv = {
-      get: vi.fn(async () => { throw new Error("kv down"); }),
-      put: vi.fn(async () => { throw new Error("kv down"); }),
-    } as unknown as KVNamespace;
+    const down = async () => { throw new Error("redis down"); };
+    const redis = { ttl: vi.fn(down), get: vi.fn(down), set: vi.fn(down), incr: vi.fn(down), expire: vi.fn(down) };
 
-    const res = await makeApp(kv).request("/store/otp/send", {
+    const res = await makeApp(redis).request("/store/otp/send", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ phone: "0551234567" }),

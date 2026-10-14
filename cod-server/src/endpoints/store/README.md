@@ -6,7 +6,7 @@ The core public API used by the storefront (e.g., `cod-astro/theme01`). This API
 
 ```
 store/
-├── routes.ts       # @hono/zod-openapi route definitions (validation + spec) with X-Store-API-Key auth
+├── routes.ts       # @hono/zod-openapi route definitions (validation + spec) with storefront-key auth
 ├── handlers.ts     # Handlers for storefront operations
 ├── queries.ts      # Re-exports shared queries from cod-shared/queries/store
 ├── validation.ts   # Zod schemas for order and review submission
@@ -16,9 +16,9 @@ store/
 
 ## Security Model
 
-Unlike other `api/*` endpoints, this module uses a dedicated authentication header:
-- **Header:** `X-Store-API-Key`
-- **Scope:** Publicly accessible but requires a valid store key for context and logging.
+Unlike other `api/*` endpoints, this module uses dedicated authentication headers (`src/middleware/storeAuth.ts`):
+- **Headers:** `X-Storefront-Key` (`STOREFRONT_SERVICE_KEY`, shared by cod-server and the storefront) and `X-Channel-Host` (the visitor's hostname)
+- **Scope:** Only with a valid key does cod-server trust the hostname; it picks the channel (`store_domains`, verified rows only) and every call runs in that store's RLS scope.
 
 ## Core API Endpoints
 

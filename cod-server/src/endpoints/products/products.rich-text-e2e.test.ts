@@ -248,10 +248,9 @@ describe("T2 invariant — no reader returns the hostile payload", () => {
  * The MCP tools execute the repo's two-layer pattern: Layer 2 validation with
  * the EXACT schemas the tools/list advertisement is derived from
  * (PRODUCT_TOOL_SCHEMAS re-exports createProductSchema/updateProductSchema),
- * then the same queries.* write path. The `ai` SDK itself cannot be bundled
- * into workerd by esbuild (it pulls @vercel/oidc → node builtins), so this
- * suite drives both real layers directly: the shared schemas parse here in
- * Node, the parsed data is dispatched through the real workerd write path.
+ * then the same queries.* write path. This suite drives both real layers
+ * directly: the shared schemas parse, then the parsed data is dispatched
+ * through the real write path.
  */
 describe("MCP tool path sanitises identically (plan §7)", () => {
   it("createNewProduct: shared schema accepts then the write path sanitises agent HTML", async () => {

@@ -1,5 +1,5 @@
 /**
- * Flagged-issues probe matrix — real D1 (red-first audit round 2)
+ * Flagged-issues probe matrix — real PostgreSQL (red-first audit round 2)
  *
  *   F1  storefront delivery fee: uncovered/disabled wilaya must refuse, not charge 0
  *   F2  carrier amount sync must update codAmount, not just price
@@ -23,7 +23,6 @@ import { getDriverById } from "../../../../cod-shared/queries/drivers";
 import { first } from "../../../../cod-shared/db/client";
 
 let db: AppDb;
-let rawD1: D1Database;
 
 beforeAll(async () => {
   const harness = await createTestDb();

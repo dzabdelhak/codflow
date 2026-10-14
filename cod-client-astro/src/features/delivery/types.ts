@@ -250,12 +250,8 @@ export interface DeliveryCompanyFormValues {
  * Provider configuration registry.
  *
  * NOTE (2026-09-01): EcoTrack entries are GENERATED from the shared courier
- * catalog (cod-shared/lib/ecotrack-couriers.ts — the same source the
- * cod-server seed uses). Do NOT hand-edit EcoTrack entries here; fix the
- * catalog instead. TODO(later): render the company list from
- * delivery_companies DB rows (seeded by cod-server's
- * seed-ecotrack-companies script) instead of this static registry, so new
- * couriers appear without a dashboard release.
+ * catalog (cod-shared/lib/ecotrack-couriers.ts). Do NOT hand-edit EcoTrack
+ * entries here; fix the catalog instead.
  */
 const ECOTRACK_PROVIDER_ENTRIES: Record<string, ProviderConfig> = Object.fromEntries(
   ECOTRACK_COURIERS.map((courier) => [

@@ -3,13 +3,13 @@
  *
  * A migration is exactly the kind of thing a mock cannot prove: the mock db
  * answers from a queue and would happily "store" a column that does not exist.
- * This replays every migration in order into miniflare's D1 — the same engine
+ * This replays every migration in order into PostgreSQL — the same engine
  * production runs — and then uses the columns the way the order path will.
  */
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { eq } from "drizzle-orm";
-import { createTestD1, type TestD1 } from "@/test-utils/d1";
+import { createTestDb, type TestDb } from "@/test-utils/pg";
 import { orders, stores, customers } from "@/db/schema";
 import {
   DEFAULT_CHECKOUT_FORM_POLICY,
@@ -18,12 +18,12 @@ import {
 } from "../../../cod-shared/checkout-form/policy";
 import { first } from "../../../cod-shared/db/client";
 
-let harness: TestD1;
+let harness: TestDb;
 const NOW = new Date().toISOString();
 const STORE_ID = "test-store";
 
 beforeAll(async () => {
-  harness = await createTestD1();
+  harness = await createTestDb();
   await harness.setStore({
     id: STORE_ID,
     name: "Checkout Form Test Store",
@@ -54,7 +54,7 @@ describe("stores.checkout_form_json", () => {
     );
   });
 
-  it("round-trips a real policy through D1", async () => {
+  it("round-trips a real policy through PostgreSQL", async () => {
     const policy = {
       ...DEFAULT_CHECKOUT_FORM_POLICY,
       address: "required" as const,

@@ -9,6 +9,8 @@ import { getActionContext } from "astro:actions";
 import { withRequestHost } from "./api/request-host";
 import { loadStoreConfig } from "./api/client";
 import { CHANNEL_CACHE_PATH, channelTag, shouldPurge } from "./channel-cache";
+
+export const HEALTH_PATH = "/healthz";
 import { primaryRedirect } from "./primary-host";
 
 /**
@@ -39,6 +41,7 @@ export const onRequest = defineMiddleware((context, next) =>
 
 async function handle(context: APIContext, next: MiddlewareNext) {
   if (context.url.pathname === CHANNEL_CACHE_PATH) return next();
+  if (context.url.pathname === HEALTH_PATH) return new Response("ok", { headers: { "Content-Type": "text/plain", "Cache-Control": "no-store" } });
 
   const tag = channelTag(context.request.headers.get("host") ?? context.url.host);
   const { status, data } = await loadStoreConfig();

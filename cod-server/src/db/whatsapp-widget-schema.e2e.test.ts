@@ -1,15 +1,15 @@
 /**
- * Migration 0032 against a real D1, not a mock.
+ * Migration 0032 against a real PostgreSQL, not a mock.
  *
  * A migration is exactly the kind of thing a mock cannot prove: the mock db
  * answers from a queue and would happily "store" a column that does not exist.
- * This replays every migration in order into miniflare's D1 — the same engine
+ * This replays every migration in order into PostgreSQL — the same engine
  * production runs — and then uses the column the way the storefront will.
  */
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { eq } from "drizzle-orm";
-import { createTestD1, type TestD1 } from "@/test-utils/d1";
+import { createTestDb, type TestDb } from "@/test-utils/pg";
 import { stores } from "@/db/schema";
 import {
   DEFAULT_WHATSAPP_WIDGET_CONFIG,
@@ -19,12 +19,12 @@ import {
 } from "../../../cod-shared/whatsapp-widget/config";
 import { first } from "../../../cod-shared/db/client";
 
-let harness: TestD1;
+let harness: TestDb;
 const NOW = new Date().toISOString();
 const STORE_ID = "test-store";
 
 beforeAll(async () => {
-  harness = await createTestD1();
+  harness = await createTestDb();
   await harness.setStore({
     id: STORE_ID,
     name: "WhatsApp Widget Test Store",
@@ -58,7 +58,7 @@ describe("stores.whatsapp_widget_json", () => {
     expect(resolveStorefrontWidget(await readColumn())).toBeNull();
   });
 
-  it("round-trips a real configuration through D1", async () => {
+  it("round-trips a real configuration through PostgreSQL", async () => {
     const config = {
       ...DEFAULT_WHATSAPP_WIDGET_CONFIG,
       enabled: true,

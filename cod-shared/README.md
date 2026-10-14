@@ -35,9 +35,9 @@ Before `cod-shared` existed, the schema and logic lived in the server and the
 dashboard maintained its own copies. That meant a column added in one place was
 silently missing in the other. Today:
 
-- `cod-server` and `cod-client-astro` bind the **same D1 instance with the
-  same table definitions** — they literally cannot drift.
-- The dashboard's better-auth tables live in the same schema its Worker
+- `cod-server` and `cod-client-astro` use the **same PostgreSQL database with
+  the same table definitions** — they literally cannot drift.
+- The dashboard's better-auth tables live in the same schema its auth server
   authenticates against, and the API serves reads through the same shared
   query functions everywhere.
 - RBAC scopes and error codes have a single canonical definition.
@@ -50,7 +50,8 @@ silently missing in the other. Today:
 cod-shared/
 ├── db/
 │   ├── schema.ts     # All 46 Drizzle table definitions (single source of truth)
-│   └── client.ts     # getDb(d1) factory + AppDb type
+│   ├── client.ts     # getDb(client) factory + AppDb type, first/one helpers
+│   └── pools.ts      # PostgreSQL pools per role (codflow_app / codflow_platform), withStore
 ├── queries/          # Dependency-injected data-access functions (one file per domain)
 ├── rbac/
 │   ├── scopes.ts     # SCOPES registry, Scope type, SCOPE_CATEGORIES
@@ -59,7 +60,7 @@ cod-shared/
     └── codes.ts      # ERROR_CODES, ErrorCode type, ERROR_CATEGORIES
 ```
 
-No runtime deps beyond `drizzle-orm`.
+Runtime deps: `drizzle-orm`, `pg` and `html-rewriter-wasm` (rich-text sanitising).
 
 ---
 
@@ -97,22 +98,28 @@ import { users } from "@/db/schema";
 
 ## Drizzle client
 
-The Drizzle factory — it wires a Cloudflare `D1Database` to the shared schema:
+The Drizzle factory — it wires a node-postgres connection to the shared schema:
 
 ```ts
 import { getDb } from "cod-shared/db/client";
 
-export function handle(request: Request, env: Env) {
-  const db = getDb(env.DB);      // AppDb — a drizzle<D1Database, schema> instance
-  // ...
-}
+// cod-server's request scope (src/db/scope.ts) does this once per request,
+// on a connection already in a transaction pinned to the store:
+const db = getDb(client, { inTransaction: true });   // AppDb
 ```
 
-- **`getDb(d1)`** — builds a typed Drizzle instance bound to the shared schema.
+- **`getDb(client)`** — builds a typed Drizzle instance bound to the shared
+  schema, plus `batch` (all-or-nothing), `all`, `get` and `run` for raw SQL.
 - **`AppDb`** — the type of that instance (`ReturnType<typeof getDb>`);
   **every shared query takes `db: AppDb`** as its first argument. This is the
   dependency-injection pattern: queries never read environment or globals, so
-  they are trivially testable with any D1.
+  they are trivially testable against any database.
+- **`first` / `one`** — single-row helpers: `.then(first)` gives the row or
+  undefined, `.then(one)` throws when a write returned no row.
+- **`pools.ts`** — `createDatabase` opens one pool per role: `codflow_app`
+  (request code, under Row-Level Security) and `codflow_platform` (platform
+  code, bypasses RLS). `withStore` runs a function in one transaction pinned to
+  a store.
 
 ---
 
@@ -126,8 +133,8 @@ export async function getOrderById(db: AppDb, orderId: string) { … }
 ```
 
 `cod-server` handlers import these — writes (create/update/status transitions)
-run in the server, and reads call the same functions against the same D1
-binding. The Astro dashboard goes through the REST API seam (no direct query
+run in the server, and reads call the same functions against the same
+PostgreSQL database. The Astro dashboard goes through the REST API seam (no direct query
 imports), so every dashboard read also lands on these functions.
 
 Available modules: `abandoned-orders`, `activity-logs`, `analytics`,
@@ -211,8 +218,8 @@ code rarely imports `cod-shared` paths directly.
 
 ## Migrations workflow
 
-Migrations are generated and applied **from `cod-server` only** — the D1
-binding in `cod-client-astro` shares the same database but owns no migrations.
+Migrations are generated and applied **from `cod-server` only** —
+`cod-client-astro` shares the same database but owns no migrations.
 
 ```bash
 # 1. Edit the schema here:  cod-shared/db/schema.ts
@@ -220,11 +227,8 @@ binding in `cod-client-astro` shares the same database but owns no migrations.
 # 2. Generate the migration from cod-server
 cd cod-server && npm run db:generate
 
-# 3. Apply locally (shared state: <repo-root>/.wrangler-shared)
-npm run db:migrate:local
-
-# 4. Production
-npm run db:migrate:remote
+# 3. Apply to the database named by DATABASE_URL
+npm run db:migrate
 ```
 
 See `cod-server/README.md` for the full database section.
@@ -239,7 +243,7 @@ See `cod-server/README.md` for the full database section.
    bundler or make this an npm package.
 3. **No environment access.** Queries receive `db` (and any config) as
    arguments; they must never read `env`, globals, or `fetch`.
-4. **No external runtime deps** beyond `drizzle-orm`.
+4. **No external runtime deps** beyond `drizzle-orm`, `pg` and `html-rewriter-wasm`.
 5. **Schema changes go through migrations.** Edit `schema.ts`, then generate +
    apply from `cod-server`.
 6. **Every exported function is typed.** `AppDb` everywhere, explicit return

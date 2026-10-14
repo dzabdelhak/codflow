@@ -7,12 +7,12 @@ The merchant's control panel for their one store: branding, theme, language, sto
 ### Identity
 
 **Store**:
-The single tenant itself — exactly one row per database. Endpoints address it implicitly (`/me`); there is no store list, no creation, no deletion anywhere.
+One channel of a merchant — one row in `stores`. These endpoints address the request's store implicitly (`/me`); creating stores belongs to the merchant API (`POST /api/merchant/stores`), and request code can neither create nor delete one.
 _Avoid_: Account, shop profile
 
-**Single Tenancy**:
-The architectural rule that one D1 database serves exactly one merchant's store. It is why every other context never asks "whose data is this?"
-_Avoid_: Multi-tenant mode, workspace
+**Store Scope**:
+The architectural rule that every request runs pinned to one store by Row-Level Security (`src/db/scope.ts`); a query sees only that store's rows. It is why every other context never asks "whose data is this?"
+_Avoid_: Workspace
 
 **Store API Key**:
 The plaintext secret the storefront presents to authenticate. Written at provisioning and deliberately viewable by the merchant in settings — unlike the separate provisioned-key table that stores only hashes.

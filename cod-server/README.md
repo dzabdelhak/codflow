@@ -4,8 +4,8 @@ The backend engine for CodFlow — a COD-first e-commerce platform for Algeria
 that is **agentic-ready**. It exposes the merchant REST API, the public
 storefront API, delivery-carrier webhooks, and a complete **MCP remote server**
 (RFC 9728) so AI agents can operate the store with RBAC-scoped tools. Built on
-Cloudflare Workers, Hono, and Drizzle ORM, with Durable Objects and Cloudflare
-Workflows under the hood.
+Node.js, Hono and Drizzle ORM over PostgreSQL, with Row-Level Security per
+store and a PostgreSQL job queue for background work.
 
 This package is part of the [CodFlow monorepo](../README.md). The dashboard
 (`cod-client-astro`) and storefront (`cod-astro`) live in sibling folders and
@@ -13,9 +13,11 @@ share database schema + query logic via `cod-shared`.
 
 ## Tech Stack
 
-- **Runtime:** Cloudflare Workers (Edge)
+- **Runtime:** Node.js (`@hono/node-server`, entry `src/node.ts`, app `src/app.ts`)
 - **Framework:** Hono
-- **Database:** Cloudflare D1 (SQLite) via Drizzle ORM
+- **Database:** PostgreSQL via Drizzle ORM, one transaction per request pinned to its store (`src/db/scope.ts`)
+- **Cache / rate limits:** Redis
+- **Images:** S3-compatible storage (SeaweedFS in Docker Compose)
 - **Validation:** Zod
 - **API docs:** [@hono/zod-openapi](https://github.com/honojs/middleware) — the OpenAPI 3.1 spec generates from the route definitions themselves
 - **Language:** TypeScript
@@ -25,54 +27,32 @@ share database schema + query logic via `cod-shared`.
 ### Prerequisites
 
 - Node.js 22.12+ and npm
-- A Cloudflare account — Wrangler ships as a devDependency (`npx wrangler …`)
+- Docker (PostgreSQL for the tests; the whole stack with `docker compose up --build`)
 
 ### 1. Install
 
 ```bash
-npm ci        # at the repo root — installs all workspaces
+npm ci                      # at the repo root — installs all workspaces
+docker compose up -d db     # at the repo root — PostgreSQL on :5440
 ```
 
-### 2. Configure
-
-All configuration lives in two files. **Nothing is hardcoded** — every URL,
-database, and bucket is a placeholder you replace with your own resources.
-
-1. **`wrangler.toml`** — non-secret config (D1 database, R2 bucket, public URLs).
-   Create your resources and paste the values in:
-
-   ```bash
-   wrangler login
-   wrangler d1 create <your-db-name>   # → copy the returned database_id into wrangler.toml, set COD_DB_NAME in the root .env
-   wrangler r2 bucket create <your-bucket> # → match bucket_name in wrangler.toml, set COD_R2_BUCKET_NAME in the root .env
-   wrangler kv namespace create RATE_LIMIT  # → kv id
-   wrangler kv namespace create OAUTH_KV    # → kv id (MCP OAuth provider)
-   ```
-
-2. **`.dev.vars`** — local secrets (gitignored):
-
-   ```bash
-   cp .dev.vars.example .dev.vars
-   ```
-
-### 3. Create the database schema
+### 2. Create the database schema
 
 ```bash
-# Apply migrations + seed demo store data (categories, products, variants, images)
-npm run db:setup:local
+# Apply migrations + seed the demo channels and their legal pages
+DATABASE_URL=postgres://… npm run db:setup
 ```
 
-The seed script also works standalone with `npm run db:seed:local`. It seeds a
-demo store whose API key is taken from `$STORE_API_KEY`, then
-`cod-astro/theme01/.dev.vars`, then a built-in dev default.
+`db:setup` is idempotent; `scripts/seed-store-pages.ts` (its last step) also
+works alone with `npm run db:seed:legal-pages`.
 
 > **First dashboard login:** the dashboard disables sign-up — create the admin
 > with the seeder instead (see `cod-client-astro/README.md`):
 > ```bash
-> cd ../cod-client-astro && npm run seed:admin
+> cd ../cod-client-astro && DATABASE_URL=postgres://… npm run seed:admin -- --merchant=<id>
 > ```
 
-### 4. Run locally
+### 3. Run locally
 
 ```bash
 npm run dev
@@ -80,75 +60,50 @@ npm run dev
 # OpenAPI spec → http://localhost:8787/api/openapi.json
 ```
 
-Local D1 state is shared with the dashboard through `<repo-root>/.wrangler-shared`,
-so dashboard and server read the same SQLite file during development.
+`npm run dev` reads its settings from the environment (`DATABASE_URL`,
+`STOREFRONT_SERVICE_KEY`, `S3_*`, …). The easiest full setup is
+`docker compose up --build` at the repo root.
 
-### 5. Test
-
-```bash
-npm test          # full suite (Vitest)
-npm run build:ci  # type-checks + dry-run wrangler bundle
-```
-
-### 6. Deploy
+### 4. Test
 
 ```bash
-npm run deploy                 # default environment
-npm run deploy -- --env production   # after editing [env.production] in wrangler.toml
+npm run typecheck
+npm test          # full suite (Vitest) on a real PostgreSQL — needs `docker compose up -d db` or TEST_DATABASE_URL
 ```
 
-R2 credentials (`CF_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`)
-must be set as secrets in production, not in `wrangler.toml`:
+### 5. Deploy
 
-```bash
-wrangler secret put CF_ACCOUNT_ID
-wrangler secret put R2_ACCESS_KEY_ID
-wrangler secret put R2_SECRET_ACCESS_KEY
-```
+See [`docs/DEPLOYMENT.md`](../docs/DEPLOYMENT.md).
 
 ## Environment Variables
 
-### Non-secret (`wrangler.toml` `[vars]`)
-
-| Variable | Purpose | Local default |
-|----------|---------|---------------|
-| `ENVIRONMENT` | `development` \| `production` | `development` |
-| `WORKER_URL` | Public URL of this Worker (used in OpenAPI docs) | `http://localhost:8787` |
-| `MEDIA_DOMAIN` | Domain fronting the R2 bucket (public image URLs) | `media.example.com` |
-| `R2_BUCKET_NAME` | R2 bucket name | `codflow-images` |
-| `BETTER_AUTH_URL` | Dashboard Worker's Better Auth origin — `iss` + JWKS source for the JWTs the dashboard issues | `http://localhost:4321/api/auth` |
-| `WORKER_SELF_URL` | This Worker's own origin — required `aud` claim for MCP tokens | `http://localhost:8787/` |
-
-### Secrets (`.dev.vars` locally / `wrangler secret put` in prod)
-
-| Variable | Purpose |
-|----------|---------|
-| `STORE_API_KEY` | Shared secret the storefront sends as `X-Store-API-Key` (SHA-256 hashed at rest) |
-| `BETTER_AUTH_SECRET` | Better Auth signing secret — must match cod-client-astro's |
-| `MCP_REQUEST_STATE_KEY` | HMAC key sealing stateless MCP elicitation state |
-| `CF_ACCOUNT_ID` | Cloudflare account id — builds the R2 S3 endpoint |
-| `R2_ACCESS_KEY_ID` | R2 API token access key (presigned image uploads) |
-| `R2_SECRET_ACCESS_KEY` | R2 API token secret |
+The main ones: `DATABASE_URL`, `REDIS_URL`, `S3_ENDPOINT` / `S3_BUCKET` /
+`S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY`, `STOREFRONT_SERVICE_KEY` (same
+value as the storefront's), `BETTER_AUTH_SECRET` (same value as the
+dashboard's), `BETTER_AUTH_URL` and `PUBLIC_API_URL`. The full list is in
+[`docs/CONFIGURATION.md`](../docs/CONFIGURATION.md); the types are in
+`src/types/env.ts`.
 
 ## Project Structure
 
 ```
 cod-server/
 ├── src/
-│   ├── index.ts               # Hono app entry — wires routes, MCP server, cron
-│   ├── types/                 # Env bindings (mirrors wrangler.toml), app context types
-│   ├── db/                    # D1 + Drizzle helpers (schema re-export, migrate, migrations/)
-│   ├── middleware/            # better-auth session/bearer auth, store API key, CORS, error handling
+│   ├── node.ts                # Node entry — env, database pools, job + outbound workers, housekeeping timers
+│   ├── app.ts                 # Hono app — wires routes, MCP server
+│   ├── types/                 # Env and app context types
+│   ├── db/                    # Drizzle helpers (schema re-export, request scope, migrate, migrations/)
+│   ├── middleware/            # dashboard JWT/bearer auth, storefront key, CORS, error handling
 │   ├── endpoints/             # One folder per domain (see route list below)
 │   ├── lib/                   # Meta CAPI client, activity log, shared errors
 │   ├── mcp/                   # MCP remote server (OAuth provider wiring + scope-gated tool registry)
 │   ├── tracking/              # Server-side conversions: enqueue, job handler, provider senders
-│   ├── cron/                  # Scheduled handlers (abandoned-order sweep)
+│   ├── platform/              # Job queue, outbound orders, channel domains, image store, Redis
+│   ├── cron/                  # Housekeeping handlers (orphan-image sweep, abandoned-order sweep)
 │   ├── openapi/               # OpenAPI assembly: security schemes, Swagger UI, shared Zod schemas — the served spec generates from route definitions
 │   ├── rbac/                  # Scope-based authorization middleware
 │   └── test-utils/            # Shared test helpers
-├── scripts/                   # dev utilities (seed, R2 CORS, migration validation)
-├── wrangler.toml              # Worker config — all values are placeholders
+├── scripts/                   # seeders (demo channels, legal pages, EcoTrack companies), legacy image import
 ├── drizzle.config.ts
 └── vitest.config.ts
 ```
@@ -163,7 +118,7 @@ spec that is **generated from the route definitions** (`@hono/zod-openapi`):
 
 Public routes: `/`, `/health`, `/images`, `/api` (OpenAPI spec + docs),
 `/webhooks/*` (delivery-carrier callbacks, signature-verified), `/store/*`
-(storefront read + order placement, `X-Store-API-Key`), `/.well-known/*`, and
+(storefront read + order placement, `X-Storefront-Key` + `X-Channel-Host`), `/.well-known/*`, and
 `/mcp` (MCP protocol). All other `/api/*` routes require a session or bearer token.
 
 - `/api/orders` — orders, status lifecycle, driver assignment, stats
@@ -175,7 +130,7 @@ Public routes: `/`, `/health`, `/images`, `/api` (OpenAPI spec + docs),
 - `/api/stores` — `me`, `pixel-config` (the public storefront API lives at `/store/*`)
 - `/api/users` — staff/admin + API keys
 - `/api/analytics`, `/api/activity-logs`, `/api/abandoned-orders`
-- `/api/images` — R2 presigned upload
+- `/api/images` — image upload (`POST /api/images/upload`, stored as WebP in S3 storage)
 - `/api/mcp` — MCP agent connection management (`/me`, `/team`; the `/mcp` endpoint itself serves the MCP protocol)
 
 ## Notable Subsystems
@@ -196,8 +151,9 @@ the order, at the stage the merchant optimises for. The worker started by
 with the order id as the deduplication id and retries outages. See
 `docs/TRACKING.md`.
 
-### Abandoned orders
-An hourly cron sweeps pending orders older than 30 minutes to `abandoned`.
+### Housekeeping
+`src/node.ts` runs daily timers: the orphan-image sweep and the pruning of
+finished jobs and old blocked order attempts.
 
 ## Contributing
 
@@ -212,9 +168,9 @@ An hourly cron sweeps pending orders older than 30 minutes to `abandoned`.
   shared response schemas from `src/openapi/schemas.ts`.
 - Shared schema and read queries live in `cod-shared` — do not duplicate them
   in `cod-server/src/db`.
-- Keep `wrangler.toml` free of real credentials; if you add an env var, declare
-  it in `src/types/env.ts`, `wrangler.toml`, and this README.
-- Run `npm test` and `npm run build:ci` before opening a PR.
+- Never commit real credentials; if you add an env var, declare it in
+  `src/types/env.ts` and document it in `docs/CONFIGURATION.md`.
+- Run `npm run typecheck` and `npm test` before opening a PR.
 
 ## License
 

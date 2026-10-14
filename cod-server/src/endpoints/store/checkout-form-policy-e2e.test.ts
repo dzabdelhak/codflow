@@ -1,9 +1,9 @@
 /**
- * Checkout Form Policy on the storefront order path — real-D1 E2E.
+ * Checkout Form Policy on the storefront order path — real-PostgreSQL E2E.
  *
- * Mounts the REAL store router against a real D1 with the real migrations, so
+ * Mounts the REAL store router against a real PostgreSQL with the real migrations, so
  * every assertion runs through the production route → validation → handler →
- * cod-shared engine → D1 path. That matters more here than anywhere else in
+ * cod-shared engine → PostgreSQL path. That matters more here than anywhere else in
  * this feature: the route validates the request body BEFORE the handler runs
  * and zod strips what the schema does not name, so a mock of the handler would
  * happily "accept" a field that never survives the real pipeline.
@@ -19,7 +19,7 @@ import { eq } from "drizzle-orm";
 import type { AppContext } from "@/types";
 import { errorHandler } from "@/middleware/error";
 import { openApiValidationHook } from "@/openapi/validation-hook";
-import { createTestD1, type TestD1 } from "@/test-utils/d1";
+import { createTestDb, type TestDb } from "@/test-utils/pg";
 import * as schema from "@/db/schema";
 import storeRouter from "./routes";
 import { getOrderById } from "../../../../cod-shared/queries/orders";
@@ -30,7 +30,7 @@ import {
   type CheckoutFormPolicy,
 } from "../../../../cod-shared/checkout-form/policy";
 
-let harness: TestD1;
+let harness: TestDb;
 let app: OpenAPIHono<AppContext>;
 const NOW = () => new Date().toISOString();
 const STORE_ID = "test-store";
@@ -55,7 +55,7 @@ const selectsAgainst = (table: string) =>
   sqlLog.filter((q) => /^\s*select\b/i.test(q) && new RegExp(`\\bfrom\\s+"${table}"`, "i").test(q));
 
 beforeAll(async () => {
-  harness = await createTestD1();
+  harness = await createTestDb();
   harness.recordQueries((sql) => sqlLog.push(sql));
 
   app = new OpenAPIHono<AppContext>({ defaultHook: openApiValidationHook });

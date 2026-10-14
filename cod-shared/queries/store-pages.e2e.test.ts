@@ -5,7 +5,7 @@
  * exactly as a request would. Proves:
  *
  *   • seedStorePages creates all 4 legal kinds × 3 locales, is idempotent
- *   • hostile HTML in a merchant save is sanitised before it reaches D1
+ *   • hostile HTML in a merchant save is sanitised before it reaches the database
  *   • saveTranslation flips source to "merchant"; reset flips it back
  *   • resolvePublishedPage's locale fallback chain (exact → ar → any)
  *   • draft pages resolve to null (the caller 404s, never a soft 200)
@@ -101,7 +101,7 @@ describe("seedStorePages", () => {
 });
 
 describe("write chokepoint (saveTranslation)", () => {
-  it("sanitises hostile HTML before it reaches D1, and flips source to merchant", async () => {
+  it("sanitises hostile HTML before it reaches the database, and flips source to merchant", async () => {
     await insertStore("write-store-1", "Test Store", "en");
     await call("seedStorePages", "write-store-1");
     const pages = await call<Array<{ id: string; kind: string }>>("listStorePages", "write-store-1");

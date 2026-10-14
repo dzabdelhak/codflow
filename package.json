@@ -1,7 +1,7 @@
 {
   "name": "codflow",
   "private": true,
-  "description": "CodFlow — COD e-commerce platform monorepo (Cloudflare Workers + Astro + D1).",
+  "description": "CodFlow — COD e-commerce platform monorepo (Node.js + PostgreSQL + Astro).",
   "workspaces": [
     "cod-shared",
     "cod-server",

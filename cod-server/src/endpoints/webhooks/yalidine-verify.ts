@@ -2,8 +2,8 @@
  * Yalidine Webhook Signature Verification
  *
  * Verifies the HMAC-SHA256 signature on inbound Yalidine webhook deliveries.
- * No SDK exists for Cloudflare Workers, so this uses the Web Crypto API —
- * same approach as the ZR Express Svix verifier, different wire format.
+ * Uses the Web Crypto API — same approach as the ZR Express Svix verifier,
+ * different wire format.
  *
  * Official spec (webook.md — "Secure Your Webhook"):
  *   Signature header:  X-Yalidine-Signature (PHP: HTTP_X_YALIDINE_SIGNATURE)

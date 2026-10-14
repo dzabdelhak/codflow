@@ -6,7 +6,7 @@ import type { McpProps } from "./props";
 
 interface AccessEnv {
   BETTER_AUTH_URL: string;
-  WORKER_SELF_URL: string;
+  PUBLIC_API_URL: string;
   BETTER_AUTH_JWKS_URL?: string;
 }
 
@@ -17,8 +17,8 @@ export interface McpAccessClaims extends SessionJwtPayload {
   store_id?: string;
 }
 
-export function mcpResourceUrl(env: Pick<AccessEnv, "WORKER_SELF_URL">): string {
-  return resourceOf(env.WORKER_SELF_URL);
+export function mcpResourceUrl(env: Pick<AccessEnv, "PUBLIC_API_URL">): string {
+  return resourceOf(env.PUBLIC_API_URL);
 }
 
 export function authorizationServerIssuer(env: Pick<AccessEnv, "BETTER_AUTH_URL">): string {

@@ -34,8 +34,6 @@ export interface Env {
   CERT_PROBE: (hostname: string) => Promise<CertificateStatus>;
   /** Deployment environment: "development" | "production" */
   ENVIRONMENT: string;
-  /** Worker URL for API documentation (e.g., "http://localhost:8787" or "https://api.yourdomain.com") */
-  WORKER_URL?: string;
   /** Comma-separated list of allowed CORS origins (e.g., "http://localhost:3000,https://app.example.com") */
   ALLOWED_ORIGINS?: string;
   /**
@@ -54,10 +52,12 @@ export interface Env {
   BETTER_AUTH_URL: string;
   /** JWKS endpoint as reachable from this server; defaults to `${BETTER_AUTH_URL}/api/auth/jwks`. */
   BETTER_AUTH_JWKS_URL?: string;
-  /** This API's public origin; MCP access tokens must carry `aud` = `${WORKER_SELF_URL}/mcp`. */
-  WORKER_SELF_URL: string;
-  /** Redis for the MCP rate limit and last-used markers; MCP still serves without it. */
+  /**
+   * This API's public origin, e.g. "https://api.example.dz": the OpenAPI
+   * server, webhook URLs, image URLs, and the MCP token audience
+   * (`${PUBLIC_API_URL}/mcp`).
+   */
+  PUBLIC_API_URL: string;
+  /** Redis for rate limits (MCP, storefront OTP) and MCP last-used times; everything still serves without it. */
   REDIS_URL?: string;
-  /** Legacy OTP send-guard binding, absent on Node. */
-  RATE_LIMIT?: KVNamespace;
 }

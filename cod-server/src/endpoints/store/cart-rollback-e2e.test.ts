@@ -1,5 +1,5 @@
 /**
- * Cart rollback rehearsal — real-D1 E2E.
+ * Cart rollback rehearsal — PostgreSQL E2E.
  *
  * The whole feature is a per-store boolean defaulting to off, so the documented
  * rollback is one statement:

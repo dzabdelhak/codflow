@@ -157,17 +157,15 @@ reversible by re-enabling.
 
 ## Platform Notes (for whoever deploys CodFlow)
 
-- **One-time setup:** apply migration `0012_store_otp_config.sql` to the
-  remote D1 before the feature can be configured in production
-  (`npx wrangler d1 migrations apply <your-db-name> --remote` in `cod-server`;
-  the DB name comes from `COD_DB_NAME` in the root `.env` — or use
-  `npm run db:migrate:remote`).
-- The dzverify key is stored per-store in D1 (`store_otp_config`), never in
-  wrangler secrets, and never sent to the browser — it is merchant integration
+- **Setup:** the `store_otp_config` table comes with the database migrations
+  (`npm run db:migrate` in `cod-server`, run by `npm run db:setup` and by the
+  install). The send limits are counted in Redis (`REDIS_URL`).
+- The dzverify key is stored per-store in PostgreSQL (`store_otp_config`),
+  never in the deployment's environment, and never sent to the browser — it is merchant integration
   config, the same as carrier tokens and the Meta pixel token.
 - No row in `store_otp_config` = feature completely inert (safe default for
   fresh installs).
-- Storefront endpoints (auth = store API key):
+- Storefront endpoints (auth = storefront key):
   `POST /store/otp/send` `{ phone }` → `{status: "sent", requestId, expiresAt,
   maxAttempts}` or `{status: "unavailable", reason, bypassToken}` (fail-open);
   `POST /store/otp/verify` `{ phone, requestId, code }` → `{otpToken}`.

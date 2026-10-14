@@ -21,7 +21,7 @@ Every string the user can read lives in **`src/theme/content/<lang>.ts`**
 (typed by `src/theme/content/types.ts`). Theme01 ships three locale packs —
 `ar.ts`, `fr.ts`, `en.ts` — resolved at request time by `resolveContent()` in
 `src/theme/content/index.ts` (the store's active language comes from
-`StoreConfig.lang`, currently `"ar" | "en"` in the D1 schema). Components
+`StoreConfig.lang`, `"ar" | "en" | "fr"` in the database schema). Components
 consume strings via the `content` prop
 (passed down from `getStoreContext()` → `StoreLayout`). Adding a new
 label means adding a key to `types.ts` first, then filling it in
@@ -404,7 +404,7 @@ These are real bugs we've shipped fixes for. Do not re-introduce.
 
 1. **No `<ClientRouter />` (Astro view transitions).** It caused
    `/_astro/page.<hash>.js` to be re-served with empty Content-Type
-   on the deployed Worker, killing every interactive script.
+   in production, killing every interactive script.
    Removed in v1.0.90. If soft navigation is genuinely needed, ask
    the human first.
 
@@ -430,13 +430,11 @@ These are real bugs we've shipped fixes for. Do not re-introduce.
 4. **No `transition:name=*` / `transition:persist` directives.**
    Same reason as #1.
 
-5. **Don't add a `_headers` file in `public/`.** Doesn't apply to
-   programmatic Worker deploys via the Cloudflare API path. Was tried
-   in v1.0.89, didn't work, removed.
+5. **Don't add a `_headers` file in `public/`.** The Node server does
+   not read it. Was tried in v1.0.89, didn't work, removed.
 
-6. **D1 has no transactions in this codebase.** Sequential awaits
-   only. (You shouldn't be touching DB code anyway — see DO NOT
-   TOUCH.)
+6. **No database code in the theme.** All data comes from cod-server's
+   `/store/*` API (see DO NOT TOUCH).
 
 ## Tailwind notes for theme01
 

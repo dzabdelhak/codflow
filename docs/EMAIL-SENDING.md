@@ -153,13 +153,11 @@ account, key, and credits are untouched; re-enabling is instant.
 
 ## Platform Notes (for whoever deploys CodFlow)
 
-- **One-time setup:** apply migration `0013_store_email_config.sql` to the
-  remote D1 before the feature can be configured in production
-  (`npx wrangler d1 migrations apply <your-db-name> --remote` in `cod-server`;
-  the DB name comes from `COD_DB_NAME` in the root `.env` — or use
-  `npm run db:migrate:remote`).
-- The Sendili key is stored per-store in D1 (`store_email_config`), never in
-  wrangler secrets, and never sent to the browser — it is merchant
+- **Setup:** the `store_email_config` table comes with the database
+  migrations (`npm run db:migrate` in `cod-server`, run by `npm run db:setup`
+  and by the install).
+- The Sendili key is stored per-store in PostgreSQL (`store_email_config`),
+  never in the deployment's environment, and never sent to the browser — it is merchant
   integration config, the same as carrier tokens and the dzverify key.
   Storage decision (plaintext + masked reads, encryption rejected):
   [`docs/adr/0001-sendili-key-at-rest.md`](./adr/0001-sendili-key-at-rest.md).
@@ -167,7 +165,7 @@ account, key, and credits are untouched; re-enabling is instant.
   for fresh installs).
 - **One shared send path** (`cod-shared/lib/transactional-email.ts`) serves
   both senders: cod-server (invites, behind `POST /api/users`) and the
-  dashboard worker (password resets, via better-auth's
+  dashboard's auth server (password resets, via better-auth's
   `emailAndPassword.sendResetPassword`). It never throws, maps every
   failure to the stable codes above, and drops provider message text (it can
   echo key fragments).
@@ -178,6 +176,3 @@ account, key, and credits are untouched; re-enabling is instant.
   `GET/POST /api/stores/email-config`, `POST /api/stores/email-config/test`.
   The test endpoint calls Sendili's account API and returns the verified
   domains (for the from-address picker).
-- The `[[send_email]]` binding in cod-server's wrangler config is **unrelated**
-  to this feature — it exists only because the `agents` npm package imports
-  `cloudflare:email`; Sendili is plain HTTPS.

@@ -6,7 +6,7 @@
 
 [![Telegram](https://img.shields.io/badge/Telegram-Join%20our%20group-2AABEE?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/codflow_dz)
 
-Cash on Delivery meets serverless infrastructure. Self-host your entire commerce stack on Cloudflare with zero transaction fees, connect to Algeria's delivery carriers, and optimize Meta ads for real deliveries instead of door refusals.
+Cash on Delivery on infrastructure you own. Self-host your entire commerce stack on one server (Node.js, PostgreSQL, Docker Compose) with zero transaction fees, connect to Algeria's delivery carriers, and optimize Meta ads for real deliveries instead of door refusals.
 
 ---
 
@@ -56,20 +56,20 @@ Watch the step-by-step setup guide:
 
 ## 🎯 The Problem CodFlow Solves
 
-E-commerce in Algeria is **95%+ Cash on Delivery (الدفع عند الاستلام)**. Western platforms like Shopify and local tools charge per-transaction fees, require expensive VPS hosting, and lock your data in their databases.
+E-commerce in Algeria is **95%+ Cash on Delivery (الدفع عند الاستلام)**. Western platforms like Shopify and local tools charge per-transaction fees and lock your data in their databases.
 
 **CodFlow is the first and only open-source COD e-commerce platform built for Algeria.**
 
 | The Reality | Western/Local Platforms | CodFlow |
 | :--- | :--- | :--- |
-| **Transaction fees eat margins** | 2–5% per order + monthly SaaS fees | **$0 transaction fees** — pay only Cloudflare hosting ($0–$5/mo) |
-| **Your data locked in their system** | Can't export, can't migrate, vendor lock-in | **You own everything** — D1 database, R2 images, full control |
-| **Expensive hosting** | VPS servers, maintenance, scaling costs | **Serverless Cloudflare** — auto-scales, zero maintenance |
+| **Transaction fees eat margins** | 2–5% per order + monthly SaaS fees | **$0 transaction fees** — pay only for your own server |
+| **Your data locked in their system** | Can't export, can't migrate, vendor lock-in | **You own everything** — PostgreSQL database, S3-compatible image storage, full control |
+| **Hosting you don't control** | Your store lives on their servers | **Self-hosted** — one Docker Compose stack on your own server |
 | **4+ carrier portals** | Juggle Yalidine, ZR, NOEST, EcoTrack separately | **Unified carrier API** — one integration for all carriers |
 | **In-house drivers ignored** | No native driver dispatch or per-wilaya pay | **Built-in driver management** with compensation and cash settlement |
 | **Ads optimize for form fills, not deliveries** | Meta Pixel fires on checkout submit (30–50% refuse at door) | **Meta CAPI fires at actual delivery** — optimize ads for real buyers |
 
-**Deploy CodFlow to your own Cloudflare account in minutes. No monthly fees. No transaction cuts. 100% open-source (Apache 2.0).**
+**Run CodFlow on your own server. No monthly fees. No transaction cuts. 100% open-source (Apache 2.0).**
 
 ---
 
@@ -142,13 +142,14 @@ CodFlow v1.1.0 — here's what works today:
 - ✅ Compatible with Claude, Cursor, ChatGPT, LibreChat
 
 ### Backend (`cod-server`)
-- ✅ Hono 4 on Cloudflare Workers (sub-5ms cold starts)
-- ✅ Drizzle ORM + D1 (SQLite)
-- ✅ D1 scale layer: indexed hot paths, atomic batched order writes, keyset pagination
+- ✅ Hono 4 on Node.js
+- ✅ Drizzle ORM + PostgreSQL, every store isolated by Row-Level Security
+- ✅ Indexed hot paths, one transaction per request with locked stock checks, keyset pagination
 - ✅ Auto-generated OpenAPI 3.1 spec at `/api/docs`
 - ✅ Standardized error envelopes with semantic codes
 - ✅ Image storage on S3-compatible SeaweedFS, checked and converted to WebP on upload, resized on request
-- ✅ KV-backed rate limiting
+- ✅ Redis-backed rate limiting (MCP calls, WhatsApp OTP)
+- ✅ Background jobs on a PostgreSQL job queue
 
 **Known Limitations:**  
 See [`docs/KNOWN_LIMITATIONS.md`](./docs/KNOWN_LIMITATIONS.md) for honest coverage of incomplete features and platform constraints.
@@ -157,129 +158,48 @@ See [`docs/KNOWN_LIMITATIONS.md`](./docs/KNOWN_LIMITATIONS.md) for honest covera
 
 ## ⚡ Quick Setup
 
-Run CodFlow locally in 5 steps:
+Run the whole stack locally with Docker Compose:
 
-> 🤖 **Using an AI Coding Assistant?** CodFlow includes an autonomous setup skill. Tell your agent: *"Set up CodFlow"* and it will follow the [`codflow-setup` runbook](./.agents/skills/codflow-setup/SKILL.md).
-
-**Already set up and want the latest version?** Don't redo the setup. Tell your agent: *"Update CodFlow"* — it will follow the [`codflow-update` runbook](./.agents/skills/codflow-update/SKILL.md), which pulls the latest code from this repository's `main` branch, applies new database migrations, keeps your resources, secrets, and store data intact, rebuilds and redeploys your workers, and reports each step in plain language.
+> 🤖 **Using an AI Coding Assistant?** Tell your agent: *"Set up CodFlow"* and it will follow the [`codflow-setup` skill](./.agents/skills/codflow-setup/SKILL.md).
 
 ### Prerequisites
-- **Node.js 22.12+** and npm
-- **Wrangler CLI**: `npm install -g wrangler`
-- Free **Cloudflare account**
+- **Docker** with Docker Compose
+- **Node.js 22.12+** and npm (for development and tests)
 
-### 1. Clone & Install
+### 1. Clone & Start
 ```bash
 git clone https://github.com/bighadj22/codflow.git
 cd codflow
-npm ci
+docker compose up --build
 ```
 
-### 2. Create Cloudflare Resources
-Names are yours to choose — scripts read them from the root `.env`
-(see step 3), so nothing is hardcoded.
+Then open:
 
+- http://shop1.localhost:8090 and http://shop2.localhost:8090 — two demo channels served by the same storefront
+- http://app.localhost:8090 — the merchant dashboard (`admin@example.com` / `admin-dev-password`)
+
+The stack runs PostgreSQL, Redis, SeaweedFS (image storage), the API, the storefront, the dashboard and Caddy.
+
+### 2. Develop and Test
 ```bash
-wrangler login
-wrangler d1 create my-codflow-db
-wrangler r2 bucket create my-codflow-images
-wrangler kv namespace create RATE_LIMIT
-wrangler kv namespace create OAUTH_KV
+npm ci                          # at the repo root — installs every workspace
+docker compose up -d db         # PostgreSQL, needed by the cod-server tests
+
+cd cod-server && npm run typecheck && npm test
+cd cod-server && npm run db:setup   # migrate + demo channels + legal pages (DATABASE_URL)
+cd cod-server && npm run dev        # API on :8787
+cd cod-client-astro && npm run dev  # dashboard on :4321
 ```
 
-### 3. Configure Environment
-```bash
-# Repo root — resource names for the seeders, the D1 wrapper, the R2 CORS
-# setup and the storefront deploy helper. Precedence: process.env > .env > default.
-cp .env.example .env
-# Set COD_ACCOUNT_ID, COD_DB_NAME, COD_R2_BUCKET_NAME, COD_SERVER_URL, COD_MEDIA_DOMAIN
+The dashboard and the storefront both default to port 4321 — run one of them with `--port 4322`. Each package's environment is described in its `.env.example`; sign-up is disabled, so seed a dashboard admin with `cd cod-client-astro && DATABASE_URL=… npm run seed:admin -- --merchant=<id>`.
 
-# Backend
-cd cod-server
-cp .dev.vars.example .dev.vars
-cp wrangler.toml.example wrangler.toml
-# Update wrangler.toml with your D1 database_id, R2 bucket_name, KV ids
-
-# Dashboard
-cd ../cod-client-astro
-cp wrangler.toml.example wrangler.toml   # same D1 database_id as cod-server + your KV id
-cp .env.example .env
-cp .dev.vars.example .dev.vars
-# Set BETTER_AUTH_SECRET (same value as cod-server's, e.g. openssl rand -hex 32)
-
-# Storefront
-cd ../cod-astro/theme01
-cp .dev.vars.example .dev.vars
-```
-
-### 4. Setup Database & Admin
-```bash
-cd cod-server
-npm run db:setup:local
-
-cd ../cod-client-astro
-ADMIN_EMAIL=admin@example.com ADMIN_NAME=Admin npm run seed:admin
-# ⚠️ Save the generated password and API key
-```
-
-### 5. Start Dev Servers
-Open three terminals:
-
-```bash
-# Terminal 1: Backend (http://localhost:8787)
-cd cod-server && npm run dev
-
-# Terminal 2: Dashboard (http://localhost:4321)
-cd cod-client-astro && npm run dev
-
-# Terminal 3: Storefront (http://localhost:4321 → use a different port, see theme README)
-cd cod-astro/theme01 && npm run dev
-```
-
-> ⚠️ The dashboard and storefront both default to port 4321 — run them on
-> different ports (`astro dev --port 4322` for one of them) or run only one
-> at a time.
-
-### 6. Enable Image Uploads
-
-Images are stored in S3-compatible storage behind cod-server (SeaweedFS in `docker compose`). See the [image guide](./cod-server/src/endpoints/images/README.md) for the `S3_*`, `IMAGES_PUBLIC_URL` and storefront `MEDIA_URL` settings.
-
-Merchants connect their own domains from the dashboard's Domains screen; Caddy issues their certificates on demand. See [`docs/CUSTOM-DOMAINS.md`](./docs/CUSTOM-DOMAINS.md).
-
-**Need more detail?** See [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md) for production deployment.
+Images are stored in S3-compatible storage behind cod-server — see the [image guide](./cod-server/src/endpoints/images/README.md). Merchants connect their own domains from the dashboard's Domains screen; Caddy issues their certificates on demand — see [`docs/CUSTOM-DOMAINS.md`](./docs/CUSTOM-DOMAINS.md).
 
 ---
 
 ## 🚢 Production Deployment
 
-Deploy all three apps to Cloudflare Workers:
-
-```bash
-# 1. Backend
-cd cod-server
-npm run deploy -- --env production
-wrangler secret put BETTER_AUTH_SECRET
-wrangler secret put STORE_API_KEY
-
-# 2. Dashboard
-cd ../cod-client-astro
-# Production PUBLIC_API_URL comes from wrangler.toml [vars]; deploy builds with it
-npm run deploy
-wrangler secret put BETTER_AUTH_SECRET         # same value as cod-server's
-wrangler secret put MCP_LOGIN_TICKET_SECRET    # same value as cod-server's
-
-# 3. Storefront
-cd ../cod-astro/theme01
-# COD_SERVER_URL comes from the repo-root .env — deploy injects it, never wrangler.jsonc
-npm run deploy
-wrangler secret put STORE_API_KEY
-```
-
-**Important:** Cloudflare blocks Worker-to-Worker fetch between `*.workers.dev` hosts. For production, put at least `cod-server` on a custom domain and point `COD_SERVER_URL` at it.
-
-**Image uploads:** see the [image guide](./cod-server/src/endpoints/images/README.md) for the storage settings.
-
-**Full deployment guide:** [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md)
+See [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md) for installing CodFlow on a server and [`docs/CONFIGURATION.md`](./docs/CONFIGURATION.md) for every setting.
 
 ---
 
@@ -288,7 +208,7 @@ wrangler secret put STORE_API_KEY
 ```
                           ┌──────────────────────────────────────────┐
                           │              cod-shared                  │
-                          │   D1 schema • RBAC scopes • queries      │
+                          │ Drizzle schema • RBAC scopes • queries   │
                           └───────────────┬──────────────────────────┘
                                           │ relative imports
                ┌──────────────────────────┼──────────────────────────┐
@@ -296,7 +216,7 @@ wrangler secret put STORE_API_KEY
        ┌───────▼───────┐         ┌────────▼────────┐        ┌────────▼────────┐
        │  Storefront   │         │     Backend     │        │   Dashboard     │
        │  cod-astro    │──/store─▶  cod-server     │◀──/api─│ cod-client-astro│
-       │  (Astro 7)    │  API    │ (Hono + Workflows) API   │  (Astro 7)      │
+       │  (Astro 7)    │  API    │  (Hono + jobs)  │  API   │  (Astro 7)      │
        └───────┬───────┘         └───┬─────┬───────┘        └─────────────────┘
                │                     │     │
                │               /webhooks   │ conversion jobs
@@ -309,14 +229,15 @@ wrangler secret put STORE_API_KEY
                │              │  APIs       │   NOEST • EcoTrack       (tracking pull)
                │              └─────────────┘
                │
-               │        /images (R2)      /mcp (AI agents, OAuth-scoped)
+               │        /images (S3)      /mcp (AI agents, OAuth-scoped)
                └──────────────────────────────────────────────────────▶
 ```
 
 **Tech Stack:**
-- **Storefront:** Astro 7, Tailwind CSS v4 → Cloudflare Workers + Static Assets
-- **Backend:** Hono 4, Drizzle ORM, Better Auth, Workflows → Cloudflare Workers + D1 + R2 + KV
-- **Dashboard:** Astro 7 (prerendered static + auth worker) → Cloudflare Workers + D1 + KV
+- **Storefront:** Astro 7, Tailwind CSS v4 → Node.js
+- **Backend:** Hono 4, Drizzle ORM, PostgreSQL job queue → Node.js + PostgreSQL + Redis + SeaweedFS (S3)
+- **Dashboard:** Astro 7 (prerendered static + Better Auth server routes) → Node.js + PostgreSQL + Redis
+- **Edge:** Caddy (on-demand TLS for merchant domains), everything in Docker Compose
 - **Shared:** Drizzle schema, RBAC scopes, error codes
 
 **More detail:** [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md)
@@ -326,7 +247,7 @@ wrangler secret put STORE_API_KEY
 ## 🧪 Testing
 
 ```bash
-# Backend tests (handlers, workflows, OpenAPI, MCP)
+# Backend tests (handlers, jobs, OpenAPI, MCP) — needs `docker compose up -d db`
 cd cod-server && npm test
 
 # Dashboard tests (feature models, i18n guards, API seam)
@@ -349,7 +270,7 @@ astro check + tests for theme01.
 
 | Document | Purpose |
 | :--- | :--- |
-| **[docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md)** | Cloudflare production deployment |
+| **[docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md)** | Production install on your own server |
 | **[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)** | System map and data flows |
 | **[docs/CONFIGURATION.md](./docs/CONFIGURATION.md)** | All environment variables and configs |
 | **[docs/KNOWN_LIMITATIONS.md](./docs/KNOWN_LIMITATIONS.md)** | Incomplete features and platform constraints |
@@ -419,5 +340,5 @@ See [`LICENSE`](./LICENSE) and [`NOTICE`](./NOTICE) for details.
 
 ---
 
-**Version:** v1.1.0 — Self-hostable on Cloudflare.  
+**Version:** v1.1.0 — Self-hosted on Node.js + PostgreSQL.  
 Built with ❤️ for Algerian e-commerce.

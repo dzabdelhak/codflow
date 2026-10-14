@@ -49,11 +49,8 @@ export async function registerZrWebhook(c: Context<AppContext>) {
     throw new ValidationError("ZR Express tenant ID (apiUserGuid) not configured", "MISSING_API_CREDENTIALS", { companyId: id });
   }
 
-  // Build the webhook URL from the incoming request host
-  const workerUrl =
-    c.req.header("X-Worker-URL") ||
-    `https://${c.req.header("host")}`;
-  const webhookUrl = `${workerUrl}/webhooks/zr_express`;
+  const apiUrl = (c.env.PUBLIC_API_URL || `https://${c.req.header("host")}`).replace(/\/+$/, "");
+  const webhookUrl = `${apiUrl}/webhooks/zr_express`;
 
   // Shared headers for all ZR webhook management API calls.
   // ZR Express uses X-Api-Key + X-Tenant for all API calls (same credential as parcel API).

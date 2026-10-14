@@ -7,7 +7,7 @@ The door AI agents use to operate the store: an OAuth-protected Model Context Pr
 ### The Surface
 
 **MCP Server**:
-The remote endpoint at `/mcp` where external agents (Claude, ChatGPT, custom clients) connect over streamable HTTP. Each connection runs as its own session with state that lives only for that connection.
+The remote endpoint at `/mcp` where external agents (Claude, ChatGPT, custom clients) connect over streamable HTTP. The handler is stateless: each request runs in the RLS scope of the channel its token was granted for.
 _Avoid_: API, bot, integration
 
 **Tool Registry**:
@@ -52,12 +52,12 @@ _Avoid_: Server confirmation, HITL round
 Every agent invocation lands in the activity trail tagged as via-MCP with its arguments and outcome — failures included — so operations can reconstruct exactly what each agent did.
 
 **Connection Revocation**:
-Cutting an agent's access revokes the provider grant — the grant and every access token under it disappear, and token validation rejects any token whose grant is gone, so live sessions die instantly. Retries are safe; revocation is idempotent.
+Cutting an agent's access deletes the consent and revokes every access and refresh token under it, and token validation rejects any token whose grant is gone, so live sessions die instantly. Retries are safe; revocation is idempotent.
 
 ### Management
 
 **Connection**:
-A view per user-and-client pair assembled from the provider's KV grants: unioned grant scopes, a last-used marker written at every token issuance, plus the client's display name (from the registered client, falling back to grant metadata for CIMD clients).
+A view per user, client and channel assembled from the provider's consents in PostgreSQL: the consent's scopes, a last-used marker kept in Redis, plus the client's display name from the registered client.
 _Avoid_: Account, login device
 
 **Self vs Team Views**:

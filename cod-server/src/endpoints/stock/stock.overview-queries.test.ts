@@ -6,7 +6,7 @@
  *     tracked variants), SQL-side ordering; buckets derived in one pass
  *   • getStockAlerts — ONE filtered UNION query (page) + ONE count query
  *
- * WHERE/aggregation/ordering semantics are verified against real D1 in
+ * WHERE/aggregation/ordering semantics are verified against PostgreSQL in
  * stock.overview-e2e.test.ts.
  */
 

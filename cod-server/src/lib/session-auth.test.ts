@@ -9,7 +9,7 @@ import { verifySessionJwt } from "./session-auth";
 
 const ENV = {
   BETTER_AUTH_URL: "https://example.com",
-  WORKER_SELF_URL: "https://api.example.com/",
+  PUBLIC_API_URL: "https://api.example.com/",
 };
 
 let privateKey: CryptoKey;

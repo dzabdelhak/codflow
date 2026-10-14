@@ -1,6 +1,5 @@
 /**
- * Re-exported from cod-shared/queries/orders so the dashboard can consume
- * the same read/write helpers directly from D1.
+ * Re-exported from cod-shared/queries/orders.
  */
 import type { AppDb } from "../../../../cod-shared/db/client";
 import type { OrderStatus } from "../../../../cod-shared/db/schema";

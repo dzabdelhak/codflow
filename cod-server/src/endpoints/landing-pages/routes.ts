@@ -141,7 +141,7 @@ const duplicateLandingPageRoute = defineRoute({
   auth: { scope: SCOPES.LANDING_PAGES_MANAGE },
   tags: ["Landing Pages"],
   summary: "Duplicate landing page",
-  description: `Create a quick copy: a fresh DRAFT with a new slug, the same product, spacing, SEO meta, and image stack (images share the original immutable R2 objects — deleting an image elsewhere only removes the storage object when the last reference goes). Views, orders, revenue, and published state are never copied — a duplicate is a fresh creative test.`,
+  description: `Create a quick copy: a fresh DRAFT with a new slug, the same product, spacing, SEO meta, and image stack (images share the original immutable storage objects — deleting an image elsewhere only removes the storage object when the last reference goes). Views, orders, revenue, and published state are never copied — a duplicate is a fresh creative test.`,
   operationId: "duplicateLandingPage",
   params: idParams,
   responses: {
@@ -277,12 +277,12 @@ const saveLandingPageImageRoute = defineRoute({
   tags: ["Landing Pages"],
   summary: "Save landing page image",
   description:
-    "Append an already-uploaded R2 image to the stack. Upload first via POST /api/images/presign with folder=landing, then call this with the returned key and URL.",
+    "Append an already-uploaded image to the stack. Upload first via POST /api/images/upload with folder=landing, then call this with the returned key and URL.",
   operationId: "saveLandingPageImage",
   params: idParams,
   body: z.object({
     key: z.string().min(1).openapi({
-      description: "R2 object key returned by the presign upload",
+      description: "Storage key returned by the upload",
       example: "landing/abc123def456.jpg",
     }),
     src: z.string().min(1).openapi({
@@ -360,7 +360,7 @@ const deleteLandingPageImageRoute = defineRoute({
   tags: ["Landing Pages"],
   summary: "Delete landing page image",
   description:
-    "Remove an image from the stack. The R2 object is deleted first — a storage failure aborts so no DB row points at a missing object.",
+    "Remove an image from the stack. The storage object is deleted first — a storage failure aborts so no DB row points at a missing object.",
   operationId: "deleteLandingPageImage",
   params: imageIdParams,
   responses: {

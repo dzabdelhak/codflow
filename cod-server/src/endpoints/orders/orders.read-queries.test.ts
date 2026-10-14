@@ -2,7 +2,7 @@
  * getAllOrders + getOrderById — Slice 4 read-path coverage.
  *
  * Mock queue verifies call shape and mapping (one joined select, then ONE
- * read batch); WHERE/filter semantics are verified against real D1 in
+ * read batch); WHERE/filter semantics are verified against PostgreSQL in
  * orders.read-e2e.test.ts.
  */
 

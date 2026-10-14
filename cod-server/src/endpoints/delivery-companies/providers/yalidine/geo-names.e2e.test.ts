@@ -59,7 +59,7 @@ describe("normalizeGeoName", () => {
   });
 });
 
-describe("syncCarrierGeoNames — real D1", () => {
+describe("syncCarrierGeoNames — real PostgreSQL", () => {
   it("maps exact, accent, punctuation, and spelling variants; reports unmapped; is re-runnable", async () => {
     const carrierNames = {
       wilayas: [

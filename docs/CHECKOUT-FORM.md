@@ -90,7 +90,7 @@ Two things, once a shopper gives one:
 2. **Sent to Meta as a hashed identifier** (`em`) on the Conversions API event.
    Email is the strongest signal Meta matches on after the phone, so an order
    that carries one is attributed better — most of the value in storing it.
-   It is SHA-256 hashed before it leaves the Worker and never sent in the clear.
+   It is SHA-256 hashed before it leaves the server and never sent in the clear.
 
 Staff can also enter one on the dashboard's **New order** form. It is optional
 there whatever the storefront is configured to ask, for the same reason the

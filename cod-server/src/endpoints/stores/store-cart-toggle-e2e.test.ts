@@ -1,5 +1,5 @@
 /**
- * The merchant cart switch — real-D1 E2E.
+ * The merchant cart switch — PostgreSQL E2E.
  *
  * One boolean, but it is the switch that decides whether a merchant's
  * storefront grows a cart at all, so the guarantees are worth pinning:

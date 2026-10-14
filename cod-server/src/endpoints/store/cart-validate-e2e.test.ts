@@ -1,5 +1,5 @@
 /**
- * POST /store/cart/validate — real-D1 E2E.
+ * POST /store/cart/validate — PostgreSQL E2E.
  *
  * This endpoint exists so the cart drawer can tell the truth before a shopper
  * commits. Its whole value is that it answers from the same snapshot, the same

@@ -1,327 +1,85 @@
-# Configuration Reference
-
-Environment variables and Cloudflare bindings.
-
----
-
-## Configuration Files
-
-```
-cod-server/
-├── wrangler.toml       # Cloudflare bindings (D1, R2, KV)
-└── .dev.vars           # Local secrets (gitignored)
-
-cod-client-astro/
-├── wrangler.toml       # Cloudflare bindings (D1, KV) + production PUBLIC_API_URL
-├── .env                # Build-time client env (no PUBLIC_API_URL — see below)
-└── .dev.vars           # Local secrets + local PUBLIC_API_URL (gitignored)
-
-cod-astro/theme01/
-├── wrangler.jsonc      # Cloudflare config
-└── .dev.vars           # Local secrets (gitignored)
-```
-
----
-
-## Generate Secrets
-
-```bash
-# BETTER_AUTH_SECRET (base64)
-node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
-
-# STORE_API_KEY (base64url)
-node -e "console.log(require('crypto').randomBytes(24).toString('base64url'))"
-```
-
----
-
-## Backend (cod-server)
-
-### wrangler.toml
-
-```toml
-name = "mystore-api"  # Choose unique worker name
-
-[vars]
-WORKER_URL = "https://api.yourdomain.com"
-WORKER_SELF_URL = "https://api.yourdomain.com"
-BETTER_AUTH_URL = "https://admin.yourdomain.com/api/auth"
-MEDIA_DOMAIN = "media.yourdomain.com"  # After R2 setup
-
-[[d1_databases]]
-binding = "DB"
-database_id = "your-database-id"  # From: wrangler d1 create
-
-[[r2_buckets]]
-binding = "IMAGES"
-bucket_name = "mystore-prod-images"
-
-[[kv_namespaces]]
-binding = "RATE_LIMIT_KV"
-id = "your-kv-id"  # From: wrangler kv namespace create
-```
-
-### Secrets (via wrangler secret put)
-
-**Required:**
-```bash
-wrangler secret put BETTER_AUTH_SECRET   # MUST match cod-client-astro
-```
-
-**For R2 image uploads:**
-```bash
-wrangler secret put CF_ACCOUNT_ID
-wrangler secret put R2_ACCESS_KEY_ID
-wrangler secret put R2_SECRET_ACCESS_KEY
-```
-
-### .dev.vars (local development)
-
-```env
-BETTER_AUTH_SECRET=<your-generated-secret>
-
-# Optional - for local R2 presigned URL testing
-CF_ACCOUNT_ID=<your-account-id>
-R2_ACCESS_KEY_ID=<your-access-key>
-R2_SECRET_ACCESS_KEY=<your-secret-key>
-MEDIA_DOMAIN=media.yourdomain.com
-```
-
----
-
-## Dashboard (cod-client-astro)
-
-### wrangler.toml
-
-```toml
-name = "mystore-dashboard"  # Choose unique worker name
-
-[vars]
-PUBLIC_APP_URL = "https://dashboard.yourdomain.com"       # better-auth base URL (JWT issuer)
-PUBLIC_API_URL = "https://api.yourdomain.com"             # cod-server origin
-PUBLIC_TRUSTED_ORIGINS = "https://dashboard.yourdomain.com"  # origins allowed to POST /api/auth/*
-
-[[d1_databases]]
-binding = "DB"
-database_id = "your-database-id"  # Same as cod-server
-
-[[kv_namespaces]]
-binding = "RATE_LIMIT_KV"
-id = "your-kv-id"
-```
-
-### PUBLIC_API_URL — where it is read from
-
-`PUBLIC_API_URL` is consumed via `astro:env/client`, so it is inlined into the
-browser bundle at build time and a rebuild is required to change it.
-
-It is **not** read from `cod-client-astro/.env`. The Cloudflare adapter pushes
-wrangler values and `.dev.vars` into `process.env`, and Astro loads env with an
-empty prefix, so Vite's final `process.env` pass outranks the `.env` files:
-
-```
-.dev.vars  >  wrangler.toml [vars]  >  process.env  >  .env
-```
-
-A value placed in `.env` is silently ignored. Set it where it is read:
-
-| Context | File | Value |
-| --- | --- | --- |
-| Local development | `.dev.vars` | `PUBLIC_API_URL=http://localhost:8787` |
-| Production | `wrangler.toml` `[vars]` | `PUBLIC_API_URL = "https://api.yourdomain.com"` |
-
-`.dev.vars` is local-only by Cloudflare's definition but is still read during a
-build, so a plain `npm run build` on a developer machine bakes the local URL
-into the bundle. Deploy with `npm run deploy`, which parks `.dev.vars` for the
-build and refuses to upload a bundle that still contains a loopback URL.
-
-### Secrets
-
-```bash
-wrangler secret put BETTER_AUTH_SECRET        # MUST match cod-server
-```
-
-### .dev.vars (local development)
-
-```env
-BETTER_AUTH_SECRET=<your-generated-secret>
-```
-
----
-
-## Storefront (cod-astro/theme01)
-
-### wrangler.jsonc
-
-No `COD_SERVER_URL` here — `npm run deploy` (scripts/deploy.mjs) injects it
-at deploy time from the repo-root `.env`. Deploy refuses a localhost value
-unless `--force-local` is passed. Only set the worker `name` in this file.
-
-```jsonc
-{
-  "name": "mystore-store",
-  "compatibility_date": "2025-01-21"
-}
-```
-
-### Secrets
-
-```bash
-wrangler secret put STORE_API_KEY  # From admin seed script
-wrangler secret put MEDIA_DOMAIN   # After R2 setup (e.g., media.yourdomain.com)
-```
-
-### .dev.vars (local development)
-
-```env
-STORE_API_KEY=codflow-dev-store-key
-COD_SERVER_URL=http://localhost:8787
-```
-
----
-
-## Critical Secrets
-
-| Secret | Where | Must Match |
-| :--- | :--- | :--- |
-| `BETTER_AUTH_SECRET` | cod-server + cod-client-astro | **YES** (must be identical) |
-| `STORE_API_KEY` | Seed script → DB → cod-astro | **YES** (storefront uses seeded hash) |
-
----
-
-## Setting Secrets Securely
-
-**Never echo secrets into shell.** Use temp file with stdin redirect:
-
-```bash
-echo "<secret-value>" > /tmp/secret.txt && chmod 600 /tmp/secret.txt
-wrangler secret put SECRET_NAME < /tmp/secret.txt
-rm /tmp/secret.txt
-```
-
-List secrets (names only, not values):
-```bash
-wrangler secret list
-```
-
-Delete a secret:
-```bash
-wrangler secret delete SECRET_NAME
-```
-
----
-
-## Meta Pixel & Carrier APIs
-
-**Not configured via environment variables.** Set via dashboard UI:
-
-### Meta Pixel
-
-1. Login to dashboard
-2. **Settings** → **Meta Pixel**
-3. Enter Pixel ID and Conversions API Access Token
-
-Stored in D1 `settings` table.
-
-### Carrier API Keys
-
-1. **Delivery** → **Companies**
-2. Open a carrier company → **Credentials**
-3. Enter API credentials, test the connection, and sync stop desks
-
-Stored in D1 `carrier_configs` table.
-
----
-
-## R2 Image Upload Configuration
-
-See [DEPLOYMENT.md](./DEPLOYMENT.md#r2-image-upload-setup) for complete R2 setup.
-
-**Required:**
-1. Custom domain on R2 bucket
-2. CORS policy allowing PUT from dashboard domain
-3. Secrets: `CF_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` on cod-server
-4. `MEDIA_DOMAIN` in cod-server wrangler.toml `[vars]` and as secret on theme01
-5. Redeploy both workers after configuration
-
----
-
-## Local vs Production
-
-### Local Development URLs
-
-```
-cod-server:       http://localhost:8787
-cod-client-astro: http://localhost:4321
-cod-astro:        http://localhost:4321 (run on another port when both are up)
-```
-
-Local D1 database shared at `../.wrangler-shared/`
-
-### Production URLs
-
-Update these in the wrangler configs after first deploy:
-
-```
-cod-server:       https://api.yourdomain.com
-cod-client-astro: https://dashboard.yourdomain.com
-cod-astro:        https://shop.yourdomain.com
-```
-
-Then redeploy affected workers.
-
----
-
-## Verify Configuration
-
-### No Placeholders
-
-```bash
-grep -rn "00000000-0000\|00000000000000000000000000000000" \
-  cod-server/wrangler.toml cod-client-astro/wrangler.toml
-```
-
-Expected: no matches
-
-### Secrets Set
-
-```bash
-wrangler secret list --name <worker-name>
-```
-
-Expected: `BETTER_AUTH_SECRET` (and R2 secrets if using image uploads)
-
----
-
-## Troubleshooting
-
-**"DB is not defined"**
-Missing D1 binding in `wrangler.toml`. Add `[[d1_databases]]` with your database ID.
-
-**"Failed to fetch" between workers**
-Both on `workers.dev`? Deploy at least cod-server to custom domain.
-
-**Dashboard authentication fails**
-```bash
-# Verify BETTER_AUTH_SECRET matches in both workers
-wrangler secret list --name mystore-api
-wrangler secret list --name mystore-dashboard
-```
-
-If they don't match, regenerate and set the same secret in both.
-
-**Dashboard shows 403 `INVALID_ORIGIN`**
-Your dashboard origin is missing from `PUBLIC_TRUSTED_ORIGINS` in
-`cod-client-astro/wrangler.toml`. Add it and redeploy.
-
-**Image uploads fail**
-1. Check CORS policy on R2 bucket includes dashboard domain
-2. Verify `MEDIA_DOMAIN` is set in cod-server wrangler.toml
-3. Verify R2 secrets are set on cod-server worker
-
----
-
-## Related Docs
-
-- [DEPLOYMENT.md](./DEPLOYMENT.md) — Production deployment
-- [cod-server/src/endpoints/images/README.md](../cod-server/src/endpoints/images/README.md) — Complete R2 setup
+# Configuration reference
+
+Every setting is an environment variable. Each environment sets them in its
+own place:
+
+- **Production:** one secrets file, `/etc/codflow/secrets.env` (template
+  `deploy/secrets.env.example`). `deploy/compose.yml` derives each app's
+  variables from it. See [DEPLOYMENT.md](./DEPLOYMENT.md).
+- **Local stack:** `docker-compose.yml` at the repo root, with local defaults.
+- **One app run by hand:** export the variables below. The dashboard's template
+  is `cod-client-astro/.env.example`.
+
+Secrets live only in the environment, never in the repository.
+
+## Production secrets file
+
+| Variable | Meaning |
+|---|---|
+| `BASE_DOMAIN` | `api.`, `app.` and `status.` hosts, and the free channel addresses `<slug>.BASE_DOMAIN` |
+| `ACME_EMAIL` | Let's Encrypt account |
+| `CUSTOM_DOMAIN_TARGET`, `CUSTOM_DOMAIN_IPV4` | What a merchant's own domain must point at (CNAME, or A records) |
+| `MERCHANT_ID`, `MERCHANT_NAME`, `ADMIN_EMAIL` | First account, created once by `install.sh` |
+| `POSTGRES_PASSWORD`, `BETTER_AUTH_SECRET`, `STOREFRONT_SERVICE_KEY`, `S3_ACCESS_KEY`, `S3_SECRET_KEY` | Application secrets: `openssl rand -hex 32` |
+| `ORDER_DESTINATION` | Where orders are transmitted (`test` until the Aventy connector) |
+| `KUMA_ADMIN_USER`, `KUMA_ADMIN_PASSWORD` | Uptime Kuma login |
+| `ALERT_EMAIL_FROM`, `ALERT_EMAIL_TO`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` | Where alerts are e-mailed (STARTTLS, usually port 587) |
+| `DISK_ALERT_PERCENT` | Disk use that turns the disk monitor red (default 85) |
+| `BACKUP_REMOTE`, `RCLONE_CONFIG_BACKUP_*` | The off-server backup destination, as an rclone remote |
+| `APP_REPLICAS` | Replicas of each app (default 2) |
+| `CADDY_GLOBAL_EXTRA` | `local_certs` for a rehearsal without public DNS; empty in production |
+
+## cod-server (API)
+
+| Variable | Required | Meaning |
+|---|---|---|
+| `DATABASE_URL` | yes | PostgreSQL, as the database owner; the app switches to `codflow_app` / `codflow_platform` per pool |
+| `PUBLIC_API_URL` | yes | The API's public origin: OpenAPI server, webhook and image URLs, MCP token audience (`<it>/mcp`) |
+| `S3_ENDPOINT`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | yes | Image storage; `S3_BUCKET` (default `codflow-images`), `S3_REGION` optional |
+| `BETTER_AUTH_URL` | yes | The dashboard's origin; dashboard sessions and MCP tokens are verified against its JWKS |
+| `BETTER_AUTH_JWKS_URL` | | The JWKS as reachable from the API (in Docker `http://dashboard:4321/api/auth/jwks`) |
+| `BETTER_AUTH_SECRET` | yes | Identical on the dashboard |
+| `STOREFRONT_SERVICE_KEY` | yes | Shared with the storefront; only with it is `X-Channel-Host` trusted |
+| `REDIS_URL` | | Rate limits (MCP, storefront OTP) and MCP last-used times; everything still serves without it |
+| `ALLOWED_ORIGINS` | | Comma-separated CORS origins (the dashboard) |
+| `STORE_BASE_DOMAIN` | | Free channel addresses are `<slug>.<it>` (default `localhost`) |
+| `CUSTOM_DOMAIN_TARGET`, `CUSTOM_DOMAIN_IPV4` | | Where merchants' own domains must point ([CUSTOM-DOMAINS.md](./CUSTOM-DOMAINS.md)) |
+| `TLS_PROBE_HOST`, `TLS_PROBE_PORT` | | Where channel certificates are probed (Caddy); without it, the hourly certificate check is off |
+| `DNS_SERVERS` | | Comma-separated resolvers for domain verification |
+| `STOREFRONT_INTERNAL_URL` | | Storefront(s) to purge cached pages on; every address a name resolves to is purged, comma-separate several names |
+| `IMAGES_PUBLIC_URL` | | Public base of `/images` (default: request origin + `/images`) |
+| `STOREFRONT_URL` | | Fallback origin for landing-page share links |
+| `ORDER_DESTINATION` | | `test` (default) — see [ORDER-TRANSMISSION.md](./ORDER-TRANSMISSION.md) |
+| `OUTBOUND_SENDERS`, `OUTBOUND_SEND_TIMEOUT_MS`, `OUTBOUND_MAX_DELAY_MS`, `OUTBOUND_HOLD_ATTEMPTS` | | Outbound worker tuning |
+| `ORDER_IP_CEILING_PER_HOUR` | | Anti-flood per-IP ceiling (default 20) — [ORDER-PROTECTION.md](./ORDER-PROTECTION.md) |
+| `ENVIRONMENT` | | `production` requires channel certificates to be publicly trusted |
+| `PORT` | | Default 8787 |
+
+## cod-client-astro (dashboard)
+
+| Variable | When | Meaning |
+|---|---|---|
+| `PUBLIC_API_URL` | build | The API origin, inlined into the browser bundle: changing it needs a rebuild (the Docker image takes it as a build arg). On `app.<domain>` the browser derives `api.<domain>` itself |
+| `DATABASE_URL` | run | Same database as the API; the auth server reads identity tables only |
+| `REDIS_URL` | run | better-auth's secondary storage and rate limits, MCP channel choices |
+| `PUBLIC_APP_URL` | run | This dashboard's origin: better-auth base URL and OAuth issuer (`<it>/api/auth`) |
+| `PUBLIC_TRUSTED_ORIGINS` | run | Extra origins allowed to call `/api/auth/*` |
+| `BETTER_AUTH_SECRET` | run | Identical on the API |
+
+## cod-astro/theme01 (storefront)
+
+| Variable | Meaning |
+|---|---|
+| `COD_SERVER_URL` | The API as reachable from the storefront (`http://api:8787` in Docker) |
+| `STOREFRONT_SERVICE_KEY` | Identical on the API; server-side only |
+| `MEDIA_URL` | Public base of the API's `/images` |
+| `TRUSTED_PROXY_IP_HEADER` | The header Caddy sets with the visitor's IP (`x-visitor-ip`); the storefront must be reachable only through Caddy |
+
+## Health and status endpoints
+
+| Endpoint | Answers |
+|---|---|
+| `GET /health` (API) | `{"status":"ok"}` while the process runs |
+| `GET /platform/status` (API, private) | 200 or 503 with the database, outbound queue (an order waiting > 24 h), job backlog (> 30 min) and channel certificate checks; Caddy refuses `/platform/*` from outside |
+| `GET /healthz` (storefront) | `ok`, without resolving a channel |
+| `GET /sign-in` (dashboard) | the prerendered sign-in page |

@@ -43,7 +43,7 @@ async function png(width: number, height: number): Promise<Uint8Array> {
 
 function form(bytes: Uint8Array, name: string, type: string, folder?: string) {
   const data = new FormData();
-  data.append("file", new File([bytes], name, { type }));
+  data.append("file", new File([bytes as BlobPart], name, { type }));
   if (folder) data.append("folder", folder);
   return data;
 }

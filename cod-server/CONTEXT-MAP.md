@@ -22,15 +22,15 @@ Convention: one `CONTEXT.md` per endpoint folder; cross-folder terms live in the
 | ✅ written | Variants | [./src/endpoints/variants/CONTEXT.md](./src/endpoints/variants/CONTEXT.md) | Sellable combinations of variable products: pricing, SKUs, deletion semantics (routes mounted via products/) |
 | ✅ written | Analytics | [./src/endpoints/analytics/CONTEXT.md](./src/endpoints/analytics/CONTEXT.md) | Dashboard metrics: order counts per lifecycle status (read-only, dashboard:view) |
 | ✅ written | Abandoned Orders | [./src/endpoints/abandoned-orders/CONTEXT.md](./src/endpoints/abandoned-orders/CONTEXT.md) | Captured half-finished checkouts: session capture, 30-min sweep, recovery stats (storefront + dashboard surfaces) |
-| ✅ written | Images | [./src/endpoints/images/CONTEXT.md](./src/endpoints/images/CONTEXT.md) | R2 media pipeline: proxy & presigned uploads, immutable public serving, record linking |
+| ✅ written | Images | [./src/endpoints/images/CONTEXT.md](./src/endpoints/images/CONTEXT.md) | Image pipeline: uploads through the API to S3 storage, immutable resized serving, record linking |
 | ✅ written | Activity Logs | [./src/endpoints/activity-logs/CONTEXT.md](./src/endpoints/activity-logs/CONTEXT.md) | Admin-only audit trail: who did what across every context (fire-and-forget writes) |
 | ✅ written | MCP | [./src/endpoints/mcp/CONTEXT.md](./src/endpoints/mcp/CONTEXT.md) | AI-agent surface: OAuth-verified tool sessions, scope-gated registry, HITL confirmations, connection revocation |
-| ✅ written | Store Settings | [./src/endpoints/stores/CONTEXT.md](./src/endpoints/stores/CONTEXT.md) | Merchant configuration: branding, theme, localization, SEO, Meta pixel (single-tenant, admin-only) |
+| ✅ written | Store Settings | [./src/endpoints/stores/CONTEXT.md](./src/endpoints/stores/CONTEXT.md) | Merchant configuration: branding, theme, localization, SEO, Meta pixel (the request's store, admin-only) |
 | ✅ written | Customer Tags | [./src/endpoints/customer-tags/CONTEXT.md](./src/endpoints/customer-tags/CONTEXT.md) | Free-form customer labels: unique names, idempotent assignments, count-guarded deletion |
 | ✅ written | Customer Groups | [./src/endpoints/customer-groups/CONTEXT.md](./src/endpoints/customer-groups/CONTEXT.md) | Curated customer segments: descriptions, membership counts, count-guarded deletion |
 | ✅ written | Product Groups | [./src/endpoints/product-groups/CONTEXT.md](./src/endpoints/product-groups/CONTEXT.md) | Category tree for products: nesting, slugs, SEO fields, live product counts (routes call it "categories") |
 | ✅ written | Users | [./src/endpoints/users/CONTEXT.md](./src/endpoints/users/CONTEXT.md) | Team management: roles, scope grants/revokes, one-time API keys (admin-role gated) |
-| ✅ written | Store | [./src/endpoints/store/CONTEXT.md](./src/endpoints/store/CONTEXT.md) | Public storefront: catalog, shipping rates, COD checkout, reviews (X-Store-API-Key auth) |
+| ✅ written | Store | [./src/endpoints/store/CONTEXT.md](./src/endpoints/store/CONTEXT.md) | Public storefront: catalog, shipping rates, COD checkout, reviews (storefront key + channel hostname auth) |
 
 All endpoint folders are now documented — no candidates remain. Future folders follow the same convention: one CONTEXT.md per folder, registered here with a ✅ row.
 ## Relationships

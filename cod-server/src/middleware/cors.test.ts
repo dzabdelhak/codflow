@@ -193,7 +193,7 @@ describe("CORS Middleware", () => {
     });
 
     // Regression: handlers returning a raw `new Response(...)` (label PDF
-    // proxy, R2 image streaming) bypass Hono's prepared-header application,
+    // proxy, image streaming) bypass Hono's prepared-header application,
     // so headers set before next() never reached them and the browser
     // blocked the response with a CORS error despite the 200.
     it("adds CORS headers to a raw Response", async () => {

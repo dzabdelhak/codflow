@@ -22,7 +22,7 @@ afterAll(async () => {
   for (const mf of registry) await mf.dispose();
 });
 
-describe("updateOrderStatusWebhook — real D1 batch (E2E)", () => {
+describe("updateOrderStatusWebhook — real PostgreSQL batch (E2E)", () => {
   it("commits, guards rank, restocks, and rolls back atomically", async () => {
     const now = new Date().toISOString();
     const pid = "prod-e2e-1";

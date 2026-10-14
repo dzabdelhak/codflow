@@ -7,7 +7,7 @@
  *
  * The integration — that these candidates are the right ones, and that the
  * rewards become real order lines with real stock deducted — is proven against
- * real D1 in cart-orders-e2e.test.ts.
+ * PostgreSQL in cart-orders-e2e.test.ts.
  */
 
 import { describe, it, expect } from "vitest";

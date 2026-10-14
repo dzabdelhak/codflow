@@ -36,7 +36,7 @@ describe("importing images from the old media domain", () => {
     const fetched: string[] = [];
     const download = async (url: string) => {
       fetched.push(url);
-      return url.endsWith("gone.jpg") ? new Response("no", { status: 404 }) : new Response(jpeg);
+      return url.endsWith("gone.jpg") ? new Response("no", { status: 404 }) : new Response(jpeg as BodyInit);
     };
 
     const report = await importLegacyImages(harness.platform, store, { oldBase: OLD, newBase: NEW, download });

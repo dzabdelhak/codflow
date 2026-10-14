@@ -10,39 +10,43 @@
 #   admin                   → any non-40x
 
 BASE_URL="${BASE_URL:-http://localhost:8787}"
-# D1 database name from the unified root .env (COD_DB_NAME) — override with
-# DB_NAME=<name> if needed. See cod-server/scripts/cloud-env.mjs.
+# The database the API under test uses: DATABASE_URL, else the compose db.
+# The personas join MERCHANT_ID (default: the database's only merchant).
 SEC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SERVER_DIR="$SEC_DIR/../.."
-if [[ -z "${DB_NAME:-}" ]]; then
-  DB_NAME="$(node -e "import('$SERVER_DIR/scripts/cloud-env.mjs').then(m => process.stdout.write(m.getCloudEnv().dbName))")" \
-    || DB_NAME="codflow-os-db"
-fi
+REPO_DIR="$SEC_DIR/../../.."
 PARALLEL="${PARALLEL:-12}"
-KEYS_CACHE="/tmp/codflow-sectest-keys.${DB_NAME}.txt"
+KEYS_CACHE="/tmp/codflow-sectest-keys.$(printf '%s' "${DATABASE_URL:-compose}${BASE_URL}" | cksum | cut -d' ' -f1).txt"
+
+sec_psql() { # sec_psql [psql args…] — as the platform role, which sees every merchant
+  if [[ -n "${DATABASE_URL:-}" ]]; then
+    PGOPTIONS="-c role=codflow_platform" psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q "$@"
+  else
+    (cd "$REPO_DIR" && docker compose exec -T -e PGOPTIONS="-c role=codflow_platform" db psql -U codflow -d codflow -v ON_ERROR_STOP=1 -q "$@")
+  fi
+}
+
+sec_merchant() {
+  if [[ -n "${MERCHANT_ID:-}" ]]; then printf '%s' "$MERCHANT_ID"; return; fi
+  local ids; ids=$(sec_psql -At -c "select id from merchants order by created_at limit 2")
+  [[ $(printf '%s\n' "$ids" | grep -c .) == 1 ]] || { echo "✗ set MERCHANT_ID: the database has several merchants" >&2; return 1; }
+  printf '%s' "$ids"
+}
 EP_FILE=""
 OUT_FILE=""
 
 sec_init() {
   if [[ "${SKIP_SEED:-0}" != "1" ]]; then
-    echo "• Seeding personas into $DB_NAME (remote, idempotent)…"
-    (cd "$SERVER_DIR" && npx wrangler d1 execute "$DB_NAME" --remote --file "$SEC_DIR/seed-personas.sql" -y >/dev/null 2>&1) \
-      || { echo "✗ seed failed"; exit 1; }
+    local merchant; merchant=$(sec_merchant) || exit 1
+    echo "• Seeding personas for merchant $merchant (idempotent)…"
+    { printf "select set_config('app.merchant_id', '%s', false);\n" "$merchant"; cat "$SEC_DIR/seed-personas.sql"; } \
+      | sec_psql -o /dev/null || { echo "✗ seed failed"; exit 1; }
   fi
   if [[ -s "$KEYS_CACHE" && "${REFRESH_KEYS:-0}" != "1" ]]; then
     echo "• Persona keys from cache ($KEYS_CACHE; REFRESH_KEYS=1 to refetch)"
   else
-    echo "• Fetching persona keys from D1…"
-    local json
-    json=$( (cd "$SERVER_DIR" && npx wrangler d1 execute "$DB_NAME" --remote --json \
-      --command "SELECT id, api_key FROM users WHERE email LIKE 'sectest-%' AND api_key IS NOT NULL") )
-    printf '%s' "$json" | node -e '
-      let raw=""; process.stdin.on("data",d=>raw+=d).on("end",()=>{
-        const s=raw.slice(raw.indexOf("["), raw.lastIndexOf("]")+1);
-        JSON.parse(s).flatMap(r=>r.results||[])
-          .filter(r=>r.id.startsWith("sectest-"))
-          .forEach(r=>console.log(r.id+"="+r.api_key));
-      });' > "$KEYS_CACHE" || { echo "✗ key fetch failed"; exit 1; }
+    echo "• Fetching persona keys…"
+    sec_psql -At -c "select id || '=' || api_key from users where id like 'sectest-%' and api_key is not null order by id" \
+      > "$KEYS_CACHE" || { echo "✗ key fetch failed"; exit 1; }
   fi
   KEYLIST=$(cat "$KEYS_CACHE")
   export KEYLIST BASE_URL PARALLEL

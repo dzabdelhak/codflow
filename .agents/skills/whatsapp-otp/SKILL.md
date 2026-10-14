@@ -15,8 +15,10 @@ dzverify API key. No config row = feature completely inert.
 
 Key invariants (full detail in PLAN.md):
 
-- The dzverify API key is merchant config in D1 (`store_otp_config`), never a
-  wrangler secret, never sent to the browser.
+- The dzverify API key is merchant config in PostgreSQL (`store_otp_config`),
+  never a deployment secret, never sent to the browser.
+- Send cooldowns (60 s per store+phone, 20/hour per IP) live in Redis
+  (`src/endpoints/store-otp/guards.ts`); without Redis the send proceeds.
 - Orders are NEVER blocked by quota exhaustion or provider outage — the
   server mints an HMAC **bypass token** and checkout proceeds unverified.
   Wrong/expired codes get no bypass (that is the flow working).

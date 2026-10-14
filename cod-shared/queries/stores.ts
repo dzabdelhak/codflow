@@ -5,7 +5,7 @@ import { first } from "../db/client";
 
 type StoreUpdate = Partial<typeof stores.$inferInsert>;
 
-/** Single-tenant: returns the one store in this D1 database. */
+/** Returns the request's store — under RLS it is the only row it sees. */
 export async function getStore(db: AppDb) {
   return db.select().from(stores).then(first);
 }

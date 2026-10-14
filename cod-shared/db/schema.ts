@@ -573,7 +573,7 @@ export const orders = pgTable("orders", {
   fbc: text("fbc"),
   /** _fbp cookie captured at placement — browser identity for EMQ. */
   fbp: text("fbp"),
-  /** CF-Connecting-IP at placement — sent as client_ip_address in CAPI event. */
+  /** Visitor IP at placement (X-Visitor-IP) — sent as client_ip_address in CAPI event. */
   ipAddress: text("ip_address"),
   /** User-Agent at placement — sent as client_user_agent in CAPI event. */
   userAgent: text("user_agent"),
@@ -1182,6 +1182,9 @@ export const storeDomains = pgTable("store_domains", {
   checkedAt: text("checked_at"),
   lastError: text("last_error"),
   isPrimary: boolean("is_primary").notNull().default(false),
+  certificateStatus: text("certificate_status", { enum: ["active", "missing", "expiring", "error"] }),
+  certificateCheckedAt: text("certificate_checked_at"),
+  certificateError: text("certificate_error"),
 }, (t) => ({
   storeIdx: index("store_domains_store_idx").on(t.storeId),
   onePrimaryPerStore: uniqueIndex("store_domains_one_primary").on(t.storeId).where(sql`${t.isPrimary}`),
@@ -1482,7 +1485,7 @@ export const landingPages = pgTable("landing_pages", {
 
 /**
  * One row of the landing page image stack. Mirrors product_images:
- * R2 object + alt text + position. `source` anticipates the AI-generation
+ * storage object + alt text + position. `source` anticipates the AI-generation
  * future phase (upload | ai) without carrying any v1 behavior.
  * `width`/`height` (px, captured client-side at upload) let the storefront
  * reserve layout space before the bytes arrive — no form-jumping CLS.
@@ -1508,7 +1511,7 @@ export const landingPageImages = pgTable("landing_page_images", {
 
 /**
  * Single-row table (id = 'default') — written by the partner via push-brand,
- * read by the dashboard at request time through its D1 binding.
+ * read by the dashboard at request time.
  */
 export const dashboardBrand = pgTable("dashboard_brand", {
   id:           text("id").primaryKey().default("default"),
@@ -1815,8 +1818,8 @@ export const capiEventLog = pgTable(
 );
 
 // ─── better-auth tables ──────────────────────────────────────────────────────
-// Declared so the dashboard's auth code can reference them via Drizzle. The D1
-// schema itself is created by cod-server migrations (0000_complete.sql).
+// Declared so the dashboard's auth code can reference them via Drizzle. The
+// tables themselves are created by cod-server migrations (0000_baseline.sql).
 
 export const sessions = pgTable("sessions", {
   id:        text("id").primaryKey(),

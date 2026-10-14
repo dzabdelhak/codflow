@@ -58,7 +58,7 @@ export async function corsMiddleware(c: Context<AppContext>, next: Next) {
 
   await next();
 
-  // Handlers that return a raw `new Response(...)` (streamed PDFs, R2 objects)
+  // Handlers that return a raw `new Response(...)` (streamed PDFs, image bytes)
   // bypass Hono's prepared-header application, so the headers set before
   // `next()` never reach them — re-apply on the final response.
   applyCorsHeaders();

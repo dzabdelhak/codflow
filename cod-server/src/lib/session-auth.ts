@@ -23,7 +23,7 @@ export interface SessionJwtPayload {
 
 interface Env {
   BETTER_AUTH_URL: string;
-  WORKER_SELF_URL: string;
+  PUBLIC_API_URL: string;
   /** Where to fetch the JWKS when the public auth URL is not reachable from here (e.g. inside Docker). */
   BETTER_AUTH_JWKS_URL?: string;
 }
@@ -49,7 +49,7 @@ async function fetchJwks(env: Env, force = false): Promise<void> {
   jwksCache = { keys: body.keys, kidByKeyId, fetchedAt: Date.now() };
 }
 
-function b64urlToBytes(s: string): Uint8Array {
+function b64urlToBytes(s: string): Uint8Array<ArrayBuffer> {
   const b64 = s.replace(/-/g, "+").replace(/_/g, "/");
   const padded = b64.padEnd(Math.ceil(b64.length / 4) * 4, "=");
   const binary = atob(padded);
@@ -104,11 +104,11 @@ export async function verifySessionJwt(token: string, env: Env): Promise<Session
   }
   if (payload.aud) {
     const auds = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
-    const selfBase = (env.WORKER_SELF_URL ?? "").replace(/\/+$/, "");
+    const selfBase = (env.PUBLIC_API_URL ?? "").replace(/\/+$/, "");
     const selfHttp = selfBase.replace(/^https:/, "http:");
     // Dashboard-originated JWTs carry the auth server's own origin as audience
-    // (better-auth jwt() default). Same trust realm as WORKER_SELF_URL.
-    // Local dev serves the API over http:// while WORKER_SELF_URL may be
+    // (better-auth jwt() default). Same trust realm as PUBLIC_API_URL.
+    // Local dev serves the API over http:// while PUBLIC_API_URL may be
     // https://, so tokens may carry the http twin of the self origin.
     const appOrigin = authBaseUrl(env);
     const acceptable = new Set([

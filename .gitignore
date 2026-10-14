@@ -1,6 +1,3 @@
-# Skills / tooling
-skills-cloudflare/
-
 # Internal planning and architecture docs
 puck/
 
@@ -32,15 +29,8 @@ node_modules/
 .env
 .env.local
 .env.*.local
-.dev.vars
-
-# Wrangler
-.wrangler/
-.wrangler-shared/
-# Real wrangler configs contain live resource IDs — never commit them.
-# Copy wrangler.toml.example → wrangler.toml and fill in your own IDs.
-cod-server/wrangler.toml
-cod-client-astro/wrangler.toml
+# The production secrets file (deploy/secrets.env.example) lives outside the repo.
+secrets.env
 
 # OS
 .DS_Store

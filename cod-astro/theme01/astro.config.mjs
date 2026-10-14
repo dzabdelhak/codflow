@@ -120,7 +120,7 @@ export default defineConfig({
       ssr: {
         optimizeDeps: {
           // Deps discovered after boot trigger a re-bundle whose chunk renames
-          // race the workerd reload and wedge/crash the runner
+          // race the SSR runner reload and wedge/crash it
           // (withastro/astro#16933). Disable late discovery entirely: deps
           // found at request time load unbundled instead. Must live under
           // vite.environments.ssr — the legacy vite.ssr.optimizeDeps key is

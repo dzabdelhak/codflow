@@ -1,0 +1,110 @@
+# Production front proxy (deploy/compose.yml), reloaded by install.sh. Environment: BASE_DOMAIN,
+# ACME_EMAIL, and CADDY_GLOBAL_EXTRA ("local_certs" only for a test install
+# without public DNS; empty in production).
+#
+# api.BASE_DOMAIN is the API, app.BASE_DOMAIN the dashboard, status.BASE_DOMAIN
+# Uptime Kuma; every other hostname is a channel served by the storefront. A
+# channel hostname gets its Let's Encrypt certificate on the first visit, and
+# only when cod-server's /platform/tls-ask says it is a verified domain of a
+# live channel. /platform/* never leaves the server.
+#
+# Each app runs several replicas: Caddy resolves every replica from Docker's
+# DNS, retries a request on another replica when one is stopping or gone, and
+# keeps a failing replica out for a while.
+{
+	email {$ACME_EMAIL}
+	{$CADDY_GLOBAL_EXTRA}
+	on_demand_tls {
+		ask http://api:8787/platform/tls-ask
+	}
+	servers {
+		timeouts {
+			read_header 10s
+			idle 2m
+		}
+	}
+}
+
+(replicas) {
+	lb_policy round_robin
+	lb_retries 3
+	lb_try_duration 10s
+	lb_try_interval 250ms
+	lb_retry_match {
+		method GET HEAD
+	}
+	fail_duration 15s
+	max_fails 1
+	unhealthy_status 502 503 504
+	transport http {
+		dial_timeout 2s
+		response_header_timeout 60s
+	}
+}
+
+(security_headers) {
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		-Server
+	}
+}
+
+api.{$BASE_DOMAIN} {
+	import security_headers
+	respond /platform/* 404
+	@upload path /api/images/upload
+	request_body @upload {
+		max_size 12MB
+	}
+	@other not path /api/images/upload
+	request_body @other {
+		max_size 5MB
+	}
+	reverse_proxy {
+		dynamic a api 8787 {
+			refresh 2s
+		}
+		import replicas
+	}
+}
+
+app.{$BASE_DOMAIN} {
+	import security_headers
+	request_body {
+		max_size 2MB
+	}
+	reverse_proxy {
+		dynamic a dashboard 4321 {
+			refresh 2s
+		}
+		import replicas
+	}
+}
+
+status.{$BASE_DOMAIN} {
+	import security_headers
+	respond /api/push/* 403
+	reverse_proxy kuma:3001
+}
+
+https:// {
+	import security_headers
+	tls {
+		on_demand
+	}
+	request_body {
+		max_size 1MB
+	}
+	reverse_proxy {
+		dynamic a storefront 4321 {
+			refresh 2s
+		}
+		import replicas
+		header_up X-Visitor-IP {remote_host}
+	}
+}
+
+http:// {
+	redir https://{host}{uri} permanent
+}

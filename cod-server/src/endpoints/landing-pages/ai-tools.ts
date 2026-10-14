@@ -185,7 +185,7 @@ export const LANDING_PAGE_TOOL_META: Record<string, Record<string, unknown>> = {
 /** One landing_page_images row — the ordered image stack entry. */
 const lpImageRowSchema = z.looseObject({
   id: z.string().describe("Image row UUID — used by removeLandingPageImage and reorderLandingPageImages"),
-  r2Key: z.string().describe("R2 storage object key (landing/<hex>.<ext>)"),
+  r2Key: z.string().describe("Storage key (landing/<hex>.<ext>)"),
   src: z.string().describe("Public image URL on the media domain"),
   altText: z.string().nullable().describe("Alt text, or null"),
   position: z.number().int().describe("Stack position — 1 is the top of the page"),
@@ -387,7 +387,7 @@ export const LANDING_PAGE_TOOL_SCHEMAS: Record<string, z.ZodRawShape> = {
 };
 
 /** Env surface the landing-page tools consume: deployment vars and image storage. */
-export type LandingPageToolEnv = Pick<Env, "STOREFRONT_URL" | "IMAGE_STORE" | "IMAGES_PUBLIC_URL" | "WORKER_SELF_URL">;
+export type LandingPageToolEnv = Pick<Env, "STOREFRONT_URL" | "IMAGE_STORE" | "IMAGES_PUBLIC_URL" | "PUBLIC_API_URL">;
 
 /** Verified session identity — structurally satisfied by McpProps. Only the
  *  upload tool needs it (the upload is audited through this actor). */

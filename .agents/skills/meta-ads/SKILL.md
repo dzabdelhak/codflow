@@ -1,6 +1,6 @@
 ---
 name: meta-ads
-description: Official Meta (Facebook) Pixel and Conversions API reference docs for CodFlow's tracking stack — standard events, event parameters, deduplication, advanced matching, test events, and best practices. Use whenever working on Meta Pixel integration, CAPI server events, conversion tracking, event deduplication, attribution, or reviewing PRs that touch tracking (cod-server/src/workflows/capi.ts, capi-helpers.ts, capi_event_log, theme01 pixel scripts, store_pixel_config).
+description: Official Meta (Facebook) Pixel and Conversions API reference docs for CodFlow's tracking stack — standard events, event parameters, deduplication, advanced matching, test events, and best practices. Use whenever working on Meta Pixel integration, CAPI server events, conversion tracking, event deduplication, attribution, or reviewing PRs that touch tracking (cod-server/src/tracking/, cod-server/src/lib/capi.ts, capi_event_log, theme01's src/core/tracking/, store_pixel_config).
 ---
 
 # Meta Ads — Pixel & Conversions API Official Documentation
@@ -52,13 +52,16 @@ the relevant reference here first and cite it.
 
 ## How CodFlow maps onto these docs (quick orientation)
 
-- **Browser:** theme01's `BaseHead.astro` loads the canonical `fbevents.js`
-  snippet (PageView on load); `thank-you.astro` fires the conversion event
-  with `{ eventID: orderId }` — the fourth `fbq` argument, per the dedup doc.
-- **Server:** `cod-server/src/workflows/capi.ts` (Cloudflare Workflow)
-  sends the mirrored event via `/events` with `event_id: orderId`;
-  `capi-helpers.ts` gates which status transitions trigger it;
-  `capi_event_log` records what was sent (and powers idempotency).
+- **Browser:** theme01 fires every tracker through
+  `src/core/tracking/track.ts` (never `fbq` directly); `thank-you.astro`
+  fires the conversion with the order id as the event id — `track.ts` passes
+  it as `fbq`'s `eventID`, per the dedup doc.
+- **Server:** `cod-server/src/tracking/` queues one conversion job per
+  provider in the PostgreSQL `jobs` table (`conversions.ts`), in the
+  transaction that places or advances the order; the job worker sends the
+  Meta event via `/events` with `event_id: orderId` (`senders.ts`,
+  `src/lib/capi.ts`); `capi-helpers.ts` gates which status transitions
+  trigger it; `capi_event_log` records what was sent. See `docs/TRACKING.md`.
 - **Config:** `store_pixel_config` (pixel id, access token, test event
   code, conversion event choice, test mode) — Settings → Tracking.
 - **Dedup contract:** browser `eventID` === CAPI `event_id` === orderId,

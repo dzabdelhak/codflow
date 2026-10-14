@@ -1,10 +1,10 @@
 /**
- * GET / PUT /api/whatsapp-widget — real-D1 E2E through the real router.
+ * GET / PUT /api/whatsapp-widget — real-PostgreSQL E2E through the real router.
  *
  * The save path is where this feature could quietly lie to a merchant: a
  * number that looks saved but never normalised produces a launcher that opens
  * a WhatsApp error page, and nobody finds out until a shopper tries. So these
- * run against real D1 and assert what actually landed in the column, not what
+ * run against real PostgreSQL and assert what actually landed in the column, not what
  * a handler returned.
  */
 
@@ -14,7 +14,7 @@ import { eq } from "drizzle-orm";
 import type { AppContext } from "@/types";
 import { errorHandler } from "@/middleware/error";
 import { openApiValidationHook } from "@/openapi/validation-hook";
-import { createTestD1, type TestD1 } from "@/test-utils/d1";
+import { createTestDb, type TestDb } from "@/test-utils/pg";
 import * as schema from "@/db/schema";
 import whatsappWidgetRouter from "./routes";
 import {
@@ -24,7 +24,7 @@ import {
 } from "../../../../cod-shared/whatsapp-widget/config";
 import { first } from "../../../../cod-shared/db/client";
 
-let harness: TestD1;
+let harness: TestDb;
 let app: OpenAPIHono<AppContext>;
 /** Same router, mounted for a staff user who may look but not change. */
 let readOnlyApp: OpenAPIHono<AppContext>;
@@ -64,7 +64,7 @@ function mountWith(scopes: string[]) {
 }
 
 beforeAll(async () => {
-  harness = await createTestD1();
+  harness = await createTestDb();
   app = mountWith(["whatsapp_widget:read", "whatsapp_widget:manage"]);
   readOnlyApp = mountWith(["whatsapp_widget:read"]);
 }, 120_000);

@@ -1,9 +1,10 @@
 /**
  * Search helpers shared by list queries.
  *
- * D1 caps a LIKE/GLOB pattern at 50 bytes (verified: longer patterns fail
- * with "LIKE or GLOB pattern too complex"). Dashboard searches wrap user
- * input as `%term%`, so the term itself must stay ≤ 48 bytes. Truncation is
+ * A LIKE pattern is capped at 50 bytes, a limit kept from D1 (longer
+ * patterns failed with "LIKE or GLOB pattern too complex"). Dashboard
+ * searches wrap user input as `%term%`, so the term itself must stay ≤ 48
+ * bytes. Truncation is
  * UTF-8-boundary-safe — a cut mid multi-byte character would produce an
  * invalid pattern string.
  */

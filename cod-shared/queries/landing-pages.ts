@@ -210,11 +210,10 @@ export function generateLandingPageSlug(): string {
 }
 
 /**
- * Full LP detail by id in TWO round trips (mirrors the slug path's shape):
+ * Full LP detail by id (mirrors the slug path's shape):
  *   1. the landing page row by id
- *   2. ONE db.batch carrying images + stats + product ref — a single HTTP
- *      call to D1 instead of three parallel-but-separate queries. Used by
- *      every REST detail read and every MCP write tool's post-mutation read.
+ *   2. ONE db.batch carrying images + stats + product ref. Used by every
+ *      REST detail read and every MCP write tool's post-mutation read.
  */
 export async function getLandingPageById(db: AppDb, id: string) {
   const row = await db
@@ -266,11 +265,10 @@ export async function getLandingPageById(db: AppDb, id: string) {
 type BatchStatement = Parameters<AppDb["batch"]>[0][number];
 
 /**
- * Full LP detail by slug in TWO round trips (the public render path):
+ * Full LP detail by slug (the public render path):
  *   1. the landing page row by slug
- *   2. ONE db.batch carrying images + stats + product ref — a single HTTP
- *      call to D1 (batched statements), instead of re-selecting the row by
- *      id and issuing four more queries.
+ *   2. ONE db.batch carrying images + stats + product ref, instead of
+ *      re-selecting the row by id and issuing four more queries.
  */
 export async function getLandingPageDetailBySlug(db: AppDb, slug: string) {
   const row = await db
@@ -490,8 +488,8 @@ export async function reorderLandingPageImages(
   imageIds: string[],
 ) {
   const now = new Date().toISOString();
-  // One atomic batch: every position update + the parent touch in a SINGLE
-  // round trip — the per-image await loop was N+1 sequential D1 calls.
+  // One atomic batch: every position update + the parent touch, all or
+  // nothing.
   const statements: BatchStatement[] = imageIds.map((imageId, index) =>
     db
       .update(landingPageImages)
@@ -549,10 +547,10 @@ export async function compareLandingPages(db: AppDb, productId: string) {
 
 /**
  * Duplicate a landing page: new row (draft, fresh slug, zeroed views) plus
- * copies of every image row. Image rows SHARE the original R2 keys — R2
- * objects are immutable, so references are safe and cache-friendly; the
+ * copies of every image row. Image rows SHARE the original storage keys —
+ * stored images are immutable, so references are safe and cache-friendly; the
  * image-delete path reference-counts keys so a shared object is only
- * removed from R2 when the last row referencing it goes away.
+ * removed from storage when the last row referencing it goes away.
  * Attribution, views, and published state are NEVER copied — a duplicate is
  * a fresh creative test, not a stats clone.
  */
@@ -633,9 +631,9 @@ export async function duplicateLandingPage(db: AppDb, id: string): Promise<strin
 }
 
 /**
- * Count landing-page image rows referencing an R2 key besides the given one —
+ * Count landing-page image rows referencing a storage key besides the given one —
  * powers the shared-object guard on image deletion (duplicates reference the
- * same immutable R2 object).
+ * same immutable storage object).
  */
 export async function countOtherLandingPageImageReferences(
   db: AppDb,

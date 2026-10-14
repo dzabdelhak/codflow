@@ -1,11 +1,11 @@
 /**
  * Typed-error wrapper around cod-shared/queries/store-pages — the same split
- * as landing-pages/queries.ts: raw D1 operations stay in cod-shared (which
+ * as landing-pages/queries.ts: raw database operations stay in cod-shared (which
  * cannot import AppError — that class lives here, in cod-server), and this
  * file turns "not found" / a raw constraint crash into the friendly 404/409/422
  * the API contract promises.
  *
- * Single-tenant: "the store" is resolved once per request by the handler
+ * Store scope: "the store" is resolved once per request by the handler
  * (mirrors stores/handlers.ts's `getStore(db)`), and its id is threaded
  * through every call here as an explicit parameter — this module never
  * resolves it itself, so every function stays testable with any storeId.
@@ -15,6 +15,7 @@ import { NotFoundError, ConflictError, BusinessLogicError } from "@/lib/errors/c
 import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
 import * as shared from "../../../../cod-shared/queries/store-pages";
 import type { PageLocale, StorePageKind } from "../../../../cod-shared/legal/kinds";
+import { violatesUnique } from "../../../../cod-shared/db/errors";
 
 export * from "../../../../cod-shared/queries/store-pages";
 
@@ -23,7 +24,7 @@ type UpdateStorePageMetaData = Parameters<typeof shared.updateStorePageMeta>[3];
 type SaveTranslationData = Parameters<typeof shared.saveTranslation>[3];
 
 function isSlugUniqueViolation(err: unknown): boolean {
-  return err instanceof Error && /UNIQUE constraint failed:.*store_pages\.slug/i.test(err.message);
+  return violatesUnique(err, "idx_store_pages_slug");
 }
 
 function conflict(slug: string): ConflictError {

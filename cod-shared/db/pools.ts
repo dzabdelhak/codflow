@@ -10,8 +10,8 @@
 import pg from "pg";
 import { getDb, type AppDb } from "./client";
 
-// D1 returned COUNT/SUM/AVG as numbers; node-postgres returns bigint and
-// numeric as strings. Store amounts are DZD, far inside 2^53.
+// The queries expect COUNT/SUM/AVG as numbers; node-postgres returns bigint
+// and numeric as strings. Store amounts are DZD, far inside 2^53.
 pg.types.setTypeParser(pg.types.builtins.INT8, Number);
 pg.types.setTypeParser(pg.types.builtins.NUMERIC, parseFloat);
 

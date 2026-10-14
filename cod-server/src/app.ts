@@ -21,6 +21,7 @@ import orderProtectionRoutes from "@/endpoints/order-protection/routes";
 import transmissionRoutes from "@/endpoints/transmission/routes";
 import mcpManagementRoutes from "@/endpoints/mcp/routes";
 import { mcpRoutes, protectedResourceMetadata } from "@/mcp/route";
+import { platformStatus } from "@/platform/status";
 import { storeAuthMiddleware } from "@/middleware/storeAuth";
 import { errorHandler } from "@/middleware/error";
 
@@ -76,6 +77,10 @@ app.use("/webhooks/*", soleStoreScope);
 // Image serving — no auth required (public, cacheable)
 app.route("/images", serveRouter);
 app.route("/platform/tls-ask", tlsAskRouter);
+app.get("/platform/status", async (c) => {
+  const status = await platformStatus(c.env.DATABASE.platform);
+  return c.json(status, status.ok ? 200 : 503);
+});
 app.get("/.well-known/oauth-protected-resource", protectedResourceMetadata);
 app.get("/.well-known/oauth-protected-resource/mcp", protectedResourceMetadata);
 app.route("/mcp", mcpRoutes);

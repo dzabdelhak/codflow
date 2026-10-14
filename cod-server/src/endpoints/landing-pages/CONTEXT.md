@@ -11,7 +11,7 @@ A published marketing page for exactly one product: an ordered image stack plus 
 _Avoid_: Variant page, campaign page, funnel
 
 **Landing Page Image**:
-One row of the stack — an R2 object with alt text and a position. The entire marketing story (price framing, urgency, benefits) lives inside the images; the page carries no copy fields.
+One row of the stack — a stored image with alt text and a position. The entire marketing story (price framing, urgency, benefits) lives inside the images; the page carries no copy fields.
 _Avoid_: Banner, hero section, content block
 
 **Landing Page Link**:
@@ -57,7 +57,7 @@ _Avoid_: Deleted, disabled
 Terms owned by neighboring contexts — use them, don't redefine them:
 
 - **The order form, OTP gate, offers, pricing, wilaya cascade**: Store context. The landing page renders the existing form via the established DOM contract; the charged price is always the catalog price (server-authoritative — no price override exists on landing pages)
-- **Image upload plumbing**: the images endpoint folder owns presign; landing pages reuse it with a landing folder
+- **Image upload plumbing**: the images endpoint folder owns uploads (`POST /api/images/upload`); landing pages reuse it with the `landing` folder
 - **Product identity, variants, pricing**: Products context
 - **Pixel/CAPI attribution (fbc/fbp)**: orthogonal Meta-side tracking that already flows; landing page attribution is our internal analytics and never feeds Meta
 
@@ -71,6 +71,6 @@ Terms owned by neighboring contexts — use them, don't redefine them:
 
 **Views count everything**: refreshes and bots included, documented; conversion rate is shown alongside absolute orders so a merchant never judges a creative by rate alone. The increment is a deferred write (waitUntil) — a view is counted after the render responds, never blocking it.
 
-**Duplicates share image objects**: duplicating a page copies the image rows but not the R2 objects — immutable keys are shared, and an image delete only removes the storage object when the last referencing row goes.
+**Duplicates share image objects**: duplicating a page copies the image rows but not the stored objects — immutable keys are shared, and an image delete only removes the storage object when the last referencing row goes.
 
 **Duplication resets the scoreboard**: a duplicate starts as a fresh draft — views, orders, revenue, and published state never carry over.

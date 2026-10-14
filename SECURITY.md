@@ -47,5 +47,6 @@ maintainers at `124762008+bighadj22@users.noreply.github.com`.
 
 Everything under `cod-server/`, `cod-client-astro/`, `cod-shared/`, and the
 `cod-astro/theme01/` storefront is in scope. Live production deployments
-(Cloudflare Workers, D1, R2, KV) are in scope only for issues reproducible
+(the API, storefront and dashboard containers, PostgreSQL, Redis, S3 image
+storage, Caddy) are in scope only for issues reproducible
 against publicly accessible endpoints.

@@ -1,8 +1,9 @@
 # cod-client-astro
 
-The CodFlow merchant dashboard, rebuilt with Astro 7 as a prerendered static
-app. Page serving consumes **zero Worker CPU** on Cloudflare's free plan; the
-only server surface is `/api/auth/*` (better-auth).
+The CodFlow merchant dashboard, built with Astro 7 as a prerendered static app
+served by Astro's Node adapter. Pages carry no data; the server routes are
+`/api/auth/*` (better-auth), the OAuth discovery documents, the MCP channel
+choice, password reset and the SPA fallback.
 
 Read before contributing:
 
@@ -13,15 +14,14 @@ Read before contributing:
 ## Scripts
 
 ```sh
-npm run dev            # astro dev on :4321 (bindings via the Cloudflare adapter)
-npm run build          # prerender → dist/ (+ SSR worker entry for /api/auth/*)
+npm run dev            # astro dev on :4321
+npm run build          # prerender → dist/ (+ Node server entry for the server routes)
+npm start              # node ./dist/server/entry.mjs
 npm run typecheck      # astro check
 npm test               # vitest (unit: gate logic)
 npm run verify-shells  # fail if shells leak data or reference legacy domains
-npm run seed:admin     # create/rotate the first admin (local D1)
-npm run seed:admin:remote  # …on the remote D1 (print-only password/API key)
+npm run seed:admin     # create/rotate a merchant's admin (DATABASE_URL, -- --merchant=<id>)
 npm run smoke          # live auth/API gate suite (needs DASH_URL/API_URL/SMOKE_*)
-npm run deploy         # wrangler deploy
 ```
 
 Install/build always happens from the **repo root** (`npm ci` / `npm install`) —
@@ -29,22 +29,22 @@ single root lockfile.
 
 ## Get running locally
 
-Prerequisites: repo root `npm ci` done, and cod-server set up first —
-its migrations create the schema this dashboard authenticates against:
+The whole stack runs with `docker compose up --build` at the repo root
+(dashboard at http://app.localhost:8090, `admin@example.com` /
+`admin-dev-password`). To run this package alone, repo root `npm ci` done:
 
 ```sh
-# 1. cod-server: migrate + seed demo data into the repo-shared local D1
-cd ../cod-server
-npm run db:setup:local
+# 1. PostgreSQL + Redis, then migrate + seed the demo channels
+docker compose up -d db redis
+cd ../cod-server && DATABASE_URL=postgres://codflow:codflow@localhost:5440/codflow npm run db:setup
 
-# 2. This package: copy config templates
+# 2. This package: environment
 cd ../cod-client-astro
-cp wrangler.toml.example wrangler.toml   # fill in YOUR D1 + KV ids
-cp .env.example .env                     # build-time client env
-cp .dev.vars.example .dev.vars           # BETTER_AUTH_SECRET + local PUBLIC_API_URL
+cp .env.example .env                     # set BETTER_AUTH_SECRET (same as cod-server's)
+set -a; . ./.env; set +a                 # the server routes read process.env
 
 # 3. Create your admin (sign-up is disabled by design — admins are provisioned)
-npm run seed:admin
+DATABASE_URL=postgres://codflow:codflow@localhost:5440/codflow npm run seed:admin -- --merchant=demo-merchant
 #    → prints email + generated password + API key; save them
 
 # 4. Run the servers (two terminals)
@@ -52,34 +52,27 @@ npm run dev              # dashboard → http://localhost:4321
 cd ../cod-server && npm run dev   # API → http://localhost:8787
 ```
 
-Local D1/KV state lives in `<repo-root>/.wrangler-shared` — cod-server's
-scripts write there and astro dev reads the same files (via the adapter's
-`persistState`), so migrations, seeding, and sign-in all see one database.
 Sign in at `http://localhost:4321/sign-in` with the seeded credentials.
 
 ## Environment contract
 
-| Where | Variable | Purpose |
+`.env.example` lists every variable:
+
+| When | Variable | Purpose |
 |---|---|---|
-| `wrangler.toml [vars]` (build time, client) | `PUBLIC_API_URL` | backend origin used by `src/lib/api.ts` — production value |
-| `.dev.vars` (build time, client) | `PUBLIC_API_URL` | the same value for local development |
-| `wrangler.toml [vars]` (runtime) | `PUBLIC_APP_URL` | better-auth base URL (JWT issuer) |
-| `wrangler.toml [vars]` | `PUBLIC_TRUSTED_ORIGINS` | extra origins allowed to POST to `/api/auth/*` |
-| `wrangler secret put` | `BETTER_AUTH_SECRET` | must be identical across every worker sharing the auth D1 |
+| build time (client) | `PUBLIC_API_URL` | backend origin used by `src/lib/api.ts` |
+| run time | `DATABASE_URL` | the platform PostgreSQL (same database as cod-server) |
+| run time | `REDIS_URL` | better-auth secondary storage and rate limits |
+| run time | `PUBLIC_APP_URL` | better-auth base URL (JWT issuer) |
+| run time | `PUBLIC_TRUSTED_ORIGINS` | extra origins allowed to POST to `/api/auth/*` |
+| run time | `BETTER_AUTH_SECRET` | must be identical on cod-server |
 
 `PUBLIC_API_URL` is inlined into the browser bundle by `astro:env/client`, so
-changing it needs a rebuild. It is deliberately **not** in `.env`: the Cloudflare
-adapter pushes wrangler values and `.dev.vars` into `process.env`, and Astro
-loads env with an empty prefix, so Vite's final `process.env` pass outranks the
-`.env` files — `.dev.vars` > `wrangler.toml [vars]` > `process.env` > `.env`. A
-value in `.env` is silently ignored. Because `.dev.vars` is also read during a
-build, a bare `npm run build` on a developer machine bakes the local URL in;
-`npm run deploy` parks `.dev.vars` for the build and refuses to upload a bundle
-that still contains a loopback URL.
+changing it needs a rebuild (the Docker image takes it as a build arg). On
+`app.<domain>` the browser derives the API as `api.<domain>`.
 
-The dashboard binds the **same D1 database as cod-server** (auth users/scopes
-live in cod-server's schema) plus one KV namespace. See
-`wrangler.toml.example` for the full binding template.
+The dashboard reads identity tables (users, accounts, sessions) in the same
+PostgreSQL as cod-server for sign-in; business data comes only through the API.
 
 Client bundles must never contain secrets or the legacy dashboard domain —
 `verify-shells.mjs` enforces both at build time.

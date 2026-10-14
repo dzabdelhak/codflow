@@ -1,7 +1,7 @@
 /**
- * Multi-line storefront orders — real-D1 E2E.
+ * Multi-line storefront orders — PostgreSQL E2E.
  *
- * Runs the actual migrations on Miniflare D1 and proves the reshaped order
+ * Runs the actual migrations on PostgreSQL and proves the reshaped order
  * engine end to end: a basket becomes N order lines, priced from the catalog,
  * deducted per line, committed atomically — and refused whole when any line
  * cannot be satisfied.

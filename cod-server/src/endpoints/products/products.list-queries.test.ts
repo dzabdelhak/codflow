@@ -3,7 +3,7 @@
  *
  * Call shape: ONE main select (products + review/image scalar subqueries),
  * then ONE follow-up per id-chunk fetching all variants of the page. No
- * per-row queries. WHERE/aggregate semantics are verified against real D1
+ * per-row queries. WHERE/aggregate semantics are verified against PostgreSQL
  * in products.list-e2e.test.ts.
  */
 

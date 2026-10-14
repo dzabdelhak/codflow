@@ -1,5 +1,5 @@
 /**
- * GET /store/config — the `whatsapp` projection, real-D1 E2E through the real
+ * GET /store/config — the `whatsapp` projection, real-PostgreSQL E2E through the real
  * storefront router.
  *
  * Two claims are defended here, and both are the kind that fail silently:
@@ -20,7 +20,7 @@ import { eq } from "drizzle-orm";
 import type { AppContext } from "@/types";
 import { errorHandler } from "@/middleware/error";
 import { openApiValidationHook } from "@/openapi/validation-hook";
-import { createTestD1, type TestD1 } from "@/test-utils/d1";
+import { createTestDb, type TestDb } from "@/test-utils/pg";
 import * as schema from "@/db/schema";
 import storeRouter from "./routes";
 import {
@@ -29,14 +29,14 @@ import {
   type WhatsAppWidgetConfig,
 } from "../../../../cod-shared/whatsapp-widget/config";
 
-let harness: TestD1;
+let harness: TestDb;
 let app: OpenAPIHono<AppContext>;
 let sqlLog: string[] = [];
 const NOW = () => new Date().toISOString();
 const STORE_ID = "test-store";
 
 beforeAll(async () => {
-  harness = await createTestD1();
+  harness = await createTestDb();
   // Every statement the handler sends, so the widget's query cost is visible.
   harness.recordQueries((sql) => sqlLog.push(sql));
 

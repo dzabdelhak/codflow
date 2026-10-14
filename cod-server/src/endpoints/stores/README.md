@@ -78,6 +78,6 @@ Only `pixelId` is required. Omitted optional fields fall back to defaults (`acce
 
 ## Implementation Details
 
-- **Single-Tenant Guard:** The `queries.ts` is optimized to fetch the first and only store record in the D1 database, ensuring simplicity and performance for single-tenant deployments.
+- **Store Scope:** `queries.ts` reads the `stores` row visible to the request — Row-Level Security pins every request to one store, so it is always the active store.
 - **Visual Customization:** Supports full hex color validation (3-8 characters including alpha channel) to allow for advanced theme customization.
 - **SEO Ready:** Provides fields for Open Graph images and Meta tags that are consumed directly by the public storefront SSR.

@@ -1,6 +1,5 @@
 /**
- * Re-exported from cod-shared/queries/landing-pages so the dashboard can
- * consume the same read functions directly from D1.
+ * Re-exported from cod-shared/queries/landing-pages.
  *
  * createLandingPage/updateLandingPage wrappers stay here because they raise
  * BusinessLogicError / ConflictError: product existence, slug uniqueness,
@@ -13,6 +12,7 @@ import { BusinessLogicError, ConflictError, NotFoundError, ValidationError } fro
 import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
 import * as shared from "../../../../cod-shared/queries/landing-pages";
 import { first } from "../../../../cod-shared/db/client";
+import { violatesUnique } from "../../../../cod-shared/db/errors";
 
 export * from "../../../../cod-shared/queries/landing-pages";
 
@@ -20,10 +20,7 @@ type CreateLandingPageData = Parameters<typeof shared.createLandingPage>[1];
 type UpdateLandingPageData = Parameters<typeof shared.updateLandingPage>[2];
 
 function isLpUniqueViolation(err: unknown): boolean {
-  return (
-    err instanceof Error &&
-    /UNIQUE constraint failed: landing_pages\.slug/i.test(err.message)
-  );
+  return violatesUnique(err, "landing_pages_store_slug_unique");
 }
 
 export async function createLandingPage(db: AppDb, data: CreateLandingPageData) {

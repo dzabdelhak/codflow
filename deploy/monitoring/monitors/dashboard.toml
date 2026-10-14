@@ -1,0 +1,7 @@
+type = "http"
+name = "Dashboard (https://app)"
+url = "https://app.{{ get_env(name='AUTOKUMA__ENV__BASE_DOMAIN') }}/sign-in"
+expiry_notification = true
+interval = 60
+max_retries = 2
+notification_name_list = ["email"]

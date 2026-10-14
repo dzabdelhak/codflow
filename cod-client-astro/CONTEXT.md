@@ -1,8 +1,9 @@
 # cod-client-astro — Context
 
-The merchant dashboard, rebuilt as a prerendered Astro app so that page serving
-consumes zero Worker CPU on Cloudflare's free plan. The only server surface is
-`/api/auth/*` (better-auth). All business data is fetched by the browser from the backend
+The merchant dashboard, a prerendered Astro app served by Astro's Node
+adapter. Pages carry no data; the server surface is `/api/auth/*`
+(better-auth) plus the OAuth discovery documents, the MCP channel choice,
+password reset and the SPA fallback. All business data is fetched by the browser from the backend
 (`PUBLIC_API_URL`) and authorized there.
 
 Read `README.md` (setup + environment contract) and `DESIGN.md` (design
@@ -48,7 +49,7 @@ english, then render the raw key so gaps stay visible. Locale persists in
 pre-paint inline script — no wrong-direction flash. LanguageSwitcher persists
 and reloads to swap dictionaries wholesale.
 
-_Avoid_: hardcoded UI strings, per-component string maps, wrangler-driven client text
+_Avoid_: hardcoded UI strings, per-component string maps, environment-driven client text
 
 ### Silent gates
 
@@ -72,8 +73,8 @@ _Avoid_: inline fetches, unpaged list requests, raw error strings
 ### Auth surface
 
 `src/lib/auth/*` — the ported better-auth instance plus its catch-all route.
-Configuration mirrors production `cod-client/lib/auth.ts`; the only permitted
-SSR surface of this worker. Secrets contract: exactly one secret,
+The auth server of the dashboard, on the shared PostgreSQL with Redis as
+secondary storage. Secrets contract: exactly one secret,
 `BETTER_AUTH_SECRET`.
 
 _Avoid_: second auth mechanism, new env-var shapes, cookie logic outside this module

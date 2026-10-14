@@ -182,7 +182,7 @@ const deleteProductImageRoute = defineRoute({
   auth: { scope: SCOPES.PRODUCTS_MANAGE },
   tags: ["Products"],
   summary: "Delete product image",
-  description: "Deletes the image record from the database and removes the object from R2.",
+  description: "Deletes the image record from the database and removes the object from image storage.",
   operationId: "deleteProductImage",
   params: imageIdParams,
   responses: {

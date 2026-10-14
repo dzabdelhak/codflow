@@ -1,9 +1,9 @@
 /**
- * Checkout query budget — real-D1 E2E.
+ * Checkout query budget — PostgreSQL E2E.
  *
- * D1 is a single-threaded Durable Object and bills by rows read, so a
- * duplicated row read is paid for twice and serialises the store's throughput
- * for its duration. The checkout path used to read the same `products` row up
+ * A request runs on one connection inside one transaction, so a duplicated
+ * row read is an extra round trip that keeps that transaction open longer.
+ * The checkout path used to read the same `products` row up
  * to five times per order and the same `product_variants` row up to five times
  * when an offer fired.
  *

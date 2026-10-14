@@ -1,6 +1,5 @@
 /**
- * Re-exported from cod-shared/queries/variants so the dashboard can consume
- * the same read functions directly from D1.
+ * Re-exported from cod-shared/queries/variants.
  *
  * createVariant/updateVariant wrappers stay here because they raise
  * BusinessLogicError: the SKU uniqueness pre-check turns a raw DB constraint
@@ -13,6 +12,7 @@ import { ConflictError } from "@/lib/errors/classes";
 import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
 import * as shared from "../../../../cod-shared/queries/variants";
 import { first } from "../../../../cod-shared/db/client";
+import { violatesUnique } from "../../../../cod-shared/db/errors";
 
 export * from "../../../../cod-shared/queries/variants";
 
@@ -20,10 +20,7 @@ type CreateVariantData = Parameters<typeof shared.createVariant>[2];
 type UpdateVariantData = Parameters<typeof shared.updateVariant>[2];
 
 function isSkuUniqueViolation(err: unknown): boolean {
-  return (
-    err instanceof Error &&
-    /UNIQUE constraint failed: product_variants\.sku/i.test(err.message)
-  );
+  return violatesUnique(err, "product_variants_merchant_sku_unique");
 }
 
 function duplicateSkuError(sku: string) {

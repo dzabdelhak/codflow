@@ -10,7 +10,7 @@ that reference them.
 ### Storage
 
 **Image Store**:
-The S3-compatible bucket (MinIO) behind cod-server, reached only through
+The S3-compatible bucket (SeaweedFS in compose) behind cod-server, reached only through
 `ImageStore` (`src/platform/image-store.ts`). Browsers never write to it.
 _Avoid_: CDN, media server
 

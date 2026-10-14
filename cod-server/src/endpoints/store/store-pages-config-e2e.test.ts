@@ -1,35 +1,35 @@
 /**
  * /store/config's pages[] + legalContact, and GET /store/pages/{slug} —
- * Slice 3 real-D1 E2E (plain Node, same pattern as storefront-tracking-e2e.test.ts).
+ * Slice 3 real-PostgreSQL E2E (plain Node, same pattern as storefront-tracking-e2e.test.ts).
  *
  * No esbuild/workerd bundling needed here: every function this slice adds to
  * the READ path (getFooterPages, getPublicLegalContact, resolvePublishedPage)
  * is a plain Drizzle read — the write chokepoint's sanitizeRichText already
  * ran when the fixture rows below were written (by Slice 1/2's own e2e
  * suites), so these rows are inserted directly, pre-sanitised, matching what
- * a real seeded/saved page looks like in D1.
+ * a real seeded/saved page looks like in the database.
  *
  * Mounts the REAL storeRouter (the same router index.ts wires at /store) with
  * storeAuthMiddleware bypassed via `c.set("storeId", …)` — identical to the
  * established storefront e2e pattern — so every assertion here exercises the
- * actual production handler → queries → D1 path.
+ * actual production handler → queries → PostgreSQL path.
  */
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
 import { OpenAPIHono } from "@hono/zod-openapi";
 import type { AppContext } from "@/types";
 import { errorHandler } from "@/middleware/error";
 import { openApiValidationHook } from "@/openapi/validation-hook";
-import { createTestD1, type TestD1 } from "@/test-utils/d1";
+import { createTestDb, type TestDb } from "@/test-utils/pg";
 import * as schema from "@/db/schema";
 import storeRouter from "./routes";
 
-let harness: TestD1;
+let harness: TestDb;
 let app: OpenAPIHono<AppContext>;
 const NOW = () => new Date().toISOString();
 const STORE_ID = "test-store";
 
 beforeAll(async () => {
-  harness = await createTestD1();
+  harness = await createTestDb();
 
   app = new OpenAPIHono<AppContext>({ defaultHook: openApiValidationHook });
   app.use("*", async (c, next) => {

@@ -1,0 +1,7 @@
+# Pushed by deploy/backup/backup.sh. Push URLs answer only inside the stack
+# (Caddy refuses /api/push/* on status.BASE_DOMAIN), so the token is not secret.
+type = "push"
+name = "Nightly backup"
+push_token = "CodflowNightlyBackupPushToken001"
+interval = 93600
+notification_name_list = ["email"]

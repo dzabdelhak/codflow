@@ -1,7 +1,7 @@
 # Images
 
 Product, category, landing-page and branding images are stored in
-S3-compatible storage we host (MinIO in docker-compose), behind cod-server.
+S3-compatible storage we host (SeaweedFS in docker-compose), behind cod-server.
 Nothing talks to the bucket but the API.
 
 ## How it works
@@ -27,14 +27,14 @@ run on each API server, logging what it would delete.
 Agents (MCP) upload landing images by URL: the download refuses any address
 that is not on the public internet (`src/platform/safe-download.ts`), checking
 each resolved address and every redirect. Code lives in
-`src/platform/image-store.ts` (S3/MinIO, and an in-memory store for tests) and
+`src/platform/image-store.ts` (S3, and an in-memory store for tests) and
 `src/platform/image-pipeline.ts` (checks, conversion, variants).
 
 ## Configuration (cod-server)
 
 | Variable | Meaning |
 |---|---|
-| `S3_ENDPOINT` | MinIO/S3 endpoint, e.g. `http://minio:9000` |
+| `S3_ENDPOINT` | S3 endpoint, e.g. `http://objects:8333` (SeaweedFS in compose) |
 | `S3_BUCKET` | Bucket (default `codflow-images`; created at start-up if missing) |
 | `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | Credentials (compose: `COD_S3_ACCESS_KEY`, `COD_S3_SECRET_KEY`) |
 | `S3_REGION` | Optional (default `us-east-1`) |

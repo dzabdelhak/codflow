@@ -1,7 +1,7 @@
 /**
- * getAllOrders + getOrderById — Slice 4 real-D1 E2E.
+ * getAllOrders + getOrderById — Slice 4 PostgreSQL E2E.
  *
- * Runs the real migrations on an in-memory miniflare D1 (58 wilayas + 1551
+ * Runs the real migrations on PostgreSQL (58 wilayas + 1551
  * communes reference data included) and verifies:
  *   • getOrderById: joined resolution (wilaya/commune/driver/label) in one
  *     select + ONE read batch for lines and history
@@ -126,7 +126,7 @@ afterAll(async () => {
   for (const mf of registry) await mf.dispose();
 });
 
-describe("getOrderById — real D1", () => {
+describe("getOrderById — real PostgreSQL", () => {
   it("resolves the full joined graph", async () => {
     const order = await getOrderById(db, "ord-e2e-a");
 
@@ -160,7 +160,7 @@ describe("getOrderById — real D1", () => {
   });
 });
 
-describe("getAllOrders — real D1", () => {
+describe("getAllOrders — real PostgreSQL", () => {
   it("lists newest-first with EXISTS hasReview and lastUpdatedBy", async () => {
     const rows = await getAllOrders(db);
 

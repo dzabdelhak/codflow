@@ -1,17 +1,17 @@
 /**
- * getAllOrders — Slice 9 real-D1 E2E: keyset pagination + search guard.
+ * getAllOrders — Slice 9 PostgreSQL E2E: keyset pagination + search guard.
  *
- * Runs the real migrations (incl. 0017 keyset indexes) on an in-memory
- * miniflare D1 and verifies:
+ * Runs the real migrations (incl. the keyset indexes) on PostgreSQL and
+ * verifies:
  *   • same-timestamp ties: pages are deterministic — cursor and offset
  *     walks produce the identical (createdAt DESC, id DESC) sequence, no
  *     row skipped or duplicated (pre-tie-breaker offset pagination could
  *     not guarantee this)
  *   • cursor strictly advances: page 2 starts after the last row of page 1
  *   • cursor + status filter combine (index-served per EXPLAIN proofs)
- *   • THE CRASH CASE: search terms whose %-wrapped pattern exceeds D1's
- *     50-byte LIKE cap previously threw "LIKE or GLOB pattern too complex"
- *     (verified on this engine); with the guard they truncate safely
+ *   • THE CRASH CASE: search terms whose %-wrapped pattern exceeds the
+ *     50-byte LIKE cap (D1 threw "LIKE or GLOB pattern too complex"); the
+ *     guard truncates them safely
  *   • search still matches order number / phone / customer name
  */
 
@@ -81,7 +81,7 @@ function key(row: { id: string }) {
   return row.id;
 }
 
-describe("getAllOrders — keyset pagination (real D1)", () => {
+describe("getAllOrders — keyset pagination (real PostgreSQL)", () => {
   it("cursor and offset walks produce the identical deterministic sequence over ties", async () => {
     const offsetIds: string[] = [];
     for (let page = 0; page * PAGE < TOTAL; page++) {
@@ -166,7 +166,7 @@ describe("getAllOrders — keyset pagination (real D1)", () => {
   });
 });
 
-describe("getAllOrders — search guard (real D1)", () => {
+describe("getAllOrders — search guard (real PostgreSQL)", () => {
   it("THE CRASH CASE: a 200-char search term no longer throws", async () => {
     const rows = await getAllOrders(db, { search: "a".repeat(200) });
     expect(rows).toEqual([]);
