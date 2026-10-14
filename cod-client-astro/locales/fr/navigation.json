@@ -216,7 +216,12 @@
       "error_network": "La boutique n’a pas pu être créée (réseau). Vos réponses sont conservées : réessayez.",
       "done_title": "{name} est créée",
       "done_body": "Elle démarre en brouillon : publiez-la depuis la page Boutiques quand elle est prête, elle sera alors en ligne à son adresse.",
-      "open_dashboard": "Ouvrir son espace de pilotage"
+      "open_dashboard": "Ouvrir son espace de pilotage",
+      "error_products": "Certains produits choisis ne sont plus dans le catalogue. Vérifiez votre sélection et réessayez.",
+      "error_profile": "Ce profil de livraison n’existe plus. Choisissez-en un autre et réessayez.",
+      "error_template": "Ce modèle n’est pas disponible pour ce type de canal. Choisissez-en un autre.",
+      "error_forbidden": "Seul un administrateur du compte peut créer une boutique.",
+      "done_existing": "Cette boutique avait déjà été créée lors d’une tentative précédente, avec les réponses données alors. Modifiez ses réglages depuis son tableau de bord."
     }
   }
 }

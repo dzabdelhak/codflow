@@ -59,15 +59,21 @@ const createStoreRoute = defineRoute({
     "",
     "In one transaction it generates the channel id, gives it the free subdomain `<subdomain>.<base domain>`, saves the selected catalogue products (in display order, published), the delivery modes it offers and its default shipping profile, applies the template, and seeds its four legal pages. The channel starts as `draft`: publish it with PATCH /stores/{id}/status.",
     "",
-    "**Idempotent on `creationKey`.** Send the same key on every retry or resumed attempt of one creation: if a channel was already created with it, that channel is returned with 200 and nothing else is created. A new creation answers 201.",
+    "**Idempotent on `creationKey`.** Send the same key on every retry or resumed attempt of one creation: if a channel was already created with it, that channel is returned with 200 and `created: false`, unchanged — answers that differ from the first attempt are not applied — and nothing else is created. A new creation answers 201 with `created: true`.",
     "",
     "Refused when the merchant's plan allows no more channels (422 STORE_LIMIT_REACHED), the subdomain is invalid or taken (400 INVALID_SUBDOMAIN, 409 SUBDOMAIN_TAKEN), or a product, shipping profile or template is not the merchant's (400 VALIDATION_FAILED with the field).",
   ].join("\n"),
   operationId: "createMerchantStore",
   body: createStoreSchema,
   responses: {
-    200: { description: "The channel already created with this creationKey", content: jsonContent(SuccessResponseSchema(MerchantStoreSchema)) },
-    201: { description: "The new channel", content: jsonContent(SuccessResponseSchema(MerchantStoreSchema)) },
+    200: {
+      description: "The channel already created with this creationKey (`created: false`) — with the answers of that first creation",
+      content: jsonContent(SuccessResponseSchema(MerchantStoreSchema).extend({ created: z.boolean() })),
+    },
+    201: {
+      description: "The new channel (`created: true`)",
+      content: jsonContent(SuccessResponseSchema(MerchantStoreSchema).extend({ created: z.boolean() })),
+    },
   },
   handler: handlers.createStore,
 });

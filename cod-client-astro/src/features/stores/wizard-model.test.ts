@@ -9,6 +9,7 @@ import {
   saveDraft,
   stepForError,
   stepProblem,
+  withLiveProducts,
 } from "./wizard-model";
 
 beforeEach(() => {
@@ -44,10 +45,23 @@ describe("store creation wizard", () => {
 
   it("keeps the draft, creation key included, so a failed or interrupted creation resumes", () => {
     const draft = { ...newDraft("key-resume"), name: "Nour", step: "summary" as const };
-    saveDraft(draft);
-    expect(loadDraft()).toMatchObject({ creationKey: "key-resume", name: "Nour", step: "summary" });
-    clearDraft();
-    expect(loadDraft()).toBeNull();
+    saveDraft("u1", draft);
+    expect(loadDraft("u1")).toMatchObject({ creationKey: "key-resume", name: "Nour", step: "summary" });
+    clearDraft("u1");
+    expect(loadDraft("u1")).toBeNull();
+  });
+
+  it("keeps each user's draft apart on a shared browser", () => {
+    saveDraft("u1", { ...newDraft("key-u1"), name: "Nour" });
+    expect(loadDraft("u2")).toBeNull();
+    expect(loadDraft("u1")).toMatchObject({ creationKey: "key-u1" });
+  });
+
+  it("drops selected products that left the catalogue, so a retry is not refused for them", () => {
+    const draft = { ...newDraft("k"), productIds: ["p1", "gone", "p2"] };
+    const kept = withLiveProducts(draft, [{ id: "p1" }, { id: "p2" }, { id: "gone", deletedAt: "2026-10-01" }]);
+    expect(kept.productIds).toEqual(["p1", "p2"]);
+    expect(withLiveProducts(kept, [{ id: "p1" }, { id: "p2" }])).toBe(kept);
   });
 
   it("sends the same creation key on every attempt", () => {

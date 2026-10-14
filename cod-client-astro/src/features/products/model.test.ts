@@ -232,4 +232,8 @@ describe("catalogueCandidates", () => {
     expect(catalogueCandidates(products, "sac-1").map((p) => p.id)).toEqual(["1"]);
     expect(catalogueCandidates(products, "montre")).toEqual([]);
   });
+
+  it("offers products the current store already carries when choosing for a new store", () => {
+    expect(catalogueCandidates(products, "", { includeCarried: true }).map((p) => p.id)).toEqual(["1", "2"]);
+  });
 });

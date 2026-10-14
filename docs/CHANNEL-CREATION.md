@@ -31,8 +31,11 @@ published (`PATCH /api/merchant/stores/{id}/status`).
 
 Send a `creationKey` that stays the same for every attempt of one creation (a
 double click, a network retry, a creation resumed after an error). If a channel
-was already created with that key, the API returns it with `200` and creates
-nothing; a new creation answers `201`. The dashboard wizard keeps its key, and
+was already created with that key, the API returns it with `200` and
+`created: false`, exactly as that first creation made it — answers that differ
+from the first attempt are not applied — and creates nothing; a new creation
+answers `201` with `created: true`. To create a different channel, send a new
+key. The dashboard wizard keeps its key, and
 everything entered, in the browser until the creation succeeds.
 
 ## Aventy's flow (to come)

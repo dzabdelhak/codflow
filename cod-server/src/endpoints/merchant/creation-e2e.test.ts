@@ -107,6 +107,7 @@ describe("creating a store channel", () => {
     const first = await create(body);
     const second = await create(body);
     expect([first.status, second.status]).toEqual([201, 200]);
+    expect((await second.clone().json()) as { created: boolean }).toMatchObject({ created: false });
     const ids = await Promise.all([first, second].map(async (r) => ((await r.json()) as { data: { id: string } }).data.id));
     expect(ids[0]).toBe(ids[1]);
     expect(await storesWithKey("key-double-click")).toHaveLength(1);

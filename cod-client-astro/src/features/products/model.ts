@@ -37,11 +37,12 @@ export function moveItem<T>(items: readonly T[], index: number, delta: -1 | 1): 
 export function catalogueCandidates<T extends Pick<Product, "id" | "name" | "sku" | "inChannel" | "deletedAt">>(
   products: readonly T[],
   query: string,
+  { includeCarried = false }: { includeCarried?: boolean } = {},
 ): T[] {
   const needle = query.trim().toLocaleLowerCase();
   return products.filter(
     (p) =>
-      p.inChannel === false &&
+      (includeCarried || p.inChannel === false) &&
       !p.deletedAt &&
       (!needle || p.name.toLocaleLowerCase().includes(needle) || (p.sku ?? "").toLocaleLowerCase().includes(needle)),
   );

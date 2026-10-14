@@ -35,7 +35,7 @@ export async function createStore(c: Context<AppContext>) {
     },
     localPlanPolicy(),
   );
-  if (result.ok) return c.json({ success: true, data: result.store }, result.created ? 201 : 200);
+  if (result.ok) return c.json({ success: true, data: result.store, created: result.created }, result.created ? 201 : 200);
 
   switch (result.reason) {
     case "invalid_subdomain":

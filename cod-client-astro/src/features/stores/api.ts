@@ -1,6 +1,7 @@
 import { apiFetch } from "@/lib/api";
 import type { ChannelStatus } from "../../../../cod-shared/channels/lifecycle";
 import type { MerchantStore } from "./store-choice";
+import type { CreationRequest } from "./wizard-model";
 
 interface DataEnvelope<T> {
   success: boolean;
@@ -11,14 +12,13 @@ export async function listMyStores(): Promise<MerchantStore[]> {
   return (await apiFetch<DataEnvelope<MerchantStore[]>>("/api/merchant/stores")).data;
 }
 
-export async function createStore(input: { name: string; subdomain: string } & Record<string, unknown>): Promise<MerchantStore> {
-  return (
-    await apiFetch<DataEnvelope<MerchantStore>>("/api/merchant/stores", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
-    })
-  ).data;
+export async function createStore(input: CreationRequest): Promise<{ store: MerchantStore; created: boolean }> {
+  const { data, created } = await apiFetch<DataEnvelope<MerchantStore> & { created: boolean }>("/api/merchant/stores", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  return { store: data, created };
 }
 
 export interface StatusChange {

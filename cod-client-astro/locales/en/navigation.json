@@ -216,7 +216,12 @@
       "error_network": "The store could not be created (network). Your answers are kept: try again.",
       "done_title": "{name} is created",
       "done_body": "It starts as a draft: publish it from the Stores page when it is ready, and it goes online at its address.",
-      "open_dashboard": "Open its dashboard"
+      "open_dashboard": "Open its dashboard",
+      "error_products": "Some selected products are no longer in the catalogue. Check your selection and try again.",
+      "error_profile": "This shipping profile no longer exists. Choose another one and try again.",
+      "error_template": "This template is not available for this channel type. Choose another one.",
+      "error_forbidden": "Only an account administrator can create a store.",
+      "done_existing": "This store had already been created by an earlier attempt, with the answers given then. Change its settings from its dashboard."
     }
   }
 }

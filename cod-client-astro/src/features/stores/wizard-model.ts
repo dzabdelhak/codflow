@@ -16,7 +16,7 @@ export interface WizardDraft {
   templateId: string;
 }
 
-const STORAGE_KEY = "codflow.storeWizard";
+const storageKey = (userId: string) => `codflow.storeWizard.${userId}`;
 const SUBDOMAIN = /^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])$/;
 
 export function newDraft(creationKey: string = crypto.randomUUID()): WizardDraft {
@@ -34,9 +34,9 @@ export function newDraft(creationKey: string = crypto.randomUUID()): WizardDraft
   };
 }
 
-export function loadDraft(): WizardDraft | null {
+export function loadDraft(userId: string): WizardDraft | null {
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const raw = window.localStorage.getItem(storageKey(userId));
     if (!raw) return null;
     const draft = JSON.parse(raw) as WizardDraft;
     return typeof draft?.creationKey === "string" && WIZARD_STEPS.includes(draft.step) ? { ...newDraft(draft.creationKey), ...draft } : null;
@@ -45,15 +45,15 @@ export function loadDraft(): WizardDraft | null {
   }
 }
 
-export function saveDraft(draft: WizardDraft): void {
+export function saveDraft(userId: string, draft: WizardDraft): void {
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
+    window.localStorage.setItem(storageKey(userId), JSON.stringify(draft));
   } catch {}
 }
 
-export function clearDraft(): void {
+export function clearDraft(userId: string): void {
   try {
-    window.localStorage.removeItem(STORAGE_KEY);
+    window.localStorage.removeItem(storageKey(userId));
   } catch {}
 }
 
@@ -75,6 +75,14 @@ export function nextStep(step: WizardStep): WizardStep {
 export function previousStep(step: WizardStep): WizardStep {
   return WIZARD_STEPS[Math.max(WIZARD_STEPS.indexOf(step) - 1, 0)];
 }
+
+export function withLiveProducts(draft: WizardDraft, catalogue: readonly { id: string; deletedAt?: string | null }[]): WizardDraft {
+  const live = new Set(catalogue.filter((p) => !p.deletedAt).map((p) => p.id));
+  const productIds = draft.productIds.filter((id) => live.has(id));
+  return productIds.length === draft.productIds.length ? draft : { ...draft, productIds };
+}
+
+export type CreationRequest = ReturnType<typeof creationRequest>;
 
 export function creationRequest(draft: WizardDraft) {
   return {

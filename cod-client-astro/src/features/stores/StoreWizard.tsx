@@ -5,7 +5,7 @@ import { useLocale, useT } from "@/i18n/react";
 import { ApiError } from "@/lib/api";
 import { setActiveStoreId } from "@/lib/active-store";
 import { listAllProducts } from "@/features/products/api";
-import { formatMoneyValue } from "@/features/products/model";
+import { catalogueCandidates, formatMoneyValue } from "@/features/products/model";
 import type { Product } from "@/features/products/types";
 import { listShippingProfiles } from "@/features/delivery/api";
 import type { ShippingProfile } from "@/features/delivery/types";
@@ -25,6 +25,7 @@ import {
   saveDraft,
   stepForError,
   stepProblem,
+  withLiveProducts,
   type WizardDraft,
   type WizardStep,
 } from "./wizard-model";
@@ -40,7 +41,18 @@ function errorMessage(cause: unknown, t: (key: string) => string): string {
       return t("stores.error_taken");
     case "INVALID_SUBDOMAIN":
       return t("stores.error_invalid");
+    case "VALIDATION_FAILED":
+      switch (cause.context?.field) {
+        case "productIds":
+          return t("stores.wizard.error_products");
+        case "defaultShippingProfileId":
+          return t("stores.wizard.error_profile");
+        case "templateId":
+          return t("stores.wizard.error_template");
+      }
+      return t("stores.error_generic");
     default:
+      if (cause.status === 403) return t("stores.wizard.error_forbidden");
       return t("stores.error_generic");
   }
 }
@@ -65,27 +77,39 @@ function StepList({ current }: { current: WizardStep }) {
   );
 }
 
-export function StoreWizard() {
+export function StoreWizard({ userId }: { userId: string }) {
   const t = useT("navigation");
   const locale = useLocale();
   const { stores } = useMerchantStores();
-  const [draft, setDraft] = useState<WizardDraft>(() => loadDraft() ?? newDraft());
+  const [draft, setDraft] = useState<WizardDraft>(() => loadDraft(userId) ?? newDraft());
   const [problem, setProblem] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [created, setCreated] = useState<MerchantStore | null>(null);
+  const [created, setCreated] = useState<{ store: MerchantStore; created: boolean } | null>(null);
   const [catalogue, setCatalogue] = useState<Product[] | null>(null);
-  const [profiles, setProfiles] = useState<ShippingProfile[]>([]);
+  const [profiles, setProfiles] = useState<ShippingProfile[] | null>(null);
   const [query, setQuery] = useState("");
 
   useEffect(() => {
-    saveDraft(draft);
-  }, [draft]);
+    saveDraft(userId, draft);
+  }, [userId, draft]);
+
+  const needsCatalogue = draft.step === "products" || draft.step === "summary";
+  useEffect(() => {
+    if (!needsCatalogue || catalogue !== null) return;
+    listAllProducts().then(
+      (products) => {
+        setCatalogue(products);
+        setDraft((current) => withLiveProducts(current, products));
+      },
+      () => setCatalogue([]),
+    );
+  }, [needsCatalogue, catalogue]);
 
   useEffect(() => {
-    listAllProducts().then(setCatalogue, () => setCatalogue([]));
+    if (draft.step !== "delivery" || profiles !== null) return;
     listShippingProfiles().then(setProfiles, () => setProfiles([]));
-  }, []);
+  }, [draft.step, profiles]);
 
   const baseDomain = baseDomainOf(stores ?? []);
   const update = (changes: Partial<WizardDraft>) => setDraft((current) => ({ ...current, ...changes }));
@@ -105,9 +129,9 @@ export function StoreWizard() {
     setBusy(true);
     setSubmitError(null);
     try {
-      const store = await createStore(creationRequest(draft));
-      clearDraft();
-      setCreated(store);
+      const result = await createStore(creationRequest(draft));
+      clearDraft(userId);
+      setCreated(result);
     } catch (cause) {
       setSubmitError(errorMessage(cause, t));
       if (cause instanceof ApiError) update({ step: stepForError(cause.code, cause.context?.field) });
@@ -117,28 +141,30 @@ export function StoreWizard() {
   }
 
   function restart() {
-    clearDraft();
+    clearDraft(userId);
     setDraft(newDraft());
     setSubmitError(null);
     setProblem(null);
   }
 
   if (created) {
+    const { store, created: isNew } = created;
     return (
       <Card>
         <div className="flex flex-col items-center gap-3 py-8 text-center">
           <CheckCircle2 size={40} className="text-success" aria-hidden="true" />
-          <h2 className="text-lg font-bold">{t("stores.wizard.done_title").replace("{name}", created.name)}</h2>
+          <h2 className="text-lg font-bold">{t("stores.wizard.done_title").replace("{name}", store.name)}</h2>
           <p className="max-w-md text-sm text-muted-foreground">{t("stores.wizard.done_body")}</p>
-          {created.hostname && (
+          {!isNew && <p className="max-w-md text-sm text-muted-foreground">{t("stores.wizard.done_existing")}</p>}
+          {store.hostname && (
             <p className="text-sm font-semibold" dir="ltr">
-              {created.hostname}
+              {store.hostname}
             </p>
           )}
           <Button
             type="button"
             onClick={() => {
-              setActiveStoreId(created.id);
+              setActiveStoreId(store.id);
               window.location.href = "/dashboard";
             }}
           >
@@ -150,11 +176,8 @@ export function StoreWizard() {
   }
 
   const selected = new Set(draft.productIds);
-  const needle = query.trim().toLocaleLowerCase();
-  const visibleProducts = (catalogue ?? []).filter(
-    (p) => !p.deletedAt && (!needle || p.name.toLocaleLowerCase().includes(needle) || (p.sku ?? "").toLocaleLowerCase().includes(needle)),
-  );
-  const accountDefault = profiles.find((p) => p.isDefault);
+  const visibleProducts = catalogueCandidates(catalogue ?? [], query, { includeCarried: true });
+  const accountDefault = profiles?.find((p) => p.isDefault);
   const address = draft.subdomain && baseDomain ? `${draft.subdomain}.${baseDomain}` : null;
 
   return (
@@ -282,7 +305,7 @@ export function StoreWizard() {
                 />
               </label>
             ))}
-            {profiles.length > 0 && (
+            {profiles && profiles.length > 0 && (
               <Field label={t("stores.wizard.profile_label")}>
                 <Select
                   value={draft.defaultShippingProfileId ?? ""}
