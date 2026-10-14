@@ -645,7 +645,7 @@ export const outboundOrders = pgTable("outbound_orders", {
   due: index("outbound_orders_due_idx").on(t.nextAttemptAt, t.id).where(sql`status = 'pending'`),
 }));
 
-export const BLOCKED_ORDER_REASONS = ["blocked_phone", "phone_window", "device_window", "ip_ceiling"] as const;
+export const BLOCKED_ORDER_REASONS = ["blocked_phone", "phone_window", "device_window", "ip_ceiling", "ip_flagged"] as const;
 export type BlockedOrderReason = (typeof BLOCKED_ORDER_REASONS)[number];
 
 export const blockedOrderAttempts = pgTable("blocked_order_attempts", {

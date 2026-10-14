@@ -25,8 +25,22 @@ import { resolveConversionForStage } from "@/tracking/capi-helpers";
 import { enqueueConversions } from "@/tracking/conversions";
 import { visitorIp } from "@/lib/visitor-ip";
 import { randomUUID } from "node:crypto";
-import { allocateOrderNumber } from "../../../../cod-shared/queries/order-numbers";
-import { ipCeilingPerHour, orderFloodVerdict, recordBlockedAttempt } from "./order-flood";
+import { resolveCartOffers } from "../../../../cod-shared/queries/offers-cart";
+import type { CatalogSnapshot } from "../../../../cod-shared/queries/catalog-snapshot";
+import { blockedOrderNumber, ipCeilingPerHour, orderFloodVerdict, recordAttempt, underLogCap } from "./order-flood";
+
+function stockCoversLines(snapshot: CatalogSnapshot, lines: CartLine[]): boolean {
+  const onHand = new Map<string, number>();
+  for (const line of lines) {
+    const product = snapshot.products.get(line.productId);
+    if (!product?.trackInventory) continue;
+    const key = `${line.productId}:${line.variantId ?? ""}`;
+    const available = onHand.get(key) ?? (line.variantId ? snapshot.variants.get(line.variantId)?.inventory ?? 0 : product.inventory);
+    if (available < line.quantity) return false;
+    onHand.set(key, available - line.quantity);
+  }
+  return true;
+}
 import { stores, orders } from "../../../../cod-shared/db/schema";
 import { eq } from "drizzle-orm";
 import type { PageLocale } from "../../../../cod-shared/legal/kinds";
@@ -257,7 +271,7 @@ export async function createStoreOrder(c: Context<AppContext>) {
   // Position is load-bearing: after the bot gate, so bots never pay for the
   // read, and before the delivery fee is resolved, because a delivery type the
   // merchant turned off must never reach pricing.
-  const { policy, lang, orderLimitMinutes } = await queries.getCheckoutFormPolicy(db, c.get("storeId")!);
+  const { policy, lang } = await queries.getCheckoutFormPolicy(db, c.get("storeId")!);
   const applied = applyCheckoutPolicy(policy, submitted);
   if (!applied.ok) {
     throw new ValidationError(
@@ -345,26 +359,29 @@ export async function createStoreOrder(c: Context<AppContext>) {
 
   const ipAddress = visitorIp(c) ?? undefined;
   const deviceId = data.attribution?.deviceId ?? null;
-  const blockedReason = await orderFloodVerdict(db, {
+  const verdict = await orderFloodVerdict(db, {
     phone: data.phone,
     deviceId,
     ip: ipAddress ?? null,
-    windowMinutes: orderLimitMinutes ?? 10,
     ipCeiling: ipCeilingPerHour(c.env.ORDER_IP_CEILING_PER_HOUR),
   });
-  if (blockedReason) {
-    const orderNumber = await allocateOrderNumber(db);
-    const total = subtotal + (deliveryFee ?? 0);
-    await recordBlockedAttempt(db, {
-      reason: blockedReason,
-      orderNumber,
-      phone: data.phone,
-      customerName: data.customerName,
-      deviceId,
-      ip: ipAddress ?? null,
-      lines: lines.map((line) => ({ productName: line.productName, quantity: line.quantity })),
-      total: deliveryFee === null ? null : total,
-    });
+  const attemptLines = lines.map((line) => ({ productName: line.productName, quantity: line.quantity }));
+  if (verdict?.action === "drop") {
+    const { orderNumber, logged } = await blockedOrderNumber(db);
+    const finalFee = resolveCartOffers(lines, snapshot.offers).freeShipping ? 0 : deliveryFee;
+    const total = subtotal + (finalFee ?? 0);
+    if (logged) {
+      await recordAttempt(db, {
+        reason: verdict.reason,
+        orderNumber,
+        phone: data.phone,
+        customerName: data.customerName,
+        deviceId,
+        ip: ipAddress ?? null,
+        lines: attemptLines,
+        total: finalFee === null ? null : total,
+      });
+    }
     return c.json(
       {
         success: true,
@@ -372,10 +389,10 @@ export async function createStoreOrder(c: Context<AppContext>) {
           orderId: randomUUID(),
           orderNumber,
           price: subtotal,
-          deliveryFee,
-          feeToConfirm: deliveryFee === null,
+          deliveryFee: finalFee,
+          feeToConfirm: finalFee === null,
           total,
-          stockConfirmed: true,
+          stockConfirmed: stockCoversLines(snapshot, lines),
         },
       },
       201,
@@ -419,6 +436,19 @@ export async function createStoreOrder(c: Context<AppContext>) {
     },
     snapshot
   );
+
+  if (verdict?.action === "flag" && (await underLogCap(db))) {
+    await recordAttempt(db, {
+      reason: verdict.reason,
+      orderNumber: order.orderNumber,
+      phone: data.phone,
+      customerName: data.customerName,
+      deviceId,
+      ip: ipAddress ?? null,
+      lines: attemptLines,
+      total: order.feeToConfirm ? null : order.price + (order.deliveryFee ?? 0),
+    });
+  }
 
   await enqueueConversions(db, { orderId: order.id, stage: "checkout", refererUrl: c.req.header("Referer") });
 

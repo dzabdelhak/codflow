@@ -14,7 +14,8 @@
     "blocked_phone": "Blocked phone",
     "phone_window": "Same phone, too soon",
     "device_window": "Same device, too soon",
-    "ip_ceiling": "Too many orders from this address"
+    "ip_ceiling": "Too many orders from this address",
+    "ip_flagged": "Over the IP ceiling — order taken, check it"
   },
   "block_phone": "Block this phone",
   "phone_blocked": "Blocked",

@@ -7,6 +7,7 @@ import { openApiValidationHook } from "@/openapi/validation-hook";
 import { createTestDb, TEST_MERCHANT_ID, TEST_STORE_ID, type TestDb } from "@/test-utils/pg";
 import * as schema from "@/db/schema";
 import storeRouter from "./routes";
+import abandonedRouter from "@/endpoints/abandoned-orders/store-routes";
 
 let harness: TestDb;
 let database: Database;
@@ -57,12 +58,14 @@ beforeAll(async () => {
   app.use("*", requestScope(async (c) => ({ storeId: c.req.header("X-Test-Store") ?? TEST_STORE_ID, merchantId: TEST_MERCHANT_ID })));
   app.onError(errorHandler);
   app.route("/store", storeRouter);
+  app.route("/store", abandonedRouter);
 
   await harness.setStore({ name: "Nour", orderPrefix: "NOUR", createdAt: NOW(), updatedAt: NOW() });
   await harness.platform.query("update stores set order_prefix = 'SIB' where id = $1", [sibling]);
-  await harness.db.insert(schema.products).values({
-    id: "p-shirt", name: "Shirt", handle: "shirt", price: 2500, sku: "SHIRT", inventory: 10000, createdAt: NOW(), updatedAt: NOW(),
-  });
+  await harness.db.insert(schema.products).values([
+    { id: "p-shirt", name: "Shirt", handle: "shirt", price: 2500, sku: "SHIRT", inventory: 10000, createdAt: NOW(), updatedAt: NOW() },
+    { id: "p-last", name: "Last one", handle: "last", price: 4000, sku: "LAST", inventory: 1, createdAt: NOW(), updatedAt: NOW() },
+  ]);
   await harness.platform.query(
     "insert into channel_products (store_id, product_id, published, position, created_at, updated_at) values ($1, 'p-shirt', true, 0, now()::text, now()::text)",
     [sibling],
@@ -125,6 +128,70 @@ describe("one order per phone every 10 minutes", () => {
     expect(await attempts()).toEqual([]);
   });
 
+  it("does not count an order the merchant cancelled", async () => {
+    const phone = nextPhone();
+    await order({ phone });
+    await harness.platform.query("update orders set status = 'cancelled' where phone = $1", [phone]);
+    const before = await count("orders");
+    await order({ phone });
+    expect(await count("orders")).toBe(before + 1);
+  });
+
+  it("answers what a real order would about stock, so the block cannot be told apart", async () => {
+    const phone = nextPhone();
+    const item = { productId: "p-last", productName: "Last one", pricePerUnit: 4000, quantity: 2 };
+    const real = (await (await order({ phone, ...item })).json()) as { data: { stockConfirmed: boolean } };
+    const blocked = (await (await order({ phone, ...item })).json()) as { data: { stockConfirmed: boolean } };
+    expect(real.data.stockConfirmed).toBe(false);
+    expect(blocked.data.stockConfirmed).toBe(false);
+    expect((await attempts())[0]).toMatchObject({ reason: "phone_window" });
+  });
+
+  it("never marks the shopper's abandoned checkout as converted to an order that does not exist", async () => {
+    const phone = nextPhone();
+    const sessionId = crypto.randomUUID();
+    await app.request("/store/abandoned", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Test-Store": TEST_STORE_ID },
+      body: JSON.stringify({ sessionId, customerName: "Lead Kept", phone }),
+    });
+    await order({ phone });
+    const blocked = (await (await order({ phone })).json()) as { data: { orderId: string; orderNumber: string } };
+    await app.request(`/store/abandoned/${sessionId}/convert`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "X-Test-Store": TEST_STORE_ID },
+      body: JSON.stringify({ orderId: blocked.data.orderId, orderNumber: blocked.data.orderNumber }),
+    });
+    const { rows: [lead] } = await harness.platform.query("select status, converted_order_id from abandoned_orders where session_id = $1", [sessionId]);
+    expect(lead.converted_order_id).toBeNull();
+    expect(lead.status).not.toBe("converted");
+
+    const { rows: [real] } = await harness.platform.query("select id, order_number from orders where phone = $1", [phone]);
+    await app.request(`/store/abandoned/${sessionId}/convert`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "X-Test-Store": TEST_STORE_ID },
+      body: JSON.stringify({ orderId: real.id, orderNumber: real.order_number }),
+    });
+    const { rows: [converted] } = await harness.platform.query("select status, converted_order_id from abandoned_orders where session_id = $1", [sessionId]);
+    expect(converted).toEqual({ status: "converted", converted_order_id: real.id });
+  });
+
+  it("stops logging and spending order numbers once a flood fills the log", async () => {
+    await harness.platform.query(
+      `insert into blocked_order_attempts (store_id, id, reason, order_number, phone, customer_name, details)
+       select $1, 'cap-' || n, 'phone_window', 'NOUR-00000', '0550000000', 'Flood', '{"lines":[],"total":null}' from generate_series(1, 100) n`,
+      [TEST_STORE_ID],
+    );
+    const phone = nextPhone();
+    await order({ phone });
+    const { rows: [{ order_seq: before }] } = await harness.platform.query("select order_seq from stores where id = $1", [TEST_STORE_ID]);
+    const blocked = (await (await order({ phone })).json()) as { data: { orderNumber: string } };
+    const { rows: [{ order_seq: after }] } = await harness.platform.query("select order_seq from stores where id = $1", [TEST_STORE_ID]);
+    expect(after).toBe(before);
+    expect(blocked.data.orderNumber).toBe(`NOUR-${String(before + 1).padStart(5, "0")}`);
+    expect(await attempts()).toHaveLength(100);
+  });
+
   it("follows the channel's own window, and none at all when it is 0", async () => {
     const phone = nextPhone();
     await order({ phone });
@@ -164,16 +231,33 @@ describe("one order per phone every 10 minutes", () => {
 });
 
 describe("the per-IP ceiling", () => {
-  it("counts the address the storefront saw, whatever X-Forwarded-For claims", async () => {
+  it("flags orders past the ceiling, drops them past three times it, and counts the address the storefront saw", async () => {
     for (let i = 0; i < 3; i++) {
       expect((await order({ phone: nextPhone() }, { "X-Forwarded-For": `10.0.0.${i}` })).status).toBe(201);
     }
     const before = await count("orders");
     await order({ phone: nextPhone() }, { "X-Forwarded-For": "10.9.9.9" });
-    expect(await count("orders")).toBe(before);
-    expect((await attempts())[0]).toMatchObject({ reason: "ip_ceiling", ip_address: "41.100.1.2" });
+    expect(await count("orders")).toBe(before + 1);
+    expect((await attempts())[0]).toMatchObject({ reason: "ip_flagged", ip_address: "41.100.1.2" });
+    const { rows: [flagged] } = await harness.platform.query("select 1 from orders where order_number = $1", [(await attempts())[0].order_number]);
+    expect(flagged).toBeTruthy();
+
+    for (let i = 0; i < 5; i++) await order({ phone: nextPhone() });
+    const atHardCeiling = await count("orders");
+    await order({ phone: nextPhone() }, { "X-Forwarded-For": "10.9.9.10" });
+    expect(await count("orders")).toBe(atHardCeiling);
+    expect((await attempts()).at(-1)).toMatchObject({ reason: "ip_ceiling", ip_address: "41.100.1.2" });
 
     await order({ phone: nextPhone() }, { "X-Visitor-IP": "41.100.7.7" });
+    expect(await count("orders")).toBe(atHardCeiling + 1);
+  });
+
+  it("treats an IPv6 /64 as one address", async () => {
+    for (let i = 1; i <= 9; i++) await order({ phone: nextPhone() }, { "X-Visitor-IP": `2001:db8:1:2::${i}` });
+    const before = await count("orders");
+    await order({ phone: nextPhone() }, { "X-Visitor-IP": "2001:db8:1:2:aaaa:bbbb:cccc:dddd" });
+    expect(await count("orders")).toBe(before);
+    await order({ phone: nextPhone() }, { "X-Visitor-IP": "2001:db8:1:3::1" });
     expect(await count("orders")).toBe(before + 1);
   });
 });

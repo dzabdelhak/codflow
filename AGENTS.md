@@ -163,9 +163,11 @@ other is how these drift.
   `CF-Connecting-IP` — a visitor can write them.
 - **Orders pass the anti-flood rules** (`src/endpoints/store/order-flood.ts`):
   account blocklist, one order per phone or device per channel window
-  (`stores.order_limit_minutes`), an hourly per-IP ceiling. A blocked attempt
-  answers like a success, creates nothing and is logged in
-  `blocked_order_attempts`. See `docs/ORDER-PROTECTION.md`.
+  (`stores.order_limit_minutes`, cancelled orders excluded), an hourly per-IP
+  ceiling (IPv6 by /64) that flags, then drops at three times. A blocked
+  attempt answers like a success, creates nothing and is logged in
+  `blocked_order_attempts` (capped under a flood, pruned after 90 days). The
+  storefront must be reachable only through Caddy. See `docs/ORDER-PROTECTION.md`.
 - **A channel serves its public pages only when `published`**
   (`cod-shared/channels/lifecycle.ts`): `suspended` answers the storefront
   with 503 `CHANNEL_UNAVAILABLE` (theme01 renders a neutral page), every

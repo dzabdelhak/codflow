@@ -33,7 +33,7 @@ const { TURNSTILE_ERRORS, TurnstileError } = (await vi.importActual(
 vi.mock("@/db", () => ({ getDb: vi.fn(() => ({})) }));
 vi.mock("./queries");
 vi.mock("@/tracking/conversions", () => ({ enqueueConversions: vi.fn(async () => 0) }));
-vi.mock("./order-flood", () => ({ orderFloodVerdict: vi.fn(async () => null), ipCeilingPerHour: () => 20, recordBlockedAttempt: vi.fn() }));
+vi.mock("./order-flood", () => ({ orderFloodVerdict: vi.fn(async () => null), ipCeilingPerHour: () => 20, recordAttempt: vi.fn(), underLogCap: vi.fn(async () => true), blockedOrderNumber: vi.fn() }));
 vi.mock("@/tracking/capi-helpers", () => ({
   shouldTriggerCapiPurchase: vi.fn(() => false),
   shouldTriggerCapiConfirmed: vi.fn(() => false),

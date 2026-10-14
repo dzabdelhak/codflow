@@ -14,7 +14,8 @@
     "blocked_phone": "Téléphone bloqué",
     "phone_window": "Même téléphone, trop tôt",
     "device_window": "Même appareil, trop tôt",
-    "ip_ceiling": "Trop de commandes depuis cette adresse"
+    "ip_ceiling": "Trop de commandes depuis cette adresse",
+    "ip_flagged": "Au-delà du plafond IP — commande prise, à vérifier"
   },
   "block_phone": "Bloquer ce téléphone",
   "phone_blocked": "Bloqué",

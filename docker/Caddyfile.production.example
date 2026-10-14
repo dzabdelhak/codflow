@@ -4,6 +4,8 @@
 # on the first visit, and only when cod-server's /platform/tls-ask says the
 # hostname is a verified domain of a live channel. Keep /platform/* off the
 # public API host. Mount /data on a volume: it holds the certificates.
+# The storefront trusts X-Visitor-IP from here (TRUSTED_PROXY_IP_HEADER), so
+# it must be reachable only through this proxy: never publish its port.
 {
 	email {$ACME_EMAIL}
 	on_demand_tls {

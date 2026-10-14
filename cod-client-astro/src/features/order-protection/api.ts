@@ -1,6 +1,6 @@
 import { apiFetch } from "@/lib/api";
 
-export type BlockedReason = "blocked_phone" | "phone_window" | "device_window" | "ip_ceiling";
+export type BlockedReason = "blocked_phone" | "phone_window" | "device_window" | "ip_ceiling" | "ip_flagged";
 
 export interface BlockedAttempt {
   id: string;

@@ -9,7 +9,7 @@ import { notify } from "@/lib/notify";
 import { SCOPES } from "../../../../cod-shared/rbac/scopes";
 import { blockPhone, getBlockedAttempts, getBlockedPhones, unblockPhone, type BlockedAttempt, type BlockedPhone } from "./api";
 
-const REASON_TONE = { blocked_phone: "critical", phone_window: "warning", device_window: "warning", ip_ceiling: "info" } as const;
+const REASON_TONE = { blocked_phone: "critical", phone_window: "warning", device_window: "warning", ip_ceiling: "info", ip_flagged: "neutral" } as const;
 
 function OrderProtection() {
   const t = useT("order-protection");

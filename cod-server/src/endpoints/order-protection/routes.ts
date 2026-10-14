@@ -14,7 +14,7 @@ const AttemptSchema = z
     id: z.string(),
     storeId: z.string(),
     reason: z.enum(BLOCKED_ORDER_REASONS).openapi({
-      description: "blocked_phone: on the account's blocklist; phone_window / device_window: another order within the channel's window; ip_ceiling: too many orders from one address in an hour",
+      description: "blocked_phone: on the account's blocklist; phone_window / device_window: another order within the channel's window; ip_ceiling: dropped, three times the hourly per-address ceiling; ip_flagged: past the ceiling, the order was taken (orderNumber is that order) and is flagged for checking",
     }),
     orderNumber: z.string().openapi({ description: "The number the visitor was shown; no order carries it" }),
     phone: z.string(),

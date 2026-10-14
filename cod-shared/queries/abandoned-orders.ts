@@ -3,7 +3,7 @@
  */
 
 import { eq, and, desc, lt, sql, ilike, or } from "drizzle-orm";
-import { abandonedOrders, wilayas, communes } from "../db/schema";
+import { abandonedOrders, wilayas, communes, orders } from "../db/schema";
 import type { AppDb } from "../db/client";
 import { safeLikeTerm } from "./search";
 
@@ -214,7 +214,8 @@ export async function markAbandonedOrderConverted(
       and(
         eq(abandonedOrders.sessionId, sessionId),
         // Idempotent: don't re-update if already converted
-        sql`${abandonedOrders.status} != 'converted'`
+        sql`${abandonedOrders.status} != 'converted'`,
+        sql`exists (select 1 from ${orders} where ${orders.id} = ${orderId})`
       )
     );
 }

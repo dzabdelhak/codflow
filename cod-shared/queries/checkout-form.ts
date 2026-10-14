@@ -33,7 +33,6 @@ export interface StoreCheckoutForm {
   policy: CheckoutFormPolicy;
   /** `stores.lang` — the language a policy rejection must be written in. */
   lang: string;
-  orderLimitMinutes: number;
 }
 
 /**
@@ -47,7 +46,7 @@ export async function getCheckoutFormPolicy(
   storeId: string,
 ): Promise<StoreCheckoutForm> {
   const row = await db
-    .select({ checkoutFormJson: stores.checkoutFormJson, lang: stores.lang, orderLimitMinutes: stores.orderLimitMinutes })
+    .select({ checkoutFormJson: stores.checkoutFormJson, lang: stores.lang })
     .from(stores)
     .where(eq(stores.id, storeId))
     .then(first);
@@ -55,7 +54,6 @@ export async function getCheckoutFormPolicy(
   return {
     policy: parseCheckoutFormPolicy(row?.checkoutFormJson ?? null),
     lang: row?.lang ?? "ar",
-    orderLimitMinutes: row?.orderLimitMinutes ?? 10,
   };
 }
 

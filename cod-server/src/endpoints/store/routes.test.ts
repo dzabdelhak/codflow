@@ -16,7 +16,7 @@ import * as queries from "./queries";
 vi.mock("@/db", () => ({ getDb: vi.fn(() => mockDb) }));
 vi.mock("./queries");
 vi.mock("@/tracking/conversions", () => ({ enqueueConversions: vi.fn(async () => 0) }));
-vi.mock("./order-flood", () => ({ orderFloodVerdict: vi.fn(async () => null), ipCeilingPerHour: () => 20, recordBlockedAttempt: vi.fn() }));
+vi.mock("./order-flood", () => ({ orderFloodVerdict: vi.fn(async () => null), ipCeilingPerHour: () => 20, recordAttempt: vi.fn(), underLogCap: vi.fn(async () => true), blockedOrderNumber: vi.fn() }));
 // OTP verification defaults to disabled in these fixtures — the gate must be
 // inert (no config row), exactly like a store that never enabled the feature.
 vi.mock("../../../../cod-shared/queries/otp-config");
