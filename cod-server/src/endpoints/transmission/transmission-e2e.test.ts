@@ -99,7 +99,7 @@ describe("the transmission diagnostics", () => {
     expect(json.data.rejected).toEqual([expect.objectContaining({ outcomeDetail: { fields: ["customer.phone"] } })]);
     expect(json.data.recentErrors.map((e) => e.status)).toEqual(["pending", "rejected"]);
     const alerts = (await call("GET", "/alerts")).json.data as unknown as { stale: number; rejected: number };
-    expect(alerts).toEqual({ stale: 1, rejected: 1 });
+    expect(alerts).toEqual({ stale: 1, rejected: 1, aventyKey: null });
   });
 
   it("resends a rejected order with the customer and delivery as corrected, under the same send id, restarting its 24-hour clock", async () => {

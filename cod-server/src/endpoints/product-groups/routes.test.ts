@@ -45,6 +45,7 @@ function categoryRow(overrides: Record<string, any> = {}) {
     updatedAt: NOW,
     merchantId: "test-merchant",
     version: 1,
+    aventyId: null,
     ...overrides,
   };
 }

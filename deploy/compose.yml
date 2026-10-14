@@ -98,6 +98,8 @@ services:
       S3_SECRET_ACCESS_KEY: ${S3_SECRET_KEY:?}
       IMAGES_PUBLIC_URL: https://api.${BASE_DOMAIN:?}/images
       ORDER_DESTINATION: ${ORDER_DESTINATION:-test}
+      AVENTY_KEY_ENCRYPTION_KEY: ${AVENTY_KEY_ENCRYPTION_KEY:-}
+      AVENTY_KEY_ENCRYPTION_KEY_PREVIOUS: ${AVENTY_KEY_ENCRYPTION_KEY_PREVIOUS:-}
     depends_on:
       setup: { condition: service_completed_successfully }
       objects: { condition: service_healthy }

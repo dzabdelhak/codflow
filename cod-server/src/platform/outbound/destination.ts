@@ -10,6 +10,7 @@ export type DestinationAnswer =
   | { kind: "review"; remoteId: string; reasons: string[] }
   | { kind: "rejected"; fields: string[]; message: string }
   | { kind: "retry"; reason: string }
+  | { kind: "unauthorized"; reason: string }
   | { kind: "unknown"; detail: string };
 
 export interface OrderDestination {
@@ -27,9 +28,23 @@ export function testDestination({ failureRate = 0, random = Math.random }: { fai
   };
 }
 
-export function destinationFromEnv(env: { ORDER_DESTINATION?: string; OUTBOUND_TEST_FAILURE_RATE?: string }): OrderDestination {
+export const DESTINATIONS = ["test", "aventy"] as const;
+export type DestinationName = (typeof DESTINATIONS)[number];
+
+export function destinationName(env: { ORDER_DESTINATION?: string }): DestinationName {
   const name = env.ORDER_DESTINATION ?? "test";
-  if (name !== "test") throw new Error(`Unknown ORDER_DESTINATION "${name}"`);
+  if (!(DESTINATIONS as readonly string[]).includes(name)) throw new Error(`Unknown ORDER_DESTINATION "${name}"`);
+  return name as DestinationName;
+}
+
+export function destinationFromEnv(
+  env: { ORDER_DESTINATION?: string; OUTBOUND_TEST_FAILURE_RATE?: string },
+  aventy?: () => OrderDestination,
+): OrderDestination {
+  if (destinationName(env) === "aventy") {
+    if (!aventy) throw new Error("ORDER_DESTINATION=aventy needs the Aventy client and AVENTY_KEY_ENCRYPTION_KEY");
+    return aventy();
+  }
   const failureRate = Number(env.OUTBOUND_TEST_FAILURE_RATE ?? 0);
   return testDestination({ failureRate: Number.isFinite(failureRate) ? Math.min(Math.max(failureRate, 0), 1) : 0 });
 }
@@ -51,6 +66,8 @@ export function recognised(answer: unknown): DestinationAnswer {
       break;
     case "retry":
       return { kind: "retry", reason: text(a.reason) ? (a.reason as string) : "retry later" };
+    case "unauthorized":
+      return { kind: "unauthorized", reason: text(a.reason) ? (a.reason as string) : "the channel's Aventy key is not accepted" };
     case "unknown":
       return a as DestinationAnswer;
   }

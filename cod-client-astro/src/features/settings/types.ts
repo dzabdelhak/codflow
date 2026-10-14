@@ -201,3 +201,18 @@ export interface EmailConnectionCheck {
   domains?: string[];
   outOfCredits?: boolean;
 }
+
+export interface AventyKeyStatus {
+  configured: boolean;
+  hint: string | null;
+  status: "active" | "revoked" | null;
+  statusDetail: string | null;
+  statusChangedAt: string | null;
+  encryptionConfigured: boolean;
+}
+
+export interface AventySyncRow {
+  domain: "catalogue" | "delivery";
+  syncedAt: string | null;
+  lastError: string | null;
+}

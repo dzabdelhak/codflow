@@ -10,4 +10,21 @@
 - [ ] A price change in Aventy reaches the channel within a heartbeat, replacing the copy only when the version is newer
 - [ ] Orders appear in Aventy's demo store with the channel's identity; resends never duplicate
 - [ ] Merchants sign in with their Aventy account
-- [ ] The Aventy key never appears in the browser, URLs or logs
+- [x] The Aventy key never appears in the browser, URLs or logs
+
+## Progress (Oct 14 2026)
+
+Built without Aventy's API, against an in-memory Aventy (`cod-server/src/test-utils/fake-aventy.ts`); see `docs/AVENTY-CONNECTOR.md`:
+
+- **Per-channel key:** encrypted at rest (AES-256-GCM, encryption key from `AVENTY_KEY_ENCRYPTION_KEY`), managed in Settings → Aventy, never returned or logged.
+- **Sync engine:** catalogue and delivery, snapshot → changes → cursor, one-minute heartbeat as a scheduled task, copies replaced only by a newer `source_version`; a domain the key does not grant is skipped and reported.
+- **Orders:** an `aventy` destination; a revoked key keeps the queue, stops the channel's sending and alerts; a new key resumes it. Orders carry Aventy's catalogue and grid versions.
+
+Still needs Aventy's API reference, demo store and test keys:
+- the real `AventyClient` (HTTP);
+- sections pulled from Aventy;
+- the signed creation token;
+- SSO.
+
+Criteria 2 and 3 pass against the fake and still need checking against the demo store.
+

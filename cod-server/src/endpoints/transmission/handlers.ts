@@ -4,9 +4,9 @@ import type { AppContext } from "@/types";
 import { ConflictError, NotFoundError } from "@/lib/errors/classes";
 import { ACTIONS, logActivity } from "@/lib/activity";
 import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
-import { destinationFromEnv } from "@/platform/outbound/destination";
+import { destinationName } from "@/platform/outbound/destination";
 
-const FAILING = ["retry", "unknown", "error"];
+const FAILING = ["retry", "unauthorized", "unknown", "error"];
 
 const ENTRY_COLUMNS = sql`o.id as "sendId", o.order_id as "orderId", ord.order_number as "orderNumber", o.status, o.attempts,
   o.created_at as "createdAt", o.next_attempt_at as "nextAttemptAt", o.last_attempt_at as "lastAttemptAt",
@@ -39,7 +39,7 @@ export async function getTransmission(c: Context<AppContext>) {
     {
       success: true,
       data: {
-        destination: destinationFromEnv(c.env).name,
+        destination: destinationName(c.env),
         connection: { state, lastAttemptAt: s.lastAttemptAt, lastOutcome: s.lastOutcome },
         lastSuccessAt: s.lastSuccessAt,
         counts: { waiting: s.waiting, sent: s.sent, rejected: s.rejected, stale: s.stale },
@@ -54,11 +54,14 @@ export async function getTransmission(c: Context<AppContext>) {
 }
 
 export async function getTransmissionAlerts(c: Context<AppContext>) {
-  const { rows } = await c.get("db").execute<{ stale: number; rejected: number }>(sql`
+  const { rows } = await c.get("db").execute<{ stale: number; rejected: number; keyStatus: string | null }>(sql`
     select count(*) filter (where status = 'pending' and queued_at < now() - interval '24 hours')::int as stale,
-           count(*) filter (where status = 'rejected')::int as rejected
+           count(*) filter (where status = 'rejected')::int as rejected,
+           (select status from channel_aventy_keys) as "keyStatus"
       from outbound_orders`);
-  return c.json({ success: true, data: rows[0] }, 200);
+  const { stale, rejected, keyStatus } = rows[0];
+  const aventyKey = keyStatus === "revoked" ? "revoked" : keyStatus === null && destinationName(c.env) === "aventy" ? "missing" : null;
+  return c.json({ success: true, data: { stale, rejected, aventyKey } }, 200);
 }
 
 export async function resendRejected(c: Context<AppContext>) {

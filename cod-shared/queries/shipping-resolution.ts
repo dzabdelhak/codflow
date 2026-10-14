@@ -43,6 +43,12 @@ export async function lockDeliveryGrid(db: AppDb): Promise<number | null> {
   return row?.version ?? null;
 }
 
+export async function aventyGridVersion(db: AppDb): Promise<number | null> {
+  const row = await db.select({ version: shippingProfiles.sourceVersion }).from(shippingProfiles)
+    .where(eq(shippingProfiles.aventyStoreId, sql`current_setting('app.store_id', true)`)).then(first);
+  return row?.version ?? null;
+}
+
 export async function currentGridVersion(db: AppDb): Promise<number | null> {
   const row = await db.select({ version: merchants.deliveryGridVersion }).from(merchants).then(first);
   return row?.version ?? null;

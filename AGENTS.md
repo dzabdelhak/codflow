@@ -155,6 +155,13 @@ to `src/types/env.ts` (cod-server) and, when production needs it, to
   its name resolves to). `GET /platform/status` (private) is what monitoring
   polls: database, orders waiting > 24 h, late jobs, and channel certificates
   (`store_domains.certificate_*`, checked hourly through Caddy).
+- **A channel fed by Aventy keeps its own key, encrypted** (`channel_aventy_keys`,
+  AES-256-GCM bound to the store id, key from `AVENTY_KEY_ENCRYPTION_KEY`). Read
+  it only through `loadChannelKey` at call time, never return it, and pass any
+  error text through `redactKey` before storing or logging it. Aventy copies
+  carry `aventy_id` + `source_version` (Aventy's version, applied only when
+  newer); never compare or overwrite them with the local trigger `version`.
+  The HTTP client waits for Aventy's API reference — see `docs/AVENTY-CONNECTOR.md`.
 - **A duplicate is PostgreSQL error 23505**, often wrapped by Drizzle: test
   it with `violatesUnique(err, "<constraint>")` (`cod-shared/db/errors.ts`),
   never by matching SQLite's "UNIQUE constraint failed".

@@ -20,6 +20,10 @@ import { checkDomainCertificates } from "@/platform/domain-certificates";
 import { pruneBlockedAttempts } from "@/endpoints/store/order-flood";
 import { outboundOptionsFromEnv, startOutboundWorker } from "@/platform/outbound/worker";
 import { destinationFromEnv } from "@/platform/outbound/destination";
+import { aventyKeyVaultFromEnv } from "@/aventy/key-vault";
+import { aventyClientFromEnv } from "@/aventy/client";
+import { aventyDestination } from "@/aventy/destination";
+import { runAventyHeartbeat } from "@/aventy/sync";
 import { CONVERSION_JOB, conversionJobHandler } from "@/tracking/conversions";
 
 function required(name: string): string {
@@ -49,7 +53,13 @@ function certificateProbe(): (hostname: string) => Promise<CertificateStatus> {
   return (hostname) => probeCertificate(hostname, { host, port });
 }
 
-const outboundDestination = destinationFromEnv(process.env);
+const aventyVault = aventyKeyVaultFromEnv(process.env);
+const aventyClient = aventyClientFromEnv(process.env);
+const aventy = aventyVault && aventyClient ? { vault: aventyVault, client: aventyClient } : null;
+const outboundDestination = destinationFromEnv(
+  process.env,
+  aventy ? () => aventyDestination({ platform: database.platform, ...aventy }) : undefined,
+);
 
 const env = {
   ...process.env,
@@ -57,6 +67,7 @@ const env = {
   IMAGE_STORE: imageStore,
   DOMAIN_DNS: systemDns(process.env.DNS_SERVERS?.split(",").map((s) => s.trim()).filter(Boolean)),
   CERT_PROBE: certificateProbe(),
+  AVENTY_KEY_VAULT: aventyVault,
   ENVIRONMENT: process.env.ENVIRONMENT ?? "development",
 } as unknown as Env;
 
@@ -96,6 +107,13 @@ imageStore.ensureBucket().then(
         everyMs: day,
         run: async () => ({ jobs: await pruneFinishedJobs(database.platform), blockedAttempts: await pruneBlockedAttempts(database.platform) }),
       },
+      ...(aventy
+        ? [{
+            kind: "task:aventy-heartbeat",
+            everyMs: 60 * 1000,
+            run: async () => (await runAventyHeartbeat({ app: database.app, platform: database.platform, ...aventy })).length,
+          }]
+        : []),
       ...(probeHost
         ? [{
             kind: "task:check-certificates",

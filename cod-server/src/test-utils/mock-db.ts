@@ -308,6 +308,8 @@ export function productRow(overrides: Record<string, unknown> = {}): Record<stri
     created_at: NOW,
     updated_at: NOW,
     version: 1,
+    aventy_id: null,
+    source_version: null,
     ...overrides,
   };
 }

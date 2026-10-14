@@ -6,7 +6,7 @@ import { Alert, Badge, Button, Card, PageHeader, StatCard, Table, TableBody, Tab
 import { useLocale, useT } from "@/i18n/react";
 import { notify } from "@/lib/notify";
 import { SCOPES } from "../../../../cod-shared/rbac/scopes";
-import { getTransmission, resendOutbound, type OutboundEntry, type Transmission } from "./api";
+import { getTransmission, getTransmissionAlerts, resendOutbound, type OutboundEntry, type Transmission, type TransmissionAlerts } from "./api";
 
 const STATE_TONE = { connected: "success", failing: "critical", idle: "neutral" } as const;
 
@@ -18,6 +18,7 @@ function Transmissions() {
   const canRead = canScope(identity, SCOPES.ORDERS_READ);
   const canResend = canScope(identity, SCOPES.ORDERS_UPDATE);
   const [data, setData] = useState<Transmission | null>(null);
+  const [aventyKey, setAventyKey] = useState<TransmissionAlerts["aventyKey"]>(null);
   const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -25,7 +26,9 @@ function Transmissions() {
   const load = () => getTransmission().then(setData, () => setFailed(true));
 
   useEffect(() => {
-    if (canRead) void load();
+    if (!canRead) return;
+    void load();
+    getTransmissionAlerts().then((alerts) => setAventyKey(alerts.aventyKey), () => {});
   }, [canRead]);
 
   async function resend(entry: OutboundEntry) {
@@ -51,6 +54,11 @@ function Transmissions() {
 
   return (
     <div className="space-y-6">
+      {aventyKey && (
+        <Alert role="alert" tone="critical">
+          {t(`aventy_key_${aventyKey}_alert`)}
+        </Alert>
+      )}
       {data.counts.stale > 0 && (
         <Alert role="alert" tone="critical">
           {t("stale_alert").replace("{n}", String(data.counts.stale))}

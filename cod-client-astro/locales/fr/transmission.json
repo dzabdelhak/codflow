@@ -40,7 +40,10 @@
     "rejected": "Refusée",
     "retry": "Destination occupée, nouvel essai",
     "unknown": "Réponse non reconnue, nouvel essai",
-    "error": "Pas de réponse, nouvel essai"
+    "error": "Pas de réponse, nouvel essai",
+    "unauthorized": "Clé refusée ou absente, en attente d'une nouvelle clé"
   },
-  "rejected_alert": "{n} commande(s) ont été refusées par la destination. Corrigez-les et renvoyez-les."
+  "rejected_alert": "{n} commande(s) ont été refusées par la destination. Corrigez-les et renvoyez-les.",
+  "aventy_key_revoked_alert": "Aventy a refusé la clé de ce canal : ses commandes sont conservées dans la file mais ne partent plus. Collez une nouvelle clé dans Paramètres → Aventy.",
+  "aventy_key_missing_alert": "Ce canal n'a pas de clé Aventy : ses commandes attendent dans la file. Collez la clé dans Paramètres → Aventy."
 }

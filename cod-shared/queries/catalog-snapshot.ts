@@ -29,6 +29,7 @@ export interface CatalogProduct {
   published: boolean;
   inChannel: boolean;
   version: number;
+  sourceVersion: number | null;
 }
 
 export interface CatalogVariant {
@@ -64,6 +65,7 @@ const PRODUCT_COLUMNS = {
   published: sql<boolean>`exists (select 1 from channel_products cp where cp.product_id = ${products.id} and cp.published)`,
   inChannel: sql<boolean>`exists (select 1 from channel_products cp where cp.product_id = ${products.id})`,
   version: products.version,
+  sourceVersion: products.sourceVersion,
 } as const;
 
 const VARIANT_COLUMNS = {

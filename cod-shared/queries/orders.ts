@@ -32,6 +32,7 @@ import { safeLikeTerm } from "./search";
 import { outboundOrderRow } from "./outbound-orders";
 import { getCustomerByPhone, updateCustomer, type UpdateCustomerData } from "./customers";
 import { first } from "../db/client";
+import { aventyGridVersion } from "./shipping-resolution";
 
 export interface OrderFilters {
   status?: (typeof orders.$inferSelect)["status"] | "all";
@@ -225,11 +226,11 @@ export async function createOrder(
     const qty = item.quantity as number;
 
     const productRow = await db
-      .select({ trackInventory: products.trackInventory, version: products.version })
+      .select({ trackInventory: products.trackInventory, version: products.version, sourceVersion: products.sourceVersion })
       .from(products)
       .where(eq(products.id, item.productId))
       .then(first);
-    catalogVersions.set(item.productId, productRow?.version ?? null);
+    catalogVersions.set(item.productId, productRow?.sourceVersion ?? productRow?.version ?? null);
 
     if (!productRow?.trackInventory) continue;
 
@@ -318,7 +319,7 @@ export async function createOrder(
           type: orderData.deliveryType ?? "home",
           office: null,
           fee: orderData.deliveryFeeToConfirm ? null : orderData.deliveryFee ?? 0,
-          gridVersion: orderData.deliveryGridVersion ?? null,
+          gridVersion: orderData.deliveryGridVersion == null ? null : (await aventyGridVersion(db)) ?? orderData.deliveryGridVersion,
         },
         customer: {
           name: orderData.customerName,

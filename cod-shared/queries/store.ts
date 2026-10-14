@@ -42,7 +42,7 @@ import {
 } from "../db/schema";
 import type { AppDb } from "../db/client";
 import { deriveDescriptionPlain } from "./products";
-import { channelDefaultProfile, lockDeliveryGrid, resolveDeliveryFee } from "./shipping-resolution";
+import { aventyGridVersion, channelDefaultProfile, lockDeliveryGrid, resolveDeliveryFee } from "./shipping-resolution";
 import { normalizeOrderLines } from "./cart";
 import { publicTrackersFrom, resolvePublicTracking } from "./tracking-config";
 import { attributionColumns, campaignOf, type OrderAttribution } from "../tracking/attribution";
@@ -904,10 +904,11 @@ export async function createStoreOrder(
       quantity: line.quantity,
       unitPrice: line.pricePerUnit,
       catalogVersion:
+        snapshot.products.get(line.productId)?.sourceVersion ??
         (line.variantId ? snapshot.variants.get(line.variantId)?.version : snapshot.products.get(line.productId)?.version) ??
         null,
     })),
-    delivery: { type: data.deliveryType, office: null, fee: finalDeliveryFee, gridVersion },
+    delivery: { type: data.deliveryType, office: null, fee: finalDeliveryFee, gridVersion: gridVersion === null ? null : (await aventyGridVersion(db)) ?? gridVersion },
     customer: {
       name: data.customerName,
       phone: data.phone,

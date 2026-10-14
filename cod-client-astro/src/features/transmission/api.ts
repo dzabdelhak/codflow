@@ -1,6 +1,8 @@
 import { apiFetch } from "@/lib/api";
 
-export type OutboundOutcome = "accepted" | "duplicate" | "review" | "rejected" | "retry" | "unknown" | "error";
+export type OutboundOutcome = "accepted" | "duplicate" | "review" | "rejected" | "retry" | "unauthorized" | "unknown" | "error";
+
+export type TransmissionAlerts = { stale: number; rejected: number; aventyKey: "missing" | "revoked" | null };
 
 export interface OutboundEntry {
   sendId: string;
@@ -39,7 +41,7 @@ export async function getTransmission() {
 }
 
 export async function getTransmissionAlerts() {
-  return (await apiFetch<DataEnvelope<{ stale: number; rejected: number }>>("/api/transmission/alerts")).data;
+  return (await apiFetch<DataEnvelope<TransmissionAlerts>>("/api/transmission/alerts")).data;
 }
 
 export async function resendOutbound(sendId: string) {

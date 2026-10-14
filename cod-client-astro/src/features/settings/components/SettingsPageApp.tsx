@@ -21,6 +21,7 @@ import { VerificationSettings } from "@/features/settings/components/Verificatio
 import { BotProtectionSettings } from "@/features/settings/components/BotProtectionSettings";
 import { EmailSettings } from "@/features/settings/components/EmailSettings";
 import { ApiSettings } from "@/features/settings/components/ApiSettings";
+import { AventySettings } from "@/features/settings/components/AventySettings";
 
 function SettingsContent() {
   const t = useT("settings");
@@ -117,6 +118,8 @@ function SettingsContent() {
         );
       case "email":
         return <EmailSettings />;
+      case "aventy":
+        return <AventySettings />;
       case "api":
         return <ApiSettings storeConfig={storeConfig} />;
       default:

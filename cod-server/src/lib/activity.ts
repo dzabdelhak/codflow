@@ -107,6 +107,8 @@ export const ACTIONS = {
   MCP_CONNECTION_REVOKED:  "mcp.connection_revoked",
   /** Admin deleted a registered MCP client and revoked all its grants. */
   MCP_CLIENT_DELETED:      "mcp.client_deleted",
+  AVENTY_KEY_SAVED:        "aventy.key_saved",
+  AVENTY_KEY_REMOVED:      "aventy.key_removed",
 } as const;
 
 export type ActivityAction = (typeof ACTIONS)[keyof typeof ACTIONS];

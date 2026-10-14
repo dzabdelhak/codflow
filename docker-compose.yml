@@ -99,6 +99,7 @@ services:
       TLS_PROBE_HOST: caddy
       ORDER_DESTINATION: ${ORDER_DESTINATION:-test}
       OUTBOUND_TEST_FAILURE_RATE: ${OUTBOUND_TEST_FAILURE_RATE:-0}
+      AVENTY_KEY_ENCRYPTION_KEY: ${COD_AVENTY_KEY_ENCRYPTION_KEY:-6c6f63616c2d6465762d6176656e74792d6b65792d30313233343536373839ab}
     depends_on:
       setup: { condition: service_completed_successfully }
       objects: { condition: service_healthy }

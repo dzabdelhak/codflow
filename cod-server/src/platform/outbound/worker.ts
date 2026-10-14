@@ -37,20 +37,26 @@ const CLAIM = `
   ),
   candidates as (
     select head.id from stores s cross join last_success ls
+    cross join lateral (select not exists (
+      select 1 from channel_aventy_keys k where k.store_id = s.id and k.status = 'revoked') as open) gate
     cross join lateral (
       select o.id from outbound_orders o
        where o.store_id = s.id and o.status = 'pending'
          and not (o.attempts >= $1 and o.last_attempt_at < ls.at)
        order by o.created_at, o.id
        limit 1) head
+     where gate.open
     union all
     select poison.id from stores s cross join last_success ls
+    cross join lateral (select not exists (
+      select 1 from channel_aventy_keys k where k.store_id = s.id and k.status = 'revoked') as open) gate
     cross join lateral (
       select o.id from outbound_orders o
        where o.store_id = s.id and o.status = 'pending' and o.attempts > 0
          and o.attempts >= $1 and o.last_attempt_at < ls.at and o.next_attempt_at <= now()
        order by o.created_at, o.id
        limit 1) poison
+     where gate.open
   )
   select o.id, o.store_id as "storeId", o.payload, o.attempts
     from outbound_orders o
@@ -114,6 +120,16 @@ export async function sendNextOutbound(
           [entry.id, attempts, { fields: answer.fields }, answer.message.slice(0, 500)],
         );
         log("outbound.rejected", { sendId: entry.id, storeId: entry.storeId, fields: answer.fields });
+        break;
+      case "unauthorized":
+        await client.query(
+          `update outbound_orders
+              set last_attempt_at = now(), last_outcome = 'unauthorized', outcome_detail = null, last_error = $2,
+                  next_attempt_at = now() + interval '10 minutes'
+            where id = $1`,
+          [entry.id, answer.reason.slice(0, 500)],
+        );
+        log("outbound.unauthorized", { sendId: entry.id, storeId: entry.storeId });
         break;
       default: {
         const detail = answer.kind === "retry" ? answer.reason : answer.detail;

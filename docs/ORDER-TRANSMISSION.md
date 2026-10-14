@@ -49,7 +49,11 @@ a slow destination never starves request handling.
 (`OrderDestination`). `ORDER_DESTINATION` picks one; today only `test` exists:
 it accepts every order with remote id `TEST-<send id>`, and
 `OUTBOUND_TEST_FAILURE_RATE` (0–1) makes it answer "retry" that often, to
-watch the queue under failure. Aventy's destination comes with ticket 15.
+watch the queue under failure. `aventy` sends each order with its channel's
+key; it needs Aventy's HTTP client, which waits for Aventy's API reference
+(see [AVENTY-CONNECTOR.md](./AVENTY-CONNECTOR.md)). An "unauthorized" answer
+(a revoked or missing key) keeps the order waiting without counting an attempt,
+and the worker skips a channel whose key is revoked until a new key is saved.
 
 ## Diagnostics
 

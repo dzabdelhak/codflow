@@ -63,12 +63,16 @@ const alertsRoute = defineRoute({
   auth: { scope: SCOPES.ORDERS_READ },
   tags: ["Order Transmission"],
   summary: "Order transmission alerts",
-  description: "How many of the active channel's orders have waited more than 24 hours, and how many were rejected — what the dashboard banner shows.",
+  description: "How many of the active channel's orders have waited more than 24 hours, how many were rejected, and whether its Aventy key is revoked or missing — what the dashboard banner shows.",
   operationId: "getOrderTransmissionAlerts",
   responses: {
     200: {
       description: "Alert counts",
-      content: jsonContent(SuccessResponseSchema(z.object({ stale: z.number().int(), rejected: z.number().int() }))),
+      content: jsonContent(SuccessResponseSchema(z.object({
+        stale: z.number().int(),
+        rejected: z.number().int(),
+        aventyKey: z.enum(["missing", "revoked"]).nullable().openapi({ description: "The channel's Aventy key is revoked, or missing while orders go to Aventy: its orders wait in the queue" }),
+      }))),
     },
   },
   handler: h.getTransmissionAlerts,

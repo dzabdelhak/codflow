@@ -1,5 +1,7 @@
 import { apiFetch } from "@/lib/api";
 import type {
+  AventyKeyStatus,
+  AventySyncRow,
   ConversionEventRow,
   EmailConfig,
   EmailConnectionCheck,
@@ -84,4 +86,20 @@ export async function saveEmailConfig(data: SaveEmailConfigData) {
 
 export async function testEmailConnection(apiKey?: string) {
   return (await apiFetch<DataEnvelope<EmailConnectionCheck>>("/api/stores/email-config/test", json({ method: "POST", body: JSON.stringify(apiKey ? { apiKey } : {}) }))).data;
+}
+
+export async function getAventyKey() {
+  return (await apiFetch<{ success: boolean; data: AventyKeyStatus }>("/api/aventy/key")).data;
+}
+
+export async function saveAventyKey(key: string) {
+  return (await apiFetch<{ success: boolean; data: AventyKeyStatus }>("/api/aventy/key", json({ method: "PUT", body: JSON.stringify({ key }) }))).data;
+}
+
+export async function removeAventyKey() {
+  return (await apiFetch<{ success: boolean; data: AventyKeyStatus }>("/api/aventy/key", { method: "DELETE" })).data;
+}
+
+export async function getAventySync() {
+  return (await apiFetch<{ success: boolean; data: AventySyncRow[] }>("/api/aventy/sync")).data;
 }

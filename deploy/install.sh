@@ -27,6 +27,9 @@ done
 for key in POSTGRES_PASSWORD BETTER_AUTH_SECRET STOREFRONT_SERVICE_KEY S3_ACCESS_KEY S3_SECRET_KEY; do
   [[ "$(secret "$key")" =~ ^[A-Za-z0-9_-]{24,}$ ]] || die "$key must be at least 24 letters, digits, - or _ (openssl rand -hex 32)"
 done
+for key in AVENTY_KEY_ENCRYPTION_KEY AVENTY_KEY_ENCRYPTION_KEY_PREVIOUS; do
+  [ -z "$(secret "$key")" ] || [[ "$(secret "$key")" =~ ^[0-9a-fA-F]{64}$ ]] || die "$key must be 64 hex characters (openssl rand -hex 32)"
+done
 [ "$(secret BASE_DOMAIN)" != "example.dz" ] || [ "$(secret CADDY_GLOBAL_EXTRA)" = "local_certs" ] \
   || die "BASE_DOMAIN is still the example value"
 [ -n "$(secret BACKUP_REMOTE)" ] || echo "! BACKUP_REMOTE is empty: dumps stay on this server and the backup monitor stays red"

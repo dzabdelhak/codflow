@@ -136,6 +136,8 @@ $C run --rm --no-deps backup sh -c '. /opt/codflow/common.sh && rclone copy "$BA
 sudo deploy/install.sh
 ```
 
+Restore with the same `AVENTY_KEY_ENCRYPTION_KEY` the backup was taken
+with, or the channels' Aventy keys cannot be opened and must be pasted again.
 The globals file reports that the roles already exist; that's expected.
 `install.sh` then migrates the restored database forward if the checkout is
 newer, and starts everything.

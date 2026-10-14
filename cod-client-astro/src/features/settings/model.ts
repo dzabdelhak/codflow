@@ -1,6 +1,6 @@
-import { BarChart2, Key, Mail, Palette, Search, Shield, ShieldCheck, ShoppingCart, Star, Store, Truck, type LucideIcon } from "lucide-react";
+import { BarChart2, Key, Mail, Palette, PlugZap, Search, Shield, ShieldCheck, ShoppingCart, Star, Store, Truck, type LucideIcon } from "lucide-react";
 
-export type CategoryId = "general" | "branding" | "seo" | "cart" | "delivery" | "reviews" | "analytics" | "verification" | "bot_protection" | "email" | "api";
+export type CategoryId = "general" | "branding" | "seo" | "cart" | "delivery" | "reviews" | "analytics" | "verification" | "bot_protection" | "email" | "aventy" | "api";
 
 export interface SettingsCategory {
   id: CategoryId;
@@ -21,6 +21,7 @@ export const SETTINGS_CATEGORIES: SettingsCategory[] = [
   { id: "verification", icon: ShieldCheck, labelKey: "otp_title" },
   { id: "bot_protection", icon: Shield, labelKey: "bot_protection_title" },
   { id: "email", icon: Mail, labelKey: "email_title" },
+  { id: "aventy", icon: PlugZap, labelKey: "aventy_title" },
   { id: "api", icon: Key, labelKey: "api_key_title" },
 ];
 

@@ -40,7 +40,10 @@
     "rejected": "Rejected",
     "retry": "Destination busy, will retry",
     "unknown": "Unrecognised answer, will retry",
-    "error": "No answer, will retry"
+    "error": "No answer, will retry",
+    "unauthorized": "Key refused or missing, waiting for a new key"
   },
-  "rejected_alert": "{n} order(s) were rejected by the destination. Correct them and resend."
+  "rejected_alert": "{n} order(s) were rejected by the destination. Correct them and resend.",
+  "aventy_key_revoked_alert": "Aventy refused this channel's key: its orders are kept in the queue but not sent. Paste a new key in Settings → Aventy.",
+  "aventy_key_missing_alert": "This channel has no Aventy key: its orders wait in the queue. Paste the key in Settings → Aventy."
 }

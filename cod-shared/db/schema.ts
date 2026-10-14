@@ -1,4 +1,4 @@
-import { pgTable, text, integer, doublePrecision, boolean, timestamp, jsonb, uniqueIndex, index, primaryKey } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, bigint, doublePrecision, boolean, timestamp, jsonb, uniqueIndex, index, primaryKey } from "drizzle-orm/pg-core";
 import { CHANNEL_STATUSES } from "../channels/lifecycle";
 import { CHANNEL_TYPES, UNAVAILABLE_RULES } from "../channels/types";
 import { sql } from "drizzle-orm";
@@ -238,7 +238,13 @@ export const shippingProfiles = pgTable("shipping_profiles", {
   notes: text("notes"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
-});
+  /** The channel whose Aventy delivery grid this profile copies; null for the merchant's own profiles. */
+  aventyStoreId: text("aventy_store_id"),
+  /** Aventy's version of that grid; a change is applied only when newer. */
+  sourceVersion: bigint("source_version", { mode: "number" }),
+}, (t) => ({
+  onePerAventyChannel: uniqueIndex("shipping_profiles_aventy_store_unique").on(t.aventyStoreId),
+}));
 
 /**
  * Per-wilaya customer delivery rates within a shipping profile.
@@ -629,7 +635,7 @@ export const orders = pgTable("orders", {
   recentByIp: index("orders_store_ip_created_idx").on(t.storeId, t.ipAddress, t.createdAt),
 }));
 
-export const OUTBOUND_OUTCOMES = ["accepted", "duplicate", "review", "rejected", "retry", "unknown", "error"] as const;
+export const OUTBOUND_OUTCOMES = ["accepted", "duplicate", "review", "rejected", "retry", "unauthorized", "unknown", "error"] as const;
 export type OutboundOutcome = (typeof OUTBOUND_OUTCOMES)[number];
 
 export const outboundOrders = pgTable("outbound_orders", {
@@ -775,8 +781,10 @@ export const productCategories = pgTable("product_categories", {
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
   version: versionColumn(),
+  aventyId: text("aventy_id"),
 }, (t) => ({
   slugPerMerchant: uniqueIndex("product_categories_merchant_slug_unique").on(t.merchantId, t.slug),
+  aventyPerMerchant: uniqueIndex("product_categories_merchant_aventy_unique").on(t.merchantId, t.aventyId),
 }));
 
 export const products = pgTable("products", {
@@ -817,8 +825,13 @@ export const products = pgTable("products", {
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
   version: versionColumn(),
+  /** The product in Aventy, for a channel fed by Aventy; null for the merchant's own products. */
+  aventyId: text("aventy_id"),
+  /** Aventy's version of this copy; a change is applied only when newer. Not the local `version`. */
+  sourceVersion: bigint("source_version", { mode: "number" }),
 }, (t) => ({
   handlePerMerchant: uniqueIndex("products_merchant_handle_unique").on(t.merchantId, t.handle),
+  aventyPerMerchant: uniqueIndex("products_merchant_aventy_unique").on(t.merchantId, t.aventyId),
   skuPerMerchant: uniqueIndex("products_merchant_sku_unique").on(t.merchantId, t.sku),
 }));
 
@@ -2086,3 +2099,37 @@ export const abandonedOrders = pgTable("abandoned_orders", {
   phoneIdx:     index("abandoned_orders_phone_idx").on(t.phone),
   createdAtIdx: index("abandoned_orders_created_at_idx").on(t.createdAt),
 }));
+
+// ─── Aventy ─────────────────────────────────────────────────────────────────
+// A channel fed by Aventy holds its own Aventy key (guide §3) and pulls each
+// domain by snapshot, then changes from a cursor (guide §4.1).
+
+export const AVENTY_KEY_STATUSES = ["active", "revoked"] as const;
+
+export const channelAventyKeys = pgTable("channel_aventy_keys", {
+  storeId: storeIdColumn().primaryKey(),
+  /** AES-256-GCM, bound to the store id; the encryption key lives outside the database. */
+  keyCiphertext: text("key_ciphertext").notNull(),
+  keyHint: text("key_hint").notNull(),
+  encryptionKeyId: text("encryption_key_id").notNull(),
+  status: text("status", { enum: AVENTY_KEY_STATUSES }).notNull().default("active"),
+  statusDetail: text("status_detail"),
+  statusChangedAt: timestamp("status_changed_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
+});
+
+export const AVENTY_DOMAINS = ["catalogue", "delivery"] as const;
+export type AventyDomain = (typeof AVENTY_DOMAINS)[number];
+
+export const aventySyncState = pgTable("aventy_sync_state", {
+  storeId: storeIdColumn(),
+  domain: text("domain", { enum: AVENTY_DOMAINS }).notNull(),
+  cursor: text("cursor"),
+  syncedAt: timestamp("synced_at", { mode: "date", withTimezone: true }),
+  lastError: text("last_error"),
+  updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  pk: primaryKey({ columns: [t.storeId, t.domain] }),
+}));
+

@@ -5,6 +5,7 @@ import type { Database } from "@/db/scope";
 import type { ImageStore } from "@/platform/image-store";
 import type { DnsLookup } from "@/platform/channel-domains";
 import type { CertificateStatus } from "@/platform/tls-probe";
+import type { AventyKeyVault } from "@/aventy/key-vault";
 
 export interface Env {
   /** PostgreSQL pools (app: RLS-confined, platform: cross-store). */
@@ -34,6 +35,8 @@ export interface Env {
   DOMAIN_DNS: DnsLookup;
   /** Reads the HTTPS certificate a domain is served with, built by src/node.ts (TLS_PROBE_HOST/PORT optional). */
   CERT_PROBE: (hostname: string) => Promise<CertificateStatus>;
+  /** Seals channels' Aventy keys; built by src/node.ts from AVENTY_KEY_ENCRYPTION_KEY (null when unset). */
+  AVENTY_KEY_VAULT: AventyKeyVault | null;
   /** Deployment environment: "development" | "production" */
   ENVIRONMENT: string;
   /** Comma-separated list of allowed CORS origins (e.g., "http://localhost:3000,https://app.example.com") */

@@ -3,15 +3,15 @@ import { canScope, useIdentity } from "@/features/auth/components/RequireAuth";
 import { useT } from "@/i18n/react";
 import { activeStoreId } from "@/lib/active-store";
 import { SCOPES } from "../../../../cod-shared/rbac/scopes";
-import { getTransmissionAlerts } from "./api";
+import { getTransmissionAlerts, type TransmissionAlerts } from "./api";
 
 const CACHE_MS = 5 * 60 * 1000;
-type Alerts = { stale: number; rejected: number };
+type Alerts = TransmissionAlerts;
 
 export function TransmissionBanner({ currentPath }: { currentPath: string }) {
   const t = useT("transmission");
   const identity = useIdentity();
-  const [alerts, setAlerts] = useState<Alerts>({ stale: 0, rejected: 0 });
+  const [alerts, setAlerts] = useState<Alerts>({ stale: 0, rejected: 0, aventyKey: null });
   const enabled = identity?.role === "admin" && canScope(identity, SCOPES.ORDERS_READ) && currentPath !== "/orders/transmission";
   const cacheKey = `cod:transmission-alerts:${activeStoreId() ?? "default"}`;
 
@@ -32,7 +32,7 @@ export function TransmissionBanner({ currentPath }: { currentPath: string }) {
     );
   }, [enabled, cacheKey]);
 
-  if (!enabled || (alerts.stale === 0 && alerts.rejected === 0)) return null;
+  if (!enabled || (alerts.stale === 0 && alerts.rejected === 0 && !alerts.aventyKey)) return null;
   return (
     <a
       href="/orders/transmission"
@@ -41,6 +41,7 @@ export function TransmissionBanner({ currentPath }: { currentPath: string }) {
     >
       {alerts.stale > 0 && <p>{t("stale_alert").replace("{n}", String(alerts.stale))}</p>}
       {alerts.rejected > 0 && <p>{t("rejected_alert").replace("{n}", String(alerts.rejected))}</p>}
+      {alerts.aventyKey && <p>{t(`aventy_key_${alerts.aventyKey}_alert`)}</p>}
     </a>
   );
 }

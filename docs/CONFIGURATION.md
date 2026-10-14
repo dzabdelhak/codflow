@@ -21,7 +21,8 @@ Secrets live only in the environment, never in the repository.
 | `CUSTOM_DOMAIN_TARGET`, `CUSTOM_DOMAIN_IPV4` | What a merchant's own domain must point at (CNAME, or A records) |
 | `MERCHANT_ID`, `MERCHANT_NAME`, `ADMIN_EMAIL` | First account, created once by `install.sh` |
 | `POSTGRES_PASSWORD`, `BETTER_AUTH_SECRET`, `STOREFRONT_SERVICE_KEY`, `S3_ACCESS_KEY`, `S3_SECRET_KEY` | Application secrets: `openssl rand -hex 32` |
-| `ORDER_DESTINATION` | Where orders are transmitted (`test` until the Aventy connector) |
+| `ORDER_DESTINATION` | Where orders are transmitted (`test` until the Aventy client exists) |
+| `AVENTY_KEY_ENCRYPTION_KEY`, `AVENTY_KEY_ENCRYPTION_KEY_PREVIOUS` | Encrypts the channels' Aventy keys (`openssl rand -hex 32`); keep a copy off the server, a restored database needs it. `_PREVIOUS` only during a rotation |
 | `KUMA_ADMIN_USER`, `KUMA_ADMIN_PASSWORD` | Uptime Kuma login |
 | `ALERT_EMAIL_FROM`, `ALERT_EMAIL_TO`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` | Where alerts are e-mailed (STARTTLS, usually port 587) |
 | `DISK_ALERT_PERCENT` | Disk use that turns the disk monitor red (default 85) |
@@ -49,7 +50,8 @@ Secrets live only in the environment, never in the repository.
 | `STOREFRONT_INTERNAL_URL` | | Storefront(s) to purge cached pages on; every address a name resolves to is purged, comma-separate several names |
 | `IMAGES_PUBLIC_URL` | | Public base of `/images` (default: request origin + `/images`) |
 | `STOREFRONT_URL` | | Fallback origin for landing-page share links |
-| `ORDER_DESTINATION` | | `test` (default) — see [ORDER-TRANSMISSION.md](./ORDER-TRANSMISSION.md) |
+| `ORDER_DESTINATION` | | `test` (default) or `aventy` — see [ORDER-TRANSMISSION.md](./ORDER-TRANSMISSION.md) |
+| `AVENTY_KEY_ENCRYPTION_KEY`, `AVENTY_KEY_ENCRYPTION_KEY_PREVIOUS` | | 32 bytes, hex or base64; without it, channels cannot store an Aventy key — see [AVENTY-CONNECTOR.md](./AVENTY-CONNECTOR.md) |
 | `OUTBOUND_SENDERS`, `OUTBOUND_SEND_TIMEOUT_MS`, `OUTBOUND_MAX_DELAY_MS`, `OUTBOUND_HOLD_ATTEMPTS` | | Outbound worker tuning |
 | `ORDER_IP_CEILING_PER_HOUR` | | Anti-flood per-IP ceiling (default 20) — [ORDER-PROTECTION.md](./ORDER-PROTECTION.md) |
 | `ENVIRONMENT` | | `production` requires channel certificates to be publicly trusted |
