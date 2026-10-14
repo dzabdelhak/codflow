@@ -38,7 +38,8 @@ tests for cod-server, cod-client-astro, and the legacy cod-client).
 - Keep engine logic out of the theme. Changes that belong in the platform
   (API shape, validation, order flow) go in `cod-server` / `cod-shared`, not
   here.
-- Never modify `src/core/` — the core is versioned with the platform and
+- Never modify `src/core/` from theme work — the core is versioned with the
+  platform (it changes only together with the cod-server change it serves) and
   breakage there breaks orders.
 - All user-facing text needs AR/FR/EN translations and must keep RTL working.
 - The theme stays swappable: a new theme is a new folder, not edits to core.

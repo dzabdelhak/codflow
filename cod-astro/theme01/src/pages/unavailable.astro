@@ -5,6 +5,7 @@ import { fr } from "@/theme/content/fr";
 import { en } from "@/theme/content/en";
 
 Astro.cache.set(false);
+if (!Astro.locals.channelUnavailable) return new Response(null, { status: 404 });
 Astro.response.status = 503;
 Astro.response.headers.set("Retry-After", "3600");
 Astro.response.headers.set("Cache-Control", "no-store");

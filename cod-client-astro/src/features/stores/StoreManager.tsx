@@ -19,7 +19,6 @@ import {
   TableHeader,
   TableRow,
   useConfirmDialog,
-  type BadgeTone,
 } from "@/components/ui";
 import { useIdentity } from "@/features/auth/components/RequireAuth";
 import { useLocale, useT } from "@/i18n/react";
@@ -29,23 +28,10 @@ import { notify } from "@/lib/notify";
 import { CHANNEL_STATUSES, nextStatuses, type ChannelStatus } from "../../../../cod-shared/channels/lifecycle";
 import { changeStoreStatus, deleteStore, listMyStores, listStatusHistory, type StatusChange } from "./api";
 import { canDeleteStore, filterStores, pickActiveStore, type MerchantStore } from "./store-choice";
-import { switchToStore } from "./useMerchantStores";
-
-const STATUS_TONE: Record<ChannelStatus, BadgeTone> = {
-  draft: "neutral",
-  configuring: "info",
-  ready: "brand",
-  published: "success",
-  suspended: "warning",
-  archived: "critical",
-};
+import { refreshMerchantStores, switchToStore } from "./useMerchantStores";
+import { StoreStatusBadge } from "./StoreStatusBadge";
 
 const CONFIRMED_MOVES: ReadonlySet<ChannelStatus> = new Set(["published", "suspended", "archived"]);
-
-export function StoreStatusBadge({ status }: { status: ChannelStatus }) {
-  const t = useT("navigation");
-  return <Badge tone={STATUS_TONE[status]}>{t(`stores.status.${status}`)}</Badge>;
-}
 
 function formatDate(value: string, locale: string) {
   const date = new Date(value);
@@ -194,6 +180,7 @@ export function StoreManager() {
     try {
       const updated = await changeStoreStatus(store.id, to);
       setStores((current) => current?.map((s) => (s.id === updated.id ? updated : s)) ?? null);
+      refreshMerchantStores();
       notify.success(t("stores.status_changed"));
     } catch {
       notify.error(t("stores.action_failed"));
@@ -316,6 +303,7 @@ export function StoreManager() {
               return;
             }
             setStores(stores.filter((s) => s.id !== deleting.id));
+            refreshMerchantStores();
             setDeleting(null);
           }}
         />

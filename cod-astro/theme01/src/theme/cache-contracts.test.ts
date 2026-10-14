@@ -43,7 +43,7 @@ describe("astro edge cache configuration", () => {
   });
 
   it("enforces long-lived cache for legal pages and immutable communes", () => {
-    expect(config).toContain('"/pages/[slug]": { maxAge: 3600, swr: 604800, tags: ["legal-pages"] }');
+    expect(config).toContain('"/pages/[slug]": { maxAge: 60, swr: 604800, tags: ["legal-pages"] }');
     expect(config).toContain('"/api/communes/[wilayaId]": { maxAge: 31536000, swr: 31536000, tags: ["communes"] }');
   });
 

@@ -131,8 +131,9 @@ other is how these drift.
   other status with 404. Status changes go through
   `PATCH /api/merchant/stores/:id/status`, which logs them and asks the
   storefront to drop that channel's cached pages
-  (`STOREFRONT_INTERNAL_URL`, `POST /api/channel-cache`). Without that URL a
-  change shows on cached pages only once their `maxAge` runs out.
+  (`STOREFRONT_INTERNAL_URL`, `POST /api/channel-cache`). Without that URL,
+  and on any storefront replica it does not reach, a change shows once cached
+  pages' `maxAge` (60 s) runs out.
 - **A merchant owns stores and users** (`merchants`; `merchant_id` on `users`
   and `stores`). Every user of a merchant may open all of its stores. The
   dashboard sends the active store as `X-Store-Id`; `/api/*` runs auth (on the

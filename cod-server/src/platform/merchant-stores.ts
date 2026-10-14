@@ -31,13 +31,15 @@ export function normaliseSubdomain(raw: string): string | null {
   return SUBDOMAIN.test(value) && !RESERVED_SUBDOMAINS.has(value) ? value : null;
 }
 
-export async function listMerchantStores(platform: pg.Pool, merchantId: string): Promise<MerchantStore[]> {
-  const { rows } = await platform.query<MerchantStore>(
-    `select s.id, s.name, s.status, s.logo_url as "logoUrl",
+const STORE_COLUMNS = `s.id, s.name, s.status, s.logo_url as "logoUrl",
             (select d.hostname from store_domains d where d.store_id = s.id
               order by (d.kind = 'subdomain') desc, d.created_at limit 1) as hostname,
             exists (select 1 from orders o where o.store_id = s.id) as "hasOrders",
-            s.created_at as "createdAt"
+            s.created_at as "createdAt"`;
+
+export async function listMerchantStores(platform: pg.Pool, merchantId: string): Promise<MerchantStore[]> {
+  const { rows } = await platform.query<MerchantStore>(
+    `select ${STORE_COLUMNS}
        from stores s
       where s.merchant_id = $1
       order by s.created_at, s.id`,
@@ -166,15 +168,15 @@ export async function changeStoreStatus(
         now,
       ],
     );
+    const updated = await client.query<MerchantStore>(`select ${STORE_COLUMNS} from stores s where s.id = $1`, [input.storeId]);
     await client.query("commit");
+    return { ok: true, store: updated.rows[0] };
   } catch (err) {
     await client.query("rollback").catch(() => {});
     throw err;
   } finally {
     client.release();
   }
-  const stores = await listMerchantStores(platform, input.merchantId);
-  return { ok: true, store: stores.find((s) => s.id === input.storeId)! };
 }
 
 export interface StatusChange {
@@ -219,7 +221,8 @@ export async function deleteMerchantStore(
       `select s.name, s.status,
               exists (select 1 from orders o where o.store_id = s.id) as has_orders,
               (select count(*)::int from stores x where x.merchant_id = s.merchant_id and x.id <> s.id) as siblings
-         from stores s where s.id = $1 and s.merchant_id = $2`,
+         from stores s where s.id = $1 and s.merchant_id = $2
+          for update of s`,
       [input.storeId, input.merchantId],
     );
     const store = rows[0];

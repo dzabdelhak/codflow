@@ -62,7 +62,7 @@ export async function changeStatus(c: Context<AppContext>) {
     actor: { id: user.id, name: user.name ?? null, role: user.role },
   });
   if (result.ok) {
-    await purgeChannelPages(c.env, storeId);
+    void purgeChannelPages(c.env, storeId).catch((err) => console.warn("[storefront-cache] purge failed", err));
     return c.json({ success: true, data: result.store }, 200);
   }
   if (result.reason === "not_found") throw new NotFoundError("Store", storeId);

@@ -6,7 +6,7 @@ import { useT } from "@/i18n/react";
 import { baseDomainOf } from "./store-choice";
 import { switchToStore, useMerchantStores } from "./useMerchantStores";
 import { CreateStoreDialog } from "./CreateStoreDialog";
-import { StoreStatusBadge } from "./StoreManager";
+import { StoreStatusBadge } from "./StoreStatusBadge";
 
 /** Header dropdown: the active store, the merchant's other stores, and "Create store". */
 export function StoreSwitcher() {

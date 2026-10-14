@@ -2,6 +2,12 @@
 /// <reference types="astro/client" />
 
 declare global {
+  namespace App {
+    interface Locals {
+      channelUnavailable?: boolean;
+    }
+  }
+
   interface SelectOption {
     value: string;
     label: string;

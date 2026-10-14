@@ -8,7 +8,7 @@ import { defineMiddleware } from "astro:middleware";
 import { getActionContext } from "astro:actions";
 import { withRequestHost } from "./api/request-host";
 import { loadStoreConfig } from "./api/client";
-import { CHANNEL_CACHE_PATH, channelTag } from "./channel-cache";
+import { CHANNEL_CACHE_PATH, channelTag, shouldPurge } from "./channel-cache";
 
 /**
  * POST/Redirect/GET pattern for Astro Actions (Astro 5 docs pattern).
@@ -37,11 +37,14 @@ async function handle(context: APIContext, next: MiddlewareNext) {
 
   const tag = channelTag(context.request.headers.get("host") ?? context.url.host);
   const { status } = await loadStoreConfig();
-  if (status === 404 || status === 503) await context.cache.invalidate({ tags: [tag] }).catch(() => {});
+  if (shouldPurge(tag, status !== 404 && status !== 503)) await context.cache.invalidate({ tags: [tag] }).catch(() => {});
   if (status === 404) {
     return new Response("Not found", { status: 404, headers: { "Content-Type": "text/plain; charset=utf-8" } });
   }
-  if (status === 503) return next("/unavailable");
+  if (status === 503) {
+    context.locals.channelUnavailable = true;
+    return next("/unavailable");
+  }
   context.cache.set({ tags: [tag] });
 
   const { action, setActionResult, serializeActionResult } = getActionContext(context);

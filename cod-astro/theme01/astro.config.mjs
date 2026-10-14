@@ -28,7 +28,7 @@ export default defineConfig({
     "/products/[slug]": { maxAge: 60, swr: 86400, tags: ["products"] },
     "/category/[slug]": { maxAge: 60, swr: 86400, tags: ["categories"] },
     "/lp/[slug]": { maxAge: 60, swr: 86400, tags: ["landing-pages"] },
-    "/pages/[slug]": { maxAge: 3600, swr: 604800, tags: ["legal-pages"] },
+    "/pages/[slug]": { maxAge: 60, swr: 604800, tags: ["legal-pages"] },
     "/api/communes/[wilayaId]": { maxAge: 31536000, swr: 31536000, tags: ["communes"] },
   },
   env: {
