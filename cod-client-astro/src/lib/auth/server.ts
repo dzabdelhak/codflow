@@ -1,10 +1,29 @@
 import { betterAuth } from "better-auth";
+import { createAuthMiddleware } from "better-auth/api";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { customSession, jwt } from "better-auth/plugins";
+import { oauthProvider } from "@better-auth/oauth-provider";
 import { eq } from "drizzle-orm";
 import { getDb } from "../../../../cod-shared/db/client";
 import { withStore } from "../../../../cod-shared/db/pools";
-import { users, sessions, accounts, verifications, jwkss, userScopes } from "../../../../cod-shared/db/schema";
+import {
+  users,
+  sessions,
+  accounts,
+  verifications,
+  jwkss,
+  userScopes,
+  oauthClients,
+  oauthResources,
+  oauthClientResources,
+  oauthClientAssertions,
+  oauthRefreshTokens,
+  oauthAccessTokens,
+  oauthConsents,
+} from "../../../../cod-shared/db/schema";
+import { ALL_SCOPES } from "../../../../cod-shared/rbac/scopes";
+import { channelsOf, chosenChannel, mcpResource } from "./mcp-channel";
+import { registrationWithApplicationType } from "./mcp-registration";
 import { getStore } from "../../../../cod-shared/queries/stores";
 import { renderPasswordResetEmail } from "../../../../cod-shared/lib/email-templates";
 import { sendTransactionalEmail } from "../../../../cod-shared/lib/transactional-email";
@@ -38,7 +57,20 @@ function buildAuth(env: ServerEnv) {
         database: drizzleAdapter(db, {
           provider: "pg",
           usePlural: true,
-          schema: { users, sessions, accounts, verifications, jwkss },
+          schema: {
+            users,
+            sessions,
+            accounts,
+            verifications,
+            jwkss,
+            oauthClients,
+            oauthResources,
+            oauthClientResources,
+            oauthClientAssertions,
+            oauthRefreshTokens,
+            oauthAccessTokens,
+            oauthConsents,
+          },
         }),
         baseURL: env.PUBLIC_APP_URL,
         secret: env.BETTER_AUTH_SECRET,
@@ -51,6 +83,12 @@ function buildAuth(env: ServerEnv) {
             .filter(Boolean),
         ],
         disabledPaths: ["/token"],
+        hooks: {
+          before: createAuthMiddleware(async (ctx) => {
+            if (ctx.path !== "/oauth2/register" || !ctx.body || typeof ctx.body !== "object") return;
+            return { context: { body: registrationWithApplicationType(ctx.body) } };
+          }),
+        },
         session: {
           storeSessionInDatabase: true,
           cookieCache: {
@@ -164,6 +202,31 @@ function buildAuth(env: ServerEnv) {
                 ? ["*"]
                 : rows.map((r) => r.scope),
             };
+          }),
+          oauthProvider({
+            loginPage: "/sign-in",
+            consentPage: "/mcp/consent",
+            scopes: ["offline_access", ...ALL_SCOPES],
+            resources: [{ identifier: mcpResource(env.PUBLIC_API_URL), name: "CodFlow MCP" }],
+            enforcePerClientResources: false,
+            allowDynamicClientRegistration: true,
+            allowUnauthenticatedClientRegistration: true,
+            clientRegistrationDefaultScopes: ["offline_access", ...ALL_SCOPES],
+            clientRegistrationAllowedScopes: ["offline_access", ...ALL_SCOPES],
+            accessTokenExpiresIn: 3600,
+            refreshTokenExpiresIn: 30 * 24 * 3600,
+            postLogin: {
+              page: "/mcp/channel",
+              shouldRedirect: async ({ session }) => !(await chosenChannel(session.id)),
+              consentReferenceId: async ({ session, user }) => {
+                const storeId = await chosenChannel(session.id);
+                if (!storeId || !(await channelsOf(user.id)).some((c) => c.id === storeId)) {
+                  throw new Error("Choose the channel this connection may manage");
+                }
+                return storeId;
+              },
+            },
+            customAccessTokenClaims: ({ referenceId }) => (referenceId ? { store_id: referenceId } : {}),
           }),
           jwt({
             jwt: {

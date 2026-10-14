@@ -18,6 +18,7 @@
     "empty_description": "عندما تلصق رابط MCP الخاص بك في تطبيق ذكاء اصطناعي، سيظهر الاتصال هنا.",
     "active": "نشط",
     "inactive": "غير نشط",
+    "channel": "القناة: {name}",
     "connected_at": "تم الاتصال {date}",
     "last_used": "آخر استخدام {when}",
     "never_used": "لم يُستخدم بعد",
@@ -59,5 +60,20 @@
     "hours_ago_other": "منذ {count} ساعة",
     "days_ago_one": "منذ يوم",
     "days_ago_other": "منذ {count} يوم"
+  },
+  "authorize": {
+    "channel_title": "ما القناة التي يمكن لهذا الوكيل الذكي إدارتها؟",
+    "channel_subtitle": "يعمل الاتصال على قناة واحدة فقط. اتصل مجددًا لمنحه قناة أخرى.",
+    "no_channel": "لا يملك حسابك أي قناة بعد.",
+    "type_store": "متجر إلكتروني",
+    "type_landing": "صفحة هبوط",
+    "consent_title": "السماح لـ {app} بالتصرف نيابةً عنك؟",
+    "consent_channel": "على القناة {channel}.",
+    "change_channel": "تغيير",
+    "permissions": "ما يمكنه فعله",
+    "no_permission": "لا تملك أيًّا من الصلاحيات التي يطلبها هذا التطبيق.",
+    "allow": "سماح",
+    "deny": "رفض",
+    "error": "حدث خطأ ما. أعد بدء الاتصال من تطبيق الذكاء الاصطناعي."
   }
 }

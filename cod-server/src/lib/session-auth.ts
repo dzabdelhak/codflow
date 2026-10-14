@@ -59,7 +59,7 @@ async function importVerifyKey(jwk: JsonWebKey): Promise<CryptoKey> {
   return crypto.subtle.importKey("jwk", jwk, { name: "Ed25519" }, false, ["verify"]);
 }
 
-export async function verifySessionJwt(token: string, env: Env): Promise<SessionJwtPayload> {
+export async function verifySignedJwt<T extends SessionJwtPayload>(token: string, env: Env): Promise<T> {
   const parts = token.split(".");
   if (parts.length !== 3) throw new Error("Malformed JWT");
 
@@ -85,12 +85,18 @@ export async function verifySessionJwt(token: string, env: Env): Promise<Session
   );
   if (!valid) throw new Error("Invalid signature");
 
-  const payload = JSON.parse(new TextDecoder().decode(b64urlToBytes(parts[1]))) as SessionJwtPayload;
+  const payload = JSON.parse(new TextDecoder().decode(b64urlToBytes(parts[1]))) as T;
   if (!payload.sub) throw new Error("JWT missing sub");
 
   if (typeof payload.exp === "number" && Date.now() / 1000 > payload.exp) {
     throw new Error("Token expired");
   }
+  return payload;
+}
+
+export async function verifySessionJwt(token: string, env: Env): Promise<SessionJwtPayload> {
+  const payload = await verifySignedJwt<SessionJwtPayload & { azp?: string; client_id?: string; store_id?: string }>(token, env);
+  if (payload.azp || payload.client_id || payload.store_id) throw new Error("An OAuth access token is not a dashboard session");
 
   if (payload.iss && payload.iss !== env.BETTER_AUTH_URL.replace(/\/api\/auth$/, "")) {
     throw new Error(`Invalid issuer: ${payload.iss}`);
@@ -101,12 +107,11 @@ export async function verifySessionJwt(token: string, env: Env): Promise<Session
     const selfHttp = selfBase.replace(/^https:/, "http:");
     // Dashboard-originated JWTs carry the auth server's own origin as audience
     // (better-auth jwt() default). Same trust realm as WORKER_SELF_URL.
-    // Local dev serves the API over http:// while WORKER_SELF_URL must stay
-    // https:// (workers-oauth-provider rejects http issuers), so tokens may
-    // carry the http twin of the self origin.
+    // Local dev serves the API over http:// while WORKER_SELF_URL may be
+    // https://, so tokens may carry the http twin of the self origin.
     const appOrigin = authBaseUrl(env);
     const acceptable = new Set([
-      ...(selfBase ? [selfBase, `${selfBase}/`, `${selfBase}/mcp`] : []),
+      ...(selfBase ? [selfBase, `${selfBase}/`] : []),
       ...(selfHttp && selfHttp !== selfBase ? [selfHttp, `${selfHttp}/`] : []),
       appOrigin,
     ]);

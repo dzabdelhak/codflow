@@ -1,11 +1,7 @@
 import {
   McpServer,
 } from "@modelcontextprotocol/server";
-import {
-  createMcpHandler,
-  getMcpAuthContext,
-  type CreateMcpHandlerOptions,
-} from "agents/mcp/server";
+import { createMcpHandler, type CreateMcpHandlerOptions } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import type { Tool } from "ai";
 import type { Env } from "@/types/env";
@@ -16,16 +12,16 @@ import { TOOL_ANNOTATIONS } from "./annotations";
 import { TOOL_TITLES } from "./tool-titles";
 import { checkMcpRateLimit, readClientMeta, type ClientMeta } from "./request-context";
 import { executeMcpTool, redactForAudit, type McpActor } from "./execute-tool";
-import { getDb } from "@/db";
+import type { AppDb } from "../../../cod-shared/db/client";
+import type { Redis } from "@/platform/redis";
 import { ACTIONS, logActivity } from "@/lib/activity";
 
 interface ToolRegistration {
-  db: ReturnType<typeof getDb>;
+  db: AppDb;
   actor: McpActor;
   name: string;
   tool: Tool;
-  /** Worker env — reaches the RATE_LIMIT KV binding for the call-rate guard. */
-  env: Env;
+  redis: Redis | null;
   /** Rate-limit fallback identity when the client sends no subject hint. */
   fallbackSubject: string;
 }
@@ -35,34 +31,30 @@ interface ToolRegistration {
  * tools the verified identity's OAuth scopes allow (registration-time gating —
  * the client's model never sees a tool it cannot run).
  *
- * Identity is read from `getMcpAuthContext().props`, populated by the
- * `@cloudflare/workers-oauth-provider` verified context (the props set at
- * `completeAuthorization`). When no verified identity is present the server
- * registers zero tools — fail closed by construction.
+ * Identity is the verified access token's (src/mcp/access.ts); `db` is
+ * pinned to the authorised channel. Without an identity the server registers
+ * zero tools — fail closed by construction.
  */
-export function createCodMcpServer(env: Env): McpServer {
+export function createCodMcpServer(env: Env, props: McpProps | null, db: AppDb, redis: Redis | null): McpServer {
   const server = new McpServer({ name: "CodFlow CRM", version: "1.0.0" });
-
-  const props = getMcpAuthContext()?.props as McpProps | undefined;
   if (!props) {
     return server;
   }
 
-  const db = getDb(env.DATABASE.platform);
   const actor: McpActor = {
     id: props.userId,
     name: props.name || props.email,
     role: props.role,
   };
 
-  const tools = buildToolsForUser(env, props);
+  const tools = buildToolsForUser(env, props, db);
   for (const [name, tool] of Object.entries(tools)) {
     registerTool(server, {
       db,
       actor,
       name,
       tool,
-      env,
+      redis,
       fallbackSubject: props.userId,
     });
   }
@@ -79,7 +71,7 @@ function clientMetaAuditFields(clientMeta: ClientMeta): Record<string, string> {
 }
 
 function registerTool(server: McpServer, registration: ToolRegistration): void {
-  const { db, actor, name, tool, env, fallbackSubject } = registration;
+  const { db, actor, name, tool, redis, fallbackSubject } = registration;
   const description =
     typeof tool.description === "string" ? tool.description : `Tool: ${name}`;
   const inputSchema = z.object(TOOL_SCHEMAS[name] ?? {});
@@ -106,7 +98,7 @@ function registerTool(server: McpServer, registration: ToolRegistration): void {
       // Client hints (openai/subject, openai/session) — correlation only,
       // never authorization. Subject keys the per-user rate counter.
       const clientMeta = readClientMeta(ctx);
-      const rate = await checkMcpRateLimit(env.RATE_LIMIT, clientMeta.subject ?? fallbackSubject);
+      const rate = await checkMcpRateLimit(redis, clientMeta.subject ?? fallbackSubject);
       if (!rate.allowed) {
         await logActivity(
           db,
@@ -155,20 +147,13 @@ function registerTool(server: McpServer, registration: ToolRegistration): void {
 }
 
 /**
- * Create the stateless SDK v2 handler for this Worker.
- *
- * Identity is supplied by the OAuthProvider's verified context on each request
- * (`ctx.props` → `getMcpAuthContext()`); the handler is built per request to
- * capture `env`, and `legacy: "reject"` serves only stateless traffic.
+ * The stateless SDK handler for one verified request. `responseMode: "json"`
+ * finishes the tool call before the response resolves, so the channel's
+ * transaction commits after the work, never before.
  */
-export function createCodMcpHandler(env: Env) {
-  return createMcpHandler(
-    () => createCodMcpServer(env),
-    {
-      route: "/mcp",
-      legacy: "reject",
-      // Browser Origin validation is wired in Slice 9.
-      allowedOriginHostnames: "*",
-    } satisfies CreateMcpHandlerOptions,
-  );
+export function createCodMcpHandler(env: Env, props: McpProps, db: AppDb, redis: Redis | null) {
+  return createMcpHandler(() => createCodMcpServer(env, props, db, redis), {
+    legacy: "reject",
+    responseMode: "json",
+  } satisfies CreateMcpHandlerOptions);
 }

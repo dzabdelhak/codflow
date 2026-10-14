@@ -37,12 +37,8 @@
   "exclude": [
     "node_modules",
     "src/endpoints/delivery-companies/webhook-events.e2e.test.ts",
-    "src/endpoints/mcp/handlers.test.ts",
     "src/endpoints/orders/dispatch-limits-e2e.test.ts",
     "src/endpoints/orders/orders.webhook-e2e.test.ts",
-    "src/endpoints/webhooks/yalidine-webhook.e2e.test.ts",
-    "src/mcp/authorize.test.ts",
-    "src/mcp/registry.test.ts",
-    "src/mcp/server-factory.test.ts"
+    "src/endpoints/webhooks/yalidine-webhook.e2e.test.ts"
   ]
 }

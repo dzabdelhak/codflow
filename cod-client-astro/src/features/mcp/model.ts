@@ -49,7 +49,7 @@ export function otherUsersConnections(teamConnections: McpConnection[], currentU
 
 /** Stable identity for a connection row, used for pending-revoke state and list keys. */
 export function connectionKey(conn: McpConnection): string {
-  return conn.user ? `${conn.user.id}:${conn.clientId}` : conn.clientId;
+  return conn.user ? `${conn.user.id}:${conn.clientId}:${conn.storeId}` : `${conn.clientId}:${conn.storeId}`;
 }
 
 export function mcpErrorMessage(cause: unknown, t: (key: string) => string) {

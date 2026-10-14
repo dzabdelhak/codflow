@@ -1,9 +1,6 @@
 /**
  * Server environment, built from process.env by the Node entry (src/node.ts).
- * Cloudflare bindings still listed here belong to code not yet ported
- * (MCP) and are absent at runtime.
  */
-import type { OAuthHelpers } from "@cloudflare/workers-oauth-provider";
 import type { Database } from "@/db/scope";
 import type { ImageStore } from "@/platform/image-store";
 import type { DnsLookup } from "@/platform/channel-domains";
@@ -49,36 +46,18 @@ export interface Env {
    */
   STOREFRONT_URL?: string;
 
-  // ─── MCP remote server (added MCP-8) ───────────────────────────────────────
   /**
-   * Origin of the Better Auth OAuth Authorization Server (dashboard URL).
-   * Used as the `iss` claim when verifying MCP bearer tokens AND to derive
-   * the JWKS URL (`${BETTER_AUTH_URL}/api/auth/jwks`).
-   * Partner-server sets this per-tenant during provisioning.
+   * Origin of the dashboard, the OAuth authorization server. MCP access tokens
+   * must carry `iss` = `${BETTER_AUTH_URL}/api/auth`; the JWKS defaults to
+   * `${BETTER_AUTH_URL}/api/auth/jwks`.
    */
   BETTER_AUTH_URL: string;
   /** JWKS endpoint as reachable from this server; defaults to `${BETTER_AUTH_URL}/api/auth/jwks`. */
   BETTER_AUTH_JWKS_URL?: string;
-  /**
-   * This Worker's own public origin. Used as the required `aud` claim when
-   * verifying MCP bearer tokens — stops a token minted for tenant A from
-   * being accepted against tenant B.
-   */
+  /** This API's public origin; MCP access tokens must carry `aud` = `${WORKER_SELF_URL}/mcp`. */
   WORKER_SELF_URL: string;
-  /**
-   * HMAC secret (>= 32 bytes) shared with the Astro dashboard for the MCP OAuth
-   * login tickets minted after dashboard sign-in. Optional: when missing or too
-   * short, the MCP authorize flow fails closed.
-   */
-  MCP_LOGIN_TICKET_SECRET?: string;
-  /** KV namespace for the MCP OAuth provider (clients, grants, tokens, props). */
-  OAUTH_KV: KVNamespace;
-  /**
-   * KV namespace for rate limiting. Optional: the OTP send guards treat an
-   * absent binding as "no local guard" (the provider's own limits remain the
-   * hard bound) — a KV failure must never block a send.
-   */
+  /** Redis for the MCP rate limit and last-used markers; MCP still serves without it. */
+  REDIS_URL?: string;
+  /** Legacy OTP send-guard binding, absent on Node. */
   RATE_LIMIT?: KVNamespace;
-  /** OAuth helpers injected into `env` by the OAuthProvider before handlers run. */
-  OAUTH_PROVIDER?: OAuthHelpers;
 }

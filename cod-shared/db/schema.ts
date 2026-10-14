@@ -1877,14 +1877,10 @@ export const jwkss = pgTable("jwkss", {
 
 // ─── @better-auth/oauth-provider (LEGACY — no longer written) ────────────────
 // These tables backed the decommissioned Better Auth OAuth 2.1 Authorization
-// Server plugin that used to issue MCP tokens from the dashboards. MCP OAuth
-// moved to `@cloudflare/workers-oauth-provider` on cod-server (clients, grants,
-// tokens, and props now live in the OAUTH_KV namespace, not D1). The tables are
-// kept for historical data; nothing writes to them anymore. Do not drop without
-// confirming no deployment still references them.
-//
-// Array columns (`string[]` in Better Auth's model) are stored as JSON text.
-// Better Auth's Drizzle adapter serialises/deserialises automatically.
+// MCP OAuth: Better Auth's `@better-auth/oauth-provider` (1.7) on the dashboard
+// writes these tables. Array fields are native text[] and json fields jsonb,
+// which is what the Drizzle adapter uses on PostgreSQL. A consent's and a
+// token's `reference_id` is the channel (store id) the merchant authorised.
 //
 // `plural` mode is ON globally so Better Auth maps `oauthClient` → `oauthClients`
 // in queries — table names below must match.
@@ -1893,81 +1889,135 @@ export const oauthClients = pgTable("oauthClients", {
   id:                      text("id").primaryKey(),
   clientId:                text("client_id").notNull().unique(),
   clientSecret:            text("client_secret"),
+  clientDiscoveryId:       text("client_discovery_id"),
   disabled:                boolean("disabled").default(false),
   skipConsent:             boolean("skip_consent"),
   enableEndSession:        boolean("enable_end_session"),
   subjectType:             text("subject_type"),
-  scopes:                  text("scopes"),                   // JSON string[]
+  scopes:                  text("scopes").array(),
+  clientCredentialsScopes: text("client_credentials_scopes").array(),
   userId:                  text("user_id").references(() => users.id, { onDelete: "cascade" }),
   name:                    text("name"),
   uri:                     text("uri"),
   icon:                    text("icon"),
-  contacts:                text("contacts"),                 // JSON string[]
+  contacts:                text("contacts").array(),
   tos:                     text("tos"),
   policy:                  text("policy"),
   softwareId:              text("software_id"),
   softwareVersion:         text("software_version"),
   softwareStatement:       text("software_statement"),
-  redirectUris:            text("redirect_uris").notNull(),  // JSON string[]
-  postLogoutRedirectUris:  text("post_logout_redirect_uris"),// JSON string[]
+  redirectUris:            text("redirect_uris").array().notNull(),
+  postLogoutRedirectUris:  text("post_logout_redirect_uris").array(),
+  backchannelLogoutUri:    text("backchannel_logout_uri"),
+  backchannelLogoutSessionRequired: boolean("backchannel_logout_session_required"),
   tokenEndpointAuthMethod: text("token_endpoint_auth_method"),
-  grantTypes:              text("grant_types"),              // JSON string[]
-  responseTypes:           text("response_types"),           // JSON string[]
+  applicationType:         text("application_type"),
+  jwks:                    text("jwks"),
+  jwksUri:                 text("jwks_uri"),
+  grantTypes:              text("grant_types").array(),
+  responseTypes:           text("response_types").array(),
   type:                    text("type"),
   public:                  boolean("public"),
   clientIdIssuedAt:        timestamp("client_id_issued_at", { mode: "date", precision: 3 }),
   clientSecretExpiresAt:   timestamp("client_secret_expires_at", { mode: "date", precision: 3 }),
-  requirePkce:             boolean("require_pkce"),
+  requirePKCE:             boolean("require_pkce"),
+  dpopBoundAccessTokens:   boolean("dpop_bound_access_tokens").default(false),
   referenceId:             text("reference_id"),
-  metadata:                text("metadata"),                 // JSON
+  metadata:                jsonb("metadata"),
   createdAt:               timestamp("created_at", { mode: "date", precision: 3 }).default(authNow).notNull(),
   updatedAt:               timestamp("updated_at", { mode: "date", precision: 3 }).default(authNow).notNull(),
 }, (t) => ({
   userIdIdx: index("oauthClients_user_id_idx").on(t.userId),
 }));
 
-export const oauthRefreshTokens = pgTable("oauthRefreshTokens", {
-  id:          text("id").primaryKey(),
-  token:       text("token").notNull(),
-  clientId:    text("client_id").notNull().references(() => oauthClients.clientId),
-  sessionId:   text("session_id").references(() => sessions.id, { onDelete: "set null" }),
-  userId:      text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  referenceId: text("reference_id"),
-  expiresAt:   timestamp("expires_at", { mode: "date", precision: 3 }).notNull(),
-  createdAt:   timestamp("created_at", { mode: "date", precision: 3 }).default(authNow).notNull(),
-  revoked:     timestamp("revoked", { mode: "date", precision: 3 }),
-  authTime:    timestamp("auth_time", { mode: "date", precision: 3 }),
-  scopes:      text("scopes").notNull(),                     // JSON string[]
+export const oauthResources = pgTable("oauthResources", {
+  id:                            text("id").primaryKey(),
+  identifier:                    text("identifier").notNull().unique(),
+  name:                          text("name").notNull(),
+  accessTokenTtl:                integer("access_token_ttl"),
+  refreshTokenTtl:               integer("refresh_token_ttl"),
+  signingAlgorithm:              text("signing_algorithm"),
+  signingKeyId:                  text("signing_key_id"),
+  allowedScopes:                 text("allowed_scopes").array(),
+  customClaims:                  jsonb("custom_claims"),
+  dpopBoundAccessTokensRequired: boolean("dpop_bound_access_tokens_required").default(false),
+  disabled:                      boolean("disabled").default(false),
+  policyVersion:                 integer("policy_version").default(1),
+  metadata:                      jsonb("metadata"),
+  createdAt:                     timestamp("created_at", { mode: "date", precision: 3 }).default(authNow),
+  updatedAt:                     timestamp("updated_at", { mode: "date", precision: 3 }).default(authNow),
+});
+
+export const oauthClientResources = pgTable("oauthClientResources", {
+  id:         text("id").primaryKey(),
+  clientId:   text("client_id").notNull().references(() => oauthClients.clientId, { onDelete: "cascade" }),
+  resourceId: text("resource_id").notNull().references(() => oauthResources.identifier, { onDelete: "cascade" }),
+  metadata:   jsonb("metadata"),
+  createdAt:  timestamp("created_at", { mode: "date", precision: 3 }).default(authNow),
 }, (t) => ({
-  tokenIdx:    index("oauthRefreshTokens_token_idx").on(t.token),
+  clientResource: uniqueIndex("oauthClientResources_client_resource_unique").on(t.clientId, t.resourceId),
+}));
+
+export const oauthClientAssertions = pgTable("oauthClientAssertions", {
+  id:        text("id").primaryKey(),
+  expiresAt: timestamp("expires_at", { mode: "date", precision: 3 }).notNull(),
+});
+
+export const oauthRefreshTokens = pgTable("oauthRefreshTokens", {
+  id:                      text("id").primaryKey(),
+  token:                   text("token").notNull().unique(),
+  clientId:                text("client_id").notNull().references(() => oauthClients.clientId, { onDelete: "cascade" }),
+  sessionId:               text("session_id").references(() => sessions.id, { onDelete: "set null" }),
+  userId:                  text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  referenceId:             text("reference_id"),
+  authorizationCodeId:     text("authorization_code_id"),
+  resources:               text("resources").array(),
+  requestedUserInfoClaims: text("requested_user_info_claims").array(),
+  expiresAt:               timestamp("expires_at", { mode: "date", precision: 3 }).notNull(),
+  createdAt:               timestamp("created_at", { mode: "date", precision: 3 }).default(authNow).notNull(),
+  revoked:                 timestamp("revoked", { mode: "date", precision: 3 }),
+  rotatedAt:               timestamp("rotated_at", { mode: "date", precision: 3 }),
+  rotationReplayResponse:  text("rotation_replay_response"),
+  rotationReplayExpiresAt: timestamp("rotation_replay_expires_at", { mode: "date", precision: 3 }),
+  authTime:                timestamp("auth_time", { mode: "date", precision: 3 }),
+  confirmation:            jsonb("confirmation"),
+  scopes:                  text("scopes").array().notNull(),
+}, (t) => ({
   userIdIdx:   index("oauthRefreshTokens_user_id_idx").on(t.userId),
   clientIdIdx: index("oauthRefreshTokens_client_id_idx").on(t.clientId),
 }));
 
 export const oauthAccessTokens = pgTable("oauthAccessTokens", {
-  id:          text("id").primaryKey(),
-  token:       text("token").unique(),
-  clientId:    text("client_id").notNull().references(() => oauthClients.clientId),
-  sessionId:   text("session_id").references(() => sessions.id, { onDelete: "set null" }),
-  userId:      text("user_id").references(() => users.id, { onDelete: "cascade" }),
-  referenceId: text("reference_id"),
-  refreshId:   text("refresh_id").references(() => oauthRefreshTokens.id, { onDelete: "set null" }),
-  expiresAt:   timestamp("expires_at", { mode: "date", precision: 3 }).notNull(),
-  createdAt:   timestamp("created_at", { mode: "date", precision: 3 }).default(authNow).notNull(),
-  scopes:      text("scopes").notNull(),                     // JSON string[]
+  id:                      text("id").primaryKey(),
+  token:                   text("token").unique(),
+  clientId:                text("client_id").notNull().references(() => oauthClients.clientId, { onDelete: "cascade" }),
+  sessionId:               text("session_id").references(() => sessions.id, { onDelete: "set null" }),
+  userId:                  text("user_id").references(() => users.id, { onDelete: "cascade" }),
+  referenceId:             text("reference_id"),
+  authorizationCodeId:     text("authorization_code_id"),
+  resources:               text("resources").array(),
+  requestedUserInfoClaims: text("requested_user_info_claims").array(),
+  refreshId:               text("refresh_id").references(() => oauthRefreshTokens.id, { onDelete: "set null" }),
+  expiresAt:               timestamp("expires_at", { mode: "date", precision: 3 }).notNull(),
+  createdAt:               timestamp("created_at", { mode: "date", precision: 3 }).default(authNow).notNull(),
+  revoked:                 timestamp("revoked", { mode: "date", precision: 3 }),
+  confirmation:            jsonb("confirmation"),
+  scopes:                  text("scopes").array().notNull(),
 }, (t) => ({
   userIdIdx:   index("oauthAccessTokens_user_id_idx").on(t.userId),
   clientIdIdx: index("oauthAccessTokens_client_id_idx").on(t.clientId),
 }));
 
 export const oauthConsents = pgTable("oauthConsents", {
-  id:          text("id").primaryKey(),
-  clientId:    text("client_id").notNull().references(() => oauthClients.clientId),
-  userId:      text("user_id").references(() => users.id, { onDelete: "cascade" }),
-  referenceId: text("reference_id"),
-  scopes:      text("scopes").notNull(),                     // JSON string[]
-  createdAt:   timestamp("created_at", { mode: "date", precision: 3 }).default(authNow).notNull(),
-  updatedAt:   timestamp("updated_at", { mode: "date", precision: 3 }).default(authNow).notNull(),
+  id:                      text("id").primaryKey(),
+  clientId:                text("client_id").notNull().references(() => oauthClients.clientId, { onDelete: "cascade" }),
+  userId:                  text("user_id").references(() => users.id, { onDelete: "cascade" }),
+  referenceId:             text("reference_id"),
+  resources:               text("resources").array(),
+  requestedUserInfoClaims: text("requested_user_info_claims").array(),
+  scopes:                  text("scopes").array().notNull(),
+  createdAt:               timestamp("created_at", { mode: "date", precision: 3 }).default(authNow).notNull(),
+  updatedAt:               timestamp("updated_at", { mode: "date", precision: 3 }).default(authNow).notNull(),
 }, (t) => ({
   userClientIdx: index("oauthConsents_user_client_idx").on(t.userId, t.clientId),
 }));

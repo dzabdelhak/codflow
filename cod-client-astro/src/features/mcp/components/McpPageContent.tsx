@@ -143,14 +143,14 @@ export function McpPageContent() {
     setPendingRevoke(revokeKey);
     try {
       if (forUser && conn.user) {
-        await revokeUserMcpConnection(conn.clientId, conn.user.id);
+        await revokeUserMcpConnection(conn.clientId, conn.user.id, conn.storeId);
         setTeamConnections((current) =>
           current.filter((item) => connectionKey(item) !== revokeKey),
         );
       } else {
-        await revokeMyMcpConnection(conn.clientId);
+        await revokeMyMcpConnection(conn.clientId, conn.storeId);
         setMyConnections((current) =>
-          current?.filter((item) => item.clientId !== conn.clientId) ?? current,
+          current?.filter((item) => connectionKey(item) !== revokeKey) ?? current,
         );
       }
       notify.success(t("my_connections.revoke_success"));

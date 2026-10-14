@@ -74,6 +74,9 @@ export function ConnectionCard({
                 {conn.user.name || conn.user.email}
               </span>
             )}
+            <span className="truncate text-[11px] font-semibold text-foreground/70">
+              {interp(t("my_connections.channel"), { name: conn.storeName })}
+            </span>
             <span className="text-[11px] font-semibold text-muted-foreground/40">
               {interp(t("my_connections.connected_at"), {
                 date: relativeTime(conn.connectedAt, t, locale),

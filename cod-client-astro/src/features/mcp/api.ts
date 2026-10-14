@@ -21,10 +21,10 @@ export async function listTeamMcpConnections() {
   return (await apiFetch<ListEnvelope<McpConnection>>("/api/mcp/team")).data;
 }
 
-export function revokeMyMcpConnection(clientId: string) {
-  return apiFetch<DataEnvelope<{ clientId: string; userId: string }>>(`/api/mcp/connections/${encodeURIComponent(clientId)}`, { method: "DELETE" });
+export function revokeMyMcpConnection(clientId: string, storeId: string) {
+  return apiFetch<DataEnvelope<{ clientId: string; userId: string }>>(`/api/mcp/connections/${encodeURIComponent(clientId)}?storeId=${encodeURIComponent(storeId)}`, { method: "DELETE" });
 }
 
-export function revokeUserMcpConnection(clientId: string, userId: string) {
-  return apiFetch<DataEnvelope<{ clientId: string; userId: string }>>(`/api/mcp/connections/${encodeURIComponent(clientId)}/users/${encodeURIComponent(userId)}`, { method: "DELETE" });
+export function revokeUserMcpConnection(clientId: string, userId: string, storeId: string) {
+  return apiFetch<DataEnvelope<{ clientId: string; userId: string }>>(`/api/mcp/connections/${encodeURIComponent(clientId)}/users/${encodeURIComponent(userId)}?storeId=${encodeURIComponent(storeId)}`, { method: "DELETE" });
 }

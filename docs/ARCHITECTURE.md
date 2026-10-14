@@ -194,27 +194,28 @@ interface CarrierAdapter {
 
 ## MCP Agent System
 
-AI agents connect via OAuth (RFC 9728 + dynamic client registration, backed
-by `@cloudflare/workers-oauth-provider`):
+AI agents connect via OAuth (RFC 9728 + dynamic client registration); the
+dashboard's better-auth OAuth provider is the authorization server:
 
 ```
 1. Agent discovers the authorization server
-   └─▶ GET /.well-known/oauth-protected-resource (RFC 9728)
+   └─▶ GET api/.well-known/oauth-protected-resource/mcp (RFC 9728)
+   └─▶ GET app/.well-known/oauth-authorization-server/api/auth
 
-2. Agent registers + authorizes (browser → dashboard login relay)
-   └─▶ POST /oauth/register (DCR) → /authorize (dashboard sign-in +
-        consent via MCP login-ticket) → token exchange
+2. Agent registers + authorizes (browser → dashboard)
+   └─▶ POST app/api/auth/oauth2/register (DCR) → /oauth2/authorize
+        → sign-in → /mcp/channel (pick the channel) → /mcp/consent
+        → POST /oauth2/token (JWT access token, store_id claim)
 
 3. Connect to MCP server
-   └─▶ POST /mcp (Streamable HTTP) with the opaque access token
+   └─▶ POST api/mcp (Streamable HTTP) with the access token
 
 4. Execute tools (orders, products, etc.)
-   └─▶ RBAC enforced per tool; dangerous tools require HMAC-sealed
-        confirmation (stateless elicitation)
+   └─▶ the channel's RLS scope; tools of the granted scopes only
 ```
 
-Access tokens live in the `OAUTH_KV` namespace; the MCP handler itself is
-stateless (no Durable Object sessions).
+Clients, consents and tokens live in PostgreSQL (`oauth*` tables); the MCP
+handler itself is stateless. See `docs/MCP.md`.
 
 ---
 

@@ -30,10 +30,10 @@ describe("mcp API adapters", () => {
 
   it("revokes self and team connections with URL-encoded IDs", async () => {
     seam.apiFetch.mockResolvedValue({ success: true, data: { clientId: "claude", userId: "user/1" } });
-    await revokeMyMcpConnection("claude/app");
-    expect(seam.apiFetch).toHaveBeenCalledWith("/api/mcp/connections/claude%2Fapp", { method: "DELETE" });
+    await revokeMyMcpConnection("claude/app", "store 1");
+    expect(seam.apiFetch).toHaveBeenCalledWith("/api/mcp/connections/claude%2Fapp?storeId=store%201", { method: "DELETE" });
 
-    await revokeUserMcpConnection("claude/app", "user/1");
-    expect(seam.apiFetch).toHaveBeenCalledWith("/api/mcp/connections/claude%2Fapp/users/user%2F1", { method: "DELETE" });
+    await revokeUserMcpConnection("claude/app", "user/1", "store 1");
+    expect(seam.apiFetch).toHaveBeenCalledWith("/api/mcp/connections/claude%2Fapp/users/user%2F1?storeId=store%201", { method: "DELETE" });
   });
 });

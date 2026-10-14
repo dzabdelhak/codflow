@@ -1,6 +1,6 @@
 /**
  * createCodMcpServer — scope-gated tool registration on the stateless
- * SDK v2 server, with identity read from the OAuthProvider's verified context.
+ * SDK v2 server, with the identity resolved from the verified access token.
  *
  * Contract:
  *   • registers exactly the tools `buildToolsForUser` returns for the identity
@@ -21,15 +21,12 @@ const mocks = vi.hoisted(() => ({
   logActivity: vi.fn(async () => {}),
   ACTIONS: { MCP_TOOL_CALLED: "mcp.tool_called", MCP_TOOL_DECLINED: "mcp.tool_declined" },
   buildToolsForUser: vi.fn(),
-  getDb: vi.fn(() => ({})),
-  getMcpAuthContext: vi.fn<() => { props: unknown } | undefined>(() => undefined),
 }));
 
 vi.mock("@/lib/activity", () => ({
   logActivity: mocks.logActivity,
   ACTIONS: mocks.ACTIONS,
 }));
-vi.mock("@/db", () => ({ getDb: mocks.getDb }));
 // TOOL_REGISTRY is stubbed for consumers that derive from it (annotations)
 // with an empty array — classification correctness is proven in
 // annotations.test.ts against the REAL registry; here we assert wiring only.
@@ -37,14 +34,12 @@ vi.mock("./registry", () => ({
   buildToolsForUser: mocks.buildToolsForUser,
   TOOL_REGISTRY: [],
 }));
-vi.mock("agents/mcp/server", () => ({
-  getMcpAuthContext: mocks.getMcpAuthContext,
-  createMcpHandler: vi.fn(),
-}));
 
 import { createCodMcpServer } from "./server-factory";
 import type { McpProps } from "./props";
 import type { Env } from "@/types/env";
+import type { Redis } from "@/platform/redis";
+import type { AppDb } from "../../../cod-shared/db/client";
 
 const props: McpProps = {
   userId: "u1",
@@ -52,9 +47,17 @@ const props: McpProps = {
   scopes: [],
   name: "Ada",
   email: "ada@example.com",
+  storeId: "s1",
+  merchantId: "m1",
+  clientId: "claude",
 };
 
-const env = { DB: {} } as unknown as Env;
+const env = {} as unknown as Env;
+const db = {} as unknown as AppDb;
+const counting = (count: (key: string) => number) => {
+  const incr = vi.fn(async (key: string) => count(key));
+  return { redis: { incr, expire: vi.fn(async () => true) } as unknown as Redis, incr };
+};
 
 interface RegisteredToolEntry {
   handler: (args: unknown, ctx: unknown) => unknown;
@@ -87,13 +90,10 @@ const dangerousArgs = { customerId: "c1" };
 describe("createCodMcpServer", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.getMcpAuthContext.mockReturnValue({ props });
   });
 
   it("registers zero tools without a verified identity", () => {
-    mocks.getMcpAuthContext.mockReturnValue(undefined);
-
-    const server = createCodMcpServer(env);
+    const server = createCodMcpServer(env, null, db, null);
 
     expect(registeredToolNames(server)).toEqual([]);
   });
@@ -104,7 +104,7 @@ describe("createCodMcpServer", () => {
       deleteCustomer: dangerousTool,
     });
 
-    const server = createCodMcpServer(env);
+    const server = createCodMcpServer(env, props, db, null);
 
     expect(registeredToolNames(server)).toEqual(["deleteCustomer", "listCustomers"]);
   });
@@ -115,15 +115,15 @@ describe("createCodMcpServer", () => {
       uploadLandingPageImage: safeTool,
     });
 
-    const server = createCodMcpServer(env);
+    const server = createCodMcpServer(env, props, db, null);
 
     const tools = (
       server as unknown as { _registeredTools: Record<string, Record<string, unknown>> }
     )._registeredTools;
     expect(tools["uploadLandingPageImage"]._meta).toEqual({
       "openai/fileParams": ["image"],
-      "openai/toolInvocation/invoking": "Starting background image upload…",
-      "openai/toolInvocation/invoked": "Upload job created — poll status until complete",
+      "openai/toolInvocation/invoking": "Uploading the image…",
+      "openai/toolInvocation/invoked": "Image added to the landing page",
     });
     expect(tools["listCustomers"]._meta).toBeUndefined();
   });
@@ -135,7 +135,7 @@ describe("createCodMcpServer", () => {
       uploadLandingPageImage: safeTool,
     });
 
-    const server = createCodMcpServer(env);
+    const server = createCodMcpServer(env, props, db, null);
 
     const tools = (
       server as unknown as {
@@ -165,7 +165,7 @@ describe("createCodMcpServer", () => {
       someUnschemaTool: safeTool,
     });
 
-    const server = createCodMcpServer(env);
+    const server = createCodMcpServer(env, props, db, null);
 
     const tools = (
       server as unknown as { _registeredTools: Record<string, { outputSchema?: unknown }> }
@@ -177,7 +177,7 @@ describe("createCodMcpServer", () => {
   it("executes destructive tools directly through the wrapper — client-side confirmation is the human gate", async () => {
     mocks.buildToolsForUser.mockReturnValue({ deleteCustomer: dangerousTool });
 
-    const server = createCodMcpServer(env);
+    const server = createCodMcpServer(env, props, db, null);
     const result = await registeredHandler(server, "deleteCustomer")(dangerousArgs, makeCtx());
 
     expect(dangerousTool.execute).toHaveBeenCalledWith(dangerousArgs, { toolCallId: "" });
@@ -194,7 +194,7 @@ describe("createCodMcpServer", () => {
   it("runs safe tools through the execution wrapper", async () => {
     mocks.buildToolsForUser.mockReturnValue({ listCustomers: safeTool });
 
-    const server = createCodMcpServer(env);
+    const server = createCodMcpServer(env, props, db, null);
     const result = await registeredHandler(server, "listCustomers")({}, makeCtx());
 
     expect(safeTool.execute).toHaveBeenCalledWith({}, { toolCallId: "" });
@@ -211,7 +211,7 @@ describe("createCodMcpServer", () => {
   it("threads client hints (subject/session) into the audit row", async () => {
     mocks.buildToolsForUser.mockReturnValue({ listCustomers: safeTool });
 
-    const server = createCodMcpServer(env);
+    const server = createCodMcpServer(env, props, db, null);
     const ctx = makeCtx();
     (ctx.mcpReq as unknown as Record<string, unknown>)._meta = {
       "openai/subject": "sub-anon-1",
@@ -231,13 +231,9 @@ describe("createCodMcpServer", () => {
 
   it("blocks a tool call over the rate limit, before any execution, with a model-readable retry hint", async () => {
     mocks.buildToolsForUser.mockReturnValue({ listCustomers: safeTool });
-    const kvStub = {
-      get: async () => "9999",
-      put: async () => undefined,
-    };
-    const envWithKv = { DB: {}, RATE_LIMIT: kvStub } as unknown as Env;
+    const { redis } = counting(() => 9999);
 
-    const server = createCodMcpServer(envWithKv);
+    const server = createCodMcpServer(env, props, db, redis);
     const result = (await registeredHandler(server, "listCustomers")(
       {},
       makeCtx(),
@@ -258,18 +254,16 @@ describe("createCodMcpServer", () => {
 
   it("rate-limits on the client subject hint when present, not the user id", async () => {
     mocks.buildToolsForUser.mockReturnValue({ listCustomers: safeTool });
-    const get = vi.fn(async (key: string) => (key.includes("sub-anon") ? "9999" : null));
-    const kvStub = { get, put: async () => undefined };
-    const envWithKv = { DB: {}, RATE_LIMIT: kvStub } as unknown as Env;
+    const { redis, incr } = counting((key) => (key.includes("sub-anon") ? 9999 : 1));
 
-    const server = createCodMcpServer(envWithKv);
+    const server = createCodMcpServer(env, props, db, redis);
     const ctx = makeCtx();
     (ctx.mcpReq as unknown as Record<string, unknown>)._meta = { "openai/subject": "sub-anon" };
 
     const result = (await registeredHandler(server, "listCustomers")({}, ctx)) as {
       isError?: boolean;
     };
-    expect(get).toHaveBeenCalledWith(expect.stringContaining("sub-anon"));
+    expect(incr).toHaveBeenCalledWith(expect.stringContaining("sub-anon"));
     expect(result.isError).toBe(true);
   });
 });

@@ -1,3 +1,4 @@
+import type { Redis } from "@/platform/redis";
 /**
  * Per-request client context and the MCP tool-call rate limit built on it.
  *
@@ -10,10 +11,8 @@
  *
  * The rate limit implements the MCP spec's security requirement ("servers
  * MUST rate limit tool invocations") as a coarse, fail-open abuse guard over
- * the already-bound RATE_LIMIT KV namespace: a fixed window counter per
- * subject (falling back to the verified user id when no client hint exists).
- * KV's eventual consistency and 1-write/sec-per-key ceiling make the count
- * approximate — deliberately so: a KV hiccup or write race must never block a
+ * Redis: a fixed window counter per subject (falling back to the verified
+ * user id when no client hint exists). A Redis hiccup must never block a
  * legitimate tool call, only sustained abuse gets stopped.
  */
 
@@ -42,34 +41,21 @@ export type RateLimitResult =
   | { allowed: false; retryAfterSeconds: number };
 
 /**
- * Coarse fixed-window counter in KV. Fail-open by design: an absent binding
- * or any KV error allows the call — the scope gate and audit trail remain the
+ * Coarse fixed-window counter in Redis. Fail-open by design: no Redis or any
+ * Redis error allows the call — the scope gate and audit trail remain the
  * security boundary; this guard only stops sustained flooding.
  */
-export async function checkMcpRateLimit(
-  kv: KVNamespace | undefined,
-  subject: string,
-): Promise<RateLimitResult> {
-  if (!kv) return { allowed: true };
-
+export async function checkMcpRateLimit(redis: Redis | null, subject: string): Promise<RateLimitResult> {
+  if (!redis) return { allowed: true };
   const nowSeconds = Math.floor(Date.now() / 1000);
   const windowIndex = Math.floor(nowSeconds / RATE_LIMIT_WINDOW_SECONDS);
   const key = `mcp:rl:${subject}:${windowIndex}`;
-
   try {
-    const current = await kv.get(key);
-    const count = current !== null ? Number(current) : 0;
-    if (!Number.isFinite(count) || count < 0) return { allowed: true };
-    if (count >= RATE_LIMIT_MAX_CALLS) {
-      const elapsedInSecondsWindow = nowSeconds % RATE_LIMIT_WINDOW_SECONDS;
-      return {
-        allowed: false,
-        retryAfterSeconds: RATE_LIMIT_WINDOW_SECONDS - elapsedInSecondsWindow,
-      };
+    const count = await redis.incr(key);
+    if (count === 1) await redis.expire(key, RATE_LIMIT_WINDOW_SECONDS * 2);
+    if (count > RATE_LIMIT_MAX_CALLS) {
+      return { allowed: false, retryAfterSeconds: RATE_LIMIT_WINDOW_SECONDS - (nowSeconds % RATE_LIMIT_WINDOW_SECONDS) };
     }
-    await kv.put(key, String(count + 1), {
-      expirationTtl: RATE_LIMIT_WINDOW_SECONDS * 2,
-    });
     return { allowed: true };
   } catch {
     return { allowed: true };

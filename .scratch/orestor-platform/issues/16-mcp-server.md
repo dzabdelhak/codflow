@@ -4,8 +4,8 @@
 
 **Blocked by:** 03
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] An MCP client completes OAuth against the platform and lists the products of the chosen channel
-- [ ] A token for channel A cannot read channel B
-- [ ] No Cloudflare OAuth provider or KV code remains
+- [x] An MCP client completes OAuth against the platform and lists the products of the chosen channel
+- [x] A token for channel A cannot read channel B
+- [x] No Cloudflare OAuth provider or KV code remains

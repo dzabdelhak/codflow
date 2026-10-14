@@ -1,0 +1,10 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import McpChannelApp from "@/features/mcp/authorize/McpChannelApp";
+---
+
+<BaseLayout title="CodFlow">
+  <main class="min-h-screen">
+    <McpChannelApp client:only="react" />
+  </main>
+</BaseLayout>

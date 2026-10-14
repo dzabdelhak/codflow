@@ -125,9 +125,7 @@ wrangler secret put R2_SECRET_ACCESS_KEY
 |----------|---------|
 | `STORE_API_KEY` | Shared secret the storefront sends as `X-Store-API-Key` (SHA-256 hashed at rest) |
 | `BETTER_AUTH_SECRET` | Better Auth signing secret — must match cod-client-astro's |
-| `MCP_LOGIN_TICKET_SECRET` | HMAC key for the MCP OAuth login-ticket relay — must match cod-client-astro's |
 | `MCP_REQUEST_STATE_KEY` | HMAC key sealing stateless MCP elicitation state |
-| `COOKIE_ENCRYPTION_KEY` | Cookie-encryption key for the OAuth consent flow |
 | `CF_ACCOUNT_ID` | Cloudflare account id — builds the R2 S3 endpoint |
 | `R2_ACCESS_KEY_ID` | R2 API token access key (presigned image uploads) |
 | `R2_SECRET_ACCESS_KEY` | R2 API token secret |
@@ -184,11 +182,11 @@ Public routes: `/`, `/health`, `/images`, `/api` (OpenAPI spec + docs),
 
 ### MCP remote server
 `src/mcp/` implements an MCP (Model Context Protocol) server so AI agents can
-manage the store, fronted by `@cloudflare/workers-oauth-provider` (discovery,
-dynamic client registration, tokens, revocation; state in `OAUTH_KV`). The
-dashboard's sign-in sessions mint the access tokens via the login-ticket relay
-(`/authorize`), and dangerous tools require HMAC-sealed stateless
-confirmation. The tool factories are gated by RBAC scopes.
+manage one channel. The dashboard's better-auth OAuth provider authorises the
+agent for the channel the merchant picks; `/mcp` verifies the access token
+against the dashboard's JWKS and the stored consent, then runs the request in
+that channel's RLS scope with the tools of the granted scopes. See
+`docs/MCP.md`.
 
 ### Server-side conversions
 `src/tracking/` queues one conversion per configured provider (Meta, TikTok,

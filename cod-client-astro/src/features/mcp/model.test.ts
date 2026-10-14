@@ -17,6 +17,8 @@ const connection = (overrides: Partial<McpConnection> = {}): McpConnection => ({
   clientName: "Claude",
   clientIconUrl: null,
   clientHomepageUrl: null,
+  storeId: "s1",
+  storeName: "Shop",
   scopes: ["orders:read"],
   connectedAt: "2026-08-26T00:00:00.000Z",
   lastUsedAt: null,
@@ -51,8 +53,8 @@ describe("mcp model", () => {
   });
 
   it("builds a stable row key including the owner for team rows", () => {
-    expect(connectionKey(connection())).toBe("claude");
-    expect(connectionKey(connection({ user: { id: "staff-1", name: "S", email: "s@b.dz" } }))).toBe("staff-1:claude");
+    expect(connectionKey(connection())).toBe("claude:s1");
+    expect(connectionKey(connection({ user: { id: "staff-1", name: "S", email: "s@b.dz" } }))).toBe("staff-1:claude:s1");
   });
 
   it("maps revoke failures to the localized message", () => {

@@ -1,31 +1,24 @@
 /**
- * McpProps — the per-request identity snapshot handed to the MCP server.
- *
- * Populated at OAuth `completeAuthorization` time by the
- * `@cloudflare/workers-oauth-provider` default handler and carried into the
- * stateless SDK v2 handler as the provider's application props, read via
- * `getMcpAuthContext()` inside `createCodMcpServer` (`./server-factory.ts`).
- * Every tool execution reads from these fields:
- *   • `scopes` — decides which tools got registered for this request
- *     (see `./registry.ts buildToolsForUser`)
- *   • `role`   — admin wildcard bypass
+ * McpProps — the per-request identity handed to the MCP server, resolved by
+ * `./access.ts` from a verified access token, the merchant's consent for the
+ * token's channel and the user's current scopes.
+ *   • `scopes` — the tools registered for this request (`./registry.ts`)
+ *   • `storeId` / `merchantId` — the RLS scope every tool call runs in
  *   • `userId` + `name` + `email` — audit-log attribution
- *
- * Stable shape intentional: changes here cascade to the registry, server
- * factory, activity log, and every ai-tools factory call site.
  */
 export interface McpProps extends Record<string, unknown> {
   /** Better Auth user UUID. */
   userId: string;
-  /** Admin or staff; admins bypass every scope check. */
+  /** Admin or staff; tools are gated by `scopes` alone. */
   role: "admin" | "staff";
-  /**
-   * Scopes granted to this OAuth grant. Never includes "*" — admin bypass uses
-   * `role`, not a wildcard scope.
-   */
+  /** Scopes the token carries, the merchant consented to and the user still holds. Never "*". */
   scopes: string[];
   /** Display name for audit log attribution. May be empty string if user row lacks it. */
   name: string;
   /** User email — useful for log correlation with the existing activity-log shape. */
   email: string;
+  /** The channel the merchant authorised; every tool call runs pinned to it. */
+  storeId: string;
+  merchantId: string;
+  clientId: string;
 }

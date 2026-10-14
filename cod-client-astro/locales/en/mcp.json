@@ -18,6 +18,7 @@
     "empty_description": "When you paste your MCP URL into an AI app, your connection will appear here.",
     "active": "Active",
     "inactive": "Inactive",
+    "channel": "Channel: {name}",
     "connected_at": "Connected {date}",
     "last_used": "Last used {when}",
     "never_used": "Never used yet",
@@ -59,5 +60,20 @@
     "hours_ago_other": "{count} hours ago",
     "days_ago_one": "{count} day ago",
     "days_ago_other": "{count} days ago"
+  },
+  "authorize": {
+    "channel_title": "Which channel may this AI agent manage?",
+    "channel_subtitle": "The connection works on one channel only. Connect again to give it another one.",
+    "no_channel": "Your account has no channel yet.",
+    "type_store": "Online store",
+    "type_landing": "Landing page",
+    "consent_title": "Allow {app} to act for you?",
+    "consent_channel": "On the channel {channel}.",
+    "change_channel": "Change",
+    "permissions": "What it may do",
+    "no_permission": "You have none of the permissions this app asks for.",
+    "allow": "Allow",
+    "deny": "Deny",
+    "error": "Something went wrong. Start the connection again from your AI app."
   }
 }

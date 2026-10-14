@@ -46,12 +46,14 @@ const orderDetailFallback = {
 };
 
 // Static-first: every page prerenders at build time except routes that opt out
-// with `export const prerender = false` (/api/auth/*, the MCP login relay,
-// the reset-password link, and the SPA fallback).
+// with `export const prerender = false` (/api/auth/*, the MCP authorization
+// pages, the reset-password link, and the SPA fallback).
 export default defineConfig({
   output: "static",
   // No Astro.session usage (auth is better-auth + Redis).
   session: false,
+  // src/middleware.ts applies the same check, minus the OAuth token endpoints.
+  security: { checkOrigin: false },
   env: {
     schema: {
       PUBLIC_API_URL: envField.string({ context: "client", access: "public" }),

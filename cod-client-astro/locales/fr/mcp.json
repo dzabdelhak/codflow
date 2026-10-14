@@ -18,6 +18,7 @@
     "empty_description": "Lorsque vous collerez votre URL MCP dans une application IA, votre connexion apparaîtra ici.",
     "active": "Actif",
     "inactive": "Inactif",
+    "channel": "Canal : {name}",
     "connected_at": "Connecté {date}",
     "last_used": "Dernière utilisation {when}",
     "never_used": "Jamais utilisé",
@@ -59,5 +60,20 @@
     "hours_ago_other": "il y a {count} heures",
     "days_ago_one": "il y a {count} jour",
     "days_ago_other": "il y a {count} jours"
+  },
+  "authorize": {
+    "channel_title": "Quel canal cet agent IA peut-il gérer ?",
+    "channel_subtitle": "La connexion ne porte que sur un canal. Connectez-vous à nouveau pour lui en donner un autre.",
+    "no_channel": "Votre compte n'a encore aucun canal.",
+    "type_store": "Boutique en ligne",
+    "type_landing": "Landing page",
+    "consent_title": "Autoriser {app} à agir pour vous ?",
+    "consent_channel": "Sur le canal {channel}.",
+    "change_channel": "Changer",
+    "permissions": "Ce qu'il peut faire",
+    "no_permission": "Vous n'avez aucune des permissions que demande cette application.",
+    "allow": "Autoriser",
+    "deny": "Refuser",
+    "error": "Une erreur s'est produite. Recommencez la connexion depuis votre application IA."
   }
 }

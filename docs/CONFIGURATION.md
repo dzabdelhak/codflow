@@ -66,7 +66,6 @@ id = "your-kv-id"  # From: wrangler kv namespace create
 **Required:**
 ```bash
 wrangler secret put BETTER_AUTH_SECRET   # MUST match cod-client-astro
-wrangler secret put MCP_LOGIN_TICKET_SECRET  # MUST match cod-client-astro (MCP login relay)
 ```
 
 **For R2 image uploads:**
@@ -140,14 +139,12 @@ build and refuses to upload a bundle that still contains a loopback URL.
 
 ```bash
 wrangler secret put BETTER_AUTH_SECRET        # MUST match cod-server
-wrangler secret put MCP_LOGIN_TICKET_SECRET   # MUST match cod-server
 ```
 
 ### .dev.vars (local development)
 
 ```env
 BETTER_AUTH_SECRET=<your-generated-secret>
-# optional: MCP_LOGIN_TICKET_SECRET (only for MCP OAuth testing)
 ```
 
 ---
@@ -188,7 +185,6 @@ COD_SERVER_URL=http://localhost:8787
 | Secret | Where | Must Match |
 | :--- | :--- | :--- |
 | `BETTER_AUTH_SECRET` | cod-server + cod-client-astro | **YES** (must be identical) |
-| `MCP_LOGIN_TICKET_SECRET` | cod-server + cod-client-astro | **YES** (must be identical) |
 | `STORE_API_KEY` | Seed script → DB → cod-astro | **YES** (storefront uses seeded hash) |
 
 ---

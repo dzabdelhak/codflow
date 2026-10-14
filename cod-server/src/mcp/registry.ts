@@ -1,3 +1,4 @@
+import type { AppDb } from "../../../cod-shared/db/client";
 /**
  * Scope-gated tool registry.
  *
@@ -27,7 +28,6 @@
 import type { Tool } from "ai";
 import { hasPermission } from "../../../cod-shared/rbac/utils";
 import { SCOPES } from "../../../cod-shared/rbac/scopes";
-import { getDb } from "@/db";
 import type { Env } from "@/types/env";
 import type { McpProps } from "./props";
 
@@ -51,7 +51,7 @@ import { getCustomerTagTools }   from "@/endpoints/customer-tags/ai-tools";
 import { getOrderTools }         from "@/endpoints/orders/ai-tools";
 
 type ToolFactory = (
-  db: ReturnType<typeof getDb>,
+  db: AppDb,
   env: Env,
   props: McpProps,
 ) => Record<string, Tool>;
@@ -408,13 +408,11 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
  * Pure function over `TOOL_REGISTRY` + caller's scopes — safe to call
  * many times; `getDb` returns the same Drizzle wrapper for a given env.
  */
-export function buildToolsForUser(env: Env, props: McpProps): Record<string, Tool> {
-  const db = getDb(env.DATABASE.platform);
-  const isAdmin = props.role === "admin";
+export function buildToolsForUser(env: Env, props: McpProps, db: AppDb): Record<string, Tool> {
   const out: Record<string, Tool> = {};
 
   for (const entry of TOOL_REGISTRY) {
-    const allowed = isAdmin || entry.requires.every((s) => hasPermission(props.scopes, s));
+    const allowed = entry.requires.every((s) => hasPermission(props.scopes, s));
     if (!allowed) continue;
     Object.assign(out, entry.build(db, env, props));
   }

@@ -1,5 +1,5 @@
 import { useState, type SyntheticEvent } from "react";
-import { authClient } from "@/lib/auth/client";
+import { authClient, oauthRedirect } from "@/lib/auth/client";
 import { postSignInTarget } from "@/lib/gate";
 import { notify } from "@/lib/notify";
 import { useT } from "@/i18n/react";
@@ -17,7 +17,7 @@ export function SignInForm({ next }: { next?: string | null }) {
     setBusy(true);
     setError(null);
     try {
-      const { error: authError } = await authClient.signIn.email({ email, password });
+      const { data, error: authError } = await authClient.signIn.email({ email, password });
       if (authError) {
         const message =
           authError.code === "INVALID_EMAIL_OR_PASSWORD"
@@ -26,6 +26,11 @@ export function SignInForm({ next }: { next?: string | null }) {
         setError(message);
         notify.error(message);
         setBusy(false);
+        return;
+      }
+      const oauthNext = oauthRedirect(data);
+      if (oauthNext) {
+        window.location.href = oauthNext;
         return;
       }
       notify.flashSuccess(t("sign_in_success"));

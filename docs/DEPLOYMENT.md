@@ -151,7 +151,6 @@ developer machine does not.
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"   # BETTER_AUTH_SECRET
 node -e "console.log(require('crypto').randomBytes(24).toString('base64url'))" # STORE_API_KEY
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"       # MCP_LOGIN_TICKET_SECRET
 ```
 
 **Set secrets (use temp file for security):**
@@ -163,16 +162,12 @@ echo "<BETTER_AUTH_SECRET>" > /tmp/secret.txt && chmod 600 /tmp/secret.txt
 wrangler secret put BETTER_AUTH_SECRET < /tmp/secret.txt
 echo "<STORE_API_KEY>" > /tmp/secret.txt && chmod 600 /tmp/secret.txt
 wrangler secret put STORE_API_KEY < /tmp/secret.txt
-echo "<MCP_LOGIN_TICKET_SECRET>" > /tmp/secret.txt && chmod 600 /tmp/secret.txt
-wrangler secret put MCP_LOGIN_TICKET_SECRET < /tmp/secret.txt
 rm /tmp/secret.txt
 
-# Dashboard (BETTER_AUTH_SECRET + MCP_LOGIN_TICKET_SECRET MUST match backend)
+# Dashboard (BETTER_AUTH_SECRET MUST match backend)
 cd ../cod-client-astro
 echo "<BETTER_AUTH_SECRET>" > /tmp/secret.txt && chmod 600 /tmp/secret.txt
 wrangler secret put BETTER_AUTH_SECRET < /tmp/secret.txt
-echo "<MCP_LOGIN_TICKET_SECRET>" > /tmp/secret.txt && chmod 600 /tmp/secret.txt
-wrangler secret put MCP_LOGIN_TICKET_SECRET < /tmp/secret.txt
 rm /tmp/secret.txt
 
 # Storefront
@@ -182,9 +177,8 @@ wrangler secret put STORE_API_KEY < /tmp/secret.txt
 rm /tmp/secret.txt
 ```
 
-**Critical:** `BETTER_AUTH_SECRET` and `MCP_LOGIN_TICKET_SECRET` must be
-identical in both cod-server and cod-client-astro (they share the auth D1 and
-the MCP login-ticket relay).
+**Critical:** `BETTER_AUTH_SECRET` must be identical in both cod-server and
+cod-client-astro.
 
 ---
 

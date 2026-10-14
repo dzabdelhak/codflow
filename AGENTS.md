@@ -4,18 +4,18 @@ CodFlow is a cash-on-delivery (COD) e-commerce platform for Algeria. Monorepo,
 TypeScript. It is moving from Cloudflare to self-hosted Node.js + PostgreSQL
 (ADR-0003): the API, the storefront and the dashboard run on Node +
 PostgreSQL, images on S3-compatible storage, background jobs on a PostgreSQL
-job queue; MCP still carries Cloudflare code until its ticket in
-`.scratch/orestor-platform/issues/` ports it.
+job queue, the MCP server's OAuth on the dashboard's better-auth.
 
 ## Layout
 
 - `cod-server/` — API (Hono on Node.js, entry `src/node.ts`, app `src/app.ts`).
   Merchant `/api/*`, public `/store/*`, `/webhooks`, `/images`. PostgreSQL via
   Drizzle; one store (channel) per request, isolated by Row-Level Security
-  (`src/db/scope.ts`). `/mcp` returns with ticket 16.
+  (`src/db/scope.ts`). `/mcp` serves AI agents (`docs/MCP.md`).
 - `cod-client-astro/` — the merchant dashboard (Astro 7, Node adapter).
   Prerendered static pages + server routes for `/api/auth/*` (better-auth on
-  PostgreSQL + Redis), `/mcp/oauth/login` and the SPA fallback; React
+  PostgreSQL + Redis; also the MCP OAuth server), `/mcp/channel`,
+  `/mcp/consent` and the SPA fallback; React
   islands fetch data from cod-server through `src/lib/api.ts` (the only module
   allowed to call the API). UI strings come from `locales/{ar,en,fr}` via
   `useT(namespace)` — the i18n guard test enforces three-locale parity.
@@ -252,7 +252,7 @@ other is how these drift.
   server settings from the environment (`cod-client-astro/.env.example`).
   On `app.<domain>` the browser derives the API as `api.<domain>`, same scheme
   and port (`src/lib/api.ts`).
-- `BETTER_AUTH_SECRET` and `MCP_LOGIN_TICKET_SECRET` must be **identical** on
+- `BETTER_AUTH_SECRET` must be **identical** on
   cod-server and cod-client-astro. cod-server verifies the dashboard's JWT
   against its JWKS; set `BETTER_AUTH_JWKS_URL` when the public auth URL is
   not reachable from the API (inside Docker: `http://dashboard:4321/api/auth/jwks`).
@@ -260,11 +260,19 @@ other is how these drift.
   user id) and `jwkss.alg/crv` (in the baseline). Its secondary storage is
   Redis (`cod-client-astro/src/lib/auth/redis-storage.ts`), which must keep
   the `increment` method the rate limiter requires.
-- OAuth provider tables predate better-auth 1.7: `oauthClients`,
-  `oauthAccessTokens`, `oauthRefreshTokens`, `oauthConsents` are missing some
-  1.7 columns, and `oauthResource(s)`, `oauthClientResource(s)`,
-  `oauthClientAssertion(s)` do not exist yet. Core auth + dashboard work;
-  MCP client token flows may need that alignment before heavy use.
+- **An MCP connection is one user, one client, one channel.** The dashboard's
+  `@better-auth/oauth-provider` is the authorization server: after sign-in
+  the merchant picks the channel (`/mcp/channel`, kept in Redis for the
+  session) and consents; the consent's `reference_id` and the access token's
+  `store_id` claim are that channel. cod-server (`src/mcp/access.ts`) accepts
+  a token only with `aud` = `${WORKER_SELF_URL}/mcp`, `iss` =
+  `${BETTER_AUTH_URL}/api/auth`, a live consent row and an active user of the
+  channel's merchant, and grants token ∩ consent ∩ the user's current scopes —
+  admins included. Every MCP request runs in `withStore` on the app pool, so
+  RLS confines tools to that channel. The `oauth*` tables are platform-only
+  (revoked from `codflow_app`). Revoking deletes the consent, which stops the
+  next request. A dashboard session JWT is refused at `/mcp`, and an access
+  token is refused as a session. See `docs/MCP.md`.
 - The dashboard and the storefront both default to port **4321** — run
   one on `--port 4322` when developing both at once.
 - Inbound webhooks exist only for **Yalidine** and **ZR Express**. NOEST and

@@ -204,18 +204,15 @@ vi.mock("@/endpoints/orders/ai-tools", () => ({
   ),
 }));
 
-// getDb is called by buildToolsForUser but the stub factories ignore it.
-vi.mock("@/db", () => ({
-  getDb: () => ({} as never),
-}));
-
 import { buildToolsForUser } from "./registry";
 import { getLandingPageTools } from "@/endpoints/landing-pages/ai-tools";
-import { SCOPES } from "../../../cod-shared/rbac/scopes";
+import { ALL_SCOPES, SCOPES } from "../../../cod-shared/rbac/scopes";
 import type { McpProps } from "./props";
 import type { Env } from "@/types/env";
+import type { AppDb } from "../../../cod-shared/db/client";
 
 const env = {} as Env;
+const db = {} as AppDb;
 
 function makeProps(overrides: Partial<McpProps>): McpProps {
   return {
@@ -224,12 +221,15 @@ function makeProps(overrides: Partial<McpProps>): McpProps {
     scopes: [],
     name: "",
     email: "",
+    storeId: "s1",
+    merchantId: "m1",
+    clientId: "claude",
     ...overrides,
   };
 }
 
 function names(props: McpProps): string[] {
-  return Object.keys(buildToolsForUser(env, props)).sort();
+  return Object.keys(buildToolsForUser(env, props, db)).sort();
 }
 
 // The full union of every tool in TOOL_REGISTRY, alpha-sorted.
@@ -333,8 +333,14 @@ const ALL_TOOLS = [
 ];
 
 describe("buildToolsForUser — scope gating", () => {
-  it("admin sees every registered tool (bypasses scope checks)", () => {
-    expect(names(makeProps({ role: "admin" }))).toEqual(ALL_TOOLS);
+  it("every scope sees every registered tool", () => {
+    expect(names(makeProps({ scopes: [...ALL_SCOPES] }))).toEqual(ALL_TOOLS);
+  });
+
+  it("an admin sees only the tools of the scopes the connection was granted", () => {
+    expect(names(makeProps({ role: "admin", scopes: [] }))).toEqual([]);
+    expect(names(makeProps({ role: "admin", scopes: [SCOPES.CUSTOMERS_READ] }))).toContain("listCustomers");
+    expect(names(makeProps({ role: "admin", scopes: [SCOPES.CUSTOMERS_READ] }))).not.toContain("deleteCustomer");
   });
 
   it("empty-scope staff sees zero tools", () => {
@@ -422,10 +428,10 @@ describe("buildToolsForUser — scope gating", () => {
 
   it("passes (env, props) through to factory build calls — identity and bindings reach tool domains", () => {
     const props = makeProps({ scopes: [SCOPES.LANDING_PAGES_MANAGE] });
-    buildToolsForUser(env, props);
+    buildToolsForUser(env, props, db);
 
     expect(vi.mocked(getLandingPageTools)).toHaveBeenCalledWith(
-      expect.anything(),
+      db,
       env,
       props,
     );
