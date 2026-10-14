@@ -165,8 +165,12 @@ services:
     image: codflow/backup:${CODFLOW_RELEASE:-latest}
     build: { context: ./backup }
     restart: unless-stopped
-    env_file: [ "${CODFLOW_SECRETS:-/etc/codflow/secrets.env}" ]
+    env_file:
+      - path: ${CODFLOW_BACKUP_ENV:-/etc/codflow/backup.env}
+        required: false
     environment:
+      BACKUP_REMOTE: ${BACKUP_REMOTE:-}
+      DISK_ALERT_PERCENT: ${DISK_ALERT_PERCENT:-85}
       PGHOST: db
       PGUSER: codflow
       PGPASSWORD: ${POSTGRES_PASSWORD:?}
@@ -179,7 +183,7 @@ services:
       KUMA_PUSH_URL: http://kuma:3001/api/push
     volumes:
       - backups:/backups
-      - /:/host:ro
+      - /var/lib/codflow/disk-probe:/host-root:ro
     depends_on:
       db: { condition: service_healthy }
     logging: *logging

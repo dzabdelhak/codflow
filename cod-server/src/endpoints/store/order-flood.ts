@@ -4,6 +4,7 @@ import type pg from "pg";
 import type { AppDb } from "../../../../cod-shared/db/client";
 import { blockedOrderAttempts, type BlockedOrderReason } from "../../../../cod-shared/db/schema";
 import { allocateOrderNumber } from "../../../../cod-shared/queries/order-numbers";
+import { isoText } from "../../../../cod-shared/db/text-time";
 
 export const DEFAULT_IP_CEILING_PER_HOUR = 20;
 export const IP_HARD_CEILING_FACTOR = 3;
@@ -34,8 +35,8 @@ export async function orderFloodVerdict(db: AppDb, check: FloodCheck): Promise<F
   const { rows } = await db.execute<{ blockedPhone: boolean; phoneRecent: boolean; deviceRecent: boolean; ipOrders: number }>(sql`
     with cutoff as (
       select w,
-             to_char((now() - make_interval(mins => w)) at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as since,
-             to_char((now() - interval '1 hour') at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as hour_ago
+             ${sql.raw(isoText("now() - make_interval(mins => w)"))} as since,
+             ${sql.raw(isoText("now() - interval '1 hour'"))} as hour_ago
         from (select coalesce((select order_limit_minutes from "stores" where id = current_setting('app.store_id')), 10) as w) s
     )
     select

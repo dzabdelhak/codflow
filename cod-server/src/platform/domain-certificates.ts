@@ -1,5 +1,6 @@
 import type pg from "pg";
 import type { CertificateStatus } from "./tls-probe";
+import { isoText } from "../../../cod-shared/db/text-time";
 
 export const CERTIFICATE_EXPIRY_WARNING_DAYS = 7;
 
@@ -21,9 +22,9 @@ export async function checkDomainCertificates(
   { requireTrusted, limit = 200, concurrency = 5 }: { requireTrusted: boolean; limit?: number; concurrency?: number },
 ): Promise<{ checked: number; failing: number }> {
   const { rows } = await platform.query<{ hostname: string }>(
-    `select hostname from store_domains
-      where status = 'verified'
-      order by certificate_checked_at nulls first, hostname
+    `select d.hostname from store_domains d join stores s on s.id = d.store_id
+      where d.status = 'verified' and s.status <> 'archived'
+      order by d.certificate_checked_at nulls first, d.hostname
       limit $1`,
     [limit],
   );
@@ -36,7 +37,7 @@ export async function checkDomainCertificates(
         await platform.query(
           `update store_domains
               set certificate_status = $2, certificate_error = $3,
-                  certificate_checked_at = to_char(now() at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
+                  certificate_checked_at = ${isoText("now()")}
             where hostname = $1`,
           [hostname, verdict.status, verdict.error],
         );

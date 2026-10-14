@@ -28,6 +28,8 @@ export interface Env {
   CUSTOM_DOMAIN_TARGET?: string;
   /** Comma-separated IPv4 addresses an apex custom domain's A records point at. */
   CUSTOM_DOMAIN_IPV4?: string;
+  /** Where channel certificates are probed (Caddy); defaults to CUSTOM_DOMAIN_TARGET / CUSTOM_DOMAIN_IPV4. */
+  TLS_PROBE_HOST?: string;
   /** DNS lookups for domain verification, built by src/node.ts (DNS_SERVERS optional). */
   DOMAIN_DNS: DnsLookup;
   /** Reads the HTTPS certificate a domain is served with, built by src/node.ts (TLS_PROBE_HOST/PORT optional). */

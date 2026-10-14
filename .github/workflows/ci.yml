@@ -91,7 +91,7 @@ jobs:
       - name: compose file resolves with the secrets template
         run: |
           sed -E 's/^([A-Z0-9_]*(PASSWORD|SECRET|KEY)[A-Z0-9_]*)=$/\1=ci-0123456789abcdef0123456789abcdef/' deploy/secrets.env.example > "$RUNNER_TEMP/secrets.env"
-          CODFLOW_SECRETS="$RUNNER_TEMP/secrets.env" docker compose -f deploy/compose.yml --env-file "$RUNNER_TEMP/secrets.env" config -q
+          docker compose -f deploy/compose.yml --env-file "$RUNNER_TEMP/secrets.env" config -q
       - name: Caddyfile is valid
         run: >-
           docker run --rm -v "$PWD/deploy/caddy:/etc/caddy:ro"

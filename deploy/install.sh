@@ -31,7 +31,9 @@ done
   || die "BASE_DOMAIN is still the example value"
 [ -n "$(secret BACKUP_REMOTE)" ] || echo "! BACKUP_REMOTE is empty: dumps stay on this server and the backup monitor stays red"
 
-export CODFLOW_SECRETS=$SECRETS
+CODFLOW_BACKUP_ENV="$(dirname "$SECRETS")/backup.env"
+(umask 077 && { grep -E '^RCLONE_CONFIG_[A-Z0-9_]+=' "$SECRETS" || true; } > "$CODFLOW_BACKUP_ENV")
+export CODFLOW_BACKUP_ENV
 CODFLOW_RELEASE=$(git -C "$REPO" describe --tags --always --dirty 2>/dev/null || echo latest)
 export CODFLOW_RELEASE
 compose() { docker compose -f "$REPO/deploy/compose.yml" --env-file "$SECRETS" "$@"; }
@@ -42,6 +44,12 @@ compose build --pull
 step "Starting the platform"
 compose up -d --remove-orphans --wait --wait-timeout 600
 compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile
+
+step "Removing images of earlier releases"
+docker images --format '{{.Repository}}:{{.Tag}}' | grep -E '^codflow/(api|storefront|dashboard|backup):' \
+  | awk -F: -v release="$CODFLOW_RELEASE" '$2 != release' | xargs -r docker rmi >/dev/null 2>&1 || true
+docker image prune -f >/dev/null
+docker builder prune -f --filter until=168h >/dev/null
 
 step "Checking the first account"
 merchant=$(secret MERCHANT_ID)

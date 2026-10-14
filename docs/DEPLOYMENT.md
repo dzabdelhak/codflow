@@ -98,7 +98,7 @@ Uptime Kuma (`https://status.BASE_DOMAIN`, `KUMA_ADMIN_USER`) e-mails
 | Storefront | `/healthz` fails |
 | Nightly backup | no successful dump reported for 26 h |
 | Nightly restore test | no successful restore reported for 26 h |
-| Disk space | the host, Docker or backup disk is above `DISK_ALERT_PERCENT` |
+| Disk space | the host disk or Docker's disk (volumes, backups) is above `DISK_ALERT_PERCENT` |
 
 The certificate check runs hourly (`task:check-certificates`, in `jobs`) and
 records each domain's result on `store_domains.certificate_*`. Monitors and

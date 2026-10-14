@@ -1,4 +1,5 @@
 import type pg from "pg";
+import { isoText } from "../../../cod-shared/db/text-time";
 
 export const STALE_JOB_MINUTES = 30;
 export const CERTIFICATE_GRACE_HOURS = 1;
@@ -14,7 +15,7 @@ export interface PlatformStatus {
   };
 }
 
-export async function platformStatus(platform: pg.Pool): Promise<PlatformStatus> {
+export async function platformStatus(platform: pg.Pool, { certificatesChecked }: { certificatesChecked: boolean }): Promise<PlatformStatus> {
   try {
     const [outbound, jobs, certificates] = await Promise.all([
       platform.query<{ waiting: number; stale: number; oldest: number | null }>(
@@ -27,16 +28,18 @@ export async function platformStatus(platform: pg.Pool): Promise<PlatformStatus>
         `select count(*)::int as due, floor(extract(epoch from now() - min(run_at)) / 60)::int as oldest
            from jobs where status = 'pending' and run_at <= now()`,
       ),
-      platform.query<{ hostname: string; status: string; error: string | null }>(
-        `select hostname, coalesce(certificate_status, 'unchecked') as status, certificate_error as error
-           from store_domains
-          where status = 'verified'
-            and ((certificate_status <> 'active' and verified_at < to_char((now() - make_interval(hours => $1)) at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'))
-              or (certificate_checked_at is null and verified_at < to_char((now() - make_interval(hours => $2)) at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')))
-          order by hostname
-          limit 20`,
-        [CERTIFICATE_GRACE_HOURS, UNCHECKED_CERTIFICATE_HOURS],
-      ),
+      certificatesChecked
+        ? platform.query<{ hostname: string; status: string; error: string | null }>(
+            `select d.hostname, coalesce(d.certificate_status, 'unchecked') as status, d.certificate_error as error
+               from store_domains d join stores s on s.id = d.store_id
+              where d.status = 'verified' and s.status <> 'archived'
+                and ((d.certificate_status <> 'active' and d.verified_at < ${isoText("now() - make_interval(hours => $1)")})
+                  or (d.certificate_checked_at is null and d.verified_at < ${isoText("now() - make_interval(hours => $2)")}))
+              order by d.hostname
+              limit 20`,
+            [CERTIFICATE_GRACE_HOURS, UNCHECKED_CERTIFICATE_HOURS],
+          )
+        : { rows: [] as Array<{ hostname: string; status: string; error: string | null }> },
     ]);
     const o = outbound.rows[0];
     const j = jobs.rows[0];

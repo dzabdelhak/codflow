@@ -73,7 +73,7 @@ describe("certificate checks", () => {
     await insert("fresh.dz", "verified", iso(60 * 1000));
     await insert("pending.dz", "pending", null);
 
-    expect((await platformStatus(platform)).checks.certificates.failing.map((f) => f.hostname)).toEqual(["broken.dz", "good.dz"]);
+    expect((await platformStatus(platform, { certificatesChecked: true })).checks.certificates.failing.map((f) => f.hostname)).toEqual(["broken.dz", "good.dz"]);
 
     const probed: string[] = [];
     const probe = async (hostname: string): Promise<CertificateStatus> => {
@@ -89,15 +89,33 @@ describe("certificate checks", () => {
     ]);
     expect(rows.find((r) => r.hostname === "good.dz").certificate_checked_at).toMatch(/^\d{4}-\d\d-\d\dT.*Z$/);
 
-    const status = await platformStatus(platform);
+    const status = await platformStatus(platform, { certificatesChecked: true });
     expect(status.ok).toBe(false);
     expect(status.checks.certificates.failing).toEqual([{ hostname: "broken.dz", status: "missing", error: "no certificate is served for this hostname" }]);
   });
 });
 
+describe("certificate checks and archived or unprobed channels", () => {
+  it("skip an archived channel's domains, and raise nothing while no probe is configured", async () => {
+    const archived = await harness.createStore("archived-channel");
+    await harness.platform.query("update stores set status = 'archived' where id = $1", [archived]);
+    await harness.platform.query(
+      "insert into store_domains (hostname, store_id, kind, created_at, status, verified_at, is_primary) values ('old.dz', $1, 'custom', $2, 'verified', $2, true), ('live.dz', $3, 'custom', $2, 'verified', $2, true)",
+      [archived, iso(3 * HOUR), TEST_STORE_ID],
+    );
+
+    expect((await platformStatus(platform, { certificatesChecked: true })).checks.certificates.failing.map((f) => f.hostname)).toEqual(["live.dz"]);
+    expect((await platformStatus(platform, { certificatesChecked: false })).checks.certificates).toEqual({ ok: true, failing: [] });
+
+    const probed: string[] = [];
+    await checkDomainCertificates(platform, async (hostname) => (probed.push(hostname), { status: "missing" }), { requireTrusted: true });
+    expect(probed).toEqual(["live.dz"]);
+  });
+});
+
 describe("platform status", () => {
   it("is green on a healthy platform and red with an order waiting more than 24 hours", async () => {
-    const healthy = await platformStatus(platform);
+    const healthy = await platformStatus(platform, { certificatesChecked: true });
     expect(healthy).toMatchObject({ ok: true, checks: { database: { ok: true }, outbound: { ok: true, waiting: 0 }, jobs: { ok: true } } });
 
     const db = await harness.connect();
@@ -109,14 +127,14 @@ describe("platform status", () => {
     });
     const sendId = ulid();
     await db.insert(schema.outboundOrders).values({ id: sendId, orderId: "o-status", payload: {} });
-    expect((await platformStatus(platform)).checks.outbound).toMatchObject({ ok: true, waiting: 1, stale: 0 });
+    expect((await platformStatus(platform, { certificatesChecked: true })).checks.outbound).toMatchObject({ ok: true, waiting: 1, stale: 0 });
 
     await harness.platform.query("update outbound_orders set queued_at = now() - interval '25 hours' where id = $1", [sendId]);
-    const stale = await platformStatus(platform);
+    const stale = await platformStatus(platform, { certificatesChecked: true });
     expect(stale.ok).toBe(false);
     expect(stale.checks.outbound).toMatchObject({ ok: false, waiting: 1, stale: 1, oldestWaitingMinutes: 1500 });
 
     await harness.platform.query("insert into jobs (id, kind, payload, run_at) values ('j-late', 'conversion', '{}'::jsonb, now() - interval '45 minutes')");
-    expect((await platformStatus(platform)).checks.jobs).toMatchObject({ ok: false, due: 1, oldestDueMinutes: 45 });
+    expect((await platformStatus(platform, { certificatesChecked: true })).checks.jobs).toMatchObject({ ok: false, due: 1, oldestDueMinutes: 45 });
   });
 });

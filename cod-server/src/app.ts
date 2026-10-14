@@ -22,6 +22,7 @@ import transmissionRoutes from "@/endpoints/transmission/routes";
 import mcpManagementRoutes from "@/endpoints/mcp/routes";
 import { mcpRoutes, protectedResourceMetadata } from "@/mcp/route";
 import { platformStatus } from "@/platform/status";
+import { certificateProbeHost } from "@/platform/tls-probe";
 import { storeAuthMiddleware } from "@/middleware/storeAuth";
 import { errorHandler } from "@/middleware/error";
 
@@ -78,7 +79,7 @@ app.use("/webhooks/*", soleStoreScope);
 app.route("/images", serveRouter);
 app.route("/platform/tls-ask", tlsAskRouter);
 app.get("/platform/status", async (c) => {
-  const status = await platformStatus(c.env.DATABASE.platform);
+  const status = await platformStatus(c.env.DATABASE.platform, { certificatesChecked: Boolean(certificateProbeHost(c.env)) });
   return c.json(status, status.ok ? 200 : 503);
 });
 app.get("/.well-known/oauth-protected-resource", protectedResourceMetadata);

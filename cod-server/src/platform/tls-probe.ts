@@ -33,3 +33,7 @@ export function probeCertificate(
     );
   });
 }
+
+export function certificateProbeHost(env: { TLS_PROBE_HOST?: string; CUSTOM_DOMAIN_TARGET?: string; CUSTOM_DOMAIN_IPV4?: string }): string | undefined {
+  return env.TLS_PROBE_HOST?.trim() || env.CUSTOM_DOMAIN_TARGET?.trim() || env.CUSTOM_DOMAIN_IPV4?.split(",")[0].trim() || undefined;
+}

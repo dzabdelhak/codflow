@@ -13,7 +13,7 @@ import { s3ImageStore } from "@/platform/image-store";
 import { runOrphanImageSweep } from "@/cron/sweep-orphan-images";
 import { sweepAbandonedOrders } from "@/cron/sweep-abandoned-orders";
 import { systemDns } from "@/platform/channel-domains";
-import { probeCertificate, type CertificateStatus } from "@/platform/tls-probe";
+import { certificateProbeHost, probeCertificate, type CertificateStatus } from "@/platform/tls-probe";
 import { pruneFinishedJobs, startJobWorker } from "@/platform/jobs";
 import { scheduledTaskHandlers, startScheduler, type ScheduledTask } from "@/platform/schedule";
 import { checkDomainCertificates } from "@/platform/domain-certificates";
@@ -40,10 +40,7 @@ const imageStore = s3ImageStore({
   region: process.env.S3_REGION,
 });
 
-const probeHost =
-  process.env.TLS_PROBE_HOST?.trim() ||
-  process.env.CUSTOM_DOMAIN_TARGET?.trim() ||
-  process.env.CUSTOM_DOMAIN_IPV4?.split(",")[0].trim();
+const probeHost = certificateProbeHost(process.env);
 
 function certificateProbe(): (hostname: string) => Promise<CertificateStatus> {
   const host = probeHost;

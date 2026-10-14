@@ -1,5 +1,3 @@
-// Creates Uptime Kuma's admin account on a fresh install, through the same
-// websocket call its first-run page makes; does nothing once an admin exists.
 const { KUMA_URL, KUMA_USERNAME, KUMA_PASSWORD } = process.env;
 const socketUrl = `${KUMA_URL.replace(/^http/, "ws")}/socket.io/?EIO=4&transport=websocket`;
 
@@ -20,8 +18,14 @@ function attempt() {
       if (text.startsWith("40")) return ws.send(`420${JSON.stringify(["needSetup"])}`);
       if (text.startsWith("430")) {
         const [needed] = JSON.parse(text.slice(3));
-        if (!needed) return finish(resolve, "Uptime Kuma: admin already set up");
+        if (!needed) return ws.send(`422${JSON.stringify(["login", { username: KUMA_USERNAME, password: KUMA_PASSWORD, token: "" }])}`);
         return ws.send(`421${JSON.stringify(["setup", KUMA_USERNAME, KUMA_PASSWORD])}`);
+      }
+      if (text.startsWith("432")) {
+        const [answer] = JSON.parse(text.slice(3));
+        return answer?.ok
+          ? finish(resolve, "Uptime Kuma: admin already set up, credentials accepted")
+          : finish(reject, Object.assign(new Error("KUMA_ADMIN_USER / KUMA_ADMIN_PASSWORD do not match Kuma's admin: change the password in Kuma (Settings → Security) to the secrets file's value"), { final: true }));
       }
       if (text.startsWith("431")) {
         const [answer] = JSON.parse(text.slice(3));
@@ -36,7 +40,7 @@ for (let tries = 1; ; tries++) {
     console.log(await attempt());
     process.exit(0);
   } catch (err) {
-    if (tries >= 40) {
+    if (err.final || tries >= 40) {
       console.error(`Uptime Kuma setup failed: ${err.message}`);
       process.exit(1);
     }

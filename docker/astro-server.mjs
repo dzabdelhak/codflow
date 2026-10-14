@@ -1,7 +1,3 @@
-// Starts a built Astro Node server (ASTRO_NODE_AUTOSTART=disabled) and drains
-// it on SIGTERM: no new connections, running requests finish, and every
-// keep-alive connection closes after its next response, so the proxy moves
-// on to another replica without dropping a request.
 import { pathToFileURL } from "node:url";
 import { resolve } from "node:path";
 
