@@ -5,7 +5,7 @@ import { createPool } from "@/db/scope";
 import { createTestDb, type TestDb } from "@/test-utils/pg";
 import * as schema from "@/db/schema";
 import { ulid } from "../../../../cod-shared/lib/ulid";
-import { drainOutbound, outboundDelayMs, raiseOutboundAlerts, sendNextOutbound } from "./worker";
+import { drainOutbound, outboundDelayMs, outboundOptionsFromEnv, raiseOutboundAlerts, sendNextOutbound } from "./worker";
 import type { DestinationAnswer, OrderDestination, OutboundEntry } from "./destination";
 
 let harness: TestDb;
@@ -95,7 +95,7 @@ describe("the outbound worker", () => {
     });
 
     for (let round = 0; round < 40 && (await rows()).some((r) => r.status === "pending"); round++) {
-      await Promise.all(Array.from({ length: 4 }, () => drainOutbound(platform, destination)));
+      await Promise.all(Array.from({ length: 4 }, () => drainOutbound(platform, destination, { holdAttempts: 100 })));
       await makeDue();
     }
 
@@ -149,23 +149,60 @@ describe("the outbound worker", () => {
     expect(received.has(elsewhere)).toBe(true);
   });
 
+  it("moves an order that keeps failing aside once the destination has accepted others since, but never during an outage", async () => {
+    const [poison, next] = await enqueue(harness.storeId, 2);
+    const failEverything = recordingDestination(() => ({ kind: "retry", reason: "down" }));
+    for (let i = 0; i < 3; i++) {
+      await drainOutbound(platform, failEverything.destination, { holdAttempts: 2 });
+      await makeDue();
+    }
+    expect(failEverything.received.has(next)).toBe(false);
+
+    const [elsewhere] = await enqueue(other, 1);
+    const rejectsOne = recordingDestination((entry) =>
+      entry.sendId === poison ? { kind: "unknown", detail: "500" } : { kind: "accepted", remoteId: `AV-${entry.sendId}` },
+    );
+    await drainOutbound(platform, rejectsOne.destination, { holdAttempts: 2 });
+    await makeDue();
+    await drainOutbound(platform, rejectsOne.destination, { holdAttempts: 2 });
+    const byId = Object.fromEntries((await rows()).map((r) => [r.id, r.status]));
+    expect(byId[elsewhere]).toBe("sent");
+    expect(byId[next]).toBe("sent");
+    expect(byId[poison]).toBe("pending");
+    expect(rejectsOne.received.get(poison)).toBeGreaterThanOrEqual(1);
+  });
+
+  it("recognises a review answer that carries no motifs", async () => {
+    await enqueue(harness.storeId, 1);
+    await sendNextOutbound(platform, { name: "review", send: async () => ({ kind: "review", remoteId: "AV-R" }) as unknown as DestinationAnswer });
+    expect((await rows())[0]).toMatchObject({ status: "sent", last_outcome: "review", outcome_detail: { reasons: [] } });
+  });
+
+  it("reads its limits from the environment", () => {
+    expect(outboundOptionsFromEnv({ OUTBOUND_SENDERS: "1", OUTBOUND_SEND_TIMEOUT_MS: "5000", OUTBOUND_MAX_DELAY_MS: "600000", OUTBOUND_HOLD_ATTEMPTS: "8" })).toEqual({
+      senders: 1, timeoutMs: 5000, maxDelayMs: 600000, holdAttempts: 8,
+    });
+    expect(outboundOptionsFromEnv({ OUTBOUND_SENDERS: "zero" }).senders).toBe(4);
+  });
+
   it("marks an order sent only on an answer it recognises", async () => {
     await enqueue(harness.storeId, 1);
     const answers: unknown[] = [
       { kind: "accepted" },
       { status: "OK" },
       "fine",
+      { kind: "review", reasons: ["no remote id"] },
       { kind: "review", remoteId: "AV-9", reasons: ["phone unusual"] },
     ];
     let i = 0;
     const destination: OrderDestination = { name: "odd", send: async () => answers[i++] as DestinationAnswer };
-    for (let n = 0; n < 3; n++) {
+    for (let n = 0; n < 4; n++) {
       await sendNextOutbound(platform, destination);
       expect((await rows())[0]).toMatchObject({ status: "pending", last_outcome: "unknown" });
       await makeDue();
     }
     await sendNextOutbound(platform, destination);
-    expect((await rows())[0]).toMatchObject({ status: "sent", last_outcome: "review", outcome_detail: { reasons: ["phone unusual"] }, attempts: 4 });
+    expect((await rows())[0]).toMatchObject({ status: "sent", last_outcome: "review", outcome_detail: { reasons: ["phone unusual"] }, attempts: 5 });
   });
 
   it("never retries a rejected order, and keeps the fields at fault", async () => {
@@ -187,7 +224,7 @@ describe("the outbound worker", () => {
   it("alerts once for an order waiting more than 24 hours, logging no personal data", async () => {
     const [stale] = await enqueue(harness.storeId, 1);
     await enqueue(harness.storeId, 1);
-    await harness.platform.query("update outbound_orders set created_at = now() - interval '25 hours' where id = $1", [stale]);
+    await harness.platform.query("update outbound_orders set queued_at = now() - interval '25 hours' where id = $1", [stale]);
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     expect(await raiseOutboundAlerts(platform)).toBe(1);
     expect(await raiseOutboundAlerts(platform)).toBe(0);

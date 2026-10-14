@@ -7,7 +7,7 @@
  */
 import { serve } from "@hono/node-server";
 import app from "@/app";
-import { createDatabase } from "@/db/scope";
+import { createDatabase, createPool } from "@/db/scope";
 import type { Env } from "@/types";
 import { s3ImageStore } from "@/platform/image-store";
 import { runOrphanImageSweep } from "@/cron/sweep-orphan-images";
@@ -15,7 +15,7 @@ import { systemDns } from "@/platform/channel-domains";
 import { probeCertificate, type CertificateStatus } from "@/platform/tls-probe";
 import { pruneFinishedJobs, startJobWorker } from "@/platform/jobs";
 import { pruneBlockedAttempts } from "@/endpoints/store/order-flood";
-import { startOutboundWorker } from "@/platform/outbound/worker";
+import { outboundOptionsFromEnv, startOutboundWorker } from "@/platform/outbound/worker";
 import { destinationFromEnv } from "@/platform/outbound/destination";
 import { CONVERSION_JOB, conversionJobHandler } from "@/tracking/conversions";
 
@@ -84,11 +84,14 @@ imageStore.ensureBucket().then(
     };
     setInterval(prune, 24 * 60 * 60 * 1000).unref();
     const stopJobs = startJobWorker(database.platform, { [CONVERSION_JOB]: conversionJobHandler(database.platform) });
-    const stopOutbound = startOutboundWorker(database.platform, outboundDestination);
+    const outboundOptions = outboundOptionsFromEnv(process.env);
+    const outboundPool = createPool(required("DATABASE_URL"), "codflow_platform", outboundOptions.senders + 1);
+    const stopOutbound = startOutboundWorker(outboundPool, outboundDestination, outboundOptions);
     for (const signal of ["SIGINT", "SIGTERM"] as const) {
       process.on(signal, () => {
         stopJobs();
         stopOutbound();
+        void outboundPool.end();
         server.close();
         void database.close().finally(() => process.exit(0));
       });

@@ -41,5 +41,6 @@
     "retry": "Destination occupée, nouvel essai",
     "unknown": "Réponse non reconnue, nouvel essai",
     "error": "Pas de réponse, nouvel essai"
-  }
+  },
+  "rejected_alert": "{n} commande(s) ont été refusées par la destination. Corrigez-les et renvoyez-les."
 }

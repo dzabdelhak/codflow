@@ -44,7 +44,7 @@ export function recognised(answer: unknown): DestinationAnswer {
       if (text(a.remoteId)) return a as DestinationAnswer;
       break;
     case "review":
-      if (text(a.remoteId) && list(a.reasons)) return a as DestinationAnswer;
+      if (text(a.remoteId)) return { kind: "review", remoteId: a.remoteId as string, reasons: list(a.reasons) ? (a.reasons as string[]) : [] };
       break;
     case "rejected":
       if (list(a.fields)) return { kind: "rejected", fields: a.fields as string[], message: text(a.message) ? (a.message as string) : "rejected" };

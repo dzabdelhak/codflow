@@ -41,5 +41,6 @@
     "retry": "Destination busy, will retry",
     "unknown": "Unrecognised answer, will retry",
     "error": "No answer, will retry"
-  }
+  },
+  "rejected_alert": "{n} order(s) were rejected by the destination. Correct them and resend."
 }

@@ -20,7 +20,7 @@ export async function getTransmission(c: Context<AppContext>) {
       select count(*) filter (where status = 'pending')::int as waiting,
              count(*) filter (where status = 'sent')::int as sent,
              count(*) filter (where status = 'rejected')::int as rejected,
-             count(*) filter (where status = 'pending' and created_at < now() - interval '24 hours')::int as stale,
+             count(*) filter (where status = 'pending' and queued_at < now() - interval '24 hours')::int as stale,
              min(created_at) filter (where status = 'pending') as "oldestWaitingAt",
              max(sent_at) as "lastSuccessAt",
              (select last_outcome from outbound_orders where last_attempt_at is not null order by last_attempt_at desc limit 1) as "lastOutcome",
@@ -55,7 +55,7 @@ export async function getTransmission(c: Context<AppContext>) {
 
 export async function getTransmissionAlerts(c: Context<AppContext>) {
   const { rows } = await c.get("db").execute<{ stale: number; rejected: number }>(sql`
-    select count(*) filter (where status = 'pending' and created_at < now() - interval '24 hours')::int as stale,
+    select count(*) filter (where status = 'pending' and queued_at < now() - interval '24 hours')::int as stale,
            count(*) filter (where status = 'rejected')::int as rejected
       from outbound_orders`);
   return c.json({ success: true, data: rows[0] }, 200);
@@ -74,10 +74,17 @@ export async function resendRejected(c: Context<AppContext>) {
   }
   await db.execute(sql`
     update outbound_orders o
-       set status = 'pending', attempts = 0, next_attempt_at = now(), last_error = null, alerted_at = null,
-           payload = jsonb_set(o.payload, '{customer}', jsonb_build_object(
-             'name', ord.customer_name, 'phone', ord.phone, 'wilayaId', ord.wilaya_id,
-             'communeId', ord.commune_id, 'address', ord.address))
+       set status = 'pending', attempts = 0, next_attempt_at = now(), last_error = null, alerted_at = null, queued_at = now(),
+           payload = o.payload || jsonb_build_object(
+             'customer', jsonb_build_object(
+               'name', ord.customer_name, 'phone', ord.phone, 'wilayaId', ord.wilaya_id,
+               'communeId', ord.commune_id, 'address', ord.address),
+             'delivery', jsonb_build_object(
+               'type', ord.delivery_type,
+               'office', case when ord.delivery_type = 'home' then null else o.payload->'delivery'->'office' end,
+               'fee', case when ord.delivery_fee_to_confirm then null else ord.delivery_fee end,
+               'gridVersion', ord.delivery_grid_version,
+               'feeToConfirm', ord.delivery_fee_to_confirm))
       from orders ord
      where o.id = ${sendId} and ord.id = o.order_id`);
   await logActivity(db, c.get("user"), ACTIONS.ORDER_TRANSMISSION_RESENT, { type: "order", id: entry.orderId, label: entry.orderNumber });

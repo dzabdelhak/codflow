@@ -21,6 +21,7 @@ import {
   companyShipments,
   companyApiLogs,
   webhookEvents,
+  outboundOrders,
 } from "../db/schema";
 import type { OrderStatus } from "../db/schema";
 import { eq, desc, and, ilike, or, sql, getTableColumns, aliasedTable } from "drizzle-orm";
@@ -28,6 +29,7 @@ import { eq, desc, and, ilike, or, sql, getTableColumns, aliasedTable } from "dr
 const driversAlias = aliasedTable(drivers, "d");
 
 import { safeLikeTerm } from "./search";
+import { outboundOrderRow } from "./outbound-orders";
 import { getCustomerByPhone, updateCustomer, type UpdateCustomerData } from "./customers";
 import { first } from "../db/client";
 
@@ -218,14 +220,16 @@ export async function createOrder(
       .where(eq(customers.id, orderData.customerId)),
   );
 
+  const catalogVersions = new Map<string, number | null>();
   for (const item of productsData) {
     const qty = item.quantity as number;
 
     const productRow = await db
-      .select({ trackInventory: products.trackInventory })
+      .select({ trackInventory: products.trackInventory, version: products.version })
       .from(products)
       .where(eq(products.id, item.productId))
       .then(first);
+    catalogVersions.set(item.productId, productRow?.version ?? null);
 
     if (!productRow?.trackInventory) continue;
 
@@ -298,6 +302,38 @@ export async function createOrder(
       );
     }
   }
+
+  statements.push(
+    db.insert(outboundOrders).values(
+      outboundOrderRow({
+        orderId: orderData.id!,
+        orderNumber: orderData.orderNumber,
+        lines: productsData.map((item) => ({
+          sku: item.sku ?? null,
+          quantity: item.quantity,
+          unitPrice: item.pricePerUnit,
+          catalogVersion: catalogVersions.get(item.productId) ?? null,
+        })),
+        delivery: {
+          type: orderData.deliveryType ?? "home",
+          office: null,
+          fee: orderData.deliveryFeeToConfirm ? null : orderData.deliveryFee ?? 0,
+          gridVersion: orderData.deliveryGridVersion ?? null,
+        },
+        customer: {
+          name: orderData.customerName,
+          phone: orderData.phone,
+          wilayaId: orderData.wilayaId as number,
+          communeId: orderData.communeId as string,
+          address: orderData.address ?? null,
+        },
+        journey: "direct",
+        stockNotGuaranteed: false,
+        submittedAt: now,
+        userAgent: null,
+      }),
+    ),
+  );
 
   // Atomic: order row, lines, history, customer stats, stock deduction, and
   // ledger commit together or not at all. Guarded deductions make the batch

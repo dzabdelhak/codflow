@@ -648,9 +648,12 @@ export const outboundOrders = pgTable("outbound_orders", {
   lastOutcome: text("last_outcome", { enum: OUTBOUND_OUTCOMES }),
   outcomeDetail: jsonb("outcome_detail").$type<{ reasons?: string[]; fields?: string[] }>(),
   alertedAt: timestamp("alerted_at", { mode: "date", withTimezone: true }),
+  queuedAt: timestamp("queued_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
 }, (t) => ({
   due: index("outbound_orders_due_idx").on(t.nextAttemptAt, t.id).where(sql`status = 'pending'`),
   channelLine: index("outbound_orders_channel_line_idx").on(t.storeId, t.createdAt, t.id).where(sql`status = 'pending'`),
+  attempted: index("outbound_orders_attempted_idx").on(t.storeId, t.createdAt, t.id).where(sql`status = 'pending' and attempts > 0`),
+  lastSent: index("outbound_orders_sent_at_idx").on(t.sentAt).where(sql`status = 'sent'`),
 }));
 
 export const BLOCKED_ORDER_REASONS = ["blocked_phone", "phone_window", "device_window", "ip_ceiling", "ip_flagged"] as const;

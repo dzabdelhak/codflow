@@ -80,7 +80,7 @@ const resendRoute = defineRoute({
   auth: { scope: SCOPES.ORDERS_UPDATE },
   tags: ["Order Transmission"],
   summary: "Resend a rejected order",
-  description: "Re-reads the customer block from the order as corrected in the dashboard and queues it again with the same send id. Only a rejected entry can be resent (409 OUTBOUND_NOT_REJECTED).",
+  description: "Re-reads the customer and delivery blocks from the order as corrected in the dashboard and queues it again with the same send id. Only a rejected entry can be resent (409 OUTBOUND_NOT_REJECTED).",
   operationId: "resendOutboundOrder",
   params: z.object({ sendId: z.string().min(1).openapi({ param: { name: "sendId", in: "path" } }) }),
   responses: response,

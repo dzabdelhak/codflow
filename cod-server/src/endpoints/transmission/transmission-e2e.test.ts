@@ -10,6 +10,7 @@ import { openApiValidationHook } from "@/openapi/validation-hook";
 import * as schema from "@/db/schema";
 import routes from "./routes";
 import { ulid } from "../../../../cod-shared/lib/ulid";
+import { createOrder } from "../../../../cod-shared/queries/orders";
 
 let harness: TestDb;
 let database: Database;
@@ -83,7 +84,7 @@ afterAll(async () => {
 describe("the transmission diagnostics", () => {
   it("shows the channel's waiting, sent and rejected orders, the last success, the errors and the stale ones", async () => {
     await entry(harness.storeId, { status: "sent", sentAt: new Date(Date.now() - 60_000), lastAttemptAt: new Date(Date.now() - 60_000), lastOutcome: "accepted", aventyOrderId: "AV-1" });
-    await entry(harness.storeId, { createdAt: new Date(Date.now() - 25 * 3600_000), attempts: 7, lastAttemptAt: new Date(), lastOutcome: "retry", lastError: "busy" });
+    await entry(harness.storeId, { createdAt: new Date(Date.now() - 25 * 3600_000), queuedAt: new Date(Date.now() - 25 * 3600_000), attempts: 7, lastAttemptAt: new Date(), lastOutcome: "retry", lastError: "busy" });
     await entry(harness.storeId, { status: "rejected", lastAttemptAt: new Date(Date.now() - 1000), lastOutcome: "rejected", outcomeDetail: { fields: ["customer.phone"] }, lastError: "invalid phone" });
     await entry(other, { status: "rejected", lastOutcome: "rejected" });
 
@@ -101,14 +102,26 @@ describe("the transmission diagnostics", () => {
     expect(alerts).toEqual({ stale: 1, rejected: 1 });
   });
 
-  it("resends a rejected order with the customer as corrected, under the same send id", async () => {
-    const { sendId, orderId } = await entry(harness.storeId, { status: "rejected", attempts: 1, lastOutcome: "rejected", lastError: "invalid phone" });
-    await harness.platform.query("update orders set phone = '0661234567', address = 'Rue corrigée', wilaya_id = 16, commune_id = 'c-16-001' where id = $1", [orderId]);
+  it("resends a rejected order with the customer and delivery as corrected, under the same send id, restarting its 24-hour clock", async () => {
+    const { sendId, orderId } = await entry(harness.storeId, {
+      status: "rejected", attempts: 1, lastOutcome: "rejected", lastError: "invalid phone",
+      createdAt: new Date(Date.now() - 48 * 3600_000), queuedAt: new Date(Date.now() - 48 * 3600_000),
+    });
+    await harness.platform.query(
+      `update orders set phone = '0661234567', address = 'Rue corrigée', wilaya_id = 16, commune_id = 'c-16-001',
+              delivery_type = 'home', delivery_fee = 400, delivery_fee_to_confirm = false, delivery_grid_version = 3 where id = $1`,
+      [orderId],
+    );
 
     const res = await call("POST", `/${sendId}/resend`);
     expect(res.status).toBe(200);
-    const { rows: [row] } = await harness.platform.query("select status, attempts, last_error, payload from outbound_orders where id = $1", [sendId]);
-    expect(row).toMatchObject({ status: "pending", attempts: 0, last_error: null });
+    const { rows: [row] } = await harness.platform.query(
+      "select status, attempts, last_error, payload, queued_at > now() - interval '1 minute' as requeued from outbound_orders where id = $1",
+      [sendId],
+    );
+    expect(row).toMatchObject({ status: "pending", attempts: 0, last_error: null, requeued: true });
+    expect(row.payload.delivery).toEqual({ type: "home", office: null, fee: 400, gridVersion: 3, feeToConfirm: false });
+    expect((await call("GET", "/alerts")).json.data).toMatchObject({ stale: 1 });
     expect(row.payload.customer).toEqual({ name: "Amina", phone: "0661234567", wilayaId: 16, communeId: "c-16-001", address: "Rue corrigée" });
     expect(row.payload.lines).toEqual([{ sku: "X", quantity: 1 }]);
     const { rows: logs } = await harness.platform.query("select action from activity_logs where entity_id = $1", [orderId]);
@@ -116,6 +129,35 @@ describe("the transmission diagnostics", () => {
 
     const again = await call("POST", `/${sendId}/resend`);
     expect([again.status, again.json.code]).toEqual([409, "OUTBOUND_NOT_REJECTED"]);
+  });
+
+  it("queues an order created in the dashboard for transmission, like a storefront order", async () => {
+    const now = new Date().toISOString();
+    await harness.platform.query(
+      `insert into products (merchant_id, id, name, handle, price, sku, inventory, created_at, updated_at)
+       values ($1, 'p-dash', 'Dash', 'dash', 1500, 'DASH', 10, $2, $2)`,
+      [TEST_MERCHANT_ID, now],
+    );
+    await harness.platform.query("insert into customers (store_id, id, name, phone, wilaya, created_at) values ($1, 'c-dash', 'Call Center', '0770000099', 'Alger', $2)", [harness.storeId, now]);
+    const db = await harness.connect();
+    await createOrder(
+      db,
+      {
+        id: "o-dash", orderNumber: "DASH-1", customerId: "c-dash", customerName: "Call Center", phone: "0770000099",
+        wilayaId: 16, communeId: "c-16-001", address: "Rue du centre", price: 1500, deliveryFee: 400, deliveryType: "home",
+        status: "new", createdAt: now, updatedAt: now,
+      },
+      [{ id: "op-dash", orderId: "o-dash", productId: "p-dash", productName: "Dash", sku: "DASH", quantity: 1, pricePerUnit: 1500, lineTotal: 1500, createdAt: now }],
+    );
+    const { rows: [queued] } = await harness.platform.query("select status, payload from outbound_orders where order_id = 'o-dash'");
+    expect(queued.status).toBe("pending");
+    expect(queued.payload).toMatchObject({
+      reference: "DASH-1",
+      lines: [{ sku: "DASH", quantity: 1, unitPrice: 1500, catalogVersion: 1 }],
+      delivery: { type: "home", fee: 400, feeToConfirm: false },
+      customer: { name: "Call Center", phone: "0770000099", wilayaId: 16, communeId: "c-16-001", address: "Rue du centre" },
+      journey: { kind: "direct" },
+    });
   });
 
   it("cannot resend another channel's order", async () => {
