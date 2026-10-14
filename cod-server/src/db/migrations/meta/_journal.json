@@ -50,6 +50,13 @@
       "when": 1791968437683,
       "tag": "0006_account_delivery_grid",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791968438683,
+      "tag": "0007_delivery_grid_lock",
+      "breakpoints": true
     }
   ]
 }

@@ -20,6 +20,7 @@ import {
   channelProducts,
 } from "../db/schema";
 import type { AppDb } from "../db/client";
+import { channelDefaultProfile } from "./shipping-resolution";
 import { first } from "../db/client";
 
 export interface CreateProfileData {
@@ -175,13 +176,9 @@ export async function getProfileById(
 }
 
 export async function getDefaultProfileRules(db: AppDb): Promise<ShippingRule[]> {
-  const defaultProfile = await db
-    .select()
-    .from(shippingProfiles)
-    .where(eq(shippingProfiles.isDefault, true))
-    .then(first);
+  const defaultProfile = await channelDefaultProfile(db).then(first);
 
-  if (!defaultProfile) return [];
+  if (!defaultProfile?.id) return [];
 
   const rules = await db
     .select({

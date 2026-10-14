@@ -89,7 +89,7 @@ const jsonLd = getProductJsonLd(product, basePrice);
 />
 
 <!-- Dynamic data Island (Deferred) -->
-<ShippingIsland server:defer />
+<ShippingIsland server:defer productId={product.id} />
 
 <div class="max-w-5xl mx-auto px-0 sm:px-5 py-0 sm:py-8">
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-0 lg:gap-12">

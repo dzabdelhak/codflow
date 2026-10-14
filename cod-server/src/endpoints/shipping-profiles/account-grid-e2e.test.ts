@@ -81,13 +81,23 @@ describe("one grid, modes per channel", () => {
     expect(await currentGridVersion(storeA)).toBe(before);
   });
 
-  it("does not show a mode the grid prices nowhere, nor one the chosen wilaya does not offer", async () => {
+  it("marks a mode the grid does not price for a wilaya, so the storefront hides it", async () => {
     const rates = await getShippingRates(storeA);
     expect(rates[1]).toEqual({ home: 900, stopDesk: null });
+    expect(rates[16]).toEqual({ home: 400, stopDesk: 250 });
+  });
 
-    await storeA.update(schema.shippingRules).set({ stopDeskEnabled: false }).where(eq(schema.shippingRules.id, "r-16"));
-    expect((await getStoreConfig(storeA, TEST_STORE_ID))!.checkoutForm.deliveryOptions).toEqual({ home: true, stopDesk: false });
-    await storeA.update(schema.shippingRules).set({ stopDeskEnabled: true }).where(eq(schema.shippingRules.id, "r-16"));
+  it("prices a product page from the product's own profile in this store", async () => {
+    await storeA.update(schema.channelProducts).set({ shippingProfileId: "grid-express" }).where(eq(schema.channelProducts.productId, "grid-p"));
+    expect((await getShippingRates(storeA, "grid-p"))[16]).toEqual({ home: 700, stopDesk: null });
+    expect((await getShippingRates(storeA))[16]).toEqual({ home: 400, stopDesk: 250 });
+    await storeA.update(schema.channelProducts).set({ shippingProfileId: null }).where(eq(schema.channelProducts.productId, "grid-p"));
+  });
+
+  it("raises the grid version once per saved change, however many rules it touches", async () => {
+    const before = await currentGridVersion(storeA);
+    await storeA.update(schema.shippingRules).set({ homeEnabled: true });
+    expect(await currentGridVersion(storeA)).toBe(before! + 1);
   });
 
   it("prices a channel from its own default profile when it has one, the account default otherwise", async () => {

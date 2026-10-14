@@ -29,39 +29,6 @@ import type { AppDb } from "../db/client";
 import { first } from "../db/client";
 import { chunkIds } from "./d1-limits";
 
-export interface DeliveryModes {
-  home: boolean;
-  stopDesk: boolean;
-}
-
-export interface GridModes extends DeliveryModes {
-  rules: number;
-}
-
-export function offeredDeliveryModes(enabled: DeliveryModes, grid: GridModes): DeliveryModes {
-  if (grid.rules === 0) return enabled;
-  const offered = { home: enabled.home && grid.home, stopDesk: enabled.stopDesk && grid.stopDesk };
-  return offered.home || offered.stopDesk ? offered : enabled;
-}
-
-export async function channelGridModes(db: AppDb, storeDefaultProfileId: string | null): Promise<GridModes> {
-  const row = await db
-    .select({
-      home: sql<boolean>`coalesce(bool_or(${shippingRules.homeEnabled}), false)`,
-      stopDesk: sql<boolean>`coalesce(bool_or(${shippingRules.stopDeskEnabled}), false)`,
-      rules: sql<number>`count(*)::int`,
-    })
-    .from(shippingRules)
-    .where(
-      eq(
-        shippingRules.profileId,
-        sql`coalesce(${storeDefaultProfileId}::text, (select p.id from shipping_profiles p where p.is_default order by p.created_at, p.id limit 1))`,
-      ),
-    )
-    .then(first);
-  return { home: !!row?.home, stopDesk: !!row?.stopDesk, rules: Number(row?.rules ?? 0) };
-}
-
 const DEFAULT_PROFILE_ID = sql<string | null>`coalesce(${stores.defaultShippingProfileId}, (select p.id from shipping_profiles p where p.is_default order by p.created_at, p.id limit 1))`;
 
 export function channelDefaultProfile(db: AppDb) {
@@ -69,6 +36,11 @@ export function channelDefaultProfile(db: AppDb) {
     .select({ id: DEFAULT_PROFILE_ID })
     .from(stores)
     .where(eq(stores.id, sql`current_setting('app.store_id', true)`));
+}
+
+export async function lockDeliveryGrid(db: AppDb): Promise<number | null> {
+  const row = await db.get<{ version: number | null }>(sql`select lock_delivery_grid() as version`);
+  return row?.version ?? null;
 }
 
 export async function currentGridVersion(db: AppDb): Promise<number | null> {

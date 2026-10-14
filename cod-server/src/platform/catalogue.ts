@@ -24,3 +24,14 @@ export async function shippingProfileUsage(
   );
   return rows[0];
 }
+
+export async function profileProductCounts(platform: pg.Pool, merchantId: string): Promise<Map<string, number>> {
+  const { rows } = await platform.query<{ profile_id: string; products: number }>(
+    `select cp.shipping_profile_id as profile_id, count(*)::int as products
+       from channel_products cp join stores s on s.id = cp.store_id
+      where s.merchant_id = $1 and cp.shipping_profile_id is not null
+      group by cp.shipping_profile_id`,
+    [merchantId],
+  );
+  return new Map(rows.map((r) => [r.profile_id, r.products]));
+}

@@ -93,9 +93,9 @@ export function watchShippingRates(onRates: (rates: ShippingRates) => void): () 
 
 export function modesForWilaya(rates: ShippingRates, wilayaId: string): { home: boolean; stopDesk: boolean } {
   const rate = wilayaId ? rates[wilayaId] : undefined;
-  if (!rate) return { home: true, stopDesk: true };
-  const home = typeof rate.home === "number";
-  const stopDesk = typeof rate.stopDesk === "number";
+  const priced = rate ? [rate] : Object.values(rates);
+  const home = priced.some((r) => typeof r.home === "number");
+  const stopDesk = priced.some((r) => typeof r.stopDesk === "number");
   return home || stopDesk ? { home, stopDesk } : { home: true, stopDesk: true };
 }
 
@@ -107,6 +107,13 @@ export function showWilayaModes(rates: ShippingRates, wilayaId: string): void {
     radio.disabled = !allowed;
     const label = radio.closest<HTMLElement>("label");
     if (label) label.style.display = allowed ? "" : "none";
+  }
+  const visible = radios.filter((radio) => !radio.disabled).length;
+  const group = document.getElementById("delivery-type-group");
+  group?.classList.toggle("grid-cols-1", visible <= 1);
+  group?.classList.toggle("grid-cols-2", visible > 1);
+  for (const radio of radios) {
+    radio.closest<HTMLElement>("label")?.classList.toggle("cursor-default", visible <= 1);
   }
   const checked = radios.find((radio) => radio.checked);
   const fallback = radios.find((radio) => !radio.disabled);

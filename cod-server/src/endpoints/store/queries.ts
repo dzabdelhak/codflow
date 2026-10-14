@@ -3,7 +3,7 @@
  * functions the public endpoints consume (same module family, one surface).
  */
 export * from "../../../../cod-shared/queries/store";
-export { resolveDeliveryFee } from "../../../../cod-shared/queries/shipping-resolution";
+export { lockDeliveryGrid, resolveDeliveryFee } from "../../../../cod-shared/queries/shipping-resolution";
 export {
   loadCatalogSnapshot,
   extendSnapshot,

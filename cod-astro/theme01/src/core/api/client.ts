@@ -168,9 +168,10 @@ export async function fetchOrderTracking(
   }
 }
 
-export async function fetchShippingRates(): Promise<Record<string, { home: number | null; stopDesk: number | null }>> {
+export async function fetchShippingRates(productId?: string): Promise<Record<string, { home: number | null; stopDesk: number | null }>> {
   try {
-    const res = await fetch(`${COD_SERVER_URL}/store/shipping-rates`, {
+    const query = productId ? `?productId=${encodeURIComponent(productId)}` : "";
+    const res = await fetch(`${COD_SERVER_URL}/store/shipping-rates${query}`, {
       headers: storeHeaders(),
     });
     if (!res.ok) return {};

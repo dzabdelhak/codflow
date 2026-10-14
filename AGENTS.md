@@ -161,9 +161,12 @@ other is how these drift.
   stores the version it was priced with (`orders.delivery_grid_version`,
   null when the fee is to confirm). A store prices from
   `stores.default_shipping_profile_id`, else the account's `is_default`
-  profile (`channelDefaultProfile`). The modes a store offers are its
-  checkout-form `deliveryOptions` intersected with what that profile
-  configures; the theme also hides a mode the chosen wilaya does not price.
+  profile (`channelDefaultProfile`); a product page prices from the
+  product's own profile in that store. An order takes `lock_delivery_grid()`
+  (FOR SHARE on the merchant row) before pricing, so the version it records
+  is the one that priced it; the version rises once per transaction. A store
+  offers its checkout-form `deliveryOptions`; the theme hides a mode its
+  rates price nowhere, or not for the chosen wilaya.
 - Single-row reads end in `.then(first)` (row or undefined, D1's `.get()`);
   a write's `returning()` that must give a row ends in `.then(one)` (throws
   otherwise) — both from `cod-shared/db/client.ts`.

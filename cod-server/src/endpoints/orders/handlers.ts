@@ -19,7 +19,7 @@ import { NotFoundError, ValidationError, BusinessLogicError } from "@/lib/errors
 import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
 import { first } from "../../../../cod-shared/db/client";
 import { allocateOrderNumber } from "../../../../cod-shared/queries/order-numbers";
-import { currentGridVersion } from "../../../../cod-shared/queries/shipping-resolution";
+import { lockDeliveryGrid } from "../../../../cod-shared/queries/shipping-resolution";
 import { lockStock } from "../../../../cod-shared/queries/catalog-snapshot";
 
 /**
@@ -107,6 +107,7 @@ export async function createOrder(c: Context<AppContext>) {
     if (validated.wilayaId) {
       try {
         const productIds = validated.products.map((p) => p.productId);
+        const gridVersion = await lockDeliveryGrid(db);
         const resolved = await resolveDeliveryFee(db, {
           wilayaId: validated.wilayaId,
           communeId: validated.communeId ?? null,
@@ -117,7 +118,7 @@ export async function createOrder(c: Context<AppContext>) {
         // use the resolved fee unless admin explicitly passed a fee override.
         if (validated.orderType === "online" || validated.deliveryFee == null) {
           deliveryFee = resolved.deliveryFee;
-          deliveryGridVersion = await currentGridVersion(db);
+          deliveryGridVersion = gridVersion;
         }
         // Apply free-shipping offer override
         const productQuantities = new Map(validated.products.map((p) => [p.productId, p.quantity]));

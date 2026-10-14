@@ -37,7 +37,7 @@ import * as registry from "@/endpoints/delivery-companies/providers/registry";
 import * as carrierGeo from "../../../../cod-shared/queries/carrier-geo";
 
 vi.mock("../../../../cod-shared/queries/shipping-resolution", () => ({
-  currentGridVersion: vi.fn(async () => 1),
+  lockDeliveryGrid: vi.fn(async () => 1),
 }));
 vi.mock("../../../../cod-shared/queries/order-numbers", () => ({
   allocateOrderNumber: vi.fn(async () => "CMD-00001"),

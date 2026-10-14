@@ -119,7 +119,7 @@ const metaDescription = lp.metaDescription || config.metaDescription || undefine
       />
 
       <!-- Dynamic data Island (Deferred) -->
-      <ShippingIsland server:defer />
+      <ShippingIsland server:defer productId={product.id} />
 
       <!-- ── THE IMAGE STACK — the entire marketing story. Full-bleed on
             mobile; capped to the order-form column and centered on desktop

@@ -6,9 +6,11 @@
  */
 import { fetchShippingRates } from "@/core/api/client";
 
-interface Props {}
+interface Props {
+  productId?: string;
+}
 
-const shippingRates = await fetchShippingRates();
+const shippingRates = await fetchShippingRates(Astro.props.productId);
 ---
 
 <div

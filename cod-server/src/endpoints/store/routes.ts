@@ -237,8 +237,9 @@ const getShippingRatesRoute = defineRoute({
   tags: ["Store API"],
   summary: "Get shipping rates",
   description:
-    "Per-wilaya shipping rates for the order form. Returns wilayas that have a rule in the default shipping profile; absent wilayas should be treated as unknown/unsupported.",
+    "Per-wilaya shipping rates for the order form, from the product's own shipping profile in this store when `productId` is given, else the store's default profile. A null price means the mode is not offered to that wilaya; absent wilayas have no known fee (to confirm on the call).",
   operationId: "getShippingRates",
+  query: z.object({ productId: z.string().optional() }),
   responses: {
     200: {
       description: "Shipping rates keyed by wilaya ID (as string)",
@@ -248,12 +249,12 @@ const getShippingRatesRoute = defineRoute({
           data: z.record(
             z.string(),
             z.object({
-              home: z.number().openapi({
-                description: "Home delivery price (DZD)",
+              home: z.number().nullable().openapi({
+                description: "Home delivery price (DZD); null when not offered there",
                 example: 400,
               }),
-              stopDesk: z.number().openapi({
-                description: "Stop-desk / post-office pickup price (DZD)",
+              stopDesk: z.number().nullable().openapi({
+                description: "Stop-desk / post-office pickup price (DZD); null when not offered there",
                 example: 350,
               }),
             })

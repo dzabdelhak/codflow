@@ -23,6 +23,7 @@ vi.mock("@/db", () => ({
 vi.mock("./queries");
 vi.mock("@/platform/catalogue", () => ({
   shippingProfileUsage: vi.fn(async () => ({ products: 0, stores: 0 })),
+  profileProductCounts: vi.fn(async () => new Map([["profile_123", 3]])),
 }));
 
 const mockUser = {

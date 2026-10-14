@@ -12,8 +12,12 @@ BEGIN
 END $$;
 --> statement-breakpoint
 UPDATE stores s SET default_shipping_profile_id = p.id
-  FROM shipping_profiles p
- WHERE p.store_id = s.id AND p.is_default;
+  FROM (SELECT DISTINCT ON (store_id) id, store_id FROM shipping_profiles WHERE is_default ORDER BY store_id, created_at, id) p
+ WHERE p.store_id = s.id;
+--> statement-breakpoint
+UPDATE shipping_profiles p SET is_default = false
+  FROM stores s
+ WHERE s.id = p.store_id AND p.is_default AND p.id <> s.default_shipping_profile_id;
 --> statement-breakpoint
 WITH ranked AS (
   SELECT p.id, row_number() OVER (PARTITION BY p.merchant_id ORDER BY s.created_at, s.id, p.created_at, p.id) AS rn

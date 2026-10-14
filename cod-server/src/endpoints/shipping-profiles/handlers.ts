@@ -3,7 +3,7 @@
  */
 
 import { Context } from "hono";
-import { shippingProfileUsage } from "@/platform/catalogue";
+import { profileProductCounts, shippingProfileUsage } from "@/platform/catalogue";
 import type { AppContext } from "@/types";
 import { getDb } from "@/db";
 import * as queries from "./queries";
@@ -17,7 +17,8 @@ import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
  */
 export async function listProfiles(c: Context<AppContext>) {
   const db = c.get("db");
-  const data = await queries.getAllProfiles(db);
+  const counts = await profileProductCounts(c.env.DATABASE.platform, c.get("user").merchantId);
+  const data = (await queries.getAllProfiles(db)).map((p) => ({ ...p, productCount: counts.get(p.id) ?? 0 }));
   return c.json({ success: true, data, count: data.length }, 200);
 }
 
@@ -41,7 +42,8 @@ export async function getProfile(c: Context<AppContext>) {
   if (!profile) {
     throw new NotFoundError("shipping_profile", c.req.param("id")!);
   }
-  return c.json({ success: true, data: profile }, 200);
+  const counts = await profileProductCounts(c.env.DATABASE.platform, c.get("user").merchantId);
+  return c.json({ success: true, data: { ...profile, productCount: counts.get(profile.id) ?? 0 } }, 200);
 }
 
 /**

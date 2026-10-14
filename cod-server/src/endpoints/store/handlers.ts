@@ -201,7 +201,7 @@ export async function listStoreCategories(c: Context<AppContext>) {
 
 export async function getShippingRates(c: Context<AppContext>) {
   const db = c.get("db");
-  const data = await queries.getShippingRates(db);
+  const data = await queries.getShippingRates(db, c.req.query("productId") || undefined);
   return c.json({ success: true, data }, 200);
 }
 
@@ -311,6 +311,7 @@ export async function createStoreOrder(c: Context<AppContext>) {
   // charged — they cannot drift apart.
   const { subtotal } = priceCartLines(snapshot, lines);
 
+  const deliveryGridVersion = await queries.lockDeliveryGrid(db);
   const deliveryFee = await queries.resolveDeliveryFee(db, {
     productIds: [...new Set(lines.map((l) => l.productId))],
     wilayaId: data.wilayaId,
@@ -354,6 +355,7 @@ export async function createStoreOrder(c: Context<AppContext>) {
       customerId: customer.id,
       customerName: customer.name,
       deliveryFee,
+      deliveryGridVersion,
       landingPageId,
       ipAddress,
       userAgent,

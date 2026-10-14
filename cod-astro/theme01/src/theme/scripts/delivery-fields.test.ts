@@ -455,10 +455,15 @@ describe("delivery modes per wilaya", () => {
     expect(modesForWilaya(rates, "1")).toEqual({ home: true, stopDesk: false });
   });
 
-  it("keeps every mode before a wilaya is chosen, for an unknown wilaya, or when none is priced", () => {
+  it("offers, before a wilaya is chosen or for one without a rule, the modes priced somewhere", () => {
     expect(modesForWilaya(rates, "")).toEqual({ home: true, stopDesk: true });
     expect(modesForWilaya(rates, "40")).toEqual({ home: true, stopDesk: true });
+    expect(modesForWilaya({ "1": { home: 900, stopDesk: null } }, "")).toEqual({ home: true, stopDesk: false });
+  });
+
+  it("keeps every mode when nothing is priced, so the order is still taken", () => {
     expect(modesForWilaya(rates, "2")).toEqual({ home: true, stopDesk: true });
+    expect(modesForWilaya({}, "")).toEqual({ home: true, stopDesk: true });
   });
 
   it("hides a mode the wilaya does not offer and moves the choice off it", () => {
@@ -473,6 +478,7 @@ describe("delivery modes per wilaya", () => {
     expect(radio("stop_desk").disabled).toBe(true);
     expect(radio("home").checked).toBe(true);
     expect(changed).toHaveBeenCalledOnce();
+    expect(document.getElementById("delivery-type-group")!.classList.contains("grid-cols-1")).toBe(true);
 
     showWilayaModes(rates, "16");
     expect(radio("stop_desk").closest("label")!.style.display).toBe("");
