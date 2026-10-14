@@ -19,6 +19,7 @@ import {
   markAbandonedOrderConverted,
 } from "../../../../cod-shared/queries/abandoned-orders";
 import { MAX_CART_LINES, MAX_LINE_QUANTITY } from "../../../../cod-shared/queries/cart";
+import { visitorIp } from "@/lib/visitor-ip";
 
 const jsonContent = <T extends z.ZodType>(schema: T) => ({
   "application/json": { schema },
@@ -85,12 +86,7 @@ async function upsertHandler(c: Context<AppContext>) {
   const db = c.get("db");
   const data = (c.req as any).valid("json");
 
-  // X-Forwarded-For first: the storefront worker forwards the shopper's IP
-  // there — CF-Connecting-IP on this hop is the worker itself.
-  const ipAddress =
-    c.req.header("X-Forwarded-For")?.split(",")[0]?.trim() ??
-    c.req.header("CF-Connecting-IP") ??
-    undefined;
+  const ipAddress = visitorIp(c) ?? undefined;
   const userAgent = c.req.header("User-Agent") ?? undefined;
 
   const id = await upsertAbandonedOrder(db, {

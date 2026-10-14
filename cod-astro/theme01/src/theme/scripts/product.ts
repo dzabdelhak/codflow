@@ -101,7 +101,6 @@ export function initProductPage() {
   const gallery   = document.getElementById("gallery");
   const dots      = document.querySelectorAll<HTMLButtonElement>(".gallery-dot");
   const thumbs    = document.querySelectorAll<HTMLButtonElement>(".gallery-thumb");
-  const submitBtn     = document.getElementById("submit-btn") as HTMLButtonElement | null;
   const qtyStockHint  = document.getElementById("qty-stock-hint") as HTMLParagraphElement | null;
 
   // ── OFFER TIER SELECTION ───────────────────────────────────────────────────
@@ -522,11 +521,7 @@ export function initProductPage() {
     });
   });
 
-  // ── SUBMIT GUARD ───────────────────────────────────────────────────────────
   const form = document.querySelector<HTMLFormElement>("form[method='POST']");
-  form?.addEventListener("submit", () => {
-    if (submitBtn) submitBtn.disabled = true;
-  });
 
   // The merchant's own questions, serialised into the one hidden JSON input the
   // platform action whitelists. No-op for a store with no custom fields.
@@ -534,7 +529,7 @@ export function initProductPage() {
 
   // A required dropdown cannot rely on the browser: its value lives in a hidden
   // input, which is barred from constraint validation. Bound on document in the
-  // capture phase, so it runs before the submit guard above — a blocked submit
+  // capture phase, so it runs before the core submit guard — a blocked submit
   // must never leave the confirm button disabled.
   initRequiredSelects();
 

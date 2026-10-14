@@ -5,8 +5,9 @@
 // ╚══════════════════════════════════════════════════════════════════════╝
 import type { APIRoute } from "astro";
 import { sendOtp } from "@/core/api/client";
+import { visitorIpHeaders } from "@/core/api/visitor-ip";
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, clientAddress }) => {
   let phone = "";
   try {
     const body = (await request.json()) as { phone?: string };
@@ -24,7 +25,7 @@ export const POST: APIRoute = async ({ request }) => {
     });
   }
 
-  const result = await sendOtp(phone);
+  const result = await sendOtp(phone, visitorIpHeaders(request, () => clientAddress));
 
   if (!result.success) {
     return new Response(

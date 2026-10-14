@@ -23,6 +23,10 @@ import {
 import { priceCartLines } from "../../../../cod-shared/queries/catalog-snapshot";
 import { resolveConversionForStage } from "@/tracking/capi-helpers";
 import { enqueueConversions } from "@/tracking/conversions";
+import { visitorIp } from "@/lib/visitor-ip";
+import { randomUUID } from "node:crypto";
+import { allocateOrderNumber } from "../../../../cod-shared/queries/order-numbers";
+import { ipCeilingPerHour, orderFloodVerdict, recordBlockedAttempt } from "./order-flood";
 import { stores, orders } from "../../../../cod-shared/db/schema";
 import { eq } from "drizzle-orm";
 import type { PageLocale } from "../../../../cod-shared/legal/kinds";
@@ -253,7 +257,7 @@ export async function createStoreOrder(c: Context<AppContext>) {
   // Position is load-bearing: after the bot gate, so bots never pay for the
   // read, and before the delivery fee is resolved, because a delivery type the
   // merchant turned off must never reach pricing.
-  const { policy, lang } = await queries.getCheckoutFormPolicy(db, c.get("storeId")!);
+  const { policy, lang, orderLimitMinutes } = await queries.getCheckoutFormPolicy(db, c.get("storeId")!);
   const applied = applyCheckoutPolicy(policy, submitted);
   if (!applied.ok) {
     throw new ValidationError(
@@ -339,6 +343,45 @@ export async function createStoreOrder(c: Context<AppContext>) {
     subtotal,
   });
 
+  const ipAddress = visitorIp(c) ?? undefined;
+  const deviceId = data.attribution?.deviceId ?? null;
+  const blockedReason = await orderFloodVerdict(db, {
+    phone: data.phone,
+    deviceId,
+    ip: ipAddress ?? null,
+    windowMinutes: orderLimitMinutes ?? 10,
+    ipCeiling: ipCeilingPerHour(c.env.ORDER_IP_CEILING_PER_HOUR),
+  });
+  if (blockedReason) {
+    const orderNumber = await allocateOrderNumber(db);
+    const total = subtotal + (deliveryFee ?? 0);
+    await recordBlockedAttempt(db, {
+      reason: blockedReason,
+      orderNumber,
+      phone: data.phone,
+      customerName: data.customerName,
+      deviceId,
+      ip: ipAddress ?? null,
+      lines: lines.map((line) => ({ productName: line.productName, quantity: line.quantity })),
+      total: deliveryFee === null ? null : total,
+    });
+    return c.json(
+      {
+        success: true,
+        data: {
+          orderId: randomUUID(),
+          orderNumber,
+          price: subtotal,
+          deliveryFee,
+          feeToConfirm: deliveryFee === null,
+          total,
+          stockConfirmed: true,
+        },
+      },
+      201,
+    );
+  }
+
   const customer = await queries.findOrCreateCustomer(db, {
     phone: data.phone,
     name: data.customerName,
@@ -346,12 +389,6 @@ export async function createStoreOrder(c: Context<AppContext>) {
     communeId: data.communeId,
   });
 
-  // X-Forwarded-For first: the storefront worker forwards the shopper's IP
-  // there — CF-Connecting-IP on this hop is the worker itself.
-  const ipAddress =
-    c.req.header("X-Forwarded-For")?.split(",")[0]?.trim() ??
-    c.req.header("CF-Connecting-IP") ??
-    undefined;
   const userAgent = c.req.header("User-Agent") ?? undefined;
 
   // Landing page attribution — resolve best-effort BEFORE the customer is

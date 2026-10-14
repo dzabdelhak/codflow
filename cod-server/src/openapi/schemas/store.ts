@@ -49,6 +49,10 @@ export const StoreSchema = z
         "When true the storefront renders the shopping cart alongside the direct order form",
       example: false,
     }),
+    orderLimitMinutes: z.number().int().openapi({
+      description: "One order per phone or device in this window (minutes); 0 turns the limit off. A blocked order looks like a success and is logged.",
+      example: 10,
+    }),
     freeShippingThreshold: z.number().int().nullable().openapi({
       description: "Order subtotal (DZD) at or above which delivery is free. null = off",
       example: null,

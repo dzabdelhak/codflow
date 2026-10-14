@@ -4,8 +4,8 @@
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] A second order from the same phone within 10 minutes shows success but creates nothing and appears in the blocked-attempts log
-- [ ] Forging X-Forwarded-For does not change the IP the limit uses
-- [ ] A phone blocked in one channel is blocked in the account's other channels
+- [x] A second order from the same phone within 10 minutes shows success but creates nothing and appears in the blocked-attempts log
+- [x] Forging X-Forwarded-For does not change the IP the limit uses
+- [x] A phone blocked in one channel is blocked in the account's other channels

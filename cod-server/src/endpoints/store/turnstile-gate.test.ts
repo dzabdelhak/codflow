@@ -33,6 +33,7 @@ const { TURNSTILE_ERRORS, TurnstileError } = (await vi.importActual(
 vi.mock("@/db", () => ({ getDb: vi.fn(() => ({})) }));
 vi.mock("./queries");
 vi.mock("@/tracking/conversions", () => ({ enqueueConversions: vi.fn(async () => 0) }));
+vi.mock("./order-flood", () => ({ orderFloodVerdict: vi.fn(async () => null), ipCeilingPerHour: () => 20, recordBlockedAttempt: vi.fn() }));
 vi.mock("@/tracking/capi-helpers", () => ({
   shouldTriggerCapiPurchase: vi.fn(() => false),
   shouldTriggerCapiConfirmed: vi.fn(() => false),
@@ -224,13 +225,13 @@ describe("createStoreOrder turnstile gate", () => {
     errSpy.mockRestore();
   });
 
-  it("forwards the shopper IP (X-Forwarded-For) to siteverify as remoteip", async () => {
+  it("forwards the shopper IP the storefront saw (X-Visitor-IP) to siteverify as remoteip, never X-Forwarded-For", async () => {
     vi.mocked(turnstileConfigQueries.getTurnstileConfigRaw).mockResolvedValue(enabledRow() as any);
 
     await place(
       makeApp(),
       orderBody({ turnstileToken: WIDGET_TOKEN }),
-      { "X-Forwarded-For": "41.100.1.2, 10.0.0.1" }
+      { "X-Forwarded-For": "6.6.6.6", "X-Visitor-IP": "41.100.1.2" }
     );
 
     expect(turnstileLib.verifyTurnstileToken).toHaveBeenCalledWith(

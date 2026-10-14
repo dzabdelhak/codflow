@@ -34,7 +34,8 @@
     "store_products": "In this store",
     "main_product": "Main product",
     "design": "Design",
-    "domains": "Domains"
+    "domains": "Domains",
+    "orders_blocked": "Blocked attempts"
   },
   "navbar": {
     "search_placeholder": "Search for orders, customers...",

@@ -23,12 +23,16 @@ http://app.localhost {
 }
 
 http:// {
-	reverse_proxy storefront:4321
+	reverse_proxy storefront:4321 {
+		header_up X-Visitor-IP {remote_host}
+	}
 }
 
 https:// {
 	tls internal {
 		on_demand
 	}
-	reverse_proxy storefront:4321
+	reverse_proxy storefront:4321 {
+		header_up X-Visitor-IP {remote_host}
+	}
 }

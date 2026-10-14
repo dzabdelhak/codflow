@@ -24,6 +24,7 @@ export const updateStoreSchema = z.object({
    * leave the setting unchanged; null is not a way to say "off".
    */
   cartEnabled: z.boolean().optional(),
+  orderLimitMinutes: z.number().int().min(0).max(1440).optional(),
   /**
    * Order subtotal (DZD) at or above which delivery is free.
    * null turns the feature OFF. A minimum of 1 is deliberate: 0 would mean

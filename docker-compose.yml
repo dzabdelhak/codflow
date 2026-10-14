@@ -112,6 +112,7 @@ services:
       COD_SERVER_URL: http://api:8787
       STOREFRONT_SERVICE_KEY: *storefront-key
       MEDIA_URL: "http://api.localhost:${COD_HTTP_PORT:-8090}/images"
+      TRUSTED_PROXY_IP_HEADER: x-visitor-ip
     depends_on:
       api: { condition: service_healthy }
 

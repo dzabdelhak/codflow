@@ -24,15 +24,10 @@ import { getTurnstileConfigRaw } from "../../../../cod-shared/queries/turnstile-
 import { verifyTurnstileToken } from "../../../../cod-shared/lib/turnstile";
 import { BusinessLogicError } from "@/lib/errors/classes";
 import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
+import { VISITOR_IP_HEADER } from "@/lib/visitor-ip";
 
 function forwardedClientIp(c: Context): string | undefined {
-  // X-Forwarded-For first: the storefront worker forwards the shopper's IP
-  // there — CF-Connecting-IP on this hop is the worker itself.
-  return (
-    c.req.header("X-Forwarded-For")?.split(",")[0]?.trim() ||
-    c.req.header("CF-Connecting-IP") ||
-    undefined
-  );
+  return c.req.header(VISITOR_IP_HEADER)?.trim() || undefined;
 }
 
 export async function assertTurnstile(

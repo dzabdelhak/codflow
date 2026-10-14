@@ -6,6 +6,7 @@
 import { ActionError, defineAction } from "astro:actions";
 import { placeOrder } from "@/core/api/client";
 import { placeOrderInput } from "./input";
+import { visitorIpHeaders } from "@/core/api/visitor-ip";
 
 export const server = {
   placeOrder: defineAction({
@@ -28,10 +29,7 @@ export const server = {
       const forwardedHeaders: Record<string, string> = {};
       const userAgent = context.request.headers.get("User-Agent");
       if (userAgent) forwardedHeaders["User-Agent"] = userAgent;
-      const clientIp =
-        context.request.headers.get("CF-Connecting-IP") ??
-        context.request.headers.get("X-Forwarded-For")?.split(",")[0]?.trim();
-      if (clientIp) forwardedHeaders["X-Forwarded-For"] = clientIp;
+      Object.assign(forwardedHeaders, visitorIpHeaders(context.request, () => context.clientAddress));
       const referer = context.request.headers.get("Referer");
       if (referer) forwardedHeaders["Referer"] = referer;
 

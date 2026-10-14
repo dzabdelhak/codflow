@@ -156,6 +156,16 @@ other is how these drift.
   directly (`tracking-contracts.test.ts`); browser and server use the order id
   as the deduplication id. Provider event names live in
   `cod-shared/tracking/events.ts`.
+- **The visitor's IP is `X-Visitor-IP`, set by Caddy from the connection.**
+  The storefront trusts it only when `TRUSTED_PROXY_IP_HEADER` names it and
+  forwards it to cod-server, which reads it only on `/store/*` (behind the
+  storefront key; `src/lib/visitor-ip.ts`). Never read `X-Forwarded-For` or
+  `CF-Connecting-IP` — a visitor can write them.
+- **Orders pass the anti-flood rules** (`src/endpoints/store/order-flood.ts`):
+  account blocklist, one order per phone or device per channel window
+  (`stores.order_limit_minutes`), an hourly per-IP ceiling. A blocked attempt
+  answers like a success, creates nothing and is logged in
+  `blocked_order_attempts`. See `docs/ORDER-PROTECTION.md`.
 - **A channel serves its public pages only when `published`**
   (`cod-shared/channels/lifecycle.ts`): `suspended` answers the storefront
   with 503 `CHANNEL_UNAVAILABLE` (theme01 renders a neutral page), every

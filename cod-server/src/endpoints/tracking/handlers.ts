@@ -40,7 +40,7 @@ export async function sendTestEvent(c: Context<AppContext>) {
         contentIds: ["test-product"],
         user: {
           phone: "0550000000",
-          ip: c.req.header("X-Forwarded-For")?.split(",")[0]?.trim() ?? null,
+          ip: null,
           userAgent: c.req.header("User-Agent") ?? null,
         },
       },

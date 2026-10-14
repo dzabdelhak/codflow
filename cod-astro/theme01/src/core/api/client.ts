@@ -275,7 +275,8 @@ export async function placeOrder(
  * returns a signed bypassToken — checkout proceeds unverified (fail-open).
  */
 export async function sendOtp(
-  phone: string
+  phone: string,
+  forwardedHeaders?: Record<string, string>
 ): Promise<
   | { success: true; data: { status: "sent"; requestId: string; expiresAt: number; maxAttempts: number } }
   | { success: true; data: { status: "unavailable"; reason: string; bypassToken: string } }
@@ -284,7 +285,7 @@ export async function sendOtp(
   try {
     const res = await fetch(`${COD_SERVER_URL}/store/otp/send`, {
       method: "POST",
-      headers: storeHeaders(),
+      headers: { ...storeHeaders(), ...forwardedHeaders },
       body: JSON.stringify({ phone }),
     });
     const json = (await res.json()) as any;

@@ -2,6 +2,8 @@ import { ATTRIBUTION_TEXT_FIELDS } from "../../../../cod-shared/tracking/attribu
 import { z } from "zod";
 import { toLocalAlgerianMobile } from "../../../../cod-shared/lib/phone";
 
+const attributionText = z.preprocess((v) => (typeof v === "string" && v.trim() ? v.trim().slice(0, 300) : undefined), z.string().optional());
+
 export const variantSelectionSchema = z.object({
   variantId: z.string().min(1),
   variantLabel: z.string().optional(),
@@ -109,12 +111,10 @@ export const storeOrderSchema = z.object({
     },
     z
       .object({
-        ...Object.fromEntries(
-          ATTRIBUTION_TEXT_FIELDS.map((field) => [
-            field,
-            z.preprocess((v) => (typeof v === "string" && v.trim() ? v.trim().slice(0, 300) : undefined), z.string().optional()),
-          ]),
-        ),
+        ...(Object.fromEntries(ATTRIBUTION_TEXT_FIELDS.map((field) => [field, attributionText])) as Record<
+          (typeof ATTRIBUTION_TEXT_FIELDS)[number],
+          typeof attributionText
+        >),
         consent: z.boolean().optional(),
       })
       .optional(),

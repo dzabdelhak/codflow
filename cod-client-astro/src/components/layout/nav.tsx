@@ -14,6 +14,7 @@ import {
   PackageX,
   Settings,
   Shield,
+  ShieldX,
   ShoppingCart,
   Sparkles,
   Crosshair,
@@ -94,6 +95,13 @@ export function useNavSections(): NavSection[] {
               label: tN("sidebar.orders_abandoned"),
               icon: PackageX,
               scope: "abandoned_orders:read",
+            },
+            {
+              kind: "leaf",
+              href: "/orders/blocked",
+              label: tN("sidebar.orders_blocked"),
+              icon: ShieldX,
+              scope: "orders:read",
             },
           ],
         },
@@ -336,7 +344,8 @@ export function isCurrentPath(currentPath: string, href: string): boolean {
     return (
       currentPath === "/orders" ||
       (currentPath.startsWith("/orders/") &&
-        currentPath !== "/orders/abandoned")
+        currentPath !== "/orders/abandoned" &&
+        currentPath !== "/orders/blocked")
     );
   }
   if (href === "/products") {

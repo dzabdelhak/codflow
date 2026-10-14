@@ -19,6 +19,7 @@ export interface Env {
   STOREFRONT_SERVICE_KEY?: string;
   /** Free subdomains are `<subdomain>.<STORE_BASE_DOMAIN>` (default "localhost"). */
   STORE_BASE_DOMAIN?: string;
+  ORDER_IP_CEILING_PER_HOUR?: string;
   STOREFRONT_INTERNAL_URL?: string;
   /** Image storage (MinIO / S3-compatible), built by src/node.ts from the S3_* variables. */
   IMAGE_STORE: ImageStore;

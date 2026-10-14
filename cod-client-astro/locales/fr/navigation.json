@@ -34,7 +34,8 @@
     "store_products": "Dans cette boutique",
     "main_product": "Produit principal",
     "design": "Design",
-    "domains": "Domaines"
+    "domains": "Domaines",
+    "orders_blocked": "Tentatives bloquées"
   },
   "navbar": {
     "search_placeholder": "Rechercher des commandes, clients...",

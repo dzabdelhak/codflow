@@ -16,6 +16,7 @@ import { ReviewsSettings } from "@/features/settings/components/ReviewsSettings"
 import { DeliveryPricingSettings } from "@/features/settings/components/DeliveryPricingSettings";
 import { CartSettings } from "@/features/settings/components/CartSettings";
 import { TrackingSettings } from "@/features/settings/components/TrackingSettings";
+import { OrderLimitSettings } from "@/features/settings/components/OrderLimitSettings";
 import { VerificationSettings } from "@/features/settings/components/VerificationSettings";
 import { BotProtectionSettings } from "@/features/settings/components/BotProtectionSettings";
 import { EmailSettings } from "@/features/settings/components/EmailSettings";
@@ -108,7 +109,12 @@ function SettingsContent() {
       case "verification":
         return <VerificationSettings />;
       case "bot_protection":
-        return <BotProtectionSettings />;
+        return (
+          <div className="space-y-6">
+            <OrderLimitSettings storeConfig={storeConfig} onSave={handleSave} />
+            <BotProtectionSettings />
+          </div>
+        );
       case "email":
         return <EmailSettings />;
       case "api":

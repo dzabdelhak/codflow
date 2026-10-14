@@ -136,6 +136,7 @@ beforeAll(async () => {
 
   await harness.setStore({ name: "Nour", orderPrefix: "NOUR", domain: "nour.example", createdAt: NOW(), updatedAt: NOW() });
   await harness.platform.query("update stores set order_prefix = 'OTHR', domain = 'other.example' where id = $1", [other]);
+  await harness.platform.query("update stores set order_limit_minutes = 0");
   await harness.db.insert(schema.products).values({
     id: "p-shirt", name: "Shirt", handle: "shirt", price: 2500, sku: "SHIRT", inventory: 1000, createdAt: NOW(), updatedAt: NOW(),
   });

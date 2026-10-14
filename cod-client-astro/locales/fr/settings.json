@@ -226,7 +226,13 @@
     "tracking_secret_removed": "Supprimé à l'enregistrement",
     "tracking_diag_skip_no_access_token": "Non envoyé : aucun jeton d'accès enregistré pour cette plateforme",
     "tracking_diag_skip_not_configured": "Non envoyé : la plateforme a été retirée ou l'événement de conversion a changé",
-    "tracking_diag_skip_event_time_expired": "Non envoyé : plus ancien que ce que la plateforme accepte (7 jours)"
+    "tracking_diag_skip_event_time_expired": "Non envoyé : plus ancien que ce que la plateforme accepte (7 jours)",
+    "order_limit_title": "Commandes répétées",
+    "order_limit_subtitle": "Arrête les fausses commandes et les doublons d'une même personne",
+    "order_limit_label": "Une commande par téléphone ou appareil toutes les (minutes)",
+    "order_limit_hint": "10 par défaut. 0 désactive la limite.",
+    "order_limit_note": "Une commande bloquée voit la confirmation habituelle : un script n'apprend rien. Rien n'est créé ; la tentative apparaît dans Commandes → Tentatives bloquées, où vous pouvez aussi bloquer un téléphone pour tous vos canaux.",
+    "order_limit_invalid": "Saisissez un nombre de minutes entre 0 et 1440."
   },
   "shipping": {
     "title": "Tarifs de livraison",

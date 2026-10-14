@@ -7,6 +7,7 @@
 import { consentDecision } from "./track";
 
 const STORAGE_KEY = "cod_attribution";
+const DEVICE_COOKIE = "cod_device";
 const PARAMS: Record<string, string> = {
   utm_source: "utmSource",
   utm_medium: "utmMedium",
@@ -56,6 +57,14 @@ export function captureAttribution(): Attribution {
   return merged;
 }
 
+export function deviceId(): string {
+  const existing = cookie(DEVICE_COOKIE);
+  if (existing) return existing;
+  const id = crypto.randomUUID();
+  document.cookie = `${DEVICE_COOKIE}=${id}; Max-Age=${365 * 24 * 3600}; Path=/; SameSite=Lax`;
+  return id;
+}
+
 function fillOrderForm(form: HTMLFormElement): void {
   const input = form.querySelector<HTMLInputElement>('input[name="attribution"]');
   const { fbclidAt, ...stored } = readStored();
@@ -63,6 +72,7 @@ function fillOrderForm(form: HTMLFormElement): void {
   if (input) {
     input.value = JSON.stringify({
       ...stored,
+      deviceId: deviceId(),
       ...(cookie("_ttp") ? { ttp: cookie("_ttp") } : {}),
       ...(cookie("_scid") ? { scid: cookie("_scid") } : {}),
       ...(cookie("_ga") ? { gaClientId: cookie("_ga") } : {}),

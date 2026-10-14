@@ -26,6 +26,7 @@ export interface StoreConfig {
   reviewsEnabled: boolean;
   /** Shopping cart opt-in. False keeps the storefront exactly as it is. */
   cartEnabled: boolean;
+  orderLimitMinutes: number;
   /** Order subtotal (DZD) at or above which delivery is free. null = off. */
   freeShippingThreshold: number | null;
   /** Which rate a basket spanning several shipping profiles pays. */
@@ -55,6 +56,7 @@ export type UpdateStoreData = Partial<
     | "announcementBar"
     | "reviewsEnabled"
     | "cartEnabled"
+    | "orderLimitMinutes"
     | "freeShippingThreshold"
     | "cartShippingMode"
     | "defaultShippingProfileId"

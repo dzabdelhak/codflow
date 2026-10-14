@@ -121,7 +121,9 @@
       "domain.verified": "تحقق من نطاق",
       "domain.verification_failed": "فشل التحقق من النطاق",
       "domain.primary_set": "حدد النطاق الرئيسي",
-      "domain.removed": "حذف نطاقًا"
+      "domain.removed": "حذف نطاقًا",
+      "phone.blocked": "حظر هاتفًا",
+      "phone.unblocked": "رفع الحظر عن هاتف"
     },
     "table": {
       "action": "الإجراء",

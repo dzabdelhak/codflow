@@ -920,6 +920,7 @@ export async function createStoreOrder(
     stockNotGuaranteed: !stockConfirmed,
     submittedAt: now,
     userAgent: data.userAgent ?? null,
+    deviceId: data.attribution?.deviceId ?? null,
   });
 
   const statements: BatchStatement[] = [

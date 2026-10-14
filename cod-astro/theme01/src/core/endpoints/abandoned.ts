@@ -8,6 +8,7 @@
 import type { APIRoute } from "astro";
 import { z } from "astro/zod";
 import { upsertAbandonedOrder } from "@/core/api/client";
+import { visitorIpHeaders } from "@/core/api/visitor-ip";
 
 // Mirrors the cod-server /store/abandoned upsert contract
 // (see cod-server/src/endpoints/abandoned-orders/store-routes.ts).
@@ -77,7 +78,7 @@ function isCrossOrigin(request: Request): boolean {
   }
 }
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, clientAddress }) => {
   if (isCrossOrigin(request)) {
     return new Response(JSON.stringify({ error: "Cross-origin not allowed" }), {
       status: 403,
@@ -97,16 +98,10 @@ export const POST: APIRoute = async ({ request }) => {
     return badRequest("Invalid tracking payload");
   }
 
-  // Forward the shopper's attribution headers so cod-server records the
-  // visitor, not this worker. Cloudflare provides CF-Connecting-IP on the
-  // incoming request; the User-Agent passes through verbatim.
   const forwardedHeaders: Record<string, string> = {};
   const userAgent = request.headers.get("User-Agent");
   if (userAgent) forwardedHeaders["User-Agent"] = userAgent;
-  const clientIp =
-    request.headers.get("CF-Connecting-IP") ??
-    request.headers.get("X-Forwarded-For")?.split(",")[0]?.trim();
-  if (clientIp) forwardedHeaders["X-Forwarded-For"] = clientIp;
+  Object.assign(forwardedHeaders, visitorIpHeaders(request, () => clientAddress));
 
   // Fire-and-forget by contract: tracking must never break the storefront.
   // Upstream failures return 502 for debuggability; the browser script

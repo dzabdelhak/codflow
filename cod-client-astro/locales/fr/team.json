@@ -121,7 +121,9 @@
       "domain.verified": "A vérifié un domaine",
       "domain.verification_failed": "Vérification du domaine échouée",
       "domain.primary_set": "A défini le domaine principal",
-      "domain.removed": "A supprimé un domaine"
+      "domain.removed": "A supprimé un domaine",
+      "phone.blocked": "A bloqué un téléphone",
+      "phone.unblocked": "A débloqué un téléphone"
     },
     "table": {
       "action": "Action",

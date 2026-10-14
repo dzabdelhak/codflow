@@ -63,6 +63,9 @@ tests for cod-server, cod-client-astro, and the legacy cod-client).
   calls the API outside a request has no channel.
 - The page cache (`memoryCache`) keys on origin + path, so each hostname has
   its own entries; `src/theme/cache-contracts.test.ts` holds that.
+- `TRUSTED_PROXY_IP_HEADER` names the header the front proxy writes the
+  visitor's address into (`x-visitor-ip` with our Caddy). Unset, the
+  storefront uses its own connection's address. Never read `X-Forwarded-For`.
 - `MEDIA_URL` (cod-server's public `/images` base) is optional; unset, the
   image service (`src/core/media-image-service.ts`) and the optimizer pass
   URLs through unchanged.

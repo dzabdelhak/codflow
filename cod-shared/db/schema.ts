@@ -621,8 +621,12 @@ export const orders = pgTable("orders", {
   fbclid: text("fbclid"),
   adCookies: jsonb("ad_cookies").$type<{ ttp?: string; scid?: string; gaClientId?: string }>(),
   trackingConsent: boolean("tracking_consent"),
+  deviceId: text("device_id"),
 }, (t) => ({
   orderNumberPerStore: uniqueIndex("orders_store_order_number_unique").on(t.storeId, t.orderNumber),
+  recentByPhone: index("orders_store_phone_created_idx").on(t.storeId, t.phone, t.createdAt),
+  recentByDevice: index("orders_store_device_created_idx").on(t.storeId, t.deviceId, t.createdAt),
+  recentByIp: index("orders_store_ip_created_idx").on(t.storeId, t.ipAddress, t.createdAt),
 }));
 
 export const outboundOrders = pgTable("outbound_orders", {
@@ -639,6 +643,35 @@ export const outboundOrders = pgTable("outbound_orders", {
   sentAt: timestamp("sent_at", { mode: "date", withTimezone: true }),
 }, (t) => ({
   due: index("outbound_orders_due_idx").on(t.nextAttemptAt, t.id).where(sql`status = 'pending'`),
+}));
+
+export const BLOCKED_ORDER_REASONS = ["blocked_phone", "phone_window", "device_window", "ip_ceiling"] as const;
+export type BlockedOrderReason = (typeof BLOCKED_ORDER_REASONS)[number];
+
+export const blockedOrderAttempts = pgTable("blocked_order_attempts", {
+  storeId: storeIdColumn(),
+  id: text("id").primaryKey(),
+  reason: text("reason", { enum: BLOCKED_ORDER_REASONS }).notNull(),
+  orderNumber: text("order_number").notNull(),
+  phone: text("phone").notNull(),
+  customerName: text("customer_name").notNull(),
+  deviceId: text("device_id"),
+  ipAddress: text("ip_address"),
+  details: jsonb("details").$type<{ lines: Array<{ productName: string; quantity: number }>; total: number | null }>().notNull(),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  recent: index("blocked_order_attempts_store_created_idx").on(t.storeId, t.createdAt),
+}));
+
+export const blockedPhones = pgTable("blocked_phones", {
+  merchantId: merchantIdColumn(),
+  id: text("id").primaryKey(),
+  phone: text("phone").notNull(),
+  note: text("note"),
+  createdBy: text("created_by"),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  phonePerMerchant: uniqueIndex("blocked_phones_merchant_phone_unique").on(t.merchantId, t.phone),
 }));
 
 export const jobs = pgTable("jobs", {
@@ -1111,6 +1144,7 @@ export const stores = pgTable("stores", {
   creationKey: text("creation_key"),
   channelType: text("channel_type", { enum: CHANNEL_TYPES }).notNull().default("store"),
   unavailableRule: text("unavailable_rule", { enum: UNAVAILABLE_RULES }).notNull().default("show_unavailable"),
+  orderLimitMinutes: integer("order_limit_minutes").notNull().default(10),
 }, (t) => ({
   merchantIdx: index("stores_merchant_idx").on(t.merchantId),
   creationKeyPerMerchant: uniqueIndex("stores_merchant_creation_key_unique").on(t.merchantId, t.creationKey),

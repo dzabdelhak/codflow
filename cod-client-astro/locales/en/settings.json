@@ -226,7 +226,13 @@
     "tracking_secret_removed": "Removed when you save",
     "tracking_diag_skip_no_access_token": "Not sent: no access token is saved for this platform",
     "tracking_diag_skip_not_configured": "Not sent: the platform was removed or the conversion event changed",
-    "tracking_diag_skip_event_time_expired": "Not sent: older than the platform accepts (7 days)"
+    "tracking_diag_skip_event_time_expired": "Not sent: older than the platform accepts (7 days)",
+    "order_limit_title": "Repeat orders",
+    "order_limit_subtitle": "Stops fake and duplicate orders from the same person",
+    "order_limit_label": "One order per phone or device every (minutes)",
+    "order_limit_hint": "10 by default. 0 turns the limit off.",
+    "order_limit_note": "A blocked order sees the usual confirmation, so a script learns nothing. Nothing is created; you find the attempt under Orders → Blocked attempts, where you can also block a phone for all your channels.",
+    "order_limit_invalid": "Enter a number of minutes between 0 and 1440."
   },
   "shipping": {
     "title": "Shipping Rates",

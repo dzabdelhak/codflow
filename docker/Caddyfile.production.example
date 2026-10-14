@@ -24,5 +24,7 @@ https:// {
 	tls {
 		on_demand
 	}
-	reverse_proxy storefront:4321
+	reverse_proxy storefront:4321 {
+		header_up X-Visitor-IP {remote_host}
+	}
 }

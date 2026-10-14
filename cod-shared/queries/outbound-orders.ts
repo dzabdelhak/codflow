@@ -12,6 +12,7 @@ export interface OutboundOrderInput {
   stockNotGuaranteed: boolean;
   submittedAt: string;
   userAgent: string | null;
+  deviceId?: string | null;
 }
 
 export function outboundOrderRow(input: OutboundOrderInput): typeof outboundOrders.$inferInsert {
@@ -33,7 +34,7 @@ export function outboundOrderRow(input: OutboundOrderInput): typeof outboundOrde
       customer: input.customer,
       journey: { kind: input.journey, campaign: input.campaign ?? null },
       stockNotGuaranteed: input.stockNotGuaranteed,
-      traces: { submittedAt: input.submittedAt, userAgent: input.userAgent, deviceId: null },
+      traces: { submittedAt: input.submittedAt, userAgent: input.userAgent, deviceId: input.deviceId ?? null },
     },
   };
 }

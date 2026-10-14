@@ -16,14 +16,9 @@ import { createDzverifyClient, DzverifyError, DZVERIFY_ERRORS } from "./dzverify
 import { normalizeAlgerianPhone } from "../../../../cod-shared/lib/phone";
 import { signOtpToken } from "./token";
 import { createOtpSendGuards, recordOtpSend } from "./guards";
+import { visitorIp } from "@/lib/visitor-ip";
 
-function clientIp(c: Context<AppContext>): string | null {
-  return (
-    c.req.header("CF-Connecting-IP") ??
-    c.req.header("X-Forwarded-For")?.split(",")[0]?.trim() ??
-    null
-  );
-}
+const clientIp = visitorIp;
 
 async function loadEnabledConfig(c: Context<AppContext>) {
   const db = c.get("db");

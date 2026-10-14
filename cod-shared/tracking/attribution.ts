@@ -10,6 +10,7 @@ export interface OrderAttribution {
   ttp?: string;
   scid?: string;
   gaClientId?: string;
+  deviceId?: string;
   consent?: boolean;
 }
 
@@ -25,6 +26,7 @@ export const ATTRIBUTION_TEXT_FIELDS = [
   "ttp",
   "scid",
   "gaClientId",
+  "deviceId",
 ] as const;
 
 export function attributionColumns(a: OrderAttribution | undefined) {
@@ -41,6 +43,7 @@ export function attributionColumns(a: OrderAttribution | undefined) {
     fbclid: a?.fbclid ?? null,
     adCookies: hasCookies ? JSON.parse(JSON.stringify(cookies)) : null,
     trackingConsent: a?.consent ?? null,
+    deviceId: a?.deviceId ?? null,
   };
 }
 

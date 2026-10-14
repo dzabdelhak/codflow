@@ -24,6 +24,7 @@ import { signOtpToken } from "@/endpoints/store-otp/token";
 vi.mock("@/db", () => ({ getDb: vi.fn(() => ({})) }));
 vi.mock("./queries");
 vi.mock("@/tracking/conversions", () => ({ enqueueConversions: vi.fn(async () => 0) }));
+vi.mock("./order-flood", () => ({ orderFloodVerdict: vi.fn(async () => null), ipCeilingPerHour: () => 20, recordBlockedAttempt: vi.fn() }));
 vi.mock("@/tracking/capi-helpers", () => ({
   shouldTriggerCapiPurchase: vi.fn(() => false),
   shouldTriggerCapiConfirmed: vi.fn(() => false),

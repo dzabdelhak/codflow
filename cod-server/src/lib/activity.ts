@@ -71,6 +71,8 @@ export const ACTIONS = {
   DOMAIN_VERIFICATION_FAILED: "domain.verification_failed",
   DOMAIN_PRIMARY_SET:      "domain.primary_set",
   DOMAIN_REMOVED:          "domain.removed",
+  PHONE_BLOCKED:           "phone.blocked",
+  PHONE_UNBLOCKED:         "phone.unblocked",
 
   STORE_PAGE_CREATED:      "store_page.created",
   STORE_PAGE_UPDATED:      "store_page.updated",

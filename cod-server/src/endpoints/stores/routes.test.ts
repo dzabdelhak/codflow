@@ -31,6 +31,7 @@ function storeRow(overrides: Record<string, any> = {}) {
     creationKey: null,
     channelType: "store" as const,
     unavailableRule: "show_unavailable" as const,
+    orderLimitMinutes: 10,
     orderPrefix: "CMD",
     orderSeq: 0,
     id: "store_1",

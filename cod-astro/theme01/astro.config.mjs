@@ -47,6 +47,11 @@ export default defineConfig({
       }),
       // Public base of cod-server's image service (e.g. https://api.example.com/images).
       // Images under it are served resized; unset → URLs pass through unchanged.
+      TRUSTED_PROXY_IP_HEADER: envField.string({
+        context: "server",
+        access: "secret",
+        optional: true,
+      }),
       MEDIA_URL: envField.string({
         context: "server",
         access: "secret",
