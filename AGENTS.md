@@ -140,9 +140,11 @@ other is how these drift.
   platform pool), then `dashboardScope`, which accepts the store only when the
   user's merchant owns it and pins both `app.merchant_id` and `app.store_id`.
   `users`, `user_scopes`, `accounts`, `sessions` and `merchants` are under
-  merchant RLS. Store creation (`POST /api/merchant/stores`) goes through the
-  plan-policy seam (`cod-server/src/platform/plan-policy.ts`) — Aventy's plan
-  check plugs in there. `/webhooks` and `/images` still serve the deployment's
+  merchant RLS. Store creation (`POST /api/merchant/stores`, the single entry
+  point the wizard and later Aventy call — `docs/CHANNEL-CREATION.md`) goes
+  through the plan-policy seam (`cod-server/src/platform/plan-policy.ts`) —
+  Aventy's plan check plugs in there — and is idempotent on `creationKey`
+  (`stores.creation_key`, unique per merchant). `/webhooks` and `/images` still serve the deployment's
   only store until their tickets.
 - **One catalogue per merchant; each store selects from it.** `products`,
   `product_variants`, `product_images`, `product_categories` and
@@ -230,8 +232,8 @@ other is how these drift.
 - Rich text (product descriptions, legal pages) is sanitised by lol-html via
   `html-rewriter-wasm` — the same engine as Cloudflare's HTMLRewriter, so the
   sanitiser tests keep their meaning. Do not swap the parser.
-- **A store is never born with its four legal pages automatically** — there
-  is no channel-creation flow to hook a seed into yet (ticket 07).
+- **Stores made outside the creation API lack their four legal pages** — the
+  API seeds them; demo seeds and stores from before it do not.
   `npm run db:setup` (cod-server) runs `scripts/seed-store-pages.ts` as its
   last step: the app's own `seedStorePages` for every store, idempotent and
   safe to re-run (`-- --store-id=<id>` for one store). The dashboard's Pages

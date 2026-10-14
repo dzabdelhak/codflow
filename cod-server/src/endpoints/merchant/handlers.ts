@@ -27,10 +27,15 @@ export async function createStore(c: Context<AppContext>) {
       name: body.name,
       subdomain: body.subdomain,
       baseDomain: c.env.STORE_BASE_DOMAIN ?? "localhost",
+      creationKey: body.creationKey,
+      productIds: body.productIds,
+      deliveryModes: body.deliveryModes,
+      defaultShippingProfileId: body.defaultShippingProfileId,
+      templateId: body.templateId,
     },
     localPlanPolicy(),
   );
-  if (result.ok) return c.json({ success: true, data: result.store }, 201);
+  if (result.ok) return c.json({ success: true, data: result.store }, result.created ? 201 : 200);
 
   switch (result.reason) {
     case "invalid_subdomain":
@@ -47,6 +52,19 @@ export async function createStore(c: Context<AppContext>) {
       throw new BusinessLogicError("Your plan does not allow another store", ERROR_CODES.STORE_LIMIT_REACHED, {
         limit: result.limit,
         used: result.used,
+      });
+    case "unknown_products":
+      throw new ValidationError("Some products are not in the catalogue", ERROR_CODES.VALIDATION_FAILED, {
+        field: "productIds",
+        unknown: result.productIds,
+      });
+    case "unknown_shipping_profile":
+      throw new ValidationError("This shipping profile is not in the account", ERROR_CODES.VALIDATION_FAILED, {
+        field: "defaultShippingProfileId",
+      });
+    case "unknown_template":
+      throw new ValidationError("Unknown template for this channel type", ERROR_CODES.VALIDATION_FAILED, {
+        field: "templateId",
       });
   }
 }

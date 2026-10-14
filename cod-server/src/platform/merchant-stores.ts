@@ -4,6 +4,12 @@ import { getDb } from "../../../cod-shared/db/client";
 import { seedStorePages } from "../../../cod-shared/queries/store-pages";
 import type { PlanPolicy } from "./plan-policy";
 import { orderPrefixFor } from "../../../cod-shared/queries/order-numbers";
+import { isTemplateFor } from "../../../cod-shared/channels/templates";
+import {
+  DEFAULT_CHECKOUT_FORM_POLICY,
+  isDefaultCheckoutFormPolicy,
+  serializeCheckoutFormPolicy,
+} from "../../../cod-shared/checkout-form/policy";
 import { canTransition, type ChannelStatus } from "../../../cod-shared/channels/lifecycle";
 import { ACTIONS } from "@/lib/activity";
 
@@ -62,37 +68,91 @@ export async function merchantOwnsStore(platform: pg.Pool, merchantId: string, s
 }
 
 export type CreateStoreResult =
-  | { ok: true; store: MerchantStore }
+  | { ok: true; store: MerchantStore; created: boolean }
   | { ok: false; reason: "invalid_subdomain" }
   | { ok: false; reason: "subdomain_taken" }
-  | { ok: false; reason: "plan_limit"; limit: number; used: number };
+  | { ok: false; reason: "plan_limit"; limit: number; used: number }
+  | { ok: false; reason: "unknown_products"; productIds: string[] }
+  | { ok: false; reason: "unknown_shipping_profile" }
+  | { ok: false; reason: "unknown_template" };
+
+export interface CreateStoreInput {
+  merchantId: string;
+  name: string;
+  subdomain: string;
+  baseDomain: string;
+  creationKey?: string;
+  productIds?: string[];
+  deliveryModes?: { home: boolean; stopDesk: boolean };
+  defaultShippingProfileId?: string | null;
+  templateId?: string;
+}
+
+async function storeById(client: pg.PoolClient, id: string): Promise<MerchantStore> {
+  const { rows } = await client.query<MerchantStore>(`select ${STORE_COLUMNS} from stores s where s.id = $1`, [id]);
+  return rows[0];
+}
 
 export async function createMerchantStore(
   platform: pg.Pool,
-  input: { merchantId: string; name: string; subdomain: string; baseDomain: string },
+  input: CreateStoreInput,
   policy: PlanPolicy,
 ): Promise<CreateStoreResult> {
   const subdomain = normaliseSubdomain(input.subdomain);
   if (!subdomain) return { ok: false, reason: "invalid_subdomain" };
   const hostname = `${subdomain}.${input.baseDomain}`;
+  const templateId = input.templateId ?? "theme01";
+  if (!isTemplateFor("store", templateId)) return { ok: false, reason: "unknown_template" };
+  const productIds = [...new Set(input.productIds ?? [])];
 
   const client = await platform.connect();
+  const refuse = async <T extends CreateStoreResult>(result: T): Promise<T> => {
+    await client.query("rollback");
+    return result;
+  };
   try {
     await client.query("begin");
     await client.query("select 1 from merchants where id = $1 for no key update", [input.merchantId]);
 
-    const decision = await policy.canCreateStore(client, input.merchantId);
-    if (!decision.allowed) {
-      await client.query("rollback");
-      return { ok: false, reason: "plan_limit", limit: decision.limit, used: decision.used };
+    if (input.creationKey) {
+      const existing = await client.query<{ id: string }>(
+        "select id from stores where merchant_id = $1 and creation_key = $2",
+        [input.merchantId, input.creationKey],
+      );
+      if (existing.rows[0]) {
+        const store = await storeById(client, existing.rows[0].id);
+        await client.query("commit");
+        return { ok: true, store, created: false };
+      }
     }
+
+    const decision = await policy.canCreateStore(client, input.merchantId);
+    if (!decision.allowed) return refuse({ ok: false, reason: "plan_limit", limit: decision.limit, used: decision.used });
 
     const taken = await client.query("select 1 from store_domains where hostname = $1", [hostname]);
-    if (taken.rowCount) {
-      await client.query("rollback");
-      return { ok: false, reason: "subdomain_taken" };
+    if (taken.rowCount) return refuse({ ok: false, reason: "subdomain_taken" });
+
+    if (productIds.length > 0) {
+      const { rows } = await client.query<{ id: string }>(
+        "select id from products where merchant_id = $1 and id = any($2) and deleted_at is null",
+        [input.merchantId, productIds],
+      );
+      const known = new Set(rows.map((r) => r.id));
+      const unknown = productIds.filter((id) => !known.has(id));
+      if (unknown.length > 0) return refuse({ ok: false, reason: "unknown_products", productIds: unknown });
     }
 
+    if (input.defaultShippingProfileId) {
+      const { rowCount } = await client.query("select 1 from shipping_profiles where id = $1 and merchant_id = $2", [
+        input.defaultShippingProfileId,
+        input.merchantId,
+      ]);
+      if (!rowCount) return refuse({ ok: false, reason: "unknown_shipping_profile" });
+    }
+
+    const checkoutForm = input.deliveryModes
+      ? { ...DEFAULT_CHECKOUT_FORM_POLICY, deliveryOptions: input.deliveryModes }
+      : DEFAULT_CHECKOUT_FORM_POLICY;
     const prefixes = await client.query<{ order_prefix: string }>(
       "select order_prefix from stores where merchant_id = $1",
       [input.merchantId],
@@ -100,21 +160,36 @@ export async function createMerchantStore(
     const id = randomUUID();
     const now = new Date().toISOString();
     await client.query(
-      "insert into stores (id, name, merchant_id, order_prefix, created_at, updated_at) values ($1, $2, $3, $4, $5, $5)",
-      [id, input.name.trim(), input.merchantId, orderPrefixFor(subdomain, prefixes.rows.map((r) => r.order_prefix)), now],
+      `insert into stores (id, name, merchant_id, order_prefix, theme_id, checkout_form_json, default_shipping_profile_id, creation_key, created_at, updated_at)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $9)`,
+      [
+        id,
+        input.name.trim(),
+        input.merchantId,
+        orderPrefixFor(subdomain, prefixes.rows.map((r) => r.order_prefix)),
+        templateId,
+        isDefaultCheckoutFormPolicy(checkoutForm) ? null : serializeCheckoutFormPolicy(checkoutForm),
+        input.defaultShippingProfileId ?? null,
+        input.creationKey ?? null,
+        now,
+      ],
     );
     await client.query(
       "insert into store_domains (hostname, store_id, kind, created_at) values ($1, $2, 'subdomain', $3)",
       [hostname, id, now],
     );
+    if (productIds.length > 0) {
+      await client.query(
+        `insert into channel_products (store_id, product_id, position, created_at, updated_at)
+         select $1, product_id, ordinality - 1, $3, $3 from unnest($2::text[]) with ordinality as t(product_id, ordinality)`,
+        [id, productIds, now],
+      );
+    }
     await client.query("select set_config('app.store_id', $1, true)", [id]);
     await seedStorePages(getDb(client, { inTransaction: true }), id);
+    const store = await storeById(client, id);
     await client.query("commit");
-
-    return {
-      ok: true,
-      store: { id, name: input.name.trim(), status: "draft", logoUrl: null, hostname, hasOrders: false, createdAt: now },
-    };
+    return { ok: true, store, created: true };
   } catch (err) {
     await client.query("rollback").catch(() => {});
     const { code, constraint } = err as { code?: string; constraint?: string };

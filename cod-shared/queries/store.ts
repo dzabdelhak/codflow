@@ -145,7 +145,7 @@ export async function getStoreConfig(db: AppDb, storeId: string) {
   // whole store row, so a column is public the moment it exists unless it is
   // removed by name here — the storefront gets the resolved projection instead,
   // which is also the only shape a theme should ever have to understand.
-  const { checkoutFormJson, whatsappWidgetJson, orderSeq: _seq, merchantId: _merchant, ...publicStore } = store;
+  const { checkoutFormJson, whatsappWidgetJson, orderSeq: _seq, merchantId: _merchant, creationKey: _creationKey, ...publicStore } = store;
 
   return {
     ...publicStore,

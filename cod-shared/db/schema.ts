@@ -1057,8 +1057,10 @@ export const stores = pgTable("stores", {
   /** The merchant that owns this store. Last for the same positional reason. */
   merchantId: text("merchant_id").notNull().references(() => merchants.id),
   defaultShippingProfileId: text("default_shipping_profile_id").references(() => shippingProfiles.id, { onDelete: "set null" }),
+  creationKey: text("creation_key"),
 }, (t) => ({
   merchantIdx: index("stores_merchant_idx").on(t.merchantId),
+  creationKeyPerMerchant: uniqueIndex("stores_merchant_creation_key_unique").on(t.merchantId, t.creationKey),
 }));
 
 /**

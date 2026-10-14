@@ -53,13 +53,21 @@ const createStoreRoute = defineRoute({
   path: "/stores",
   auth: "admin",
   tags: ["Merchant"],
-  summary: "Create a store",
-  description:
-    "Creates a store for the merchant on `<subdomain>.<base domain>`, with its four legal pages. Refused when the merchant's plan allows no more stores.",
+  summary: "Create a sales channel",
+  description: [
+    "The single entry point for creating a sales channel: the dashboard's creation wizard calls it today, and Aventy's \"Créer un canal de vente\" button will call it later (through a signed token instead of a dashboard session).",
+    "",
+    "In one transaction it generates the channel id, gives it the free subdomain `<subdomain>.<base domain>`, saves the selected catalogue products (in display order, published), the delivery modes it offers and its default shipping profile, applies the template, and seeds its four legal pages. The channel starts as `draft`: publish it with PATCH /stores/{id}/status.",
+    "",
+    "**Idempotent on `creationKey`.** Send the same key on every retry or resumed attempt of one creation: if a channel was already created with it, that channel is returned with 200 and nothing else is created. A new creation answers 201.",
+    "",
+    "Refused when the merchant's plan allows no more channels (422 STORE_LIMIT_REACHED), the subdomain is invalid or taken (400 INVALID_SUBDOMAIN, 409 SUBDOMAIN_TAKEN), or a product, shipping profile or template is not the merchant's (400 VALIDATION_FAILED with the field).",
+  ].join("\n"),
   operationId: "createMerchantStore",
   body: createStoreSchema,
   responses: {
-    201: { description: "The new store", content: jsonContent(SuccessResponseSchema(MerchantStoreSchema)) },
+    200: { description: "The channel already created with this creationKey", content: jsonContent(SuccessResponseSchema(MerchantStoreSchema)) },
+    201: { description: "The new channel", content: jsonContent(SuccessResponseSchema(MerchantStoreSchema)) },
   },
   handler: handlers.createStore,
 });

@@ -57,6 +57,13 @@
       "when": 1791968438683,
       "tag": "0007_delivery_grid_lock",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791970394832,
+      "tag": "0008_store_creation_key",
+      "breakpoints": true
     }
   ]
 }

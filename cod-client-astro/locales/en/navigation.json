@@ -153,6 +153,70 @@
     "delete_confirm_label": "Type “{name}” to confirm",
     "delete_submit": "Delete store",
     "delete_refused": "This store cannot be deleted: it has orders, is not archived, or is your only store.",
-    "deleted": "Store deleted"
+    "deleted": "Store deleted",
+    "wizard": {
+      "title": "Create a sales channel",
+      "subtitle": "A few steps: type, details, products, delivery and template. Nothing is created until you confirm.",
+      "step": {
+        "type": "Type",
+        "general": "Details",
+        "products": "Products",
+        "delivery": "Delivery",
+        "template": "Template",
+        "summary": "Summary"
+      },
+      "type": {
+        "store": {
+          "name": "Online store",
+          "description": "A full store with home page, catalogue, product pages, cart and checkout.",
+          "features": "Several products · categories · featured products on the home page"
+        },
+        "landing": {
+          "name": "Landing page",
+          "description": "A sales page built around one main product.",
+          "features": "One product · gallery · offer · order form"
+        }
+      },
+      "coming_soon": "Coming soon",
+      "id_note": "A unique identifier is generated for the channel when it is created.",
+      "products_hint": "Choose the catalogue products this store shows. You can change the selection later.",
+      "products_search": "Search by name or SKU…",
+      "products_empty": "No catalogue product matches.",
+      "products_selected": "{n} product(s) selected",
+      "delivery_hint": "Choose the delivery modes this store offers. Fees come from your account’s shipping profiles.",
+      "mode": {
+        "home": "Home delivery",
+        "stopDesk": "Stop-desk pickup"
+      },
+      "profile_label": "Shipping profile used by this store",
+      "profile_account": "Account default ({name})",
+      "template": {
+        "theme01": {
+          "name": "Classic store",
+          "description": "Home page, catalogue, categories, product pages, cart, checkout, confirmation and content pages."
+        }
+      },
+      "summary": {
+        "type": "Type",
+        "name": "Name",
+        "domain": "Address",
+        "products": "Products",
+        "delivery": "Delivery modes",
+        "template": "Template"
+      },
+      "problem": {
+        "name_required": "Give the store a name.",
+        "subdomain_invalid": "Use 3 to 40 lower-case letters, digits or hyphens. Some names are reserved.",
+        "no_delivery_mode": "Offer at least one delivery mode."
+      },
+      "next": "Continue",
+      "back": "Back",
+      "create": "Create the store",
+      "restart": "Start over",
+      "error_network": "The store could not be created (network). Your answers are kept: try again.",
+      "done_title": "{name} is created",
+      "done_body": "It starts as a draft: publish it from the Stores page when it is ready, and it goes online at its address.",
+      "open_dashboard": "Open its dashboard"
+    }
   }
 }

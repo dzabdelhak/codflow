@@ -153,6 +153,70 @@
     "delete_confirm_label": "Saisissez « {name} » pour confirmer",
     "delete_submit": "Supprimer la boutique",
     "delete_refused": "Cette boutique ne peut pas être supprimée : elle a des commandes, n'est pas archivée ou est votre seule boutique.",
-    "deleted": "Boutique supprimée"
+    "deleted": "Boutique supprimée",
+    "wizard": {
+      "title": "Créer un canal de vente",
+      "subtitle": "Quelques étapes : type, informations, produits, livraison et template. Rien n’est créé avant votre confirmation.",
+      "step": {
+        "type": "Type",
+        "general": "Informations",
+        "products": "Produits",
+        "delivery": "Livraison",
+        "template": "Template",
+        "summary": "Récapitulatif"
+      },
+      "type": {
+        "store": {
+          "name": "Boutique en ligne",
+          "description": "Une boutique complète : accueil, catalogue, fiches produits, panier et commande.",
+          "features": "Plusieurs produits · catégories · produits mis en avant en page d’accueil"
+        },
+        "landing": {
+          "name": "Landing page",
+          "description": "Une page de vente centrée sur un produit principal.",
+          "features": "Un produit · galerie · offre · formulaire de commande"
+        }
+      },
+      "coming_soon": "Bientôt",
+      "id_note": "Un identifiant unique est généré pour le canal à sa création.",
+      "products_hint": "Choisissez les produits du catalogue affichés par cette boutique. Vous pourrez modifier la sélection ensuite.",
+      "products_search": "Rechercher par nom ou SKU…",
+      "products_empty": "Aucun produit du catalogue ne correspond.",
+      "products_selected": "{n} produit(s) sélectionné(s)",
+      "delivery_hint": "Choisissez les modes de livraison proposés par cette boutique. Les frais viennent des profils de livraison de votre compte.",
+      "mode": {
+        "home": "Livraison à domicile",
+        "stopDesk": "Retrait au bureau (stop desk)"
+      },
+      "profile_label": "Profil de livraison utilisé par cette boutique",
+      "profile_account": "Profil par défaut du compte ({name})",
+      "template": {
+        "theme01": {
+          "name": "Boutique classique",
+          "description": "Accueil, catalogue, catégories, fiches produits, panier, commande, confirmation et pages de contenu."
+        }
+      },
+      "summary": {
+        "type": "Type",
+        "name": "Nom",
+        "domain": "Adresse",
+        "products": "Produits",
+        "delivery": "Modes de livraison",
+        "template": "Template"
+      },
+      "problem": {
+        "name_required": "Donnez un nom à la boutique.",
+        "subdomain_invalid": "Utilisez 3 à 40 lettres minuscules, chiffres ou tirets. Certains noms sont réservés.",
+        "no_delivery_mode": "Proposez au moins un mode de livraison."
+      },
+      "next": "Continuer",
+      "back": "Retour",
+      "create": "Créer la boutique",
+      "restart": "Recommencer",
+      "error_network": "La boutique n’a pas pu être créée (réseau). Vos réponses sont conservées : réessayez.",
+      "done_title": "{name} est créée",
+      "done_body": "Elle démarre en brouillon : publiez-la depuis la page Boutiques quand elle est prête, elle sera alors en ligne à son adresse.",
+      "open_dashboard": "Ouvrir son espace de pilotage"
+    }
   }
 }

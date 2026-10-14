@@ -4,9 +4,9 @@
 
 **Blocked by:** 04, 05, 06
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] A merchant creates a store channel end to end and lands in its dashboard; it is reachable on its subdomain once published
-- [ ] Submitting the same creation twice (double click, network retry) yields one channel
-- [ ] A failure mid-way keeps the entered data and can be resumed
-- [ ] The creation API is documented as the entry point for Aventy's flow
+- [x] A merchant creates a store channel end to end and lands in its dashboard; it is reachable on its subdomain once published
+- [x] Submitting the same creation twice (double click, network retry) yields one channel
+- [x] A failure mid-way keeps the entered data and can be resumed
+- [x] The creation API is documented as the entry point for Aventy's flow

@@ -11,7 +11,7 @@ export async function listMyStores(): Promise<MerchantStore[]> {
   return (await apiFetch<DataEnvelope<MerchantStore[]>>("/api/merchant/stores")).data;
 }
 
-export async function createStore(input: { name: string; subdomain: string }): Promise<MerchantStore> {
+export async function createStore(input: { name: string; subdomain: string } & Record<string, unknown>): Promise<MerchantStore> {
   return (
     await apiFetch<DataEnvelope<MerchantStore>>("/api/merchant/stores", {
       method: "POST",
