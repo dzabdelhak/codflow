@@ -42,6 +42,21 @@ export async function enqueueJob(db: AppDb, input: EnqueueInput): Promise<string
   return rows[0]?.id ?? null;
 }
 
+export async function recordSkippedJob(db: AppDb, input: { kind: string; payload: unknown; dedupKey: string; reason: string }): Promise<void> {
+  await db
+    .insert(jobs)
+    .values({
+      id: randomUUID(),
+      kind: input.kind,
+      payload: input.payload,
+      dedupKey: input.dedupKey,
+      status: "done",
+      result: { skipped: input.reason },
+      finishedAt: sql`now()`,
+    })
+    .onConflictDoNothing({ target: jobs.dedupKey });
+}
+
 export function retryDelayMs(attempts: number): number {
   return Math.min(30_000 * 2 ** Math.max(0, attempts - 1), 6 * 60 * 60 * 1000);
 }
@@ -51,6 +66,12 @@ export async function claimJobs(
   kinds: string[],
   { limit = 10, lockMs = 5 * 60 * 1000 }: { limit?: number; lockMs?: number } = {},
 ): Promise<Job[]> {
+  await platform.query(
+    `update jobs set status = 'failed', last_error = coalesce(last_error, 'worker stopped before finishing'),
+            locked_until = null, finished_at = now()
+      where kind = any($1) and status = 'running' and locked_until < now() and attempts >= max_attempts`,
+    [kinds],
+  );
   const { rows } = await platform.query<Job>(
     `update jobs j
         set status = 'running', attempts = j.attempts + 1,
@@ -58,7 +79,8 @@ export async function claimJobs(
       where j.id in (
         select id from jobs
          where kind = any($1)
-           and ((status = 'pending' and run_at <= now()) or (status = 'running' and locked_until < now()))
+           and ((status = 'pending' and run_at <= now())
+                or (status = 'running' and locked_until < now() and attempts < max_attempts))
          order by run_at
          limit $2
          for update skip locked)
@@ -67,6 +89,14 @@ export async function claimJobs(
     [kinds, limit, lockMs],
   );
   return rows;
+}
+
+export async function pruneFinishedJobs(platform: pg.Pool, olderThanDays = 30): Promise<number> {
+  const { rowCount } = await platform.query(
+    `delete from jobs where status in ('done', 'failed') and finished_at < now() - make_interval(days => $1)`,
+    [olderThanDays],
+  );
+  return rowCount ?? 0;
 }
 
 export async function completeJob(platform: pg.Pool, id: string, result: unknown): Promise<void> {

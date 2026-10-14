@@ -80,9 +80,6 @@ const trackersScript = trackersHeadScript(trackers);
     <link rel="preload" as="image" href={src} fetchpriority={i === 0 ? "high" : undefined} />
   ))}
 
-  <!-- Trackers (Meta, TikTok, Snap, GA4, Google Ads) — the providers' own
-       base code, inline in the head so events fired before their libraries
-       arrive are queued. Behind the consent gate when the channel asks. -->
   {trackersScript && <script is:inline set:html={trackersScript} />}
   {trackers.meta && !trackers.consentRequired && (
     <noscript>

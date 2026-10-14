@@ -220,7 +220,13 @@
     "tracking_diag_attempts": "{n} محاولات",
     "tracking_diag_stage_checkout": "إتمام الطلب",
     "tracking_diag_stage_confirmed": "التأكيد",
-    "tracking_diag_stage_delivered": "التسليم"
+    "tracking_diag_stage_delivered": "التسليم",
+    "tracking_secret_remove": "حذف",
+    "tracking_secret_keep": "الاحتفاظ",
+    "tracking_secret_removed": "سيُحذف عند الحفظ",
+    "tracking_diag_skip_no_access_token": "لم يُرسل: لا يوجد رمز وصول محفوظ لهذه المنصة",
+    "tracking_diag_skip_not_configured": "لم يُرسل: أُزيلت المنصة أو تغيّر حدث التحويل",
+    "tracking_diag_skip_event_time_expired": "لم يُرسل: أقدم مما تقبله المنصة (7 أيام)"
   },
   "shipping": {
     "title": "أسعار التوصيل",

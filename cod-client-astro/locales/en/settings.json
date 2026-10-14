@@ -220,7 +220,13 @@
     "tracking_diag_attempts": "{n} attempts",
     "tracking_diag_stage_checkout": "checkout",
     "tracking_diag_stage_confirmed": "confirmation",
-    "tracking_diag_stage_delivered": "delivery"
+    "tracking_diag_stage_delivered": "delivery",
+    "tracking_secret_remove": "Remove",
+    "tracking_secret_keep": "Keep",
+    "tracking_secret_removed": "Removed when you save",
+    "tracking_diag_skip_no_access_token": "Not sent: no access token is saved for this platform",
+    "tracking_diag_skip_not_configured": "Not sent: the platform was removed or the conversion event changed",
+    "tracking_diag_skip_event_time_expired": "Not sent: older than the platform accepts (7 days)"
   },
   "shipping": {
     "title": "Shipping Rates",

@@ -41,7 +41,6 @@ function isOrderStatus(value: string): value is (typeof ORDER_STATUSES)[number] 
 
 /** Terminal order statuses — late carrier events never modify these orders. */
 const TERMINAL_ORDER_STATUSES = new Set<OrderStatus>(["delivered", "returned", "cancelled"]);
-import { conversionStageFor, enqueueConversions } from "@/tracking/conversions";
 
 // ─── ZR Express ───────────────────────────────────────────────────────────────
 
@@ -205,8 +204,6 @@ export async function handleZrWebhook(c: Context<AppContext>) {
       "webhook:zr_express"
     );
 
-      const conversionStage = updated ? conversionStageFor(newStatus, resolvedOrder.wilayaId) : null;
-      if (conversionStage) await enqueueConversions(db, { orderId: resolvedOrder.id, stage: conversionStage });
 
     await updateWebhookEvent(db, webhookEventId, {
       result: updated ? "ok" : "ignored",
@@ -439,8 +436,6 @@ export async function handleYalidineWebhook(c: Context<AppContext>) {
         "webhook:yalidine"
       );
 
-      const conversionStage = updated ? conversionStageFor(nextStatus, order.wilayaId) : null;
-      if (conversionStage) await enqueueConversions(db, { orderId: order.id, stage: conversionStage });
 
       await updateWebhookEvent(db, webhookEventId, {
         result: updated ? "ok" : "ignored",

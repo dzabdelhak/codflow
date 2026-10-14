@@ -220,7 +220,13 @@
     "tracking_diag_attempts": "{n} tentatives",
     "tracking_diag_stage_checkout": "passage de commande",
     "tracking_diag_stage_confirmed": "confirmation",
-    "tracking_diag_stage_delivered": "livraison"
+    "tracking_diag_stage_delivered": "livraison",
+    "tracking_secret_remove": "Supprimer",
+    "tracking_secret_keep": "Conserver",
+    "tracking_secret_removed": "Supprimé à l'enregistrement",
+    "tracking_diag_skip_no_access_token": "Non envoyé : aucun jeton d'accès enregistré pour cette plateforme",
+    "tracking_diag_skip_not_configured": "Non envoyé : la plateforme a été retirée ou l'événement de conversion a changé",
+    "tracking_diag_skip_event_time_expired": "Non envoyé : plus ancien que ce que la plateforme accepte (7 jours)"
   },
   "shipping": {
     "title": "Tarifs de livraison",

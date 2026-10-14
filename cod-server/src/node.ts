@@ -13,7 +13,7 @@ import { s3ImageStore } from "@/platform/image-store";
 import { runOrphanImageSweep } from "@/cron/sweep-orphan-images";
 import { systemDns } from "@/platform/channel-domains";
 import { probeCertificate, type CertificateStatus } from "@/platform/tls-probe";
-import { startJobWorker } from "@/platform/jobs";
+import { pruneFinishedJobs, startJobWorker } from "@/platform/jobs";
 import { CONVERSION_JOB, conversionJobHandler } from "@/tracking/conversions";
 
 function required(name: string): string {
@@ -73,6 +73,8 @@ imageStore.ensureBucket().then(
     const sweep = () => void runOrphanImageSweep(env).catch((err) => console.error("[cron:sweep-orphan-images]", err));
     setTimeout(sweep, 60_000).unref();
     setInterval(sweep, 24 * 60 * 60 * 1000).unref();
+    const prune = () => void pruneFinishedJobs(database.platform).catch((err) => console.error("[cron:prune-jobs]", err));
+    setInterval(prune, 24 * 60 * 60 * 1000).unref();
     const stopJobs = startJobWorker(database.platform, { [CONVERSION_JOB]: conversionJobHandler(database.platform) });
     for (const signal of ["SIGINT", "SIGTERM"] as const) {
       process.on(signal, () => {

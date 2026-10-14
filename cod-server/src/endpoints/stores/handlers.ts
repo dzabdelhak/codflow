@@ -70,9 +70,9 @@ export async function updateMyStore(c: Context<AppContext>) {
 export const pixelConfigSchema = z.object({
   pixelId: identifier("metaPixelId", "A Meta pixel id is 15 or 16 digits"),
   adAccountName: z.string().max(200).nullable().optional(),
-  accessToken: z.string().default("").openapi({
+  accessToken: z.string().nullable().default("").openapi({
     description:
-      "Meta access token. Empty string keeps the previously stored token (the token is never sent back to the client).",
+      "Meta access token. Empty string keeps the previously stored token, null removes it (the token is never sent back to the client).",
   }),
   testEventCode: z.string().nullable().optional(),
   conversionEvent: z.enum(["Purchase", "Purchase_Confirmed", "Purchase_Delivered", "Lead"]),
@@ -103,7 +103,7 @@ function pixelConfigResponse(row: NonNullable<Awaited<ReturnType<typeof queryPix
     storeId: row.storeId,
     pixelId: row.pixelId,
     adAccountName: row.adAccountName,
-    accessTokenMasked: maskApiKey(row.accessToken),
+    accessTokenMasked: row.accessToken ? maskApiKey(row.accessToken) : "",
     testEventCode: row.testEventCode,
     conversionEvent: row.conversionEvent,
     testMode: row.testMode,

@@ -165,9 +165,6 @@ const steps = [
   </div>
 </StoreLayout>
 
-{/* The sale, at every tracker the server says fires one for this order, with
-    the order id as the deduplication id the server-side conversion uses too.
-    No order id means no server mirror to deduplicate against: nothing fires. */}
 {firesConversion && (
   <div id="conversion-data" hidden data-order-id={orderId} data-total={totalNum ?? ""} data-events={JSON.stringify(conversionEvents)}></div>
 )}

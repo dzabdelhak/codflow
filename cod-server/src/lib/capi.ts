@@ -147,6 +147,7 @@ export async function sendCapiEvent(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
+      signal: AbortSignal.timeout(15_000),
     });
   } catch (err) {
     throw new Error(`Meta CAPI network error: ${err instanceof Error ? err.message : String(err)}`);

@@ -17,6 +17,7 @@ import * as schema from "@/db/schema";
 import storeRouter from "@/endpoints/store/routes";
 import { getStoreConfig } from "../../../cod-shared/queries/store";
 import { runDueJobs } from "@/platform/jobs";
+import { updateOrderStatus, updateOrderStatusWebhook } from "@/endpoints/orders/queries";
 import { CONVERSION_JOB, conversionJobHandler, enqueueConversions } from "./conversions";
 
 let harness: TestDb;
@@ -142,6 +143,9 @@ beforeAll(async () => {
     "insert into channel_products (store_id, product_id, published, position, created_at, updated_at) values ($1, 'p-shirt', true, 0, now()::text, now()::text) on conflict do nothing",
     [other],
   );
+  await harness.db.insert(schema.landingPages).values({
+    id: "lp-ramadan", slug: "lp-ramadan", name: "Ramadan", productId: "p-shirt", status: "published", publishedAt: NOW(), createdAt: NOW(), updatedAt: NOW(),
+  });
   await harness.db.insert(schema.shippingProfiles).values({ id: "sp", name: "Default", isDefault: true, createdAt: NOW(), updatedAt: NOW() });
   await harness.db.insert(schema.shippingRules).values({
     id: "sr", profileId: "sp", wilayaId: 16, homePrice: 400, stopDeskPrice: 250, homeEnabled: true, stopDeskEnabled: true, createdAt: NOW(),
@@ -191,6 +195,17 @@ describe("an order queues its conversions", () => {
     expect(await jobsFor(refused)).toEqual([]);
     expect(await jobsFor(silent)).toEqual([]);
     expect(await jobsFor(accepted)).toHaveLength(4);
+  });
+
+  it("whichever path moves the order to the stage, dashboard, dispatch or carrier", async () => {
+    await setTracking(TEST_STORE_ID, { ...ALL_PROVIDERS, conversion_event: "Purchase_Delivered" });
+    const direct = await placeOrder();
+    const viaCarrier = await placeOrder({ phone: "0550123461" });
+    const db = await harness.connect();
+    await updateOrderStatus(db, direct, "delivered");
+    await updateOrderStatusWebhook(db, viaCarrier, "delivered", "webhook:test");
+    expect(await jobsFor(direct)).toHaveLength(4);
+    expect(await jobsFor(viaCarrier)).toHaveLength(4);
   });
 
   it("keeping the visit's UTMs and click ids on the order and in the payload sent to Aventy", async () => {
@@ -280,6 +295,33 @@ describe("the worker sends them", () => {
     ]);
   });
 
+  it("tells each provider the landing page the order came from, or the thank-you page", async () => {
+    const fromPage = await placeOrder({ landingPageSlug: "lp-ramadan" });
+    const unresolved = await placeOrder({ phone: "0550123460", landingPageSlug: "never-existed" });
+    await work();
+    const sourceOf = (provider: string, orderId: string) => {
+      const call = calls.find((c) => c.url.includes(provider) && JSON.stringify(c.body).includes(orderId))!;
+      return call.body.data[0].event_source_url ?? call.body.data[0].page?.url;
+    };
+    expect(sourceOf("graph.facebook.com", fromPage)).toBe("https://nour.example/lp/lp-ramadan");
+    expect(sourceOf("tiktok", fromPage)).toBe("https://nour.example/lp/lp-ramadan");
+    expect(sourceOf("snapchat", fromPage)).toBe("https://nour.example/lp/lp-ramadan");
+    expect(sourceOf("graph.facebook.com", unresolved)).toBe("https://nour.example/thank-you");
+  });
+
+  it("records a conversion it cannot send for want of a token, instead of dropping it silently", async () => {
+    await setTracking(TEST_STORE_ID, { pixel_id: "1111111111111111", tiktok_pixel_id: "TIKTOKPIXEL000000001" });
+    const orderId = await placeOrder();
+    await work();
+    expect(await jobsFor(orderId)).toEqual([
+      expect.objectContaining({ provider: "meta", status: "done", result: { skipped: "no_access_token" } }),
+      expect.objectContaining({ provider: "tiktok", status: "done", result: { skipped: "no_access_token" } }),
+    ]);
+    expect(calls).toEqual([]);
+    const { rows: [audit] } = await harness.platform.query("select status, pixel_id from capi_event_log where order_id = $1", [orderId]);
+    expect(audit).toEqual({ status: "skipped", pixel_id: "1111111111111111" });
+  });
+
   it("retries a provider outage later, and still sends after the app restarts", async () => {
     respond = (url) => (url.includes("tiktok") ? new Response("busy", { status: 503 }) : undefined);
     const orderId = await placeOrder();
@@ -292,6 +334,13 @@ describe("the worker sends them", () => {
     await work(restarted);
     await restarted.end();
     expect((await jobsFor(orderId)).find((j) => j.provider === "tiktok")).toMatchObject({ status: "done", attempts: 2 });
+  });
+
+  it("retries TikTok's rate limiting, which arrives as HTTP 200", async () => {
+    respond = (url) => (url.includes("tiktok") ? Response.json({ code: 40100, message: "Too many requests" }) : undefined);
+    const orderId = await placeOrder();
+    await work();
+    expect((await jobsFor(orderId)).find((j) => j.provider === "tiktok")).toMatchObject({ status: "pending", attempts: 1 });
   });
 
   it("records a refusal instead of retrying it", async () => {

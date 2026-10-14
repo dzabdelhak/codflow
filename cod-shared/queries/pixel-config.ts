@@ -23,7 +23,7 @@ export async function getPixelConfig(db: AppDb, storeId?: string) {
 export interface UpsertPixelConfigData {
   pixelId?: string | null;
   adAccountName?: string | null;
-  accessToken?: string;
+  accessToken?: string | null;
   testEventCode?: string | null;
   conversionEvent?: ConversionEvent;
   testMode?: boolean;
@@ -81,7 +81,7 @@ export async function upsertPixelConfig(
   const now = new Date().toISOString();
   const existing = await getPixelConfig(db, storeId);
 
-  const accessToken = data.accessToken?.trim() || existing?.accessToken || "";
+  const accessToken = data.accessToken === null ? "" : data.accessToken?.trim() || existing?.accessToken || "";
   const adAccountName =
     data.adAccountName === undefined
       ? existing?.adAccountName ?? null

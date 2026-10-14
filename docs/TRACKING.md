@@ -53,7 +53,13 @@ conversion exists. When it fires:
   `event_id`, Snap `client_dedup_id`, GA4/Google Ads `transaction_id`).
 - **From the server** — the transaction that places or advances the order
   queues one job per configured platform (`kind = 'conversion'`) in the
-  `jobs` table. The job's deduplication key is
+  `jobs` table. Every status change goes through cod-server's
+  `updateOrderStatus` / `updateOrderStatusWebhook` (`endpoints/orders/queries.ts`),
+  which queue the conversion whatever moved the order: the dashboard, the
+  dispatch flow, a carrier webhook or a tracking pull. A platform with an id but
+  no token gets a `done` job with `{ skipped: "no_access_token" }` (and, for
+  Meta, a `skipped` row in `capi_event_log`), so the diagnostics say why
+  nothing was sent. The job's deduplication key is
   `conversion:{platform}:{orderId}:{event}`, so a retried checkout, a second
   status change or a changed conversion mode can never queue a second one. The
   server sends the same order id as its event id, so each platform merges the
@@ -70,7 +76,9 @@ locks each one for 5 minutes, and:
   exponential delay (30 s doubling, at most 6 h), up to 8 attempts;
 - on a refusal (4xx): marks it `failed` with the provider's message.
 
-A job whose worker died is taken back once its lock expires. Jobs are rows in
+A job whose worker died is taken back once its lock expires, until its
+attempts are spent; then it is marked `failed`. Finished jobs are deleted
+after 30 days (a daily prune in `src/node.ts`). Jobs are rows in
 PostgreSQL, so a restart loses nothing. Before sending, the job re-reads the
 order and the channel's settings: a platform removed since, or a conversion
 event changed, makes it `done` with `{ skipped: "not_configured" }`. Meta,

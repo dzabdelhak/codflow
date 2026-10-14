@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
 import type pg from "pg";
 import { createPool } from "@/db/scope";
 import { createTestDb, type TestDb } from "@/test-utils/pg";
-import { claimJobs, enqueueJob, PermanentJobError, runDueJobs } from "./jobs";
+import { claimJobs, enqueueJob, PermanentJobError, pruneFinishedJobs, runDueJobs } from "./jobs";
 
 let harness: TestDb;
 let platform: pg.Pool;
@@ -80,5 +80,23 @@ describe("the job queue", () => {
     const reclaimed = await claimJobs(platform, ["t"]);
     expect(reclaimed).toHaveLength(6);
     expect(reclaimed.every((j) => j.attempts === 2)).toBe(true);
+  });
+
+  it("gives up on a job whose worker kept dying once its attempts are spent", async () => {
+    const id = (await enqueueJob(harness.db, { kind: "t", payload: {}, maxAttempts: 2 }))!;
+    await harness.platform.query("update jobs set status = 'running', attempts = 2, locked_until = now() - interval '1 second' where id = $1", [id]);
+    expect(await claimJobs(platform, ["t"])).toHaveLength(0);
+    expect(await row(id)).toMatchObject({ status: "failed", last_error: "worker stopped before finishing" });
+  });
+
+  it("prunes finished jobs older than the retention window, and nothing else", async () => {
+    const old = (await enqueueJob(harness.db, { kind: "t", payload: {} }))!;
+    const recent = (await enqueueJob(harness.db, { kind: "t", payload: {} }))!;
+    const waiting = (await enqueueJob(harness.db, { kind: "t", payload: {} }))!;
+    await harness.platform.query("update jobs set status = 'done', finished_at = now() - interval '40 days' where id = $1", [old]);
+    await harness.platform.query("update jobs set status = 'failed', finished_at = now() - interval '2 days' where id = $1", [recent]);
+    expect(await pruneFinishedJobs(platform, 30)).toBe(1);
+    const { rows } = await harness.platform.query("select id from jobs order by id");
+    expect(rows.map((r) => r.id).sort()).toEqual([recent, waiting].sort());
   });
 });

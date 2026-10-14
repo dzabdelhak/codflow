@@ -38,7 +38,21 @@ function Toggle({ checked, onChange, label, hint }: { checked: boolean; onChange
   );
 }
 
-function SecretInput({ value, onChange, masked, placeholder }: { value: string; onChange: (v: string) => void; masked: string | null; placeholder: string }) {
+function SecretInput({
+  value,
+  onChange,
+  masked,
+  placeholder,
+  removing,
+  onToggleRemove,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  masked: string | null;
+  placeholder: string;
+  removing: boolean;
+  onToggleRemove: () => void;
+}) {
   const t = useT("settings");
   const [shown, setShown] = useState(false);
   return (
@@ -64,8 +78,17 @@ function SecretInput({ value, onChange, masked, placeholder }: { value: string; 
         </button>
       </div>
       {masked && !value && (
-        <p className="text-xs text-muted-foreground">
-          {t("store.otp_key_stored")}: <span dir="ltr">{masked}</span>
+        <p className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          {removing ? (
+            <span className="font-semibold text-destructive">{t("store.tracking_secret_removed")}</span>
+          ) : (
+            <span>
+              {t("store.otp_key_stored")}: <span dir="ltr">{masked}</span>
+            </span>
+          )}
+          <button type="button" onClick={onToggleRemove} className="font-semibold text-foreground underline underline-offset-2">
+            {removing ? t("store.tracking_secret_keep") : t("store.tracking_secret_remove")}
+          </button>
         </p>
       )}
     </>
@@ -110,6 +133,15 @@ export function TrackingSettings() {
   const [perPageTracking, setPerPageTracking] = useState(false);
   const [lastSaved, setLastSaved] = useState<string | null>(null);
   const [savedVersion, setSavedVersion] = useState(0);
+  const [removing, setRemoving] = useState<Record<keyof typeof EMPTY_SECRETS, boolean>>({ meta: false, tiktok: false, snap: false, ga4: false });
+  const secretProps = (key: keyof typeof EMPTY_SECRETS) => ({
+    value: secrets[key],
+    onChange: setSecret(key),
+    masked: masked[key],
+    removing: removing[key],
+    onToggleRemove: () => setRemoving((current) => ({ ...current, [key]: !current[key] })),
+  });
+  const secretValue = (key: keyof typeof EMPTY_SECRETS) => (removing[key] && !secrets[key].trim() ? null : secrets[key].trim() || undefined);
 
   const set = (key: keyof typeof EMPTY) => (value: string) => setFields((current) => ({ ...current, [key]: value }));
   const setSecret = (key: keyof typeof EMPTY_SECRETS) => (value: string) => setSecrets((current) => ({ ...current, [key]: value }));
@@ -167,25 +199,25 @@ export function TrackingSettings() {
     checkFormat("googleAdsId", f.googleAdsId, t("store.tracking_gads_id_label"));
     checkFormat("googleAdsLabel", f.googleAdsLabel, t("store.tracking_gads_label_label"));
     if (f.googleAdsLabel && !f.googleAdsId) required(t("store.tracking_gads_id_label"));
-    if (enabled && f.pixelId && !secrets.meta.trim() && !masked.meta) required(t("store.tracking_token_label"));
+    if (enabled && f.pixelId && !secrets.meta.trim() && (!masked.meta || removing.meta)) required(t("store.tracking_token_label"));
     if (enabled && testMode && f.pixelId && !f.testEventCode) required(t("store.tracking_test_code_label"));
 
     const result = await savePixelConfig({
       pixelId: f.pixelId || null,
       adAccountName: f.adAccountName || null,
-      accessToken: secrets.meta.trim() || undefined,
+      accessToken: secretValue("meta"),
       testEventCode: f.testEventCode || null,
       conversionEvent: conversionEvent!,
       testMode,
       enabled,
       perPageTrackingEnabled: perPageTracking,
       tiktokPixelId: f.tiktokPixelId || null,
-      tiktokAccessToken: secrets.tiktok.trim() || undefined,
+      tiktokAccessToken: secretValue("tiktok"),
       tiktokTestEventCode: f.tiktokTestEventCode || null,
       snapPixelId: f.snapPixelId || null,
-      snapAccessToken: secrets.snap.trim() || undefined,
+      snapAccessToken: secretValue("snap"),
       ga4MeasurementId: f.ga4MeasurementId || null,
-      ga4ApiSecret: secrets.ga4.trim() || undefined,
+      ga4ApiSecret: secretValue("ga4"),
       googleAdsId: f.googleAdsId || null,
       googleAdsLabel: f.googleAdsLabel || null,
       consentRequired,
@@ -197,6 +229,7 @@ export function TrackingSettings() {
       ga4: result.ga4ApiSecretMasked,
     });
     setSecrets(EMPTY_SECRETS);
+    setRemoving({ meta: false, tiktok: false, snap: false, ga4: false });
     setLastSaved(result.updatedAt);
     setSavedVersion((v) => v + 1);
   }
@@ -228,7 +261,7 @@ export function TrackingSettings() {
             <Input dir="ltr" value={fields.pixelId} onChange={(e) => set("pixelId")(e.currentTarget.value)} placeholder={t("store.tracking_pixel_id_placeholder")} />
           </FieldRow>
           <FieldRow label={t("store.tracking_token_label")} hint={t("store.tracking_token_hint")}>
-            <SecretInput value={secrets.meta} onChange={setSecret("meta")} masked={masked.meta} placeholder={t("store.tracking_token_placeholder")} />
+            <SecretInput {...secretProps("meta")} placeholder={t("store.tracking_token_placeholder")} />
           </FieldRow>
           <Toggle checked={perPageTracking} onChange={setPerPageTracking} label={t("store.tracking_per_page_label")} hint={t("store.tracking_per_page_hint")} />
           {perPageTracking && (
@@ -244,7 +277,7 @@ export function TrackingSettings() {
             <Input dir="ltr" value={fields.tiktokPixelId} onChange={(e) => set("tiktokPixelId")(e.currentTarget.value)} placeholder="C1A2B3C4D5E6F7G8H9I0" />
           </FieldRow>
           <FieldRow label={t("store.tracking_tiktok_token_label")} hint={t("store.tracking_secret_hint")}>
-            <SecretInput value={secrets.tiktok} onChange={setSecret("tiktok")} masked={masked.tiktok} placeholder="••••••••" />
+            <SecretInput {...secretProps("tiktok")} placeholder="••••••••" />
           </FieldRow>
           <FieldRow label={t("store.tracking_tiktok_test_code_label")} hint={t("store.tracking_tiktok_test_code_hint")}>
             <Input dir="ltr" value={fields.tiktokTestEventCode} onChange={(e) => set("tiktokTestEventCode")(e.currentTarget.value)} placeholder="TEST12345" />
@@ -256,7 +289,7 @@ export function TrackingSettings() {
             <Input dir="ltr" value={fields.snapPixelId} onChange={(e) => set("snapPixelId")(e.currentTarget.value)} placeholder="1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d" />
           </FieldRow>
           <FieldRow label={t("store.tracking_snap_token_label")} hint={t("store.tracking_secret_hint")}>
-            <SecretInput value={secrets.snap} onChange={setSecret("snap")} masked={masked.snap} placeholder="••••••••" />
+            <SecretInput {...secretProps("snap")} placeholder="••••••••" />
           </FieldRow>
         </ProviderBlock>
 
@@ -265,7 +298,7 @@ export function TrackingSettings() {
             <Input dir="ltr" value={fields.ga4MeasurementId} onChange={(e) => set("ga4MeasurementId")(e.currentTarget.value)} placeholder="G-XXXXXXXXXX" />
           </FieldRow>
           <FieldRow label={t("store.tracking_ga4_secret_label")} hint={t("store.tracking_ga4_secret_hint")}>
-            <SecretInput value={secrets.ga4} onChange={setSecret("ga4")} masked={masked.ga4} placeholder="••••••••" />
+            <SecretInput {...secretProps("ga4")} placeholder="••••••••" />
           </FieldRow>
         </ProviderBlock>
 

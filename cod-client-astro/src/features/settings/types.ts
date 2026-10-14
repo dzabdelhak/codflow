@@ -116,7 +116,7 @@ export interface ConversionEventRow {
 export interface SavePixelConfigData {
   pixelId: string | null;
   adAccountName?: string | null;
-  accessToken?: string;
+  accessToken?: string | null;
   testEventCode?: string | null;
   conversionEvent: "Purchase" | "Purchase_Confirmed" | "Purchase_Delivered" | "Lead";
   testMode?: boolean;
@@ -124,12 +124,12 @@ export interface SavePixelConfigData {
   /** Omitted keeps the stored value — an unrelated edit must not reset it. */
   perPageTrackingEnabled?: boolean;
   tiktokPixelId?: string | null;
-  tiktokAccessToken?: string;
+  tiktokAccessToken?: string | null;
   tiktokTestEventCode?: string | null;
   snapPixelId?: string | null;
-  snapAccessToken?: string;
+  snapAccessToken?: string | null;
   ga4MeasurementId?: string | null;
-  ga4ApiSecret?: string;
+  ga4ApiSecret?: string | null;
   googleAdsId?: string | null;
   googleAdsLabel?: string | null;
   consentRequired?: boolean;

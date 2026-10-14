@@ -162,4 +162,14 @@ describe("saving the store's tracking settings", () => {
     expect(raw).not.toContain("EAAG-real-token");
     expect(raw).toContain("accessTokenMasked");
   });
+
+  it("keeps a stored secret when the field is left empty, and removes it on null", async () => {
+    await save({ ...VALID, tiktokPixelId: "TIKTOKPIXEL000000001", tiktokAccessToken: "tt-secret-1234" });
+    await save({ ...VALID, tiktokPixelId: "TIKTOKPIXEL000000001", accessToken: "" });
+    expect((await read()).data).toMatchObject({ tiktokAccessTokenMasked: "••••1234" });
+
+    await save({ ...VALID, tiktokPixelId: "TIKTOKPIXEL000000001", accessToken: null, tiktokAccessToken: null });
+    expect(await storedRow()).toMatchObject({ accessToken: "", tiktokAccessToken: null });
+    expect((await read()).data).toMatchObject({ accessTokenMasked: "", tiktokAccessTokenMasked: null });
+  });
 });

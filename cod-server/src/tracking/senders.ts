@@ -132,6 +132,7 @@ async function sendTikTok(tracking: ChannelTracking, e: ServerConversion, { test
     },
     { "Access-Token": tiktok.accessToken! },
   );
+  if (json?.code === 40100 || json?.code >= 50000) throw new Error(`TikTok ${json.code}: ${json?.message ?? "temporary error"}`);
   if (status >= 400 || json?.code !== 0) return { success: false, error: json?.message ?? `HTTP ${status}` };
   return { success: true, reference: json?.request_id ?? null };
 }

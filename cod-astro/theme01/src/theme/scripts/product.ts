@@ -591,9 +591,6 @@ export function initProductPage() {
   // Initialize address fields visibility based on default delivery type (home)
   toggleAddressFields();
 
-  // ── TRACKING EVENTS ───────────────────────────────────────────────────────
-  // Fired at every tracker the head loaded (core/tracking/track.ts); the
-  // order form's fbc/fbp and attribution are filled by core/tracking/attribution.ts.
   const productId = el.dataset.productId || "";
   const item = () => [{ id: productId, quantity: 1, price: currentPrice }];
 

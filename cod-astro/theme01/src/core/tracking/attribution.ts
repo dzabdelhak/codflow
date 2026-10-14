@@ -30,8 +30,9 @@ export function attributionFromUrl(search: string): Attribution {
   return found;
 }
 
-export function mergeAttribution(stored: Attribution, fresh: Attribution): Attribution {
-  return Object.keys(fresh).length ? fresh : stored;
+export function mergeAttribution(stored: Attribution, fresh: Attribution, now = Date.now()): Attribution {
+  if (!Object.keys(fresh).length) return stored;
+  return fresh.fbclid ? { ...fresh, fbclidAt: String(now) } : fresh;
 }
 
 function readStored(): Attribution {
@@ -57,7 +58,7 @@ export function captureAttribution(): Attribution {
 
 function fillOrderForm(form: HTMLFormElement): void {
   const input = form.querySelector<HTMLInputElement>('input[name="attribution"]');
-  const stored = readStored();
+  const { fbclidAt, ...stored } = readStored();
   const decision = consentDecision();
   if (input) {
     input.value = JSON.stringify({
@@ -70,7 +71,7 @@ function fillOrderForm(form: HTMLFormElement): void {
   }
   const fbc = form.querySelector<HTMLInputElement>('input[name="fbc"]');
   const fbp = form.querySelector<HTMLInputElement>('input[name="fbp"]');
-  if (fbc && !fbc.value) fbc.value = cookie("_fbc") ?? (stored.fbclid ? `fb.1.${Date.now()}.${stored.fbclid}` : "");
+  if (fbc && !fbc.value) fbc.value = cookie("_fbc") ?? (stored.fbclid ? `fb.1.${fbclidAt ?? Date.now()}.${stored.fbclid}` : "");
   if (fbp && !fbp.value) fbp.value = cookie("_fbp") ?? "";
 }
 

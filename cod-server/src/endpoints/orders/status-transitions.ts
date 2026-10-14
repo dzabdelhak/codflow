@@ -14,7 +14,6 @@ import * as validation from "./validation";
 import { logActivity, ACTIONS } from "@/lib/activity";
 import { NotFoundError, BusinessLogicError, ValidationError } from "@/lib/errors/classes";
 import { ERROR_CODES, ERROR_CATEGORIES } from "../../../../cod-shared/errors/codes";
-import { conversionStageFor, enqueueConversions } from "@/tracking/conversions";
 import { first } from "../../../../cod-shared/db/client";
 
 /**
@@ -75,9 +74,6 @@ export async function updateStatus(c: Context<AppContext>) {
   const user = c.get("user");
 
   await queries.updateOrderStatus(db, orderId, validated.status, user?.id, user?.name ?? undefined);
-
-  const conversionStage = conversionStageFor(validated.status, order.wilayaId);
-  if (conversionStage) await enqueueConversions(db, { orderId, stage: conversionStage });
 
   await logActivity(db, user, ACTIONS.ORDER_STATUS_CHANGED, {
     type: "order", id: orderId,

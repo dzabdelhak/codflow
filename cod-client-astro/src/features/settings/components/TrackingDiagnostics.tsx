@@ -112,6 +112,9 @@ export function TrackingDiagnostics({ refreshKey }: { refreshKey: number }) {
                         {event.attempts > 1 && (
                           <span className="ms-2 text-xs text-muted-foreground">{t("store.tracking_diag_attempts").replace("{n}", String(event.attempts))}</span>
                         )}
+                        {skipped && (
+                          <p className="mt-1 max-w-xs text-xs text-muted-foreground">{t(`store.tracking_diag_skip_${event.result!.skipped}`)}</p>
+                        )}
                         {event.lastError && event.status !== "done" && (
                           <p className="mt-1 max-w-xs break-words text-xs text-destructive" dir="ltr">{event.lastError}</p>
                         )}

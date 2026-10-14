@@ -18,4 +18,10 @@ describe("the visit's attribution", () => {
     expect(mergeAttribution(first, {})).toEqual(first);
     expect(mergeAttribution(first, { utmSource: "tiktok" })).toEqual({ utmSource: "tiktok" });
   });
+
+  it("remembers when the ad click id was first seen, for Meta's fbc", () => {
+    const landed = mergeAttribution({}, { fbclid: "IwAR1" }, 1700000000000);
+    expect(landed).toEqual({ fbclid: "IwAR1", fbclidAt: "1700000000000" });
+    expect(mergeAttribution(landed, {}, 1700000999999)).toEqual(landed);
+  });
 });
