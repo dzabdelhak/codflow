@@ -262,11 +262,11 @@ other is how these drift.
   the `increment` method the rate limiter requires.
 - **An MCP connection is one user, one client, one channel.** The dashboard's
   `@better-auth/oauth-provider` is the authorization server: after sign-in
-  the merchant picks the channel (`/mcp/channel`, kept in Redis for the
-  session) and consents; the consent's `reference_id` and the access token's
+  the merchant picks the channel (`/mcp/channel`, kept in Redis for that
+  authorization only) and consents; the consent's `reference_id` and the access token's
   `store_id` claim are that channel. cod-server (`src/mcp/access.ts`) accepts
   a token only with `aud` = `${WORKER_SELF_URL}/mcp`, `iss` =
-  `${BETTER_AUTH_URL}/api/auth`, a live consent row and an active user of the
+  `${BETTER_AUTH_URL}/api/auth`, a live consent row older than the token and an active user of the
   channel's merchant, and grants token ∩ consent ∩ the user's current scopes —
   admins included. Every MCP request runs in `withStore` on the app pool, so
   RLS confines tools to that channel. The `oauth*` tables are platform-only

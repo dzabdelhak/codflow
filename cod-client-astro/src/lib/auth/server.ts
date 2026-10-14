@@ -22,7 +22,8 @@ import {
   oauthConsents,
 } from "../../../../cod-shared/db/schema";
 import { ALL_SCOPES } from "../../../../cod-shared/rbac/scopes";
-import { channelsOf, chosenChannel, mcpResource } from "./mcp-channel";
+import { authorizationInProgress, channelsOf, chosenChannel } from "./mcp-channel";
+import { mcpResourceUrl } from "../../../../cod-shared/lib/mcp-urls";
 import { registrationWithApplicationType } from "./mcp-registration";
 import { getStore } from "../../../../cod-shared/queries/stores";
 import { renderPasswordResetEmail } from "../../../../cod-shared/lib/email-templates";
@@ -207,7 +208,7 @@ function buildAuth(env: ServerEnv) {
             loginPage: "/sign-in",
             consentPage: "/mcp/consent",
             scopes: ["offline_access", ...ALL_SCOPES],
-            resources: [{ identifier: mcpResource(env.PUBLIC_API_URL), name: "CodFlow MCP" }],
+            resources: [{ identifier: mcpResourceUrl(env.PUBLIC_API_URL), name: "CodFlow MCP" }],
             enforcePerClientResources: false,
             allowDynamicClientRegistration: true,
             allowUnauthenticatedClientRegistration: true,
@@ -217,9 +218,9 @@ function buildAuth(env: ServerEnv) {
             refreshTokenExpiresIn: 30 * 24 * 3600,
             postLogin: {
               page: "/mcp/channel",
-              shouldRedirect: async ({ session }) => !(await chosenChannel(session.id)),
+              shouldRedirect: async ({ session }) => !(await chosenChannel(session.id, authorizationInProgress())),
               consentReferenceId: async ({ session, user }) => {
-                const storeId = await chosenChannel(session.id);
+                const storeId = await chosenChannel(session.id, authorizationInProgress());
                 if (!storeId || !(await channelsOf(user.id)).some((c) => c.id === storeId)) {
                   throw new Error("Choose the channel this connection may manage");
                 }

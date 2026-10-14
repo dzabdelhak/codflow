@@ -1,6 +1,7 @@
 import type pg from "pg";
 import { verifySignedJwt, type SessionJwtPayload } from "@/lib/session-auth";
 import { ALL_SCOPES } from "../../../cod-shared/rbac/scopes";
+import { authorizationServerIssuer as issuerOf, mcpResourceUrl as resourceOf } from "../../../cod-shared/lib/mcp-urls";
 import type { McpProps } from "./props";
 
 interface AccessEnv {
@@ -11,16 +12,17 @@ interface AccessEnv {
 
 export interface McpAccessClaims extends SessionJwtPayload {
   azp?: string;
+  iat?: number;
   scope?: string;
   store_id?: string;
 }
 
 export function mcpResourceUrl(env: Pick<AccessEnv, "WORKER_SELF_URL">): string {
-  return `${env.WORKER_SELF_URL.replace(/\/+$/, "")}/mcp`;
+  return resourceOf(env.WORKER_SELF_URL);
 }
 
 export function authorizationServerIssuer(env: Pick<AccessEnv, "BETTER_AUTH_URL">): string {
-  return `${env.BETTER_AUTH_URL.replace(/\/+$/, "").replace(/\/api\/auth$/, "")}/api/auth`;
+  return issuerOf(env.BETTER_AUTH_URL);
 }
 
 export async function verifyMcpAccessToken(token: string, env: AccessEnv): Promise<McpAccessClaims & { azp: string; store_id: string }> {
@@ -47,22 +49,28 @@ export async function resolveMcpIdentity(
     merchantId: string;
     storeStatus: string;
     consented: string[] | null;
+    consentedAt: number | null;
+    owned: string[];
   }>(
     `select u.name, u.email, u.role, u.status, u.merchant_id as "merchantId", s.status as "storeStatus",
-            (select c.scopes from "oauthConsents" c
-              where c.user_id = u.id and c.client_id = $3 and c.reference_id = s.id
-              order by c.updated_at desc limit 1) as consented
+            c.scopes as consented, floor(extract(epoch from c.created_at))::int as "consentedAt",
+            array(select scope from user_scopes where user_id = u.id) as owned
        from users u join stores s on s.merchant_id = u.merchant_id and s.id = $2
+       left join lateral (
+         select scopes, created_at from "oauthConsents"
+          where user_id = u.id and client_id = $3 and reference_id = s.id
+          order by updated_at desc limit 1
+       ) c on true
       where u.id = $1`,
     [claims.sub, claims.store_id, claims.azp],
   );
   if (!row) return { ok: false, status: 403, error: "insufficient_scope" };
   if (row.status && row.status !== "active") return { ok: false, status: 403, error: "insufficient_scope" };
   if (row.storeStatus === "archived") return { ok: false, status: 403, error: "insufficient_scope" };
-  if (!row.consented) return { ok: false, status: 401, error: "invalid_token" };
+  if (!row.consented || row.consentedAt === null) return { ok: false, status: 401, error: "invalid_token" };
+  if (typeof claims.iat !== "number" || claims.iat < row.consentedAt) return { ok: false, status: 401, error: "invalid_token" };
 
-  const { rows: owned } = await platform.query<{ scope: string }>("select scope from user_scopes where user_id = $1", [claims.sub]);
-  const userScopes = new Set(row.role === "admin" || owned.some((s) => s.scope === "*") ? ALL_SCOPES : owned.map((s) => s.scope));
+  const userScopes = new Set(row.role === "admin" || row.owned.includes("*") ? ALL_SCOPES : row.owned);
   const consented = new Set(row.consented);
   const scopes = (claims.scope ?? "").split(" ").filter((s) => consented.has(s) && userScopes.has(s));
 

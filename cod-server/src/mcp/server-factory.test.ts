@@ -252,9 +252,9 @@ describe("createCodMcpServer", () => {
     );
   });
 
-  it("rate-limits on the client subject hint when present, not the user id", async () => {
+  it("rate-limits on the verified user and client, whatever subject hint the client sends", async () => {
     mocks.buildToolsForUser.mockReturnValue({ listCustomers: safeTool });
-    const { redis, incr } = counting((key) => (key.includes("sub-anon") ? 9999 : 1));
+    const { redis, incr } = counting((key) => (key.includes("u1:claude") ? 9999 : 1));
 
     const server = createCodMcpServer(env, props, db, redis);
     const ctx = makeCtx();
@@ -263,7 +263,8 @@ describe("createCodMcpServer", () => {
     const result = (await registeredHandler(server, "listCustomers")({}, ctx)) as {
       isError?: boolean;
     };
-    expect(incr).toHaveBeenCalledWith(expect.stringContaining("sub-anon"));
+    expect(incr).toHaveBeenCalledWith(expect.stringContaining("u1:claude"));
+    expect(incr).not.toHaveBeenCalledWith(expect.stringContaining("sub-anon"));
     expect(result.isError).toBe(true);
   });
 });

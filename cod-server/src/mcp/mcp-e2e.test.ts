@@ -50,6 +50,7 @@ const accessToken = (overrides: Record<string, unknown> = {}) =>
     aud: [`${API}/mcp`],
     scope: "offline_access orders:read orders:delete",
     store_id: TEST_STORE_ID,
+    iat: Math.floor(Date.now() / 1000),
     exp: Math.floor(Date.now() / 1000) + 600,
     ...overrides,
   });
@@ -241,6 +242,16 @@ describe("the MCP server", () => {
     const session = await sign({ sub: "u-admin", iss: "http://app.test", aud: API, exp: Math.floor(Date.now() / 1000) + 600 });
     expect((await post(session)).status).toBe(401);
     await expect(verifySessionJwt(await accessToken(), env())).rejects.toThrow();
+  });
+
+  it("refuses a token issued before the connection was last authorised", async () => {
+    const before = await accessToken({ iat: Math.floor(Date.now() / 1000) - 120 });
+    await consent("u-admin", TEST_STORE_ID, ["orders:read"]);
+    expect((await post(before)).status).toBe(401);
+    expect((await post(await accessToken({ iat: undefined }))).status).toBe(401);
+    const client = await connect(await accessToken());
+    expect((await client.listTools()).tools.map((t) => t.name)).toContain("listOrders");
+    await client.close();
   });
 
   it("stops serving a user who was deactivated", async () => {

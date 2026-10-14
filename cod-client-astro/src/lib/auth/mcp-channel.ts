@@ -1,10 +1,17 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import { dashboardDatabase, dashboardRedis } from "../server-db";
 
 const CHOICE_TTL_SECONDS = 10 * 60;
-const key = (sessionId: string) => `mcp-channel:${sessionId}`;
+const key = (sessionId: string, authorization: string) => `mcp-channel:${sessionId}:${authorization}`;
 
-export function mcpResource(apiUrl: string): string {
-  return `${apiUrl.replace(/\/+$/, "")}/mcp`;
+const currentAuthorization = new AsyncLocalStorage<string | null>();
+
+export function withAuthorization<T>(authorization: string | null, fn: () => T): T {
+  return currentAuthorization.run(authorization, fn);
+}
+
+export function authorizationInProgress(): string | null {
+  return currentAuthorization.getStore() ?? null;
 }
 
 export interface ChannelOption {
@@ -25,12 +32,13 @@ export async function channelsOf(userId: string): Promise<ChannelOption[]> {
   return rows;
 }
 
-export async function chooseChannel(sessionId: string, userId: string, storeId: string): Promise<boolean> {
+export async function chooseChannel(sessionId: string, authorization: string, userId: string, storeId: string): Promise<boolean> {
   if (!(await channelsOf(userId)).some((c) => c.id === storeId)) return false;
-  await (await dashboardRedis()).set(key(sessionId), storeId, { EX: CHOICE_TTL_SECONDS });
+  await (await dashboardRedis()).set(key(sessionId, authorization), storeId, { EX: CHOICE_TTL_SECONDS });
   return true;
 }
 
-export async function chosenChannel(sessionId: string): Promise<string | null> {
-  return (await (await dashboardRedis()).get(key(sessionId))) ?? null;
+export async function chosenChannel(sessionId: string, authorization: string | null): Promise<string | null> {
+  if (!authorization) return null;
+  return (await (await dashboardRedis()).get(key(sessionId, authorization))) ?? null;
 }

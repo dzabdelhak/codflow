@@ -1,9 +1,6 @@
 import type { McpConnection } from "./types";
 
-/** The MCP endpoint for a given API base URL, e.g. "https://api.example.com/mcp". */
-export function mcpApiUrl(apiBase: string): string {
-  return `${apiBase.replace(/\/+$/, "")}/mcp`;
-}
+export { mcpResourceUrl as mcpApiUrl } from "../../../../cod-shared/lib/mcp-urls";
 
 /** Replace `{name}` placeholders in a template string. */
 export function interp(template: string, values: Record<string, string>): string {

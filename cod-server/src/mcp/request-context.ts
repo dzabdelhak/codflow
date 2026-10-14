@@ -3,7 +3,7 @@ import type { Redis } from "@/platform/redis";
  * Per-request client context and the MCP tool-call rate limit built on it.
  *
  * Clients like ChatGPT attach hints on every tools/call request's `_meta`:
- *   • `openai/subject` — anonymized user id (rate limiting / identification)
+ *   • `openai/subject` — anonymized user id (identification in the audit row)
  *   • `openai/session` — anonymized conversation id (correlating calls)
  * Per the plugin reference these are HINTS ONLY — never relied on for
  * authorization, always tolerated when absent. Authorization remains OAuth
@@ -11,8 +11,8 @@ import type { Redis } from "@/platform/redis";
  *
  * The rate limit implements the MCP spec's security requirement ("servers
  * MUST rate limit tool invocations") as a coarse, fail-open abuse guard over
- * Redis: a fixed window counter per subject (falling back to the verified
- * user id when no client hint exists). A Redis hiccup must never block a
+ * Redis: a fixed window counter per verified user and client — never a
+ * client-supplied hint. A Redis hiccup must never block a
  * legitimate tool call, only sustained abuse gets stopped.
  */
 

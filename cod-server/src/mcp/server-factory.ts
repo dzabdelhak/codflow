@@ -22,8 +22,8 @@ interface ToolRegistration {
   name: string;
   tool: Tool;
   redis: Redis | null;
-  /** Rate-limit fallback identity when the client sends no subject hint. */
-  fallbackSubject: string;
+  /** Rate-limit identity: the verified user and client, never a client hint. */
+  rateSubject: string;
 }
 
 /**
@@ -55,7 +55,7 @@ export function createCodMcpServer(env: Env, props: McpProps | null, db: AppDb, 
       name,
       tool,
       redis,
-      fallbackSubject: props.userId,
+      rateSubject: `${props.userId}:${props.clientId}`,
     });
   }
 
@@ -71,7 +71,7 @@ function clientMetaAuditFields(clientMeta: ClientMeta): Record<string, string> {
 }
 
 function registerTool(server: McpServer, registration: ToolRegistration): void {
-  const { db, actor, name, tool, redis, fallbackSubject } = registration;
+  const { db, actor, name, tool, redis, rateSubject } = registration;
   const description =
     typeof tool.description === "string" ? tool.description : `Tool: ${name}`;
   const inputSchema = z.object(TOOL_SCHEMAS[name] ?? {});
@@ -96,9 +96,9 @@ function registerTool(server: McpServer, registration: ToolRegistration): void {
     },
     async (args, ctx) => {
       // Client hints (openai/subject, openai/session) — correlation only,
-      // never authorization. Subject keys the per-user rate counter.
+      // never authorization or rate limiting.
       const clientMeta = readClientMeta(ctx);
-      const rate = await checkMcpRateLimit(redis, clientMeta.subject ?? fallbackSubject);
+      const rate = await checkMcpRateLimit(redis, rateSubject);
       if (!rate.allowed) {
         await logActivity(
           db,

@@ -7,6 +7,7 @@
  * endpoint and returns the caller's user id.
  */
 import { eq } from "drizzle-orm";
+import { authServerOrigin } from "../../../cod-shared/lib/mcp-urls";
 
 interface JwtHeader {
   alg?: string;
@@ -33,7 +34,7 @@ let jwksCache: { keys: JsonWebKey[]; kidByKeyId: Map<string, number>; fetchedAt:
   null;
 
 function authBaseUrl(env: Env): string {
-  return env.BETTER_AUTH_URL.replace(/\/api\/auth$/, "");
+  return authServerOrigin(env.BETTER_AUTH_URL);
 }
 
 async function fetchJwks(env: Env, force = false): Promise<void> {

@@ -52,7 +52,6 @@ export default defineConfig({
   output: "static",
   // No Astro.session usage (auth is better-auth + Redis).
   session: false,
-  // src/middleware.ts applies the same check, minus the OAuth token endpoints.
   security: { checkOrigin: false },
   env: {
     schema: {

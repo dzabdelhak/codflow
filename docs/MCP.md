@@ -18,8 +18,11 @@ cod-server is the resource server.
    client registration, no authentication) and opens
    `<app>/api/auth/oauth2/authorize` with PKCE and `resource=<api>/mcp`.
 4. The merchant signs in, then picks the channel at `/mcp/channel`. The
-   choice is kept in Redis for the session (`mcp-channel:<sessionId>`, 10
-   minutes). It must be a non-archived store of the user's merchant.
+   choice is kept in Redis for this authorization only
+   (`mcp-channel:<sessionId>:<client_id>:<code_challenge>`, 10 minutes): the
+   auth route reads the authorization from the request (`authorizationKeyOf`),
+   so a second authorization, in another tab or later, asks again. It must be
+   a non-archived store of the user's merchant.
 5. `/mcp/consent` shows the agent, the channel and the permissions it asked
    for, limited to those the user holds. What the merchant allows is stored
    as a consent whose `reference_id` is the channel.
@@ -37,8 +40,10 @@ cod-server is the resource server.
   `iss` = `${BETTER_AUTH_URL}/api/auth`, `exp`, `azp` and `store_id`.
 - The user must still be active and belong to the merchant that owns the
   channel, and the channel must not be archived (`403` otherwise).
-- A consent for (user, client, channel) must exist (`401` otherwise). Revoking
-  a connection deletes it, so the next request is refused.
+- A consent for (user, client, channel) must exist, and the token must have
+  been issued after it (`iat`), otherwise `401`. Revoking a connection deletes
+  it, so the next request is refused, and its old tokens stay refused when the
+  agent is authorised again.
 - Granted scopes = the token's ∩ the consent's ∩ the user's current scopes.
   An admin gets only what the connection was granted.
 - The request runs in `withStore` on the app pool, pinned to the channel and
@@ -47,10 +52,10 @@ cod-server is the resource server.
 A dashboard session JWT is refused at `/mcp`. An MCP access token is
 refused as a dashboard session (`verifySessionJwt`).
 
-Tool calls are rate-limited per client subject, or per user when the client
-sends none: 200 per minute, counted in Redis (`REDIS_URL`). Without Redis the
-limit is off and the server still serves. Each call is written to the
-channel's activity log.
+Tool calls are rate-limited per user and client: 200 per minute, counted in
+Redis (`REDIS_URL`). Client hints such as `openai/subject` only reach the
+audit row. Without Redis, or while it is unreachable, the limit is off and the
+server still serves. Each call is written to the channel's activity log.
 
 ## Connections page
 

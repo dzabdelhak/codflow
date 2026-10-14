@@ -172,17 +172,18 @@ export async function deleteMcpClient(c: Context<AppContext>) {
   await platform.query(
     `delete from "oauthClients" cl
       where cl.client_id = $1
-        and (cl.user_id is null or cl.user_id in (select id from users where merchant_id = $2))
+        and cl.user_id in (select id from users where merchant_id = $2)
         and not exists (select 1 from "oauthConsents" where client_id = cl.client_id)
         and not exists (select 1 from "oauthRefreshTokens" where client_id = cl.client_id and revoked is null and expires_at > now())`,
     [clientId, actor.merchantId],
   );
+  const revokedForUsers = new Set(revoked.map((r) => r.userId)).size;
   await logActivity(
     c.get("db"),
     actor,
     ACTIONS.MCP_CLIENT_DELETED,
     { type: "oauthClient", id: clientId, label: client?.name ?? clientId },
-    { revokedForUsers: new Set(revoked.map((r) => r.userId)).size },
+    { revokedForUsers },
   );
-  return c.json({ success: true, data: { clientId, revokedForUsers: new Set(revoked.map((r) => r.userId)).size } });
+  return c.json({ success: true, data: { clientId, revokedForUsers } });
 }

@@ -8,7 +8,7 @@ export interface ChannelOption {
 }
 
 export async function getChannelChoice(): Promise<{ channels: ChannelOption[]; selected: string | null } | null> {
-  const res = await fetch("/mcp/channel-choice", { credentials: "same-origin" });
+  const res = await fetch(`/mcp/channel-choice?oauth_query=${encodeURIComponent(window.location.search)}`, { credentials: "same-origin" });
   return res.ok ? res.json() : null;
 }
 
@@ -17,7 +17,7 @@ export async function chooseChannel(storeId: string): Promise<boolean> {
     method: "POST",
     credentials: "same-origin",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ storeId }),
+    body: JSON.stringify({ storeId, oauthQuery: window.location.search }),
   });
   return res.ok;
 }
