@@ -35,7 +35,8 @@
     "main_product": "المنتج الرئيسي",
     "design": "التصميم",
     "domains": "النطاقات",
-    "orders_blocked": "المحاولات المحظورة"
+    "orders_blocked": "المحاولات المحظورة",
+    "orders_transmission": "إرسال الطلبات"
   },
   "navbar": {
     "search_placeholder": "البحث عن طلبات، عملاء...",

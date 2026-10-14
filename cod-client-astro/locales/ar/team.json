@@ -123,7 +123,8 @@
       "domain.primary_set": "حدد النطاق الرئيسي",
       "domain.removed": "حذف نطاقًا",
       "phone.blocked": "حظر هاتفًا",
-      "phone.unblocked": "رفع الحظر عن هاتف"
+      "phone.unblocked": "رفع الحظر عن هاتف",
+      "order.transmission_resent": "أعاد إرسال طلب إلى وجهته"
     },
     "table": {
       "action": "الإجراء",

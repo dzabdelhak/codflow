@@ -18,6 +18,7 @@ import {
   ShoppingCart,
   Sparkles,
   Crosshair,
+  Send,
   Star,
   Store,
   Tag,
@@ -101,6 +102,13 @@ export function useNavSections(): NavSection[] {
               href: "/orders/blocked",
               label: tN("sidebar.orders_blocked"),
               icon: ShieldX,
+              scope: "orders:read",
+            },
+            {
+              kind: "leaf",
+              href: "/orders/transmission",
+              label: tN("sidebar.orders_transmission"),
+              icon: Send,
               scope: "orders:read",
             },
           ],
@@ -345,7 +353,8 @@ export function isCurrentPath(currentPath: string, href: string): boolean {
       currentPath === "/orders" ||
       (currentPath.startsWith("/orders/") &&
         currentPath !== "/orders/abandoned" &&
-        currentPath !== "/orders/blocked")
+        currentPath !== "/orders/blocked" &&
+        currentPath !== "/orders/transmission")
     );
   }
   if (href === "/products") {

@@ -156,6 +156,12 @@ other is how these drift.
   directly (`tracking-contracts.test.ts`); browser and server use the order id
   as the deduplication id. Provider event names live in
   `cod-shared/tracking/events.ts`.
+- **Orders reach their destination through `outbound_orders`, drained by the
+  outbound worker** (`src/platform/outbound/`): one sender per entry
+  (row lock held for the send), per-channel creation order, backoff forever,
+  sent only on a recognised answer. The destination is pluggable
+  (`ORDER_DESTINATION`, `test` today). Never mark an entry sent elsewhere, and
+  never log its payload. See `docs/ORDER-TRANSMISSION.md`.
 - **The visitor's IP is `X-Visitor-IP`, set by Caddy from the connection.**
   The storefront trusts it only when `TRUSTED_PROXY_IP_HEADER` names it and
   forwards it to cod-server, which reads it only on `/store/*` (behind the

@@ -35,7 +35,8 @@
     "main_product": "Produit principal",
     "design": "Design",
     "domains": "Domaines",
-    "orders_blocked": "Tentatives bloquées"
+    "orders_blocked": "Tentatives bloquées",
+    "orders_transmission": "Transmission"
   },
   "navbar": {
     "search_placeholder": "Rechercher des commandes, clients...",

@@ -4,9 +4,9 @@
 
 **Blocked by:** 02, 03
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] With the destination failing 30% of the time, every order is delivered exactly once and never by two servers at once
-- [ ] Killing a server mid-send leaves the order to be resent and deduplicated by its send id
-- [ ] The diagnostics screen shows waiting, sent and rejected orders and can resend a rejected one
-- [ ] An order waiting more than 24 hours raises an alert
+- [x] With the destination failing 30% of the time, every order is delivered exactly once and never by two servers at once
+- [x] Killing a server mid-send leaves the order to be resent and deduplicated by its send id
+- [x] The diagnostics screen shows waiting, sent and rejected orders and can resend a rejected one
+- [x] An order waiting more than 24 hours raises an alert

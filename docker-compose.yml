@@ -98,6 +98,8 @@ services:
       CUSTOM_DOMAIN_TARGET: ${CUSTOM_DOMAIN_TARGET:-}
       CUSTOM_DOMAIN_IPV4: ${CUSTOM_DOMAIN_IPV4:-127.0.0.1}
       TLS_PROBE_HOST: caddy
+      ORDER_DESTINATION: ${ORDER_DESTINATION:-test}
+      OUTBOUND_TEST_FAILURE_RATE: ${OUTBOUND_TEST_FAILURE_RATE:-0}
     depends_on:
       setup: { condition: service_completed_successfully }
       objects: { condition: service_healthy }

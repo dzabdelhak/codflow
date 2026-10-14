@@ -15,6 +15,8 @@ import { systemDns } from "@/platform/channel-domains";
 import { probeCertificate, type CertificateStatus } from "@/platform/tls-probe";
 import { pruneFinishedJobs, startJobWorker } from "@/platform/jobs";
 import { pruneBlockedAttempts } from "@/endpoints/store/order-flood";
+import { startOutboundWorker } from "@/platform/outbound/worker";
+import { destinationFromEnv } from "@/platform/outbound/destination";
 import { CONVERSION_JOB, conversionJobHandler } from "@/tracking/conversions";
 
 function required(name: string): string {
@@ -44,6 +46,8 @@ function certificateProbe(): (hostname: string) => Promise<CertificateStatus> {
   const port = Number(process.env.TLS_PROBE_PORT ?? 443);
   return (hostname) => probeCertificate(hostname, { host, port });
 }
+
+const outboundDestination = destinationFromEnv(process.env);
 
 const env = {
   ...process.env,
@@ -80,9 +84,11 @@ imageStore.ensureBucket().then(
     };
     setInterval(prune, 24 * 60 * 60 * 1000).unref();
     const stopJobs = startJobWorker(database.platform, { [CONVERSION_JOB]: conversionJobHandler(database.platform) });
+    const stopOutbound = startOutboundWorker(database.platform, outboundDestination);
     for (const signal of ["SIGINT", "SIGTERM"] as const) {
       process.on(signal, () => {
         stopJobs();
+        stopOutbound();
         server.close();
         void database.close().finally(() => process.exit(0));
       });

@@ -629,6 +629,9 @@ export const orders = pgTable("orders", {
   recentByIp: index("orders_store_ip_created_idx").on(t.storeId, t.ipAddress, t.createdAt),
 }));
 
+export const OUTBOUND_OUTCOMES = ["accepted", "duplicate", "review", "rejected", "retry", "unknown", "error"] as const;
+export type OutboundOutcome = (typeof OUTBOUND_OUTCOMES)[number];
+
 export const outboundOrders = pgTable("outbound_orders", {
   storeId: storeIdColumn(),
   id: text("id").primaryKey(),
@@ -641,8 +644,13 @@ export const outboundOrders = pgTable("outbound_orders", {
   aventyOrderId: text("aventy_order_id"),
   createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
   sentAt: timestamp("sent_at", { mode: "date", withTimezone: true }),
+  lastAttemptAt: timestamp("last_attempt_at", { mode: "date", withTimezone: true }),
+  lastOutcome: text("last_outcome", { enum: OUTBOUND_OUTCOMES }),
+  outcomeDetail: jsonb("outcome_detail").$type<{ reasons?: string[]; fields?: string[] }>(),
+  alertedAt: timestamp("alerted_at", { mode: "date", withTimezone: true }),
 }, (t) => ({
   due: index("outbound_orders_due_idx").on(t.nextAttemptAt, t.id).where(sql`status = 'pending'`),
+  channelLine: index("outbound_orders_channel_line_idx").on(t.storeId, t.createdAt, t.id).where(sql`status = 'pending'`),
 }));
 
 export const BLOCKED_ORDER_REASONS = ["blocked_phone", "phone_window", "device_window", "ip_ceiling", "ip_flagged"] as const;

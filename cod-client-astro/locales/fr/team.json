@@ -123,7 +123,8 @@
       "domain.primary_set": "A défini le domaine principal",
       "domain.removed": "A supprimé un domaine",
       "phone.blocked": "A bloqué un téléphone",
-      "phone.unblocked": "A débloqué un téléphone"
+      "phone.unblocked": "A débloqué un téléphone",
+      "order.transmission_resent": "A renvoyé une commande à sa destination"
     },
     "table": {
       "action": "Action",

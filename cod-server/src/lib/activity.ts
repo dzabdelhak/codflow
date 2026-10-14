@@ -73,6 +73,7 @@ export const ACTIONS = {
   DOMAIN_REMOVED:          "domain.removed",
   PHONE_BLOCKED:           "phone.blocked",
   PHONE_UNBLOCKED:         "phone.unblocked",
+  ORDER_TRANSMISSION_RESENT: "order.transmission_resent",
 
   STORE_PAGE_CREATED:      "store_page.created",
   STORE_PAGE_UPDATED:      "store_page.updated",

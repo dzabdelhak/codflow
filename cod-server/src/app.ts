@@ -18,6 +18,7 @@ import channelDesignRoutes from "@/endpoints/channel-design/routes";
 import channelDomainRoutes, { tlsAskRouter } from "@/endpoints/channel-domains/routes";
 import trackingRoutes from "@/endpoints/tracking/routes";
 import orderProtectionRoutes from "@/endpoints/order-protection/routes";
+import transmissionRoutes from "@/endpoints/transmission/routes";
 import { storeAuthMiddleware } from "@/middleware/storeAuth";
 import { errorHandler } from "@/middleware/error";
 
@@ -126,6 +127,7 @@ app.route("/api/channel-design", channelDesignRoutes);
 app.route("/api/channel-domains", channelDomainRoutes);
 app.route("/api/tracking", trackingRoutes);
 app.route("/api/order-protection", orderProtectionRoutes);
+app.route("/api/transmission", transmissionRoutes);
 app.route("/api/landing-pages", landingPagesRoutes);
 app.route("/api/store-pages", storePagesRoutes);
 app.route("/api/checkout-form", checkoutFormRoutes);
