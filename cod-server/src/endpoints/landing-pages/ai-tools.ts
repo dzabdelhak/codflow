@@ -755,7 +755,11 @@ export const getLandingPageTools = (
           uploadKind = "bytes";
         }
 
-        const stored = await storeLandingImage(env.IMAGE_STORE, imagesBaseUrl(env), bytes, data.contentType);
+        const baseUrl = imagesBaseUrl(env);
+        if (!baseUrl) {
+          return { success: false, error: "Image upload is not available on this deployment — IMAGES_PUBLIC_URL is not configured." };
+        }
+        const stored = await storeLandingImage(env.IMAGE_STORE, baseUrl, bytes, data.contentType);
         if (!stored.ok) return { success: false, error: stored.error };
 
         const images = await queries.addLandingPageImage(db, data.landingPageId, {

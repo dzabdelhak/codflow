@@ -6,20 +6,22 @@ import { eq, and, asc } from "drizzle-orm";
 import { NotFoundError, ValidationError, SystemError } from "@/lib/errors/classes";
 import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
 import { first } from "../../../../cod-shared/db/client";
-import { deleteImage } from "@/platform/image-store";
+import { deleteImage, type ImageStore } from "@/platform/image-store";
 import {
   IMAGE_FOLDERS,
   IMAGE_KEY,
   ingestImage,
+  MAX_INPUT_MEGAPIXELS,
   MAX_UPLOAD_BYTES,
   renderVariant,
   variantKey,
-  variantSpec,
+  variantWidth,
   type ImageFolder,
 } from "@/platform/image-pipeline";
 
 const UPLOAD_ERRORS = {
   too_large: { message: "File too large. Max 10 MB", code: ERROR_CODES.FILE_TOO_LARGE },
+  too_many_pixels: { message: `Image too large: at most ${MAX_INPUT_MEGAPIXELS} megapixels`, code: ERROR_CODES.FILE_TOO_LARGE },
   not_an_image: { message: "This file is not a JPEG, PNG, WebP or GIF image", code: ERROR_CODES.INVALID_FILE_TYPE },
   unreadable: { message: "This image could not be read", code: ERROR_CODES.INVALID_FILE_TYPE },
 } as const;
@@ -69,43 +71,53 @@ export async function uploadImage(c: Context<AppContext>) {
   }
 
   return c.json(
-    { success: true, data: { key: image.key, url: `${imagesBaseUrl(c.env, c.req.url)}/${image.key}`, width: image.width, height: image.height } },
+    { success: true, data: { key: image.key, url: `${imagesBaseUrl(c.env, c.req.url)!}/${image.key}`, width: image.width, height: image.height } },
     201,
   );
 }
 
 const IMAGE_HEADERS = { "Cache-Control": "public, max-age=31536000, immutable" };
 
+const rendering = new Map<string, Promise<Uint8Array | null>>();
+
+async function renderOnce(store: ImageStore, key: string, width: number): Promise<Uint8Array | null> {
+  const cacheKey = variantKey(key, width);
+  let pending = rendering.get(cacheKey);
+  if (!pending) {
+    pending = (async () => {
+      const original = await store.get(key);
+      if (!original) return null;
+      const body = await renderVariant(original.body, width);
+      await store.put(cacheKey, body, "image/webp");
+      return body;
+    })().finally(() => rendering.delete(cacheKey));
+    rendering.set(cacheKey, pending);
+  }
+  return pending;
+}
+
 /**
- * GET /images/:key{.+}?w=&h=&fit=
- * Public. Without size parameters, the stored image; with them, a WebP
- * variant snapped to a bounded grid, rendered once and kept in storage.
+ * GET /images/:key{.+}?w=
+ * Public. Without `w`, the stored image; with it, a WebP at the next width of
+ * VARIANT_WIDTHS, rendered once (concurrent requests share the render) and kept.
  */
 export async function serveImage(c: Context<AppContext>) {
   const key = c.req.param("key") ?? "";
   if (!IMAGE_KEY.test(key)) throw new NotFoundError("Image", key);
-  const spec = variantSpec({ w: c.req.query("w"), h: c.req.query("h"), fit: c.req.query("fit") });
-  if (spec === "invalid") {
-    throw new ValidationError("Invalid image size", ERROR_CODES.VALIDATION_FAILED, { w: c.req.query("w"), h: c.req.query("h") });
+  const width = variantWidth(c.req.query("w"));
+  if (width === "invalid") {
+    throw new ValidationError("Invalid image width", ERROR_CODES.VALIDATION_FAILED, { w: c.req.query("w") });
   }
 
   const store = c.env.IMAGE_STORE;
-  if (spec === null) {
-    const original = await store.get(key);
-    if (!original) throw new NotFoundError("Image", key);
-    return new Response(original.body, {
-      headers: { ...IMAGE_HEADERS, "Content-Type": original.contentType, ...(original.etag ? { ETag: original.etag } : {}) },
+  const stored = await store.open(width === null ? key : variantKey(key, width));
+  if (stored) {
+    return new Response(stored.body, {
+      headers: { ...IMAGE_HEADERS, "Content-Type": stored.contentType, ...(stored.etag ? { ETag: stored.etag } : {}) },
     });
   }
-
-  const cacheKey = variantKey(key, spec);
-  const cached = await store.get(cacheKey);
-  if (cached) return new Response(cached.body, { headers: { ...IMAGE_HEADERS, "Content-Type": "image/webp" } });
-
-  const original = await store.get(key);
-  if (!original) throw new NotFoundError("Image", key);
-  const body = await renderVariant(original.body, spec);
-  c.executionCtx.waitUntil(store.put(cacheKey, body, "image/webp"));
+  const body = width === null ? null : await renderOnce(store, key, width);
+  if (!body) throw new NotFoundError("Image", key);
   return new Response(body, { headers: { ...IMAGE_HEADERS, "Content-Type": "image/webp" } });
 }
 

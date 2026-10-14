@@ -1,6 +1,6 @@
 import { getDb } from "@/db";
 import {
-  MANAGED_IMAGE_PREFIX,
+  MANAGED_IMAGE_PREFIXES,
   isManagedImageKey,
   selectOrphanImageKeys,
   type OrphanCandidate,
@@ -17,7 +17,7 @@ export interface OrphanImage {
 
 export interface OrphanSweepReport {
   dryRun: boolean;
-  prefix: string;
+  prefixes: string[];
   olderThanDays: number;
   /** Managed objects found in the bucket. */
   scanned: number;
@@ -38,7 +38,7 @@ export interface OrphanSweepOptions {
 }
 
 /**
- * Compares the objects in storage's `products/` namespace against every key stored
+ * Compares the objects in the upload folders against every key stored
  * data still references, and deletes the difference beyond a grace period.
  *
  * Defaults to a dry run: the report is the product of this job, and enabling
@@ -51,15 +51,17 @@ export async function sweepOrphanImages(
   const store = env.IMAGE_STORE;
 
   const candidates: OrphanCandidate[] = [];
-  let cursor: string | undefined;
-  do {
-    const page = await store.list(MANAGED_IMAGE_PREFIX, cursor);
-    for (const object of page.objects) {
-      if (!isManagedImageKey(object.key)) continue;
-      candidates.push({ key: object.key, uploaded: object.uploaded, size: object.size });
-    }
-    cursor = page.cursor;
-  } while (cursor);
+  for (const prefix of MANAGED_IMAGE_PREFIXES) {
+    let cursor: string | undefined;
+    do {
+      const page = await store.list(prefix, cursor);
+      for (const object of page.objects) {
+        if (!isManagedImageKey(object.key)) continue;
+        candidates.push({ key: object.key, uploaded: object.uploaded, size: object.size });
+      }
+      cursor = page.cursor;
+    } while (cursor);
+  }
 
   const referenced = await collectReferencedImageKeys(getDb(env.DATABASE.platform));
 
@@ -78,7 +80,7 @@ export async function sweepOrphanImages(
 
   return {
     dryRun,
-    prefix: MANAGED_IMAGE_PREFIX,
+    prefixes: [...MANAGED_IMAGE_PREFIXES],
     olderThanDays,
     scanned: candidates.length,
     referenced: referenced.size,

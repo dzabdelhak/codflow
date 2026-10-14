@@ -20,7 +20,8 @@
     "test:integration": "vitest --run tests/integration",
     "test:property": "vitest --run tests/property",
     "test:performance": "vitest --run tests/performance",
-    "test:ci": "vitest --run --coverage --reporter=json --reporter=html"
+    "test:ci": "vitest --run --coverage --reporter=json --reporter=html",
+    "images:import-legacy": "tsx scripts/import-legacy-images.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1115.0",

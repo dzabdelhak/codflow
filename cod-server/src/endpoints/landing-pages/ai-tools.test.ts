@@ -43,6 +43,9 @@ const landingQueries = vi.hoisted(() => ({
 
 vi.mock("./queries", () => landingQueries);
 
+const safeDownload = vi.hoisted(() => ({ downloadPublic: vi.fn() }));
+vi.mock("@/platform/safe-download", () => safeDownload);
+
 const sharedLandingQueries = vi.hoisted(() => ({
   resolveStorefrontBaseUrl: vi.fn(),
   buildLandingPagePublicUrl: vi.fn(
@@ -342,14 +345,14 @@ function stackFor(row: Record<string, unknown>) {
   return [{ id: "img-9", landingPageId: UUID, position: 1, altText: null, ...row }];
 }
 
-function pngResponse(): Response {
-  return new Response(Buffer.from(PNG_1x1_BASE64, "base64"), { status: 200, headers: { "content-type": "image/png" } });
+function pngDownload() {
+  return { ok: true, bytes: new Uint8Array(Buffer.from(PNG_1x1_BASE64, "base64")) };
 }
 
 describe("uploadLandingPageImage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.unstubAllGlobals();
+    safeDownload.downloadPublic.mockResolvedValue(pngDownload());
     landingQueries.getLandingPageById.mockResolvedValue(LANDING_PAGE);
     landingQueries.addLandingPageImage.mockImplementation(async (_db: unknown, _id: string, image: Record<string, unknown>) =>
       stackFor(image),
@@ -357,8 +360,6 @@ describe("uploadLandingPageImage", () => {
   });
 
   it("downloads a URL, stores it as WebP and adds it to the stack before returning", async () => {
-    const fetcher = vi.fn(async () => pngResponse());
-    vi.stubGlobal("fetch", fetcher);
     const { env, store } = makeUploadEnv();
 
     const res = await call(
@@ -372,7 +373,7 @@ describe("uploadLandingPageImage", () => {
     expect(image.r2Key).toMatch(/^landing\/[a-f0-9]{32}\.webp$/);
     expect(image.src).toBe(`https://api.example.com/images/${image.r2Key}`);
     expect(store.objects.get(image.r2Key as string)?.contentType).toBe("image/webp");
-    expect(fetcher).toHaveBeenCalledWith("https://images.openai.example/gen.png", expect.anything());
+    expect(safeDownload.downloadPublic).toHaveBeenCalledWith("https://images.openai.example/gen.png", expect.anything());
     expect(landingQueries.addLandingPageImage).toHaveBeenCalledWith(
       db,
       UUID,
@@ -391,8 +392,6 @@ describe("uploadLandingPageImage", () => {
   });
 
   it("uses the download_url of a chat client's file object", async () => {
-    const fetcher = vi.fn(async () => pngResponse());
-    vi.stubGlobal("fetch", fetcher);
     const { env } = makeUploadEnv();
 
     const res = await call(
@@ -406,7 +405,7 @@ describe("uploadLandingPageImage", () => {
     );
 
     expect(res.success).toBe(true);
-    expect(fetcher).toHaveBeenCalledWith("https://files.oaiusercontent.example/abc", expect.anything());
+    expect(safeDownload.downloadPublic).toHaveBeenCalledWith("https://files.oaiusercontent.example/abc", expect.anything());
   });
 
   it("requires exactly one image source", async () => {
@@ -422,12 +421,31 @@ describe("uploadLandingPageImage", () => {
   });
 
   it("explains an unreachable or expired link", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => new Response("no", { status: 403 })));
+    safeDownload.downloadPublic.mockResolvedValue({ ok: false, reason: "status", status: 403 });
     const { env, store } = makeUploadEnv();
     const res = await call("uploadLandingPageImage", { landingPageId: UUID, imageUrl: "https://x/y.png", contentType: "image/png" }, env);
     expect(res.success).toBe(false);
     expect(res.error).toContain("not publicly fetchable");
     expect(store.objects.size).toBe(0);
+  });
+
+  it("refuses a URL that points into the private network, without saying what answered", async () => {
+    safeDownload.downloadPublic.mockResolvedValue({ ok: false, reason: "blocked" });
+    const { env, store } = makeUploadEnv();
+    const res = await call("uploadLandingPageImage", { landingPageId: UUID, imageUrl: "http://objects:8333/x.png", contentType: "image/png" }, env);
+    expect(res).toMatchObject({ success: false, error: "The image URL must point to a public internet address." });
+    expect(store.objects.size).toBe(0);
+  });
+
+  it("refuses to store an image whose public address cannot be built", async () => {
+    const res = await call(
+      "uploadLandingPageImage",
+      { landingPageId: UUID, imageBase64: PNG_1x1_BASE64, contentType: "image/png" },
+      { STOREFRONT_URL: "https://fallback.example.com", IMAGE_STORE: memoryImageStore() },
+    );
+    expect(res.success).toBe(false);
+    expect(res.error).toContain("IMAGES_PUBLIC_URL");
+    expect(landingQueries.addLandingPageImage).not.toHaveBeenCalled();
   });
 
   it("refuses bytes that do not match the declared type, invalid base64 and oversized payloads, storing nothing", async () => {

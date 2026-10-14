@@ -26,10 +26,9 @@ stored image's content never changes; replacing means uploading under a new key.
 _Avoid_: Editable asset, cache busting
 
 **Variant**:
-A resized WebP of an image, rendered on first request and kept beside it as
-`<key>~<w>x<h>-<fit>`. Sizes are rounded up to multiples of 40, at most 2000,
-so the number of variants per image is bounded. A variant lives and dies with
-its image (deletes and the orphan sweep treat it so).
+A resized WebP of an image at one of 13 fixed widths, rendered on first request
+and kept beside it as `<key>~w<width>`. A variant lives and dies with its image
+(deletes and the orphan sweep treat it so).
 
 ### Upload
 
@@ -37,12 +36,12 @@ its image (deletes and the orphan sweep treat it so).
 The one path every upload takes (`ingestImage`): the type is read from the
 bytes, never from the name or the declared type; at most 10 MB; converted to
 WebP, at most 2400 px on the longest side. A file that is not a JPEG, PNG,
-WebP or GIF, or cannot be decoded, is refused with a message the merchant
-understands.
+WebP or GIF, above 50 megapixels, or cannot be decoded, is refused with a
+message the merchant understands.
 
 ### Housekeeping
 
 **Orphan**:
-An object under `products/` that no stored data references and that is older
+An object in an upload folder that no stored data references and that is older
 than the grace period. `collectReferencedImageKeys` lists every reference
 source; the sweep deletes only orphans, and runs as a dry run unless asked.

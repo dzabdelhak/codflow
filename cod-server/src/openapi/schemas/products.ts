@@ -430,7 +430,7 @@ export const UploadedImageSchema = z
       example: "products/abc123def4567890abc123def4567890.webp",
     }),
     url: z.string().url().openapi({
-      description: "Public URL of the stored image; add `?w=&h=&fit=` for a resized version",
+      description: "Public URL of the stored image; add `?w=<width>` for a resized version",
       example: "https://api.example.com/images/products/abc123def4567890abc123def4567890.webp",
     }),
     width: z.number().int(),

@@ -16,6 +16,7 @@ import { uploadRouter, serveRouter } from "./routes";
 
 let store: ReturnType<typeof memoryImageStore>;
 let pending: Promise<unknown>[];
+let puts: string[];
 
 function apps() {
   const env = { IMAGE_STORE: store, IMAGES_PUBLIC_URL: "https://api.example.com/images" };
@@ -50,6 +51,12 @@ function form(bytes: Uint8Array, name: string, type: string, folder?: string) {
 beforeEach(() => {
   store = memoryImageStore();
   pending = [];
+  puts = [];
+  const put = store.put.bind(store);
+  store.put = async (key, body, type) => {
+    puts.push(key);
+    await put(key, body, type);
+  };
 });
 
 describe("POST /api/images/upload", () => {
@@ -67,6 +74,13 @@ describe("POST /api/images/upload", () => {
     expect(res.status).toBe(400);
     expect(await res.json()).toMatchObject({ code: "INVALID_FILE_TYPE", error: "This file is not a JPEG, PNG, WebP or GIF image" });
     expect(store.objects.size).toBe(0);
+  });
+
+  it("refuses an image with too many pixels with a clear message", async () => {
+    const huge = new Uint8Array(await sharp({ create: { width: 8000, height: 8000, channels: 3, background: { r: 0, g: 0, b: 0 } } }).png({ compressionLevel: 9 }).toBuffer());
+    const res = await apps().upload(form(huge, "huge.png", "image/png"));
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({ code: "FILE_TOO_LARGE", error: "Image too large: at most 50 megapixels" });
   });
 
   it("refuses an oversized file with a clear message", async () => {
@@ -102,13 +116,15 @@ describe("GET /images/{key}", () => {
     expect(res.headers.get("cache-control")).toContain("immutable");
   });
 
-  it("resizes on request, snapped to the grid, and keeps the variant for the next request", async () => {
+  it("resizes on request to the next listed width, keeps the variant, and renders it once for concurrent requests", async () => {
     const key = await uploaded();
-    const res = await apps().serve(`/images/${key}?w=300&h=300`);
-    expect(res.status).toBe(200);
-    expect(await sharp(new Uint8Array(await res.arrayBuffer())).metadata()).toMatchObject({ width: 320, height: 320 });
-    await Promise.all(pending);
-    expect(store.objects.has(`${key}~320x320-cover`)).toBe(true);
+    const [first, second] = await Promise.all([apps().serve(`/images/${key}?w=300`), apps().serve(`/images/${key}?w=300`)]);
+    expect([first.status, second.status]).toEqual([200, 200]);
+    expect(await sharp(new Uint8Array(await first.arrayBuffer())).metadata()).toMatchObject({ width: 320, height: 240 });
+    expect(store.objects.has(`${key}~w320`)).toBe(true);
+    expect(puts.filter((k) => k === `${key}~w320`)).toHaveLength(1);
+    const again = await apps().serve(`/images/${key}?w=320`);
+    expect(again.headers.get("content-type")).toBe("image/webp");
   });
 
   it("answers 404 for an unknown or malformed key and 400 for an out-of-range size", async () => {

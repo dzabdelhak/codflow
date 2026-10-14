@@ -39,7 +39,7 @@ const uploadImageRoute = defineRoute({
   tags: ["Images"],
   summary: "Upload image",
   description:
-    "Upload an image (JPEG, PNG, WebP or GIF, max 10 MB) as multipart/form-data: a `file` field and an optional `folder` (`products` — the default —, `landing`, `branding`). The type is read from the file's bytes, not its name or declared type. The image is stored as WebP, at most 2400 px on its longest side; the response gives its key, public URL and size. Resized versions are served at `{url}?w=&h=&fit=`.",
+    "Upload an image (JPEG, PNG, WebP or GIF, max 10 MB) as multipart/form-data: a `file` field and an optional `folder` (`products` — the default —, `landing`, `branding`). The type is read from the file's bytes, not its name or declared type. The image is stored as WebP, at most 2400 px on its longest side; the response gives its key, public URL and size. Resized versions are served at `{url}?w=<width>`.",
   operationId: "uploadImage",
   bodyContent: {
     "multipart/form-data": {

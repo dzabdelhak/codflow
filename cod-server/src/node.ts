@@ -10,6 +10,7 @@ import app from "@/app";
 import { createDatabase } from "@/db/scope";
 import type { Env } from "@/types";
 import { s3ImageStore } from "@/platform/image-store";
+import { runOrphanImageSweep } from "@/cron/sweep-orphan-images";
 
 function required(name: string): string {
   const value = process.env[name];
@@ -53,6 +54,9 @@ imageStore.ensureBucket().then(
     const server = serve({ fetch: (request) => app.fetch(request, env, executionCtx as never), port }, () =>
       console.log(`cod-server listening on :${port}`),
     );
+    const sweep = () => void runOrphanImageSweep(env).catch((err) => console.error("[cron:sweep-orphan-images]", err));
+    setTimeout(sweep, 60_000).unref();
+    setInterval(sweep, 24 * 60 * 60 * 1000).unref();
     for (const signal of ["SIGINT", "SIGTERM"] as const) {
       process.on(signal, () => {
         server.close();

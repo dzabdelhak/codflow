@@ -10,12 +10,15 @@
 # Host ports are overridable: COD_HTTP_PORT, COD_PG_PORT, COD_REDIS_PORT.
 # The storefront key is a local-only default; set COD_STOREFRONT_SERVICE_KEY
 # for anything else. Images are stored in SeaweedFS (S3 API), reached only by
-# the API; its local credentials are in docker/seaweedfs-s3.json.
+# the API; its credentials are COD_S3_ACCESS_KEY / COD_S3_SECRET_KEY (local
+# defaults below).
 name: codflow
 
 x-storefront-key: &storefront-key ${COD_STOREFRONT_SERVICE_KEY:-local-dev-storefront-key}
 x-auth-secret: &auth-secret ${COD_BETTER_AUTH_SECRET:-local-dev-better-auth-secret-0123456789abcdef}
 x-ticket-secret: &ticket-secret ${COD_MCP_LOGIN_TICKET_SECRET:-local-dev-mcp-login-ticket-secret-0123456789}
+x-s3-access-key: &s3-access-key ${COD_S3_ACCESS_KEY:-codflow-local}
+x-s3-secret-key: &s3-secret-key ${COD_S3_SECRET_KEY:-codflow-local-secret}
 
 services:
   db:
@@ -42,10 +45,11 @@ services:
   # S3-compatible image storage, private to the stack (cod-server is its only client).
   objects:
     image: chrislusf/seaweedfs:4.48
-    command: ["server", "-ip.bind=0.0.0.0", "-dir=/data", "-s3", "-s3.config=/etc/seaweedfs/s3.json", "-volume.max=0"]
-    volumes:
-      - objectdata:/data
-      - ./docker/seaweedfs-s3.json:/etc/seaweedfs/s3.json:ro
+    command: ["server", "-ip.bind=0.0.0.0", "-dir=/data", "-s3", "-volume.max=0"]
+    environment:
+      AWS_ACCESS_KEY_ID: *s3-access-key
+      AWS_SECRET_ACCESS_KEY: *s3-secret-key
+    volumes: [objectdata:/data]
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8333/healthz"]
       interval: 2s
@@ -88,8 +92,8 @@ services:
       MCP_LOGIN_TICKET_SECRET: *ticket-secret
       S3_ENDPOINT: http://objects:8333
       S3_BUCKET: codflow-images
-      S3_ACCESS_KEY_ID: codflow-local
-      S3_SECRET_ACCESS_KEY: codflow-local-secret
+      S3_ACCESS_KEY_ID: *s3-access-key
+      S3_SECRET_ACCESS_KEY: *s3-secret-key
       IMAGES_PUBLIC_URL: "http://api.localhost:${COD_HTTP_PORT:-8090}/images"
     depends_on:
       setup: { condition: service_completed_successfully }

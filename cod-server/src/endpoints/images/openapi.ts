@@ -18,7 +18,7 @@ export const imagePaths = {
       tags: ["Images"],
       summary: "Serve image",
       description:
-        "Public image serving (no auth). Without size parameters, the stored image; with `w` and/or `h` (1–2000, rounded up to a multiple of 40) and `fit` (`cover`, the default with both sizes, or `contain`), a WebP resized once and kept. Cached with immutable headers.",
+        "Public image serving (no auth). Without `w`, the stored image; with `w` (1–2000), a WebP at the next of 13 fixed widths (proportions kept, never enlarged), rendered once and kept. Cached with immutable headers.",
       operationId: "serveImage",
       security: [],
       parameters: [
@@ -30,8 +30,6 @@ export const imagePaths = {
           description: "Storage key (e.g. `products/abc123.webp`)",
         },
         { name: "w", in: "query", required: false, schema: { type: "integer", minimum: 1, maximum: 2000 } },
-        { name: "h", in: "query", required: false, schema: { type: "integer", minimum: 1, maximum: 2000 } },
-        { name: "fit", in: "query", required: false, schema: { type: "string", enum: ["cover", "contain"] } },
       ],
       responses: {
         "200": { description: "Image file (binary response with appropriate Content-Type)" },

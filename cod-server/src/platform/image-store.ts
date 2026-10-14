@@ -15,6 +15,12 @@ export interface StoredImage {
   etag: string | null;
 }
 
+export interface OpenedImage {
+  body: ReadableStream<Uint8Array>;
+  contentType: string;
+  etag: string | null;
+}
+
 export interface ListedImage {
   key: string;
   size: number;
@@ -24,6 +30,7 @@ export interface ListedImage {
 export interface ImageStore {
   put(key: string, body: Uint8Array, contentType: string): Promise<void>;
   get(key: string): Promise<StoredImage | null>;
+  open(key: string): Promise<OpenedImage | null>;
   delete(keys: string[]): Promise<void>;
   list(prefix: string, cursor?: string): Promise<{ objects: ListedImage[]; cursor?: string }>;
 }
@@ -39,6 +46,11 @@ export interface S3ImageStoreConfig {
 const CACHE_CONTROL = "public, max-age=31536000, immutable";
 const DELETE_BATCH = 1000;
 
+function isMissing(err: unknown): boolean {
+  const { name, $metadata } = err as { name?: string; $metadata?: { httpStatusCode?: number } };
+  return err instanceof NoSuchKey || name === "NoSuchKey" || name === "NotFound" || $metadata?.httpStatusCode === 404;
+}
+
 export function s3ImageStore(config: S3ImageStoreConfig): ImageStore & { ensureBucket(): Promise<void> } {
   const client = new S3Client({
     endpoint: config.endpoint,
@@ -50,11 +62,22 @@ export function s3ImageStore(config: S3ImageStoreConfig): ImageStore & { ensureB
   });
   const Bucket = config.bucket;
 
+  async function fetchObject(key: string) {
+    try {
+      const object = await client.send(new GetObjectCommand({ Bucket, Key: key }));
+      return object.Body ? object : null;
+    } catch (err) {
+      if (isMissing(err)) return null;
+      throw err;
+    }
+  }
+
   return {
     async ensureBucket() {
       try {
         await client.send(new HeadBucketCommand({ Bucket }));
-      } catch {
+      } catch (err) {
+        if (!isMissing(err)) throw err;
         await client.send(new CreateBucketCommand({ Bucket }));
       }
     },
@@ -62,18 +85,22 @@ export function s3ImageStore(config: S3ImageStoreConfig): ImageStore & { ensureB
       await client.send(new PutObjectCommand({ Bucket, Key: key, Body: body, ContentType: contentType, CacheControl: CACHE_CONTROL }));
     },
     async get(key) {
-      try {
-        const object = await client.send(new GetObjectCommand({ Bucket, Key: key }));
-        if (!object.Body) return null;
-        return {
-          body: await object.Body.transformToByteArray(),
-          contentType: object.ContentType ?? "application/octet-stream",
-          etag: object.ETag ?? null,
-        };
-      } catch (err) {
-        if (err instanceof NoSuchKey || (err as { name?: string }).name === "NoSuchKey") return null;
-        throw err;
-      }
+      const object = await fetchObject(key);
+      if (!object) return null;
+      return {
+        body: await object.Body!.transformToByteArray(),
+        contentType: object.ContentType ?? "application/octet-stream",
+        etag: object.ETag ?? null,
+      };
+    },
+    async open(key) {
+      const object = await fetchObject(key);
+      if (!object) return null;
+      return {
+        body: object.Body!.transformToWebStream(),
+        contentType: object.ContentType ?? "application/octet-stream",
+        etag: object.ETag ?? null,
+      };
     },
     async delete(keys) {
       for (let i = 0; i < keys.length; i += DELETE_BATCH) {
@@ -105,6 +132,10 @@ export function memoryImageStore(): ImageStore & { objects: Map<string, StoredIm
     async get(key) {
       const object = objects.get(key);
       return object ? { body: object.body, contentType: object.contentType, etag: object.etag } : null;
+    },
+    async open(key) {
+      const object = objects.get(key);
+      return object ? { body: new Blob([object.body]).stream(), contentType: object.contentType, etag: object.etag } : null;
     },
     async delete(keys) {
       for (const key of keys) objects.delete(key);

@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from "vitest";
 import {
-  MANAGED_IMAGE_PREFIX,
+  MANAGED_IMAGE_PREFIXES,
   imageKeysInText,
   isManagedImageKey,
   selectOrphanImageKeys,
@@ -25,9 +25,11 @@ function keys(prefix = "products/", hex = "a".repeat(32)): string {
 }
 
 describe("isManagedImageKey", () => {
-  it("accepts keys under the products prefix only", () => {
+  it("accepts keys under the upload folders only", () => {
     expect(isManagedImageKey("products/abc.jpg")).toBe(true);
-    expect(isManagedImageKey("landing/abc.jpg")).toBe(false);
+    expect(isManagedImageKey("landing/abc.jpg")).toBe(true);
+    expect(isManagedImageKey("branding/abc.webp")).toBe(true);
+    expect(isManagedImageKey("exports/abc.jpg")).toBe(false);
     expect(isManagedImageKey("products/")).toBe(false);
     expect(isManagedImageKey("other/products/abc.jpg")).toBe(false);
   });
@@ -49,6 +51,7 @@ describe("imageKeysInText", () => {
 
   it("does not assume the 32-hex UUID shape of today's uploader", () => {
     expect(imageKeysInText("products/legacy-upload_1.webp")).toEqual(["products/legacy-upload_1.webp"]);
+    expect(imageKeysInText('{"logoUrl":"https://api.example.com/images/branding/abc.webp"}')).toEqual(["branding/abc.webp"]);
   });
 
   it("ignores null/undefined and text with no keys", () => {
@@ -86,9 +89,9 @@ describe("selectOrphanImageKeys", () => {
     expect(selectOrphanImageKeys({ candidates: [unknown], referenced, olderThanDays: 30, now: NOW })).toEqual([]);
   });
 
-  it("never considers a key outside the managed prefix", () => {
-    const landing = candidate("landing/abc.jpg");
-    expect(selectOrphanImageKeys({ candidates: [landing], referenced, olderThanDays: 30, now: NOW })).toEqual([]);
+  it("never considers a key outside the upload folders", () => {
+    const other = candidate("exports/abc.jpg");
+    expect(selectOrphanImageKeys({ candidates: [other], referenced, olderThanDays: 30, now: NOW })).toEqual([]);
   });
 
   it("is exactly on the cutoff boundary: objects older than the period only", () => {
@@ -107,7 +110,7 @@ describe("selectOrphanImageKeys", () => {
     );
   });
 
-  it("exposes the managed prefix the sweep lists under", () => {
-    expect(MANAGED_IMAGE_PREFIX).toBe("products/");
+  it("exposes the upload folders the sweep lists under", () => {
+    expect(MANAGED_IMAGE_PREFIXES).toEqual(["products/", "landing/", "branding/"]);
   });
 });

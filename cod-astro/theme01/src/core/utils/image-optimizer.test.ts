@@ -5,12 +5,10 @@ vi.mock("astro:env/server", () => ({ MEDIA_URL: "https://api.example.com/images/
 const { optimizeImage, getThumbnailImage, mediaOrigin } = await import("./image-optimizer");
 
 describe("resized image URLs", () => {
-  it("ask the platform's image service for a resized version of its own images", () => {
-    expect(getThumbnailImage("https://api.example.com/images/products/a.webp")).toBe(
-      "https://api.example.com/images/products/a.webp?w=80&h=80",
-    );
-    expect(optimizeImage("https://api.example.com/images/landing/b.webp", { width: 400, height: 300, fit: "contain" })).toBe(
-      "https://api.example.com/images/landing/b.webp?w=400&h=300&fit=contain",
+  it("ask the platform's image service for its own images at the width the page needs", () => {
+    expect(getThumbnailImage("https://api.example.com/images/products/a.webp")).toBe("https://api.example.com/images/products/a.webp?w=160");
+    expect(optimizeImage("https://api.example.com/images/landing/b.webp?w=80", { width: 400 })).toBe(
+      "https://api.example.com/images/landing/b.webp?w=400",
     );
   });
 

@@ -1,9 +1,6 @@
-/**
- * Landing page images sent by MCP agents: download or decode, check, then the
- * same pipeline as a dashboard upload (src/platform/image-pipeline.ts).
- */
 import { sniffImageType } from "@/lib/image-dimensions";
-import { ingestImage, MAX_UPLOAD_BYTES } from "@/platform/image-pipeline";
+import { ingestImage, MAX_INPUT_MEGAPIXELS, MAX_UPLOAD_BYTES } from "@/platform/image-pipeline";
+import { downloadPublic } from "@/platform/safe-download";
 import type { ImageStore } from "@/platform/image-store";
 
 export const MAX_IMAGE_BYTES = MAX_UPLOAD_BYTES;
@@ -36,54 +33,28 @@ export type Outcome<T> = { ok: true; value: T } | { ok: false; error: string };
 
 const MB = Math.round(MAX_IMAGE_BYTES / (1024 * 1024));
 
-async function readBodyWithCap(response: Response, capBytes: number): Promise<Uint8Array | null> {
-  if (!response.body) {
-    const buffer = new Uint8Array(await response.arrayBuffer());
-    return buffer.byteLength > capBytes ? null : buffer;
-  }
-  const reader = response.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let total = 0;
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    total += value.byteLength;
-    if (total > capBytes) {
-      await reader.cancel().catch(() => {});
-      return null;
-    }
-    chunks.push(value);
-  }
-  const out = new Uint8Array(total);
-  let offset = 0;
-  for (const chunk of chunks) {
-    out.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return out;
-}
+const DOWNLOAD_ERRORS: Record<string, string> = {
+  blocked: "The image URL must point to a public internet address.",
+  unreachable: "The image URL could not be fetched.",
+  too_large: `Image exceeds the ${MB} MB cap.`,
+  too_many_redirects: "The image URL redirects too many times.",
+  bad_url: "The image URL must be an http(s) URL.",
+};
 
-export async function downloadImage(url: string, fetcher: typeof fetch = fetch): Promise<Outcome<Uint8Array>> {
-  let response: Response;
-  try {
-    response = await fetcher(url, { redirect: "follow", signal: AbortSignal.timeout(30_000) });
-  } catch (err) {
-    return { ok: false, error: `The image URL could not be fetched: ${(err as Error).message}` };
+export async function downloadImage(url: string, download: typeof downloadPublic = downloadPublic): Promise<Outcome<Uint8Array>> {
+  const result = await download(url, { capBytes: MAX_IMAGE_BYTES });
+  if (result.ok) {
+    return result.bytes.byteLength === 0 ? { ok: false, error: "Image URL returned an empty body." } : { ok: true, value: result.bytes };
   }
-  if ([401, 403, 404].includes(response.status)) {
-    return {
-      ok: false,
-      error: `Image URL returned HTTP ${response.status} — the link is not publicly fetchable or has expired. Re-generate the image and provide its direct download URL.`,
-    };
+  if (result.reason === "status") {
+    return [401, 403, 404].includes(result.status)
+      ? {
+          ok: false,
+          error: `Image URL returned HTTP ${result.status} — the link is not publicly fetchable or has expired. Re-generate the image and provide its direct download URL.`,
+        }
+      : { ok: false, error: `Image URL fetch failed with HTTP ${result.status}` };
   }
-  if (!response.ok) return { ok: false, error: `Image URL fetch failed with HTTP ${response.status}` };
-  if (Number(response.headers.get("content-length") ?? "0") > MAX_IMAGE_BYTES) {
-    return { ok: false, error: `Image exceeds the ${MB} MB cap.` };
-  }
-  const bytes = await readBodyWithCap(response, MAX_IMAGE_BYTES);
-  if (!bytes) return { ok: false, error: `Image exceeds the ${MB} MB cap.` };
-  if (bytes.byteLength === 0) return { ok: false, error: "Image URL returned an empty body." };
-  return { ok: true, value: bytes };
+  return { ok: false, error: DOWNLOAD_ERRORS[result.reason] };
 }
 
 export interface StoredLandingImage {
@@ -107,7 +78,13 @@ export async function storeLandingImage(
   }
   const image = await ingestImage(bytes, "landing");
   if (!image.ok) {
-    return { ok: false, error: image.reason === "too_large" ? `Image exceeds the ${MB} MB cap.` : "The image could not be read." };
+    const refusals = {
+      too_large: `Image exceeds the ${MB} MB cap.`,
+      too_many_pixels: `Image too large: at most ${MAX_INPUT_MEGAPIXELS} megapixels.`,
+      not_an_image: "The bytes are not a recognized image (png, jpeg, webp, or gif).",
+      unreadable: "The image could not be read.",
+    };
+    return { ok: false, error: refusals[image.reason] };
   }
   await store.put(image.key, image.body, "image/webp");
   return { ok: true, value: { key: image.key, url: `${imagesBaseUrl}/${image.key}`, width: image.width, height: image.height } };

@@ -115,8 +115,9 @@ other is how these drift.
   compose, `docker compose up -d objects`; `S3_ENDPOINT`, `S3_BUCKET`,
   `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` are required by `src/node.ts`).
   Every upload goes through `POST /api/images/upload` (`ingestImage`: type from
-  the bytes, 10 MB, stored as WebP); `/images/<key>?w=&h=&fit=` serves resized
-  variants kept as `<key>~…`. Tests use `memoryImageStore()`; there is no
+  the bytes, 10 MB, 50 MP, stored as WebP); `/images/<key>?w=` serves resized
+  variants at fixed widths kept as `<key>~w<width>`. Agent-supplied URLs are
+  fetched only through `downloadPublic` (no private addresses). Tests use `memoryImageStore()`; there is no
   presigned or direct-to-bucket path. See `cod-server/src/endpoints/images/README.md`.
 - **Every store-owned table is behind Row-Level Security.** Request code runs
   as the `codflow_app` role inside one transaction per request, pinned to its

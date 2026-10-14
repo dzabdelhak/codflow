@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import sharp from "sharp";
-import { ingestImage, MAX_UPLOAD_BYTES, renderVariant, variantKey, variantSpec } from "./image-pipeline";
+import { ingestImage, MAX_UPLOAD_BYTES, renderVariant, VARIANT_WIDTHS, variantKey, variantWidth } from "./image-pipeline";
 
 async function png(width: number, height: number): Promise<Uint8Array> {
   return new Uint8Array(
@@ -21,25 +21,31 @@ describe("ingesting an upload", () => {
     const corrupt = (await png(10, 10)).slice(0, 30);
     expect(await ingestImage(corrupt, "products")).toEqual({ ok: false, reason: "unreadable" });
   });
+
+  it("refuses a valid image above 50 megapixels as too large, not unreadable", async () => {
+    const huge = new Uint8Array(await sharp({ create: { width: 8000, height: 8000, channels: 3, background: { r: 0, g: 0, b: 0 } } }).png({ compressionLevel: 9 }).toBuffer());
+    expect(huge.byteLength).toBeLessThan(MAX_UPLOAD_BYTES);
+    expect(await ingestImage(huge, "products")).toEqual({ ok: false, reason: "too_many_pixels" });
+  });
 });
 
 describe("resized variants", () => {
-  it("snap requested sizes up to a bounded grid", () => {
-    expect(variantSpec({})).toBeNull();
-    expect(variantSpec({ w: "400" })).toEqual({ width: 400, height: null, fit: "inside" });
-    expect(variantSpec({ w: "300", h: "200" })).toEqual({ width: 320, height: 200, fit: "cover" });
-    expect(variantSpec({ w: "200", h: "80", fit: "contain" })).toEqual({ width: 200, height: 80, fit: "contain" });
-    expect(variantSpec({ w: "99999" })).toBe("invalid");
-    expect(variantSpec({ w: "abc" })).toBe("invalid");
-    expect(variantSpec({ w: "80", h: "80", fit: "fill" })).toBe("invalid");
+  it("come in a short fixed list of widths, the next one up from the request", () => {
+    expect(variantWidth(undefined)).toBeNull();
+    expect(variantWidth("400")).toBe(400);
+    expect(variantWidth("300")).toBe(320);
+    expect(variantWidth("1")).toBe(80);
+    expect(variantWidth("2000")).toBe(2000);
+    expect(variantWidth("2001")).toBe("invalid");
+    expect(variantWidth("abc")).toBe("invalid");
+    expect(VARIANT_WIDTHS.length).toBeLessThanOrEqual(13);
   });
 
-  it("render at the requested size, never enlarged, and are cached under their own key", async () => {
+  it("keep the image's proportions, are never enlarged, and are cached under their own key", async () => {
     const original = await png(800, 600);
-    const card = await renderVariant(original, { width: 400, height: 400, fit: "cover" });
-    expect(await sharp(card).metadata()).toMatchObject({ format: "webp", width: 400, height: 400 });
-    const big = await renderVariant(original, { width: 2000, height: null, fit: "inside" });
-    expect((await sharp(big).metadata()).width).toBe(800);
-    expect(variantKey("products/x.webp", { width: 400, height: 400, fit: "cover" })).toBe("products/x.webp~400x400-cover");
+    const card = await renderVariant(original, 400);
+    expect(await sharp(card).metadata()).toMatchObject({ format: "webp", width: 400, height: 300 });
+    expect((await sharp(await renderVariant(original, 2000)).metadata()).width).toBe(800);
+    expect(variantKey("products/x.webp", 400)).toBe("products/x.webp~w400");
   });
 });

@@ -13,19 +13,18 @@
  * below resolves toward keeping the object.
  */
 
-/** Only keys in this namespace are sweepable. `landing/` uploads belong to the
- *  landing-pages feature and are never this job's business. */
-export const MANAGED_IMAGE_PREFIX = "products/";
+/** Every upload folder; keys elsewhere are never swept. */
+export const MANAGED_IMAGE_PREFIXES = ["products/", "landing/", "branding/"] as const;
 
 /**
- * Finds every `products/<token>` occurrence in stored text.
+ * Finds every `<folder>/<token>` occurrence in stored text.
  *
- * Shape-agnostic on purpose: it does not assume the 32-hex UUID form `presign.ts`
+ * Shape-agnostic on purpose: it does not assume the 32-hex form the uploader
  * generates today, so a future uploader with a different key shape is still
  * protected. Matches are later intersected with the keys the bucket actually
  * holds, so a hit on text that merely looks like a key costs nothing.
  */
-const KEY_IN_TEXT_RE = /products\/[A-Za-z0-9][A-Za-z0-9._-]*/g;
+const KEY_IN_TEXT_RE = /(?:products|landing|branding)\/[A-Za-z0-9][A-Za-z0-9._-]*/g;
 
 /** A resized variant (`<key>~<size>`) lives and dies with the image it was made from. */
 export function baseImageKey(key: string): string {
@@ -34,7 +33,7 @@ export function baseImageKey(key: string): string {
 }
 
 export function isManagedImageKey(key: string): boolean {
-  return key.startsWith(MANAGED_IMAGE_PREFIX) && key.length > MANAGED_IMAGE_PREFIX.length;
+  return MANAGED_IMAGE_PREFIXES.some((prefix) => key.startsWith(prefix) && key.length > prefix.length);
 }
 
 export function imageKeysInText(
