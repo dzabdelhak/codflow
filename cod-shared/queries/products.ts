@@ -1,9 +1,10 @@
 import { eq, and, ilike, or, sum, isNull, sql, inArray, getTableColumns } from "drizzle-orm";
-import { products, productCategories, productVariants, productImages, reviews, stockMovements } from "../db/schema";
+import { products, productCategories, productVariants, productImages, reviews, stockMovements, channelProducts } from "../db/schema";
 import type { AppDb } from "../db/client";
 import { sanitizeRichText, toPlainText } from "../lib/rich-text";
 import { safeLikeTerm } from "./search";
 import { first } from "../db/client";
+import { CHANNEL_STATE, setChannelSelection, type ChannelSelection } from "./channel-products";
 
 type BatchStatement = Parameters<AppDb["batch"]>[0][number];
 
@@ -108,7 +109,12 @@ export async function deriveDescriptionPlain(
 }
 
 async function buildProductDetail(db: AppDb, productId: string) {
-  const product = await db.select().from(products).where(and(eq(products.id, productId), isNull(products.deletedAt))).then(first);
+  const product = await db
+    .select({ ...getTableColumns(products), ...CHANNEL_STATE })
+    .from(products)
+    .leftJoin(channelProducts, eq(channelProducts.productId, products.id))
+    .where(and(eq(products.id, productId), isNull(products.deletedAt)))
+    .then(first);
   if (!product) return null;
 
   const [category, variants, images, totalInventoryRow] = await Promise.all([
@@ -174,11 +180,13 @@ export async function getAllProducts(db: AppDb, filters?: ProductFilters) {
   const rows = await db
     .select({
       ...getTableColumns(products),
+      ...CHANNEL_STATE,
       reviewCount: sql<number>`(SELECT COUNT(*) FROM reviews WHERE reviews.product_id = products.id AND reviews.status = 'approved')`,
       avgRating: sql<number | null>`(SELECT ROUND(AVG(r.rating), 1) FROM reviews r WHERE r.product_id = products.id AND r.status = 'approved')`,
       primaryImageSrc: sql<string | null>`(SELECT src FROM product_images WHERE product_images.product_id = products.id ORDER BY product_images.position LIMIT 1)`,
     })
     .from(products)
+    .leftJoin(channelProducts, eq(channelProducts.productId, products.id))
     .where(conditions.length ? and(...conditions) : undefined)
     .limit(filters?.limit ?? 50)
     .offset(filters?.offset ?? 0);
@@ -261,13 +269,15 @@ export async function createProduct(db: AppDb, data: CreateProductData) {
     tags: data.tags ? JSON.stringify(data.tags) : null,
     visibility: data.visibility,
     status: data.status,
-    showInStore: data.showInStore,
-    storeFeatured: data.storeFeatured,
-    shippingProfileId: data.shippingProfileId ?? null,
     deletedAt: null,
     publishedAt: data.status === "ACTIVE" ? now : null,
     createdAt: now,
     updatedAt: now,
+  });
+  await setChannelSelection(db, id, {
+    published: data.showInStore,
+    featured: data.storeFeatured,
+    shippingProfileId: data.shippingProfileId ?? null,
   });
 
   return buildProductDetail(db, id);
@@ -315,13 +325,15 @@ export async function updateProduct(db: AppDb, productId: string, data: UpdatePr
     updates.status = data.status;
     if (data.status === "ACTIVE") updates.publishedAt = new Date().toISOString();
   }
-  if (data.showInStore !== undefined) updates.showInStore = data.showInStore;
-  if (data.storeFeatured !== undefined) updates.storeFeatured = data.storeFeatured;
-  if (data.shippingProfileId !== undefined) updates.shippingProfileId = data.shippingProfileId ?? null;
+  const selection: ChannelSelection = {
+    published: data.showInStore,
+    featured: data.storeFeatured,
+    shippingProfileId: data.shippingProfileId,
+  };
+  if (Object.values(selection).some((v) => v !== undefined)) await setChannelSelection(db, productId, selection);
 
-  const statements: BatchStatement[] = [
-    db.update(products).set(updates).where(eq(products.id, productId)),
-  ];
+  const statements: BatchStatement[] =
+    Object.keys(updates).length > 1 ? [db.update(products).set(updates).where(eq(products.id, productId))] : [];
 
   // Simple-product inventory edits are manual adjustments — log them so the
   // movement ledger keeps reconciling to real stock. Variant products keep
@@ -355,7 +367,7 @@ export async function updateProduct(db: AppDb, productId: string, data: UpdatePr
     }
   }
 
-  await db.batch(statements as [BatchStatement, ...BatchStatement[]]);
+  if (statements.length > 0) await db.batch(statements as [BatchStatement, ...BatchStatement[]]);
   return buildProductDetail(db, productId);
 }
 

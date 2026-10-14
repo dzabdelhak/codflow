@@ -46,7 +46,7 @@ async function seedSimpleProduct(inventory: number, price = 10000) {
   await db.insert(schema.products).values({
     id, name: `MI Product ${seq}`, handle: `mi-product-${seq}`, price,
     hasVariants: false, inventory, trackInventory: true, lowStockThreshold: 2,
-    status: "ACTIVE", visibility: true, showInStore: true, storeFeatured: false,
+    status: "ACTIVE", visibility: true,
     createdAt: now, updatedAt: now,
   });
   return id;

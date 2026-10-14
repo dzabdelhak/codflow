@@ -65,7 +65,7 @@ beforeAll(async () => {
   await db.insert(schema.products).values({
     id: "prod-e2e", name: "E2E Product", handle: "e2e-product", price: 1500,
     hasVariants: false, inventory: 50, trackInventory: true,
-    status: "ACTIVE", visibility: true, showInStore: true,
+    status: "ACTIVE", visibility: true,
     createdAt: now, updatedAt: now,
   });
   await harness.setStore({

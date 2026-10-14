@@ -26,6 +26,37 @@ export function productStatusLabel(status: ProductStatus, t: (key: string) => st
   return t(`status_options.${status.toLocaleLowerCase()}`);
 }
 
+export function moveItem<T>(items: readonly T[], index: number, delta: -1 | 1): T[] {
+  const target = index + delta;
+  if (index < 0 || index >= items.length || target < 0 || target >= items.length) return [...items];
+  const next = [...items];
+  [next[index], next[target]] = [next[target], next[index]];
+  return next;
+}
+
+export function catalogueCandidates<T extends Pick<Product, "id" | "name" | "sku" | "inChannel" | "deletedAt">>(
+  products: readonly T[],
+  query: string,
+): T[] {
+  const needle = query.trim().toLocaleLowerCase();
+  return products.filter(
+    (p) =>
+      p.inChannel === false &&
+      !p.deletedAt &&
+      (!needle || p.name.toLocaleLowerCase().includes(needle) || (p.sku ?? "").toLocaleLowerCase().includes(needle)),
+  );
+}
+
+export type StoreSelectionState = "not_in_store" | "hidden_in_store" | "published" | "featured";
+
+export function storeSelectionState(
+  product: Pick<Product, "inChannel" | "showInStore" | "storeFeatured">,
+): StoreSelectionState {
+  if (product.inChannel === false) return "not_in_store";
+  if (!product.showInStore) return "hidden_in_store";
+  return product.storeFeatured ? "featured" : "published";
+}
+
 export function productStockTone(product: Pick<Product, "trackInventory" | "totalInventory" | "inventory">) {
   const total = product.totalInventory ?? product.inventory ?? 0;
   if (!product.trackInventory) return "none" as const;

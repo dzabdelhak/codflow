@@ -83,6 +83,7 @@ export function ProductForm({ productId }: { productId?: string }) {
   const [status, setStatus] = useState<ProductStatus>("ACTIVE");
   const [trackInventory, setTrackInventory] = useState(true);
   const [showInStore, setShowInStore] = useState(true);
+  const [inChannel, setInChannel] = useState(true);
   const [inventory, setInventory] = useState("0");
   const [lowStockThreshold, setLowStockThreshold] = useState("5");
 
@@ -172,6 +173,7 @@ export function ProductForm({ productId }: { productId?: string }) {
         setStatus(product.status);
         setTrackInventory(product.trackInventory);
         setShowInStore(product.showInStore);
+        setInChannel(product.inChannel ?? true);
         setInventory(String(product.inventory));
         setLowStockThreshold(String(product.lowStockThreshold ?? 5));
         if (product.hasVariants) {
@@ -299,7 +301,6 @@ export function ProductForm({ productId }: { productId?: string }) {
         handle: slug || toSlug(name),
         sku: sku || undefined,
         categoryId: categoryId || undefined,
-        shippingProfileId: shippingProfileId || undefined,
         description: description || undefined,
       descriptionFormat,
         price: Math.round(Number(price)),
@@ -309,7 +310,7 @@ export function ProductForm({ productId }: { productId?: string }) {
         costPrice: costPrice ? Math.round(Number(costPrice)) : undefined,
         status,
         trackInventory,
-        showInStore,
+        ...(inChannel ? { showInStore, shippingProfileId: shippingProfileId || undefined } : {}),
         ...(editing
           ? {}
           : { inventory: hasVariants ? 0 : Number(inventory) || 0 }),
@@ -517,6 +518,7 @@ export function ProductForm({ productId }: { productId?: string }) {
           setTrackInventory={setTrackInventory}
           showInStore={showInStore}
           setShowInStore={setShowInStore}
+          inChannel={inChannel}
           hasVariantsSwitch={hasVariantsSwitch}
           editing={editing}
           busy={busy}

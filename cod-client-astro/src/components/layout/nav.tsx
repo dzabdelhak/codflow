@@ -140,6 +140,13 @@ export function useNavSections(): NavSection[] {
           children: [
             {
               kind: "leaf",
+              href: "/products/store",
+              label: tN("sidebar.store_products"),
+              icon: Store,
+              scope: "products:read",
+            },
+            {
+              kind: "leaf",
               href: "/product-groups",
               label: tN("sidebar.categories"),
               icon: FolderOpen,
@@ -301,7 +308,8 @@ export function isCurrentPath(currentPath: string, href: string): boolean {
     return (
       currentPath === "/products" ||
       (currentPath.startsWith("/products/") &&
-        currentPath !== "/products/stock")
+        currentPath !== "/products/stock" &&
+        currentPath !== "/products/store")
     );
   }
   return currentPath === href || currentPath.startsWith(`${href}/`);

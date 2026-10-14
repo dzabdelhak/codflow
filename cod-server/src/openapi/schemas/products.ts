@@ -191,8 +191,10 @@ export const ProductSchema = z
     }),
     visibility: z.boolean().openapi({ example: true }),
     status: z.enum(["DRAFT", "ACTIVE", "ARCHIVED"]).openapi({ example: "ACTIVE" }),
-    showInStore: z.boolean().openapi({ example: true }),
-    storeFeatured: z.boolean().openapi({ example: false }),
+    showInStore: z.boolean().openapi({ description: "Shown on the active store (false when the store does not carry it)", example: true }),
+    storeFeatured: z.boolean().openapi({ description: "On the active store's home page", example: false }),
+    inChannel: z.boolean().openapi({ description: "The active store carries this catalogue product", example: true }),
+    version: z.number().int().openapi({ description: "Raised on every change to the catalogue row", example: 3 }),
     deletedAt: z.string().datetime().nullable().openapi({
       description: "Soft-delete timestamp; products with a value are excluded from all responses",
       example: null,
@@ -203,7 +205,7 @@ export const ProductSchema = z
     }),
     shippingProfileId: z.string().nullable().openapi({
       description:
-        "Shipping profile ID for this product. Null = store default profile is used.",
+        "The active store's shipping profile for this product. Null = the store's default profile is used.",
       example: null,
     }),
     createdAt: z.string().datetime(),

@@ -46,7 +46,6 @@ beforeAll(async () => {
     lowStockThreshold: 5,
     status: "ACTIVE",
     visibility: true,
-    showInStore: true,
     createdAt: now,
     updatedAt: now,
     ...overrides,

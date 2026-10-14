@@ -16,6 +16,7 @@ describe("getStoreProducts", () => {
       a([
         {
           ...productRow({ has_variants: 1, inventory: 999 }),
+          store_featured: 0,
           avg_rating: 4.7,
           review_count: 12,
         },
@@ -37,7 +38,7 @@ describe("getStoreProducts", () => {
 
   it("picks the first cover image by position within a product", async () => {
     const db = makeMockDb([
-      a([{ ...productRow(), avg_rating: null, review_count: 0 }]),
+      a([{ ...productRow(), store_featured: 0, avg_rating: null, review_count: 0 }]),
       a([
         { id: "img_b", product_id: "prod_1", src: "first.jpg", position: 1 },
         { id: "img_a", product_id: "prod_1", src: "second.jpg", position: 2 },
@@ -52,7 +53,7 @@ describe("getStoreProducts", () => {
 
   it("simple product inventory comes from the product row (no variant sum)", async () => {
     const db = makeMockDb([
-      a([{ ...productRow({ inventory: 42, has_variants: 0 }), avg_rating: null, review_count: 0 }]),
+      a([{ ...productRow({ inventory: 42, has_variants: 0 }), store_featured: 0, avg_rating: null, review_count: 0 }]),
       a([]),
       a([]),
     ]);
@@ -64,7 +65,7 @@ describe("getStoreProducts", () => {
 
   it("variant product with no active variants maps inventory 0", async () => {
     const db = makeMockDb([
-      a([{ ...productRow({ has_variants: 1, inventory: 999 }), avg_rating: null, review_count: 0 }]),
+      a([{ ...productRow({ has_variants: 1, inventory: 999 }), store_featured: 0, avg_rating: null, review_count: 0 }]),
       a([]),
       a([]),
     ]);
@@ -76,7 +77,7 @@ describe("getStoreProducts", () => {
 
   it("null reviewStats when no approved reviews", async () => {
     const db = makeMockDb([
-      a([{ ...productRow(), avg_rating: null, review_count: 0 }]),
+      a([{ ...productRow(), store_featured: 0, avg_rating: null, review_count: 0 }]),
       a([]),
       a([]),
     ]);

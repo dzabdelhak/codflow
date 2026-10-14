@@ -11,7 +11,7 @@
  * and exhaustively testable. The database work stays in one place, here.
  */
 
-import { eq, and, or, inArray, isNull, lte, gte, desc } from "drizzle-orm";
+import { eq, and, or, inArray, isNull, lte, gte, desc, sql } from "drizzle-orm";
 import { products, productVariants, offers } from "../db/schema";
 import type { AppDb } from "../db/client";
 import { chunkIds } from "./d1-limits";
@@ -27,7 +27,8 @@ export interface CatalogProduct {
   deletedAt: string | null;
   status: string;
   visibility: boolean;
-  showInStore: boolean;
+  published: boolean;
+  version: number;
 }
 
 export interface CatalogVariant {
@@ -38,6 +39,7 @@ export interface CatalogVariant {
   inventory: number;
   variations: string;
   active: boolean;
+  version: number;
 }
 
 export type CatalogOffer = typeof offers.$inferSelect;
@@ -59,7 +61,8 @@ const PRODUCT_COLUMNS = {
   deletedAt: products.deletedAt,
   status: products.status,
   visibility: products.visibility,
-  showInStore: products.showInStore,
+  published: sql<boolean>`exists (select 1 from channel_products cp where cp.product_id = ${products.id} and cp.published)`,
+  version: products.version,
 } as const;
 
 const VARIANT_COLUMNS = {
@@ -70,6 +73,7 @@ const VARIANT_COLUMNS = {
   inventory: productVariants.inventory,
   variations: productVariants.variations,
   active: productVariants.active,
+  version: productVariants.version,
 } as const;
 
 type BatchStatement = Parameters<AppDb["batch"]>[0][number];
@@ -321,7 +325,7 @@ export function resolveCartLines(
       product.deletedAt === null &&
       product.status === "ACTIVE" &&
       product.visibility &&
-      product.showInStore &&
+      product.published &&
       (line.variantId == null || (variant != null && variant.active));
 
     const maxQuantity = !product?.trackInventory

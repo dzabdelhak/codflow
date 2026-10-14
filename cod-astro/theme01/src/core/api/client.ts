@@ -83,17 +83,19 @@ export async function fetchCategoriesRaw(): Promise<any[]> {
   }
 }
 
-export async function fetchProductByHandle(handle: string): Promise<any | null> {
-  try {
-    const res = await fetch(`${COD_SERVER_URL}/store/products/${encodeURIComponent(handle)}`, {
-      headers: storeHeaders(),
-    });
-    if (!res.ok) return null;
-    const json = (await res.json()) as { data: any };
-    return json.data ?? null;
-  } catch {
-    return null;
-  }
+export function fetchProductByHandle(handle: string): Promise<any | null> {
+  return memoForRequest(`product:${handle}`, async () => {
+    try {
+      const res = await fetch(`${COD_SERVER_URL}/store/products/${encodeURIComponent(handle)}`, {
+        headers: storeHeaders(),
+      });
+      if (!res.ok) return null;
+      const json = (await res.json()) as { data: any };
+      return json.data ?? null;
+    } catch {
+      return null;
+    }
+  });
 }
 
 /**

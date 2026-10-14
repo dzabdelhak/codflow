@@ -1,20 +1,21 @@
 /**
  * A demo merchant owning two channels for local development —
- * shop1.localhost and shop2.localhost — each with its own products and a
- * delivery rule for Algiers. Idempotent: what already exists is left alone.
+ * shop1.localhost and shop2.localhost — each adding its own products to the
+ * merchant's catalogue, and a delivery rule for Algiers. Idempotent: what
+ * already exists is left alone.
  *
  *   DATABASE_URL=postgres://… npx tsx scripts/seed-demo.ts
  */
 import { sql } from "drizzle-orm";
 import { createDatabase, withStore } from "../src/db/scope";
 import { orderPrefixFor } from "../../cod-shared/queries/order-numbers";
-import { products, productVariants, shippingProfiles, shippingRules } from "../src/db/schema";
+import { channelProducts, products, productVariants, shippingProfiles, shippingRules } from "../src/db/schema";
 
 export const DEMO_MERCHANT_ID = "demo-merchant";
 
 const CHANNELS = [
-  { id: "demo-shop1", name: "Shop 1", host: "shop1.localhost", items: ["Sac à main", "Montre"] },
-  { id: "demo-shop2", name: "Shop 2", host: "shop2.localhost", items: ["Basket blanche", "Casquette"] },
+  { id: "demo-shop1", name: "Shop 1", host: "shop1.localhost", items: [["Sac à main", "sac-a-main"], ["Montre", "montre"]] },
+  { id: "demo-shop2", name: "Shop 2", host: "shop2.localhost", items: [["Basket blanche", "basket-blanche"], ["Casquette", "casquette"]] },
 ];
 
 async function main() {
@@ -56,20 +57,20 @@ async function main() {
           stopDeskEnabled: true,
           createdAt: now,
         });
-        for (const [i, name] of channel.items.entries()) {
+        for (const [i, [name, handle]] of channel.items.entries()) {
           const id = `${channel.id}-p${i + 1}`;
           await db.insert(products).values({
             id,
             name,
-            handle: `produit-${i + 1}`,
+            handle,
             price: 2500 + i * 1500,
             sku: `${channel.id.toUpperCase()}-${i + 1}`,
             inventory: 50,
-            storeFeatured: i === 0,
             createdAt: now,
             updatedAt: now,
           });
         }
+        await db.update(channelProducts).set({ featured: true }).where(sql`product_id = ${`${channel.id}-p1`}`);
         await db.update(products).set({ hasVariants: true }).where(sql`id = ${`${channel.id}-p2`}`);
         await db.insert(productVariants).values(
           ["Noir", "Blanc"].map((color, i) => ({
@@ -84,7 +85,7 @@ async function main() {
             updatedAt: now,
           })),
         );
-      });
+      }, DEMO_MERCHANT_ID);
       console.log(`${channel.host}: seeded`);
     }
   } finally {

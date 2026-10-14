@@ -80,7 +80,7 @@ export const PRODUCT_TOOL_OUTPUT_SCHEMAS: Record<string, z.ZodType> = {
         tags: z.array(z.string()),
         reviewCount: z.number().int().describe("Approved reviews only"),
         avgRating: z.number().nullable().describe("Average of approved reviews, or null"),
-        showInStore: z.boolean().describe("Storefront-only visibility switch"),
+        showInStore: z.boolean().describe("Shown on the active store; the catalogue and other stores are unaffected"),
         storeFeatured: z.boolean(),
       }),
     ).describe("Products matching the filters"),

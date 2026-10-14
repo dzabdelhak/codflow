@@ -4,7 +4,7 @@ import { ulid } from "../lib/ulid";
 export interface OutboundOrderInput {
   orderId: string;
   orderNumber: string;
-  lines: Array<{ sku: string | null; quantity: number; unitPrice: number }>;
+  lines: Array<{ sku: string | null; quantity: number; unitPrice: number; catalogVersion: number | null }>;
   delivery: { type: "home" | "stop_desk"; office: string | null; fee: number | null };
   customer: { name: string; phone: string; wilayaId: number; communeId: string; address: string | null };
   journey: "direct" | "cart";
@@ -21,7 +21,7 @@ export function outboundOrderRow(input: OutboundOrderInput): typeof outboundOrde
     payload: {
       sendId,
       reference: input.orderNumber,
-      lines: input.lines.map((line) => ({ ...line, catalogVersion: null })),
+      lines: input.lines,
       delivery: {
         type: input.delivery.type,
         office: input.delivery.office,

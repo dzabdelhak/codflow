@@ -5,7 +5,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { Hono } from "hono";
 import type { AppContext } from "@/types";
-import { products } from "@/db/schema";
+import { channelProducts } from "@/db/schema";
 import { createPool, type Database } from "@/db/scope";
 import { createTestDb, type TestDb } from "@/test-utils/pg";
 import { authMiddleware } from "./auth";
@@ -20,7 +20,7 @@ const app = new Hono<AppContext>();
 app.use("/api/*", authMiddleware);
 app.use("/api/*", dashboardScope);
 app.get("/api/products", async (c) => {
-  const rows = await c.get("db").select({ id: products.id }).from(products);
+  const rows = await c.get("db").select({ id: channelProducts.productId }).from(channelProducts);
   return c.json({ storeId: c.get("storeId") ?? null, ids: rows.map((r) => r.id).sort() });
 });
 
@@ -37,8 +37,12 @@ beforeAll(async () => {
   const now = new Date().toISOString();
   for (const [id, store] of [["p-mine-1", "mine-1"], ["p-mine-2", "mine-2"], ["p-other-1", "other-1"]]) {
     await harness.platform.query(
-      "insert into products (id, store_id, name, handle, price, created_at, updated_at) values ($1, $2, $1, $1, 100, '', '')",
+      "insert into products (id, merchant_id, name, handle, price, created_at, updated_at) values ($1, (select merchant_id from stores where id = $2), $1, $1, 100, '', '')",
       [id, store],
+    );
+    await harness.platform.query(
+      "insert into channel_products (store_id, product_id, created_at, updated_at) values ($1, $2, '', '')",
+      [store, id],
     );
   }
   await harness.platform.query(

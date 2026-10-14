@@ -133,8 +133,6 @@ async function seedOrder(scenario: Scenario = {}) {
     lowStockThreshold: 2,
     status: "ACTIVE",
     visibility: true,
-    showInStore: true,
-    storeFeatured: false,
     createdAt: NOW(),
     updatedAt: NOW(),
   });

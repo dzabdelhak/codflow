@@ -114,7 +114,7 @@ async function seedProduct(opts: { showInStore: boolean }): Promise<{ id: string
     id, name: `HID Product ${seq}`, handle, price: 5000,
     sku: `HID-SKU-${seq}`,
     hasVariants: false, inventory: 10, trackInventory: true, lowStockThreshold: 2,
-    status: "ACTIVE", visibility: true, showInStore: opts.showInStore, storeFeatured: false,
+    status: "ACTIVE", visibility: true, showInStore: opts.showInStore,
     createdAt: NOW(), updatedAt: NOW(),
   });
   return { id, handle };

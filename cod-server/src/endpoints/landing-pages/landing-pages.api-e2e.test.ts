@@ -74,7 +74,7 @@ async function seedProduct(): Promise<string> {
   await db.insert(schema.products).values({
     id, name: `LPM Product ${seq}`, handle: `lpm-product-${seq}`, price: 5000,
     hasVariants: false, inventory: 10, trackInventory: true, lowStockThreshold: 2,
-    status: "ACTIVE", visibility: true, showInStore: true, storeFeatured: false,
+    status: "ACTIVE", visibility: true,
     createdAt: NOW(), updatedAt: NOW(),
   });
   return id;

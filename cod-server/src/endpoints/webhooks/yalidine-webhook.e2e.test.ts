@@ -63,7 +63,7 @@ beforeAll(async () => {
   await realDb.insert(schema.products).values({
     id: "prod-e2e-2", name: "Mapper Product", handle: "mapper-product", price: 2500,
     hasVariants: false, inventory: 0, trackInventory: true, lowStockThreshold: 2,
-    status: "ACTIVE", visibility: true, showInStore: true, storeFeatured: false,
+    status: "ACTIVE", visibility: true,
     createdAt: now, updatedAt: now,
   });
   await realDb.insert(schema.customers).values({

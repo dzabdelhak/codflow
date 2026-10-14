@@ -144,6 +144,17 @@ other is how these drift.
   plan-policy seam (`cod-server/src/platform/plan-policy.ts`) — Aventy's plan
   check plugs in there. `/webhooks` and `/images` still serve the deployment's
   only store until their tickets.
+- **One catalogue per merchant; each store selects from it.** `products`,
+  `product_variants`, `product_images`, `product_categories` and
+  `stock_movements` are under merchant RLS (`app.merchant_id`), so every
+  store of a merchant sees the same catalogue and the same stock. What a store
+  shows lives in `channel_products` (store RLS): published, featured,
+  position and the product's shipping profile for that store. The storefront
+  joins it; the dashboard's `showInStore` / `storeFeatured` /
+  `shippingProfileId` on a product read and write the active store's row.
+  A product inserted while a store is set is added to that store by the
+  `products_add_to_current_channel` trigger; catalogue rows carry a `version`
+  raised by a trigger on every update — never set it by hand.
 - Single-row reads end in `.then(first)` (row or undefined, D1's `.get()`);
   a write's `returning()` that must give a row ends in `.then(one)` (throws
   otherwise) — both from `cod-shared/db/client.ts`.

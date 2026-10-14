@@ -48,16 +48,24 @@ export const f = (v: Record<string, unknown> | null): Q => ({ _: "f", v });
 export const a = (v: Record<string, unknown>[]): Q => ({ _: "a", v });
 
 /**
- * Store-owned tables gained `store_id` as their FIRST column (multi-store).
- * Fixtures predate it, so a full-table select that starts with it gets the
- * test store's id prepended rather than every fixture being rewritten.
+ * Store-owned tables gained `store_id` as their FIRST column (multi-store),
+ * catalogue tables `merchant_id`. Fixtures predate them, so a full-table select
+ * that starts with one gets the test store's (or merchant's) id prepended
+ * rather than every fixture being rewritten.
  */
 export const MOCK_STORE_ID = "test-store";
+export const MOCK_MERCHANT_ID = "test-merchant";
+
+function leadingScope(sqlText: string): { column: "store_id" | "merchant_id"; value: string } | null {
+  const match = /(^\s*select|\breturning)\s+(?:"[a-z_]+"\.)?"(store_id|merchant_id)"\s*,/i.exec(sqlText);
+  if (!match) return null;
+  return match[2] === "store_id" ? { column: "store_id", value: MOCK_STORE_ID } : { column: "merchant_id", value: MOCK_MERCHANT_ID };
+}
 
 function withStoreId(sqlText: string, row: Record<string, unknown>): unknown[] {
   const values = Object.values(row);
-  const startsWithStoreId = /(^\s*select|\breturning)\s+(?:"[a-z_]+"\.)?"store_id"\s*,/i.test(sqlText);
-  return startsWithStoreId && !("store_id" in row) ? [MOCK_STORE_ID, ...values] : values;
+  const scope = leadingScope(sqlText);
+  return scope && !(scope.column in row) ? [scope.value, ...values] : values;
 }
 
 export function makeMockDb(queue: Q[] = []): AppDb {
@@ -149,9 +157,10 @@ export function makeMockDb(queue: Q[] = []): AppDb {
         return {
           success: true,
           // Drizzle maps batch rows by Object.values, so keep store_id first.
-          results: rows.map((r) =>
-            withStoreId(sqlText, r).length > Object.keys(r).length ? { store_id: MOCK_STORE_ID, ...r } : r,
-          ),
+          results: rows.map((r) => {
+            const scope = leadingScope(sqlText);
+            return scope && !(scope.column in r) ? { [scope.column]: scope.value, ...r } : r;
+          }),
           meta: {
             changed_db: !isSelect,
             changes: isSelect ? 0 : 1,
@@ -274,13 +283,11 @@ export function productRow(overrides: Record<string, unknown> = {}): Record<stri
     tags: null,
     visibility: 1,
     status: "ACTIVE",
-    show_in_store: 1,
-    store_featured: 0,
     deleted_at: null,
     published_at: NOW,
-    shipping_profile_id: null,
     created_at: NOW,
     updated_at: NOW,
+    version: 1,
     ...overrides,
   };
 }
@@ -354,6 +361,7 @@ export function variantRow(overrides: Record<string, unknown> = {}): Record<stri
     position: 1,
     created_at: NOW,
     updated_at: NOW,
+    version: 1,
     ...overrides,
   };
 }

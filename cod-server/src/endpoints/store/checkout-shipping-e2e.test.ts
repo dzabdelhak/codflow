@@ -12,8 +12,8 @@
  *      dashboard CRUD — storefront checkout stopped at the wilaya rule, so
  *      every commune override a merchant configured was silently ignored.
  *
- *   2. A product's own shipping profile wins over the store default.
- *      `products.shipping_profile_id` is settable from the dashboard and
+ *   2. A product's own shipping profile in the store wins over the store default.
+ *      `channel_products.shipping_profile_id` is settable from the dashboard and
  *      documented as "orders of this product use this profile for
  *      deliveryFee resolution". Checkout read the default profile
  *      unconditionally, so the column had no effect on a real order.
@@ -122,12 +122,10 @@ async function seedProduct(shippingProfileId: string | null) {
     lowStockThreshold: 2,
     status: "ACTIVE",
     visibility: true,
-    showInStore: true,
-    storeFeatured: false,
-    shippingProfileId,
     createdAt: now(),
     updatedAt: now(),
   });
+  await db.update(schema.channelProducts).set({ shippingProfileId }).where(eq(schema.channelProducts.productId, id));
   return id;
 }
 

@@ -7,7 +7,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { Hono } from "hono";
 import { sql } from "drizzle-orm";
 import type { AppContext } from "@/types";
-import { products, users } from "@/db/schema";
+import { channelProducts, users } from "@/db/schema";
 import { createPool, type Database } from "@/db/scope";
 import { createTestDb, type TestDb } from "@/test-utils/pg";
 import { storeAuthMiddleware } from "./storeAuth";
@@ -19,15 +19,15 @@ let database: Database;
 const app = new Hono<AppContext>();
 app.use("/store/*", storeAuthMiddleware);
 app.get("/store/products", async (c) => {
-  const rows = await c.get("db").select({ id: products.id }).from(products);
+  const rows = await c.get("db").select({ id: channelProducts.productId }).from(channelProducts);
   return c.json({ storeId: c.get("storeId"), ids: rows.map((r) => r.id).sort() });
 });
 app.post("/store/products/:id/then-fail", async (c) => {
-  await c.get("db").execute(sql`update products set name = 'changed' where id = ${c.req.param("id")}`);
+  await c.get("db").execute(sql`update channel_products set featured = true where product_id = ${c.req.param("id")}`);
   throw new Error("boom after a write");
 });
 app.post("/store/products/:id/rename", async (c) => {
-  await c.get("db").execute(sql`update products set name = 'renamed' where id = ${c.req.param("id")}`);
+  await c.get("db").execute(sql`update channel_products set featured = true where product_id = ${c.req.param("id")}`);
   return c.json({ ok: true });
 });
 app.get("/store/user-ids", async (c) => {
@@ -43,9 +43,13 @@ const asStorefront = (host: string) => ({ "X-Storefront-Key": KEY, "X-Channel-Ho
 
 async function seedProduct(storeId: string, id: string) {
   await harness.platform.query(
-    `insert into products (id, store_id, name, handle, price, created_at, updated_at)
-     values ($1, $2, $1, $1, 1000, '', '')`,
+    `insert into products (id, merchant_id, name, handle, price, created_at, updated_at)
+     values ($1, (select merchant_id from stores where id = $2), $1, $1, 1000, '', '')`,
     [id, storeId],
+  );
+  await harness.platform.query(
+    "insert into channel_products (store_id, product_id, created_at, updated_at) values ($1, $2, '', '')",
+    [storeId, id],
   );
 }
 
@@ -110,21 +114,21 @@ describe("request transaction", () => {
   it("commits the writes of a request that succeeds", async () => {
     const res = await call("/store/products/a-1/rename", asStorefront("shop-a.localhost"), "POST");
     expect(res.status).toBe(200);
-    const { rows } = await harness.platform.query("select name from products where id = 'a-1'");
-    expect(rows[0].name).toBe("renamed");
+    const { rows } = await harness.platform.query("select featured from channel_products where product_id = 'a-1'");
+    expect(rows[0].featured).toBe(true);
   });
 
   it("rolls back every write of a request that fails", async () => {
     const res = await call("/store/products/a-2/then-fail", asStorefront("shop-a.localhost"), "POST");
     expect(res.status).toBe(500);
-    const { rows } = await harness.platform.query("select name from products where id = 'a-2'");
-    expect(rows[0].name).toBe("a-2");
+    const { rows } = await harness.platform.query("select featured from channel_products where product_id = 'a-2'");
+    expect(rows[0].featured).toBe(false);
   });
 
   it("cannot touch another channel's rows from a channel's request", async () => {
     await call("/store/products/b-1/rename", asStorefront("shop-a.localhost"), "POST");
-    const { rows } = await harness.platform.query("select name from products where id = 'b-1'");
-    expect(rows[0].name).toBe("b-1");
+    const { rows } = await harness.platform.query("select featured from channel_products where product_id = 'b-1'");
+    expect(rows[0].featured).toBe(false);
   });
 });
 

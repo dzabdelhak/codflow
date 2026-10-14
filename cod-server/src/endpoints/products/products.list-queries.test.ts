@@ -16,7 +16,12 @@ describe("getAllProducts", () => {
     const db = makeMockDb([
       a([
         {
-          ...productRow(),
+          ...productRow({ has_variants: false }),
+          in_channel: true,
+          show_in_store: true,
+          store_featured: false,
+          channel_position: 0,
+          shipping_profile_id: null,
           review_count: 7,
           avg_rating: 4.5,
           primary_image_src: "https://example.com/cover.jpg",
@@ -43,7 +48,7 @@ describe("getAllProducts", () => {
 
   it("falls back to product inventory when a product has no variants", async () => {
     const db = makeMockDb([
-      a([{ ...productRow(), review_count: 0, avg_rating: null, primary_image_src: null }]),
+      a([{ ...productRow(), in_channel: true, show_in_store: true, store_featured: false, channel_position: 0, shipping_profile_id: null, review_count: 0, avg_rating: null, primary_image_src: null }]),
       a([]),
     ]);
 
@@ -92,6 +97,11 @@ describe("getAllProducts", () => {
   it("pages beyond the chunk size issue one variant query per chunk", async () => {
     const page = Array.from({ length: 91 }, (_, i) => ({
       ...productRow({ id: `prod_${i}` }),
+      in_channel: true,
+      show_in_store: true,
+      store_featured: false,
+      channel_position: 0,
+      shipping_profile_id: null,
       review_count: 0,
       avg_rating: null,
       primary_image_src: null,

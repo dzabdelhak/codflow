@@ -102,12 +102,13 @@ async function seedProduct(opts: {
     lowStockThreshold: 2,
     status: opts.status ?? "ACTIVE",
     visibility: opts.visibility ?? true,
-    showInStore: opts.showInStore ?? true,
-    storeFeatured: false,
     deletedAt: opts.deletedAt ?? null,
     createdAt: now(),
     updatedAt: now(),
   });
+  if (opts.showInStore === false) {
+    await db.update(schema.channelProducts).set({ published: false }).where(eq(schema.channelProducts.productId, id));
+  }
   return id;
 }
 

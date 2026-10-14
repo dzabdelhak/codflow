@@ -76,6 +76,9 @@ export interface Product {
   status: ProductStatus;
   showInStore: boolean;
   storeFeatured: boolean;
+  inChannel?: boolean;
+  channelPosition?: number | null;
+  version?: number;
   deletedAt?: string | null;
   publishedAt?: string | null;
   category?: ProductCategory | null;

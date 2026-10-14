@@ -151,7 +151,7 @@ function trackedSkuSql(alertsOnly: boolean) {
            products.inventory <= 0 AS is_out_of_stock,
            products.updated_at AS updated_at
     FROM products
-    WHERE products.has_variants = 0 AND products.track_inventory = 1 AND products.deleted_at IS NULL${simpleAlertFilter}
+    WHERE NOT products.has_variants AND products.track_inventory AND products.deleted_at IS NULL${simpleAlertFilter}
     UNION ALL
     SELECT product_variants.product_id, product_variants.id, products.name,
            product_variants.variations, product_variants.sku, product_variants.inventory,
@@ -161,8 +161,8 @@ function trackedSkuSql(alertsOnly: boolean) {
            product_variants.updated_at
     FROM product_variants
     INNER JOIN products ON products.id = product_variants.product_id
-    WHERE products.has_variants = 1 AND products.track_inventory = 1 AND products.deleted_at IS NULL
-      AND product_variants.active = 1${variantAlertFilter}
+    WHERE products.has_variants AND products.track_inventory AND products.deleted_at IS NULL
+      AND product_variants.active${variantAlertFilter}
   `;
 }
 

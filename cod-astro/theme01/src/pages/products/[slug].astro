@@ -9,14 +9,15 @@ import ProductDetailContent from "@/theme/components/product/ProductDetailConten
 import { getStoreContext } from "@/theme/config/store";
 import { actions } from "astro:actions";
 import { thankYouUrl } from "@/core/utils/thank-you-url";
+import { fetchProductByHandle } from "@/core/api/client";
 import { isInputError } from "astro:actions";
 
 const { slug } = Astro.params;
+if (!slug || !(await fetchProductByHandle(slug))) return Astro.rewrite("/404");
 
-// ── STREAMING OPTIMIZATION ──
-// Store context is fetched first (needed for layout)
-// Product data is fetched inside ProductDetailContent component
-// This allows layout/head/navigation to render immediately while product streams in
+// ── STREAMING ──
+// The product is checked before anything streams, so a missing one answers 404;
+// ProductDetailContent reuses the same request-scoped result.
 const { config, content, isRTL } = await getStoreContext();
 
 // Action result (must be checked before rendering).

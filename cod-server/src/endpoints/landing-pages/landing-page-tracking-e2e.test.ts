@@ -70,8 +70,6 @@ async function seedLandingPage(): Promise<string> {
     lowStockThreshold: 2,
     status: "ACTIVE",
     visibility: true,
-    showInStore: true,
-    storeFeatured: false,
     createdAt: NOW(),
     updatedAt: NOW(),
   });

@@ -40,8 +40,7 @@
   "status": {
     "available": "متاح",
     "out_of_stock": "غير متوفر",
-    "low_stock": "مخزون منخفض",
-    "hidden_from_store": "مخفي من المتجر"
+    "low_stock": "مخزون منخفض"
   },
   "stock": {
     "in_stock": "في المخزون",
@@ -142,8 +141,8 @@
     "threshold_label": "حد التنبيه",
     "threshold_hint": "تنبيه عند وصول المخزون لهذا الحد",
     "track_stock_hint": "مراقبة مستويات المخزون تلقائياً",
-    "show_in_store_label": "إظهار في المتجر",
-    "show_in_store_hint": "المنتجات المخفية لا تظهر في قائمة المتجر ولا في صفحتها — لكن صفحات الهبوط الخاصة بها تظل تعمل كالمعتاد.",
+    "show_in_store_label": "عرض في هذا المتجر",
+    "show_in_store_hint": "إذا أُخفي هنا يبقى في الكتالوج وفي متاجرك الأخرى، وتستمر صفحات الهبوط في البيع.",
     "bulk_fill": "ملء جماعي",
     "bulk_price_placeholder": "السعر",
     "bulk_price_apply": "تطبيق السعر",
@@ -154,7 +153,9 @@
     "variant_image": "الصورة",
     "variant_image_select": "اختر صورة",
     "variant_image_remove": "إزالة الصورة",
-    "images_reorder_hint": "استخدم الأسهم لإعادة الترتيب"
+    "images_reorder_hint": "استخدم الأسهم لإعادة الترتيب",
+    "not_in_store_hint": "منتج الكتالوج هذا غير موجود في هذا المتجر.",
+    "not_in_store_link": "أضفه من «في هذا المتجر»"
   },
   "status_options": {
     "active": "نشط",
@@ -291,5 +292,36 @@
     "color_purple": "بنفسجي",
     "color_pink": "وردي",
     "color_red": "أحمر"
+  },
+  "store_selection": {
+    "page_title": "منتجات هذا المتجر",
+    "page_subtitle": "منتجات الكتالوج التي يعرضها هذا المتجر، بترتيب عرضها. الأسعار من الكتالوج.",
+    "loading": "جارٍ التحميل…",
+    "add": "إضافة من الكتالوج",
+    "add_title": "إضافة منتجات من الكتالوج",
+    "add_description": "منتجات حسابك التي لا يعرضها هذا المتجر بعد.",
+    "add_search": "ابحث بالاسم أو SKU…",
+    "add_empty": "كل منتجات الكتالوج موجودة في هذا المتجر.",
+    "add_confirm": "إضافة {n}",
+    "added": "تمت إضافة {n} منتج إلى هذا المتجر",
+    "empty": "لا يعرض هذا المتجر أي منتج بعد",
+    "empty_hint": "أضف منتجات من الكتالوج لعرضها في هذا المتجر.",
+    "column_product": "المنتج",
+    "column_price": "سعر الكتالوج",
+    "column_published": "معروض",
+    "column_featured": "في الصفحة الرئيسية",
+    "column_actions": "إجراءات",
+    "move_up": "تحريك للأعلى",
+    "move_down": "تحريك للأسفل",
+    "remove": "إزالة من هذا المتجر",
+    "remove_title": "إزالة {name} من هذا المتجر؟",
+    "remove_description": "يبقى في الكتالوج وفي متاجرك الأخرى.",
+    "action_failed": "تعذر حفظ التغيير. حاول مرة أخرى.",
+    "state": {
+      "not_in_store": "غير موجود في هذا المتجر",
+      "hidden_in_store": "مخفي في هذا المتجر",
+      "published": "معروض في هذا المتجر",
+      "featured": "في الصفحة الرئيسية للمتجر"
+    }
   }
 }

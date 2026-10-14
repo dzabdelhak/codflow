@@ -56,13 +56,13 @@ beforeAll(async () => {
       trackInventory: true,
       status: big ? "ACTIVE" : i === 7 ? "DRAFT" : "ACTIVE",
       visibility: true,
-      showInStore: big ? true : i !== 8,
-      storeFeatured: !big && i === 1,
       createdAt,
       updatedAt: now,
     };
     if (i === 9) product.deletedAt = now;
     await db.insert(schema.products).values(product);
+    if (i === 8) await db.update(schema.channelProducts).set({ published: false }).where(eq(schema.channelProducts.productId, id));
+    if (i === 1) await db.update(schema.channelProducts).set({ featured: true, position: -1 }).where(eq(schema.channelProducts.productId, id));
 
     if (product.hasVariants) {
       await db.insert(schema.productVariants).values([
@@ -193,7 +193,7 @@ describe("getAllProducts — real D1", () => {
 });
 
 describe("getStoreProducts — real D1", () => {
-  it("lists store-visible ACTIVE products with featured first", async () => {
+  it("lists the channel's published ACTIVE products in its display order", async () => {
     const rows = await getStoreProducts(db, { limit: 200 });
 
     expect(rows.find((r) => r.id === "prod-9")).toBeUndefined();

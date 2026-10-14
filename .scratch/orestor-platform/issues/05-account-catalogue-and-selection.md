@@ -4,10 +4,10 @@
 
 **Blocked by:** 03
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] A product created once in the catalogue can be added to two channels and shown in both
-- [ ] Hiding it in channel A leaves it visible in channel B and in the catalogue
-- [ ] The storefront shows only published products of its channel, in the chosen order, featured ones on the home page
-- [ ] Prices shown and charged come from the catalogue; a channel cannot override them
-- [ ] Every catalogue row has a version that increases on change
+- [x] A product created once in the catalogue can be added to two channels and shown in both
+- [x] Hiding it in channel A leaves it visible in channel B and in the catalogue
+- [x] The storefront shows only published products of its channel, in the chosen order, featured ones on the home page
+- [x] Prices shown and charged come from the catalogue; a channel cannot override them
+- [x] Every catalogue row has a version that increases on change

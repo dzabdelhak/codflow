@@ -1,12 +1,6 @@
 /**
- * Rich-text description storage — Slice 2 real-D1 E2E (workerd).
- *
- * HTMLRewriter does not exist in the Node vitest pool (probed in Slice 1), so
- * the ENTIRE write/read path runs inside a real workerd runtime: the query
- * modules and the MCP product tools are esbuild-bundled into a Miniflare
- * worker with a D1 binding, and the REAL migrations (0000→0025) are applied
- * to an in-memory D1 first. Proves:
- *   • hostile HTML is sanitised at the write chokepoint before it reaches D1
+ * Rich-text description storage on PostgreSQL. Proves:
+ *   • hostile HTML is sanitised at the write chokepoint before it is stored
  *   • `text` descriptions pass through byte-for-byte (legacy parity)
  *   • create without descriptionFormat lands as 'text' (DB default parity)
  *   • format round-trips, and a text→html flip re-sanitises the STORED value
@@ -16,62 +10,18 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { build } from "esbuild";
-import { Miniflare } from "miniflare";
-import { readFileSync, readdirSync } from "node:fs";
-import { resolve } from "node:path";
+import { sql } from "drizzle-orm";
+import { createTestDb, type TestDb } from "@/test-utils/pg";
 import { createNewProductSchema, updateProductDetailsSchema } from "./ai-tools";
-
-const here = resolve(__dirname);
-
-const WORKER_SOURCE = `
-import { drizzle } from "drizzle-orm/d1";
 import {
   createProduct,
   updateProduct,
   getProductById,
   getAllProducts,
 } from "../../../../cod-shared/queries/products";
-import {
-  getStoreProductByHandle,
-  getStoreProducts,
-} from "../../../../cod-shared/queries/store";
+import { getStoreProductByHandle, getStoreProducts } from "../../../../cod-shared/queries/store";
 
-export default {
-  async fetch(request: Request, env: { DB: D1Database }): Promise<Response> {
-    const db = drizzle(env.DB);
-    const { fn, args } = (await request.json()) as { fn: string; args: unknown[] };
-    try {
-      let result: unknown;
-      switch (fn) {
-        case "createProduct":
-          result = await createProduct(db, args[0] as never);
-          break;
-        case "updateProduct":
-          result = await updateProduct(db, args[0] as string, args[1] as never);
-          break;
-        case "getProductById":
-          result = await getProductById(db, args[0] as string);
-          break;
-        case "getAllProducts":
-          result = await getAllProducts(db, args[0] as never);
-          break;
-        case "getStoreProductByHandle":
-          result = await getStoreProductByHandle(db, args[0] as string);
-          break;
-        case "getStoreProducts":
-          result = await getStoreProducts(db, args[0] as never);
-          break;
-        default:
-          return Response.json({ ok: false, error: "unknown fn " + fn }, { status: 400 });
-      }
-      return Response.json({ ok: true, result });
-    } catch (e) {
-      return Response.json({ ok: false, error: String((e as Error)?.stack ?? e) }, { status: 500 });
-    }
-  },
-};
-`;
+const FUNCTIONS = { createProduct, updateProduct, getProductById, getAllProducts, getStoreProductByHandle, getStoreProducts };
 
 const HOSTILE_HTML =
   '<p>Size <strong>10cm</strong> &amp; up</p><script>alert(1)</script>' +
@@ -88,22 +38,15 @@ const BASE_PRODUCT = {
   trackInventory: true,
   visibility: true,
   status: "ACTIVE" as const,
-  showInStore: true,
-  storeFeatured: false,
+
+
 };
 
-const registry: Miniflare[] = [];
-let mf: Miniflare;
+let harness: TestDb;
 
-async function call<T>(fn: string, ...args: unknown[]): Promise<T> {
-  const worker = await mf.getWorker();
-  const res = await worker.fetch("http://rich-text-e2e.test/", {
-    method: "POST",
-    body: JSON.stringify({ fn, args }),
-  });
-  const data = (await res.json()) as { ok: boolean; result?: T; error?: string };
-  if (!data.ok) throw new Error(`workerd call ${fn} failed: ${data.error}`);
-  return data.result as T;
+async function call<T>(fn: keyof typeof FUNCTIONS, ...args: unknown[]): Promise<T> {
+  const result = await (FUNCTIONS[fn] as (...a: unknown[]) => Promise<unknown>)(harness.db, ...args);
+  return JSON.parse(JSON.stringify(result)) as T;
 }
 
 function assertClean(value: unknown): void {
@@ -127,59 +70,17 @@ function assertRowClean(row: Record<string, unknown>): void {
 }
 
 beforeAll(async () => {
-  const bundled = await build({
-    stdin: {
-      contents: WORKER_SOURCE,
-      resolveDir: here,
-      sourcefile: "worker.ts",
-      loader: "ts",
-    },
-    bundle: true,
-    format: "esm",
-    platform: "neutral",
-    target: "es2022",
-    alias: { "@": resolve(here, "../..") },
-    write: false,
-    logLevel: "warning",
-  });
+  harness = await createTestDb();
 
-  mf = new Miniflare({
-    modules: [{ type: "ESModule", path: "index.mjs", contents: bundled.outputFiles[0].text }],
-    d1Databases: { DB: "test-db" },
-  });
-  registry.push(harness);
-
-  // Apply the REAL migrations — including 0025 — to the in-memory D1.
-  const d1 = await mf.getD1Database("DB");
-  const dir = resolve(here, "../../db/migrations");
-  const preparedStatements: D1PreparedStatement[] = [];
-  for (const file of readdirSync(dir).filter((f) => f.endsWith(".sql")).sort()) {
-    const statements = readFileSync(`${dir}/${file}`, "utf8")
-      .split("--> statement-breakpoint")
-      .flatMap((s) => s.split(/;\s*\n/))
-      .map((s) => s.replace(/;+\s*$/, "").trim())
-      .filter((s) => s.replace(/--[^\n]*/g, "").trim().length > 0);
-    for (const statement of statements) {
-      preparedStatements.push(d1.prepare(statement));
-    }
-  }
-  for (let i = 0; i < preparedStatements.length; i += 50) {
-    await d1.batch(preparedStatements.slice(i, i + 50));
-  }
-
-  // The column exists and legacy inserts (no description_format) default to 'text'.
-  const probe = await d1
-    .prepare(
-      `INSERT INTO products (id, name, description, handle, currency, price, has_variants, inventory, track_inventory, low_stock_threshold, visibility, status, show_in_store, store_featured, deleted_at, created_at, updated_at)
-       VALUES ('legacy-row-1', 'Legacy Product', 'Size < 10cm & <b>bold</b> literal', 'legacy-row-1', 'DZD', 2000, 0, 5, 1, 5, 1, 'ACTIVE', 1, 0, NULL, '2020-01-01T00:00:00.000Z', '2020-01-01T00:00:00.000Z')
-       RETURNING description_format`
-    )
-    .first<{ description_format: string }>();
-  expect(probe?.description_format).toBe("text");
+  const probe = await harness.db.execute(sql`
+    INSERT INTO products (id, name, description, handle, currency, price, has_variants, inventory, track_inventory, low_stock_threshold, visibility, status, deleted_at, created_at, updated_at)
+    VALUES ('legacy-row-1', 'Legacy Product', 'Size < 10cm & <b>bold</b> literal', 'legacy-row-1', 'DZD', 2000, false, 5, true, 5, true, 'ACTIVE', NULL, '2020-01-01T00:00:00.000Z', '2020-01-01T00:00:00.000Z')
+    RETURNING description_format`);
+  expect((probe as unknown as { rows: Array<{ description_format: string }> }).rows[0]?.description_format).toBe("text");
 }, 120_000);
 
 afterAll(async () => {
-  for (const instance of registry) await instance.dispose();
+  await harness?.dispose();
 });
 
 describe("write chokepoint (plan §5.2)", () => {

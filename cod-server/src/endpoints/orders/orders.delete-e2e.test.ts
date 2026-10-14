@@ -82,7 +82,7 @@ describe("deleteOrder — real D1 (E2E)", () => {
     await db.insert(schema.products).values({
       id: "prod-e2e-del", name: "E2E Product", handle: "e2e-product-del", price: 1000,
       hasVariants: false, inventory: 5, trackInventory: true, lowStockThreshold: 2,
-      status: "ACTIVE", visibility: true, showInStore: true, storeFeatured: false,
+      status: "ACTIVE", visibility: true,
       createdAt: now, updatedAt: now,
     });
   });

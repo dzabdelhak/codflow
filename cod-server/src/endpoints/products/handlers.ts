@@ -1,5 +1,6 @@
 import { Context } from "hono";
 import type { AppContext } from "@/types";
+import { assertStoreShippingProfile } from "@/endpoints/channel-products/handlers";
 import { getDb } from "@/db";
 import * as queries from "./queries";
 import * as validation from "./validation";
@@ -68,6 +69,7 @@ export async function createProduct(c: Context<AppContext>) {
   }
 
   try {
+    await assertStoreShippingProfile(c, validated.shippingProfileId);
     const product = await queries.createProduct(db, validated);
     if (!product) {
       throw new SystemError("Failed to create product");
@@ -127,6 +129,7 @@ export async function updateProduct(c: Context<AppContext>) {
     }
   }
 
+  await assertStoreShippingProfile(c, validated.shippingProfileId);
   const product = await queries.updateProduct(db, productId, validated);
   if (!product) {
     throw new NotFoundError("Product", productId);

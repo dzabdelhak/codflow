@@ -30,7 +30,7 @@ describe("updateOrderStatusWebhook — real D1 batch (E2E)", () => {
     await db.insert(schema.products).values({
       id: pid, name: "E2E Product", handle: "e2e-product", price: 1000,
       hasVariants: false, inventory: 5, trackInventory: true, lowStockThreshold: 2,
-      status: "ACTIVE", visibility: true, showInStore: true, storeFeatured: false,
+      status: "ACTIVE", visibility: true,
       createdAt: now, updatedAt: now,
     });
     await db.insert(schema.customers).values({

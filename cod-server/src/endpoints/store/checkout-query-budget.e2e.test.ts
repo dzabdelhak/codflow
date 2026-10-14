@@ -79,8 +79,6 @@ async function seedProduct(overrides: Partial<typeof schema.products.$inferInser
     lowStockThreshold: 2,
     status: "ACTIVE",
     visibility: true,
-    showInStore: true,
-    storeFeatured: false,
     createdAt: now(),
     updatedAt: now(),
     ...overrides,

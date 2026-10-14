@@ -30,7 +30,8 @@
     "store_pages": "الصفحات",
     "checkout_form": "نموذج الطلب",
     "whatsapp": "واتساب",
-    "stores": "المتاجر"
+    "stores": "المتاجر",
+    "store_products": "في هذا المتجر"
   },
   "navbar": {
     "search_placeholder": "البحث عن طلبات، عملاء...",

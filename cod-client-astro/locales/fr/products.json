@@ -40,8 +40,7 @@
   "status": {
     "available": "Disponible",
     "out_of_stock": "Rupture de stock",
-    "low_stock": "Stock faible",
-    "hidden_from_store": "Masqué de la boutique"
+    "low_stock": "Stock faible"
   },
   "stock": {
     "in_stock": "En stock",
@@ -142,8 +141,8 @@
     "threshold_label": "Seuil d'alerte",
     "threshold_hint": "Alerte lorsque le stock descend à ce niveau",
     "track_stock_hint": "Surveiller automatiquement les niveaux d'inventaire",
-    "show_in_store_label": "Afficher dans la boutique",
-    "show_in_store_hint": "Les produits masqués n'apparaissent ni dans le catalogue ni sur leur page — leurs pages de destination continuent de vendre normalement.",
+    "show_in_store_label": "Afficher dans cette boutique",
+    "show_in_store_hint": "Masqué ici, il reste dans votre catalogue et vos autres boutiques ; ses landing pages continuent de vendre.",
     "bulk_fill": "Remplissage groupé",
     "bulk_price_placeholder": "Prix",
     "bulk_price_apply": "Appliquer le prix",
@@ -154,7 +153,9 @@
     "variant_image": "Image",
     "variant_image_select": "Sélectionner image",
     "variant_image_remove": "Supprimer image",
-    "images_reorder_hint": "Utilisez les flèches pour réorganiser"
+    "images_reorder_hint": "Utilisez les flèches pour réorganiser",
+    "not_in_store_hint": "Ce produit du catalogue n’est pas dans cette boutique.",
+    "not_in_store_link": "L’ajouter depuis « Dans cette boutique »"
   },
   "status_options": {
     "active": "Actif",
@@ -291,5 +292,36 @@
     "color_purple": "Violet",
     "color_pink": "Rose",
     "color_red": "Rouge"
+  },
+  "store_selection": {
+    "page_title": "Produits de cette boutique",
+    "page_subtitle": "Les produits du catalogue affichés par cette boutique, dans leur ordre d’affichage. Les prix viennent du catalogue.",
+    "loading": "Chargement…",
+    "add": "Ajouter depuis le catalogue",
+    "add_title": "Ajouter des produits du catalogue",
+    "add_description": "Les produits de votre compte que cette boutique n’affiche pas encore.",
+    "add_search": "Rechercher par nom ou SKU…",
+    "add_empty": "Tous les produits du catalogue sont déjà dans cette boutique.",
+    "add_confirm": "Ajouter {n}",
+    "added": "{n} produit(s) ajouté(s) à cette boutique",
+    "empty": "Cette boutique n’affiche aucun produit",
+    "empty_hint": "Ajoutez des produits de votre catalogue pour les afficher dans cette boutique.",
+    "column_product": "Produit",
+    "column_price": "Prix du catalogue",
+    "column_published": "Affiché",
+    "column_featured": "Page d’accueil",
+    "column_actions": "Actions",
+    "move_up": "Monter",
+    "move_down": "Descendre",
+    "remove": "Retirer de cette boutique",
+    "remove_title": "Retirer {name} de cette boutique ?",
+    "remove_description": "Il reste dans votre catalogue et dans vos autres boutiques.",
+    "action_failed": "La modification n’a pas pu être enregistrée. Réessayez.",
+    "state": {
+      "not_in_store": "Absent de cette boutique",
+      "hidden_in_store": "Masqué dans cette boutique",
+      "published": "Affiché dans cette boutique",
+      "featured": "En page d’accueil"
+    }
   }
 }

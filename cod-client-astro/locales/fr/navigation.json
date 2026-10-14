@@ -30,7 +30,8 @@
     "store_pages": "Pages",
     "checkout_form": "Formulaire de commande",
     "whatsapp": "WhatsApp",
-    "stores": "Boutiques"
+    "stores": "Boutiques",
+    "store_products": "Dans cette boutique"
   },
   "navbar": {
     "search_placeholder": "Rechercher des commandes, clients...",

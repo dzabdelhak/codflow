@@ -16,7 +16,7 @@ import {
   shippingRules,
   shippingRuleCommunes,
   offers,
-  products,
+  channelProducts,
 } from "@/db/schema";
 import { BusinessLogicError } from "@/lib/errors/classes";
 import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
@@ -64,9 +64,9 @@ export async function resolveDeliveryFee(
 
   if (productIds.length > 0) {
     const productRow = await db
-      .select({ shippingProfileId: products.shippingProfileId })
-      .from(products)
-      .where(eq(products.id, productIds[0]))
+      .select({ shippingProfileId: channelProducts.shippingProfileId })
+      .from(channelProducts)
+      .where(eq(channelProducts.productId, productIds[0]))
       .then(first);
 
     if (productRow?.shippingProfileId) {

@@ -4,7 +4,7 @@
  * This is the single implementation of "what does this customer pay for
  * delivery". It honours the two layers the schema documents:
  *
- *   profile  — products.shipping_profile_id overrides the store default
+ *   profile  — channel_products.shipping_profile_id overrides the store default
  *   commune  — shipping_rule_communes overrides the wilaya rule, per column
  *
  * Returns:
@@ -18,6 +18,7 @@
 import { eq, and, inArray, sql } from "drizzle-orm";
 import {
   products,
+  channelProducts,
   stores,
   shippingProfiles,
   shippingRules,
@@ -99,7 +100,7 @@ export async function resolveDeliveryFee(
   // Both are needed to pick the candidates and neither depends on the other,
   // so they go out together rather than in sequence.
   type ProfileRow = { id: string };
-  type ProductProfileRow = { shippingProfileId: string | null };
+  type ProductProfileRow = { productId: string; shippingProfileId: string | null };
 
   const defaultProfileStatement = db
     .select({ id: shippingProfiles.id })
@@ -108,9 +109,9 @@ export async function resolveDeliveryFee(
 
   const productStatements = chunkIds(productIds).map((chunk) =>
     db
-      .select({ shippingProfileId: products.shippingProfileId })
-      .from(products)
-      .where(inArray(products.id, chunk)),
+      .select({ productId: channelProducts.productId, shippingProfileId: channelProducts.shippingProfileId })
+      .from(channelProducts)
+      .where(inArray(channelProducts.productId, chunk)),
   );
 
   // The store's pricing settings ride the SAME batch as the profile lookups —
@@ -143,9 +144,10 @@ export async function resolveDeliveryFee(
 
   const defaultProfileId = (results[0] as ProfileRow[])[0]?.id ?? null;
   const profileResultEnd = 1 + productStatements.length;
-  const productProfileIds = (
-    results.slice(1, profileResultEnd).flat() as ProductProfileRow[]
-  ).map((r) => r.shippingProfileId ?? null);
+  const assigned = new Map(
+    (results.slice(1, profileResultEnd).flat() as ProductProfileRow[]).map((r) => [r.productId, r.shippingProfileId]),
+  );
+  const productProfileIds = productIds.map((id) => assigned.get(id) ?? null);
 
   const settings: DeliveryPricingSettings = settingsStatement
     ? {
@@ -154,7 +156,7 @@ export async function resolveDeliveryFee(
       }
     : PLATFORM_DEFAULTS;
 
-  // No existence check on a product's profile: products.shipping_profile_id is
+  // No existence check on a product's profile: channel_products.shipping_profile_id is
   // a foreign key with ON DELETE SET NULL, and D1 enforces it — a dangling
   // value cannot be written. Verifying it would cost a round trip per checkout
   // to rule out a state the database already prevents.

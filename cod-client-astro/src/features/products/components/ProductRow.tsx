@@ -5,6 +5,7 @@ import {
   formatMoneyValue,
   productStockTone,
 } from "@/features/products/model";
+import { StoreSelectionBadge } from "@/features/products/components/StoreSelectionBadge";
 import type { Product, ProductCategory } from "@/features/products/types";
 
 function ProductStatusBadge({ product }: { product: Product }) {
@@ -16,10 +17,7 @@ function ProductStatusBadge({ product }: { product: Product }) {
   return <Badge tone="critical">{t("status_options.archived")}</Badge>;
 }
 
-function HiddenFromStoreBadge() {
-  const t = useT("products");
-  return <Badge tone="neutral">{t("status.hidden_from_store")}</Badge>;
-}
+
 
 function StockValue({ product }: { product: Product }) {
   const t = useT("products");
@@ -100,7 +98,7 @@ export function ProductDesktopRow({ product, categoryMap, canManage, onDelete }:
       <TableCell>
         <div className="flex flex-wrap items-center gap-1.5">
           <ProductStatusBadge product={product} />
-          {product.showInStore === false && <HiddenFromStoreBadge />}
+          <StoreSelectionBadge product={product} />
         </div>
       </TableCell>
       <TableCell className="text-sm font-semibold tabular-nums">
@@ -177,7 +175,7 @@ export function ProductMobileCard({ product, categoryMap, canManage, onDelete }:
           )}
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <ProductStatusBadge product={product} />
-            {product.showInStore === false && <HiddenFromStoreBadge />}
+            <StoreSelectionBadge product={product} />
             {category && (
               <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
                 {category.name}

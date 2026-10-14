@@ -148,3 +148,46 @@ export async function listStockAlerts(filters: { limit?: number; offset?: number
   });
   return (await apiFetch<DataEnvelope<{ items: StockAlertItem[]; total: number }>>(`/api/stock/alerts?${query}`)).data;
 }
+
+export interface StoreProduct {
+  productId: string;
+  name: string;
+  handle: string;
+  price: number;
+  status: ProductStatus;
+  visibility: boolean;
+  published: boolean;
+  featured: boolean;
+  position: number;
+  shippingProfileId: string | null;
+  primaryImageSrc: string | null;
+}
+
+export async function listStoreProducts() {
+  return (await apiFetch<DataEnvelope<StoreProduct[]>>("/api/channel-products")).data;
+}
+
+export async function addStoreProducts(productIds: string[]) {
+  return (
+    await apiFetch<DataEnvelope<StoreProduct[]>>("/api/channel-products", json({ method: "POST", body: JSON.stringify({ productIds }) }))
+  ).data;
+}
+
+export async function updateStoreProduct(productId: string, changes: { published?: boolean; featured?: boolean }) {
+  return (
+    await apiFetch<DataEnvelope<StoreProduct>>(
+      `/api/channel-products/${encodeURIComponent(productId)}`,
+      json({ method: "PATCH", body: JSON.stringify(changes) }),
+    )
+  ).data;
+}
+
+export async function reorderStoreProducts(productIds: string[]) {
+  return (
+    await apiFetch<DataEnvelope<StoreProduct[]>>("/api/channel-products/order", json({ method: "PUT", body: JSON.stringify({ productIds }) }))
+  ).data;
+}
+
+export async function removeStoreProduct(productId: string) {
+  await apiFetch(`/api/channel-products/${encodeURIComponent(productId)}`, { method: "DELETE" });
+}

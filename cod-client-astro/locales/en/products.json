@@ -40,8 +40,7 @@
   "status": {
     "available": "Available",
     "out_of_stock": "Out of Stock",
-    "low_stock": "Low Stock",
-    "hidden_from_store": "Hidden from store"
+    "low_stock": "Low Stock"
   },
   "stock": {
     "in_stock": "In Stock",
@@ -142,8 +141,8 @@
     "threshold_label": "Alert Threshold",
     "threshold_hint": "Alert when stock drops to this level",
     "track_stock_hint": "Monitor inventory levels automatically",
-    "show_in_store_label": "Show in store",
-    "show_in_store_hint": "Hidden products don't appear in the storefront catalog or product page — their landing pages keep selling as normal.",
+    "show_in_store_label": "Show in this store",
+    "show_in_store_hint": "Hidden here, it stays in your catalogue and in your other stores; its landing pages keep selling.",
     "bulk_fill": "Bulk fill",
     "bulk_price_placeholder": "Price",
     "bulk_price_apply": "Set price",
@@ -154,7 +153,9 @@
     "variant_image": "Image",
     "variant_image_select": "Select image",
     "variant_image_remove": "Remove image",
-    "images_reorder_hint": "Use arrows to reorder"
+    "images_reorder_hint": "Use arrows to reorder",
+    "not_in_store_hint": "This catalogue product is not in this store.",
+    "not_in_store_link": "Add it from \"In this store\""
   },
   "status_options": {
     "active": "Active",
@@ -291,5 +292,36 @@
     "color_purple": "Purple",
     "color_pink": "Pink",
     "color_red": "Red"
+  },
+  "store_selection": {
+    "page_title": "Products in this store",
+    "page_subtitle": "The catalogue products this store shows, in their display order. Prices come from the catalogue.",
+    "loading": "Loading…",
+    "add": "Add from catalogue",
+    "add_title": "Add products from the catalogue",
+    "add_description": "Products of your account this store does not show yet.",
+    "add_search": "Search by name or SKU…",
+    "add_empty": "Every catalogue product is already in this store.",
+    "add_confirm": "Add {n}",
+    "added": "{n} product(s) added to this store",
+    "empty": "This store shows no product yet",
+    "empty_hint": "Add products from your catalogue to show them on this store.",
+    "column_product": "Product",
+    "column_price": "Catalogue price",
+    "column_published": "Shown",
+    "column_featured": "On home page",
+    "column_actions": "Actions",
+    "move_up": "Move up",
+    "move_down": "Move down",
+    "remove": "Remove from this store",
+    "remove_title": "Remove {name} from this store?",
+    "remove_description": "It stays in your catalogue and in your other stores.",
+    "action_failed": "The change could not be saved. Try again.",
+    "state": {
+      "not_in_store": "Not in this store",
+      "hidden_in_store": "Hidden in this store",
+      "published": "Shown in this store",
+      "featured": "On this store’s home page"
+    }
   }
 }

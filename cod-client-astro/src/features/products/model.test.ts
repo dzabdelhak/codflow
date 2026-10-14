@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  moveItem,
+  catalogueCandidates,
+  storeSelectionState,
   apiVariantOptions,
   calcMargin,
   filterProducts,
@@ -191,5 +194,41 @@ describe("products model", () => {
     expect(formatStockDate("2026-08-26T00:00:00.000Z", "en")).toBe("Aug 26, 2026");
     expect(formatStockDate("", "en")).toBeNull();
     expect(formatStockDate("not-a-date", "en")).toBeNull();
+  });
+});
+
+describe("storeSelectionState", () => {
+  it("tells the four catalogue states of a product apart for the active store", () => {
+    expect(storeSelectionState({ inChannel: false, showInStore: false, storeFeatured: false })).toBe("not_in_store");
+    expect(storeSelectionState({ inChannel: true, showInStore: false, storeFeatured: true })).toBe("hidden_in_store");
+    expect(storeSelectionState({ inChannel: true, showInStore: true, storeFeatured: false })).toBe("published");
+    expect(storeSelectionState({ inChannel: true, showInStore: true, storeFeatured: true })).toBe("featured");
+  });
+});
+
+describe("moveItem", () => {
+  it("swaps an item with its neighbour, and leaves the ends alone", () => {
+    expect(moveItem(["a", "b", "c"], 1, -1)).toEqual(["b", "a", "c"]);
+    expect(moveItem(["a", "b", "c"], 1, 1)).toEqual(["a", "c", "b"]);
+    expect(moveItem(["a", "b", "c"], 0, -1)).toEqual(["a", "b", "c"]);
+    expect(moveItem(["a", "b", "c"], 2, 1)).toEqual(["a", "b", "c"]);
+  });
+});
+
+describe("catalogueCandidates", () => {
+  const products = [
+    { id: "1", name: "Sac à main", sku: "SAC-1", inChannel: false, deletedAt: null },
+    { id: "2", name: "Montre", sku: "MON-1", inChannel: true, deletedAt: null },
+    { id: "3", name: "Casquette", sku: "CAS-1", inChannel: false, deletedAt: "2026-10-01" },
+  ];
+
+  it("offers only live catalogue products the store does not carry yet", () => {
+    expect(catalogueCandidates(products, "").map((p) => p.id)).toEqual(["1"]);
+  });
+
+  it("searches by name or SKU", () => {
+    expect(catalogueCandidates(products, "sac").map((p) => p.id)).toEqual(["1"]);
+    expect(catalogueCandidates(products, "sac-1").map((p) => p.id)).toEqual(["1"]);
+    expect(catalogueCandidates(products, "montre")).toEqual([]);
   });
 });

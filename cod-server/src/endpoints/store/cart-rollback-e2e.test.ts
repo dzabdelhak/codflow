@@ -80,8 +80,6 @@ async function seedProduct(opts: { price: number; name: string; inventory?: numb
     lowStockThreshold: 2,
     status: "ACTIVE",
     visibility: true,
-    showInStore: true,
-    storeFeatured: false,
     createdAt: now(),
     updatedAt: now(),
   });

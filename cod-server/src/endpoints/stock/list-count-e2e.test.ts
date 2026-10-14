@@ -37,8 +37,8 @@ beforeAll(async () => {
 
   await harness.setStore({ id: "test-store", name: "S", createdAt: now, updatedAt: now });
   await db.insert(schema.products).values([
-    { id: "prod-1", name: "Product 1", handle: "p1", price: 1000, hasVariants: false, inventory: 10, trackInventory: true, status: "ACTIVE", visibility: true, showInStore: true, createdAt: now, updatedAt: now },
-    { id: "prod-2", name: "Product 2", handle: "p2", price: 2000, hasVariants: true, inventory: 0, trackInventory: true, status: "ACTIVE", visibility: true, showInStore: true, createdAt: now, updatedAt: now },
+    { id: "prod-1", name: "Product 1", handle: "p1", price: 1000, hasVariants: false, inventory: 10, trackInventory: true, status: "ACTIVE", visibility: true, createdAt: now, updatedAt: now },
+    { id: "prod-2", name: "Product 2", handle: "p2", price: 2000, hasVariants: true, inventory: 0, trackInventory: true, status: "ACTIVE", visibility: true, createdAt: now, updatedAt: now },
   ]);
   await db.insert(schema.productVariants).values([
     { id: "var-1", productId: "prod-2", sku: "SKU-V1", variations: '{"Color":"Red"}', price: 2000, inventory: 5, active: true, position: 1, createdAt: now, updatedAt: now },

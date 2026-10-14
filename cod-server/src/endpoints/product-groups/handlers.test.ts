@@ -91,6 +91,8 @@ describe("Product Groups Endpoint - Error Scenarios", () => {
         position: 0,
         createdAt: new Date("2024-01-01").toISOString(),
         updatedAt: new Date("2024-01-01").toISOString(),
+        merchantId: "test-merchant",
+        version: 1,
         children: [],
         productsCount: 5,
       });
@@ -154,6 +156,8 @@ describe("Product Groups Endpoint - Error Scenarios", () => {
         position: 0,
         createdAt: new Date("2024-01-01").toISOString(),
         updatedAt: new Date("2024-01-02").toISOString(),
+        merchantId: "test-merchant",
+        version: 1,
         children: [],
         productsCount: 5,
       });
@@ -216,6 +220,8 @@ describe("Product Groups Endpoint - Error Scenarios", () => {
         position: 0,
         createdAt: new Date("2024-01-01").toISOString(),
         updatedAt: new Date("2024-01-01").toISOString(),
+        merchantId: "test-merchant",
+        version: 1,
         children: [],
         productsCount: 5,
       });
@@ -253,6 +259,8 @@ describe("Product Groups Endpoint - Error Scenarios", () => {
         position: 0,
         createdAt: new Date("2024-01-01").toISOString(),
         updatedAt: new Date("2024-01-01").toISOString(),
+        merchantId: "test-merchant",
+        version: 1,
         children: [],
         productsCount: 0,
       });
@@ -302,6 +310,8 @@ describe("Product Groups Endpoint - Error Scenarios", () => {
         position: 0,
         createdAt: new Date("2024-01-01").toISOString(),
         updatedAt: new Date("2024-01-01").toISOString(),
+        merchantId: "test-merchant",
+        version: 1,
         children: [],
         productsCount: 5,
       });

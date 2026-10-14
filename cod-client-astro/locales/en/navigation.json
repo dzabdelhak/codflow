@@ -30,7 +30,8 @@
     "store_pages": "Pages",
     "checkout_form": "Checkout form",
     "whatsapp": "WhatsApp",
-    "stores": "Stores"
+    "stores": "Stores",
+    "store_products": "In this store"
   },
   "navbar": {
     "search_placeholder": "Search for orders, customers...",

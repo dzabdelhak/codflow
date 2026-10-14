@@ -20,6 +20,7 @@ import {
 } from "drizzle-orm";
 import {
   products,
+  channelProducts,
   productCategories,
   productVariants,
   productImages,
@@ -170,24 +171,26 @@ export async function getStoreProducts(
   params: { featured?: boolean; categoryId?: string; limit?: number },
 ) {
   const conditions: any[] = [
-    eq(products.showInStore, true),
+    eq(channelProducts.published, true),
     eq(products.status, "ACTIVE"),
     eq(products.visibility, true),
     isNull(products.deletedAt),
   ];
 
-  if (params.featured) conditions.push(eq(products.storeFeatured, true));
+  if (params.featured) conditions.push(eq(channelProducts.featured, true));
   if (params.categoryId) conditions.push(eq(products.categoryId, params.categoryId));
 
   const rows = await db
     .select({
       ...getTableColumns(products),
+      storeFeatured: channelProducts.featured,
       avgRating: sql<number | null>`(SELECT ROUND(AVG(r.rating), 1) FROM reviews r WHERE r.product_id = products.id AND r.status = 'approved')`,
       reviewCount: sql<number>`COALESCE((SELECT COUNT(*) FROM reviews r WHERE r.product_id = products.id AND r.status = 'approved'), 0)`,
     })
     .from(products)
+    .innerJoin(channelProducts, eq(channelProducts.productId, products.id))
     .where(and(...conditions))
-    .orderBy(desc(products.storeFeatured), desc(products.createdAt))
+    .orderBy(channelProducts.position, desc(products.createdAt))
     .limit(params.limit ?? 24);
 
   if (rows.length === 0) return [];
@@ -255,9 +258,9 @@ export async function getStoreProducts(
  * Resolve a product by handle in its full store-product shape.
  *
  * The four catalog green lights apply by default (status=ACTIVE, visibility,
- * showInStore, not soft-deleted). `allowUnlisted` drops ONLY the showInStore
- * gate — landing pages link their product deliberately, so a store-hidden
- * (unlisted) product still renders there; the other gates still apply.
+ * published in this channel, not soft-deleted). `allowUnlisted` drops ONLY the
+ * channel gate — landing pages link their product deliberately, so a product
+ * the channel does not publish still renders there; the other gates still apply.
  */
 export async function getStoreProductByHandle(
   db: AppDb,
@@ -270,10 +273,17 @@ export async function getStoreProductByHandle(
     eq(products.visibility, true),
     isNull(products.deletedAt),
   ];
-  if (!opts?.allowUnlisted) conditions.push(eq(products.showInStore, true));
+  if (!opts?.allowUnlisted) {
+    conditions.push(
+      sql`exists (select 1 from channel_products cp where cp.product_id = ${products.id} and cp.published)`,
+    );
+  }
 
   const product = await db
-    .select()
+    .select({
+      ...getTableColumns(products),
+      storeFeatured: sql<boolean>`exists (select 1 from channel_products cp where cp.product_id = ${products.id} and cp.featured)`,
+    })
     .from(products)
     .where(and(...conditions))
     .then(first);
@@ -389,7 +399,14 @@ export async function getStoreProductByHandle(
 }
 
 export async function getStoreCategories(db: AppDb) {
-  return db.select().from(productCategories).orderBy(productCategories.position);
+  return db
+    .select()
+    .from(productCategories)
+    .where(
+      sql`exists (select 1 from products p join channel_products cp on cp.product_id = p.id
+        where p.category_id = ${productCategories.id} and cp.published and p.status = 'ACTIVE' and p.visibility and p.deleted_at is null)`,
+    )
+    .orderBy(productCategories.position);
 }
 
 export async function getStoreCommunes(db: AppDb, wilayaId: number) {
@@ -846,6 +863,9 @@ export async function createStoreOrder(
       sku: line.sku ?? null,
       quantity: line.quantity,
       unitPrice: line.pricePerUnit,
+      catalogVersion:
+        (line.variantId ? snapshot.variants.get(line.variantId)?.version : snapshot.products.get(line.productId)?.version) ??
+        null,
     })),
     delivery: { type: data.deliveryType, office: null, fee: finalDeliveryFee },
     customer: {

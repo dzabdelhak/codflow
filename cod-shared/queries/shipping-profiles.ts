@@ -2,7 +2,7 @@
  * Shipping Profiles Queries
  *
  * Profiles define what the CUSTOMER pays. They are referenced only by
- * products (products.shippingProfileId). Drivers and delivery companies
+ * products (channel_products.shipping_profile_id). Drivers and delivery companies
  * have no relationship to these profiles.
  *
  * updateProfile and setProfileRules stay in cod-server — they raise
@@ -17,6 +17,7 @@ import {
   communes,
   wilayas,
   products,
+  channelProducts,
 } from "../db/schema";
 import type { AppDb } from "../db/client";
 import { first } from "../db/client";
@@ -96,9 +97,9 @@ export async function getAllProfiles(db: AppDb): Promise<ShippingProfile[]> {
           .from(shippingRules)
           .where(eq(shippingRules.profileId, p.id)),
         db
-          .select({ id: products.id })
-          .from(products)
-          .where(eq(products.shippingProfileId, p.id)),
+          .select({ id: channelProducts.productId })
+          .from(channelProducts)
+          .where(eq(channelProducts.shippingProfileId, p.id)),
       ]);
       return {
         id: p.id,
@@ -145,9 +146,9 @@ export async function getProfileById(
       .leftJoin(wilayas, eq(shippingRules.wilayaId, wilayas.id))
       .where(eq(shippingRules.profileId, id)),
     db
-      .select({ id: products.id })
-      .from(products)
-      .where(eq(products.shippingProfileId, id)),
+      .select({ id: channelProducts.productId })
+      .from(channelProducts)
+      .where(eq(channelProducts.shippingProfileId, id)),
   ]);
 
   return {

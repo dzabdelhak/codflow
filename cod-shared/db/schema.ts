@@ -10,6 +10,11 @@ import { sql } from "drizzle-orm";
 const storeIdColumn = () =>
   text("store_id").notNull().default(sql`current_setting('app.store_id')`);
 
+const merchantIdColumn = () =>
+  text("merchant_id").notNull().default(sql`current_setting('app.merchant_id')`);
+
+const versionColumn = () => integer("version").notNull().default(1);
+
 const authNow = sql`now()`;
 
 /**
@@ -677,7 +682,7 @@ export const orderStatusHistory = pgTable("order_status_history", {
 // ─── Product Catalog ─────────────────────────────────────────────────────────
 
 export const productCategories = pgTable("product_categories", {
-  storeId: storeIdColumn(),
+  merchantId: merchantIdColumn(),
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   slug: text("slug").notNull(),
@@ -690,12 +695,13 @@ export const productCategories = pgTable("product_categories", {
   position: integer("position").notNull().default(0),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
+  version: versionColumn(),
 }, (t) => ({
-  slugPerStore: uniqueIndex("product_categories_store_slug_unique").on(t.storeId, t.slug),
+  slugPerMerchant: uniqueIndex("product_categories_merchant_slug_unique").on(t.merchantId, t.slug),
 }));
 
 export const products = pgTable("products", {
-  storeId: storeIdColumn(),
+  merchantId: merchantIdColumn(),
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   description: text("description"),
@@ -727,26 +733,31 @@ export const products = pgTable("products", {
   tags: text("tags"), // JSON string[]
   visibility: boolean("visibility").notNull().default(true),
   status: text("status", { enum: ["DRAFT", "ACTIVE", "ARCHIVED"] }).notNull().default("ACTIVE"),
-  showInStore: boolean("show_in_store").notNull().default(true),
-  storeFeatured: boolean("store_featured").notNull().default(false),
   deletedAt: text("deleted_at"),
   publishedAt: text("published_at"),
-  /**
-   * Product-level shipping profile override.
-   * When set: orders of this product use this profile for deliveryFee resolution.
-   * When null: store default profile (isDefault=true) is used.
-   */
-  shippingProfileId: text("shipping_profile_id")
-    .references(() => shippingProfiles.id, { onDelete: "set null" }),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+  version: versionColumn(),
+}, (t) => ({
+  handlePerMerchant: uniqueIndex("products_merchant_handle_unique").on(t.merchantId, t.handle),
+  skuPerMerchant: uniqueIndex("products_merchant_sku_unique").on(t.merchantId, t.sku),
+}));
+
+export const channelProducts = pgTable("channel_products", {
+  storeId: storeIdColumn(),
+  productId: text("product_id").notNull().references(() => products.id, { onDelete: "cascade" }),
+  published: boolean("published").notNull().default(true),
+  featured: boolean("featured").notNull().default(false),
+  position: integer("position").notNull().default(0),
+  shippingProfileId: text("shipping_profile_id").references(() => shippingProfiles.id, { onDelete: "set null" }),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 }, (t) => ({
-  handlePerStore: uniqueIndex("products_store_handle_unique").on(t.storeId, t.handle),
-  skuPerStore: uniqueIndex("products_store_sku_unique").on(t.storeId, t.sku),
+  pk: primaryKey({ columns: [t.storeId, t.productId] }),
 }));
 
 export const productVariants = pgTable("product_variants", {
-  storeId: storeIdColumn(),
+  merchantId: merchantIdColumn(),
   id: text("id").primaryKey(),
   productId: text("product_id").notNull().references(() => products.id, { onDelete: "cascade" }),
   variations: text("variations").notNull(), // JSON: {"Color": "Red", "Size": "M"}
@@ -765,12 +776,13 @@ export const productVariants = pgTable("product_variants", {
   position: integer("position").notNull().default(1),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
+  version: versionColumn(),
 }, (t) => ({
-  skuPerStore: uniqueIndex("product_variants_store_sku_unique").on(t.storeId, t.sku),
+  skuPerMerchant: uniqueIndex("product_variants_merchant_sku_unique").on(t.merchantId, t.sku),
 }));
 
 export const productImages = pgTable("product_images", {
-  storeId: storeIdColumn(),
+  merchantId: merchantIdColumn(),
   id: text("id").primaryKey(),
   productId: text("product_id").notNull().references(() => products.id, { onDelete: "cascade" }),
   src: text("src").notNull(), // original URL
@@ -785,6 +797,7 @@ export const productImages = pgTable("product_images", {
   position: integer("position").notNull().default(1),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
+  version: versionColumn(),
 });
 
 /** Status lifecycle value for orders — derived from the column enum. */
@@ -1188,6 +1201,7 @@ export const stockMovements = pgTable("stock_movements", {
   /** Denormalised name — preserved even if the user is later deleted. */
   createdByName: text("created_by_name").notNull(),
   createdAt: text("created_at").notNull(),
+  merchantId: merchantIdColumn(),
 });
 
 

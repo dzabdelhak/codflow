@@ -76,8 +76,6 @@ async function seedProduct(opts: {
     lowStockThreshold: 2,
     status: "ACTIVE",
     visibility: true,
-    showInStore: true,
-    storeFeatured: false,
     createdAt: now(),
     updatedAt: now(),
   });

@@ -29,9 +29,7 @@ function dbSelectReturning(result: any) {
   return {
     select: vi.fn(() => ({
       from: vi.fn(() => ({
-        where: vi.fn(() => ({
-          get: vi.fn(async () => result),
-        })),
+        where: vi.fn(() => Promise.resolve(result == null ? [] : [result])),
       })),
     })),
   };

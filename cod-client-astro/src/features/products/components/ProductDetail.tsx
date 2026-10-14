@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { StoreSelectionBadge } from "@/features/products/components/StoreSelectionBadge";
 import {
   AlertCircle,
   History,
@@ -200,9 +201,7 @@ export function ProductDetail({ productId }: { productId: string }) {
         <div className="min-w-0 flex-1 space-y-3">
           <div className="flex flex-wrap items-center gap-2">
             <ProductStatusBadge status={product.status} />
-            {product.showInStore === false && (
-              <Badge tone="neutral">{t("status.hidden_from_store")}</Badge>
-            )}
+            <StoreSelectionBadge product={product} />
             {product.sku && (
               <span className="rounded-lg border border-border bg-muted/30 px-2 py-0.5 font-mono text-[10px] font-bold uppercase text-muted-foreground">
                 {product.sku}

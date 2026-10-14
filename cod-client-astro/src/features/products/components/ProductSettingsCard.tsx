@@ -15,6 +15,7 @@ interface ProductSettingsCardProps {
   setTrackInventory: (val: boolean) => void;
   showInStore: boolean;
   setShowInStore: (val: boolean) => void;
+  inChannel: boolean;
   hasVariantsSwitch: boolean;
   editing: boolean;
   busy: boolean;
@@ -31,6 +32,7 @@ export function ProductSettingsCard({
   setTrackInventory,
   showInStore,
   setShowInStore,
+  inChannel,
   hasVariantsSwitch,
   editing,
   busy,
@@ -102,6 +104,14 @@ export function ProductSettingsCard({
         </label>
       </div>
       <div className="mt-4">
+        {!inChannel ? (
+          <p className="text-xs text-muted-foreground">
+            {t("form.not_in_store_hint")}{" "}
+            <a href="/products/store" className="font-semibold text-brand underline-offset-4 hover:underline">
+              {t("form.not_in_store_link")}
+            </a>
+          </p>
+        ) : (
         <label className="flex cursor-pointer items-center justify-between gap-4">
           <div>
             <p className="text-sm font-semibold text-foreground">
@@ -121,6 +131,7 @@ export function ProductSettingsCard({
             className="size-5 accent-primary"
           />
         </label>
+        )}
       </div>
     </Card>
   );
