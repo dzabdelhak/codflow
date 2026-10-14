@@ -65,7 +65,6 @@ app.onError(errorHandler);
 // Image serving and carrier webhooks have no user or hostname yet: they serve
 // the deployment's only store until their tickets give them one.
 const soleStoreScope = requestScope((c) => soleStoreId(c.env.DATABASE.platform));
-app.use("/images/*", soleStoreScope);
 app.use("/webhooks/*", soleStoreScope);
 
 // Image serving — no auth required (public, cacheable)

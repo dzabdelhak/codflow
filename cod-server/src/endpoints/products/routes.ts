@@ -113,13 +113,13 @@ const saveProductImageRoute = defineRoute({
   tags: ["Products"],
   summary: "Save product image",
   description:
-    "Associates an already-uploaded R2 image with a product. Upload the file first via POST /api/images/upload, then call this endpoint with the returned `key` and `url`.",
+    "Associates an already-uploaded image with a product. Upload the file first via POST /api/images/upload, then call this endpoint with the returned `key` and `url`.",
   operationId: "saveProductImage",
   params: idParams,
   body: z.object({
     key: z.string().min(1).openapi({
-      description: "R2 object key returned by the upload endpoint",
-      example: "products/abc123def456.jpg",
+      description: "Storage key returned by the upload endpoint",
+      example: "products/abc123def4567890abc123def4567890.webp",
     }),
     src: z.string().min(1).openapi({
       format: "uri",
@@ -132,6 +132,8 @@ const saveProductImageRoute = defineRoute({
     position: z.number().int().min(1).optional().openapi({
       description: "Display order (auto-appended at end if not provided)",
     }),
+    width: z.number().int().min(1).optional().openapi({ description: "Pixel width, as returned by the upload endpoint" }),
+    height: z.number().int().min(1).optional().openapi({ description: "Pixel height, as returned by the upload endpoint" }),
   }),
   responses: {
     201: {

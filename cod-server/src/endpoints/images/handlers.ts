@@ -1,162 +1,112 @@
 import { Context } from "hono";
 import type { AppContext } from "@/types";
-import { getDb } from "@/db";
+import { imagesBaseUrl } from "@/platform/image-urls";
 import { productImages } from "@/db/schema";
 import { eq, and, asc } from "drizzle-orm";
 import { NotFoundError, ValidationError, SystemError } from "@/lib/errors/classes";
 import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
 import { first } from "../../../../cod-shared/db/client";
+import { deleteImage } from "@/platform/image-store";
+import {
+  IMAGE_FOLDERS,
+  IMAGE_KEY,
+  ingestImage,
+  MAX_UPLOAD_BYTES,
+  renderVariant,
+  variantKey,
+  variantSpec,
+  type ImageFolder,
+} from "@/platform/image-pipeline";
 
-const ALLOWED_TYPES = new Set([
-  "image/jpeg",
-  "image/jpg",
-  "image/png",
-  "image/webp",
-  "image/gif",
-]);
-
-const MAX_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
-
-function extFromMime(mime: string): string {
-  const map: Record<string, string> = {
-    "image/jpeg": "jpg",
-    "image/jpg": "jpg",
-    "image/png": "png",
-    "image/webp": "webp",
-    "image/gif": "gif",
-  };
-  return map[mime] ?? "jpg";
-}
+const UPLOAD_ERRORS = {
+  too_large: { message: "File too large. Max 10 MB", code: ERROR_CODES.FILE_TOO_LARGE },
+  not_an_image: { message: "This file is not a JPEG, PNG, WebP or GIF image", code: ERROR_CODES.INVALID_FILE_TYPE },
+  unreadable: { message: "This image could not be read", code: ERROR_CODES.INVALID_FILE_TYPE },
+} as const;
 
 /**
  * POST /api/images/upload
- * Receives multipart/form-data with a "file" field.
- * Stores in R2, returns { key, url }.
+ * Multipart `file` (+ optional `folder`): the bytes must be a real JPEG, PNG,
+ * WebP or GIF of at most 10 MB; they are stored as WebP.
  */
 export async function uploadImage(c: Context<AppContext>) {
-  const bucket = c.env.IMAGES;
-
   let formData: FormData;
   try {
     formData = await c.req.formData();
   } catch {
-    throw new ValidationError(
-      "Expected multipart/form-data",
-      ERROR_CODES.VALIDATION_FAILED
-    );
+    throw new ValidationError("Expected multipart/form-data", ERROR_CODES.VALIDATION_FAILED);
   }
 
   const file = formData.get("file") as File | null;
   if (!file || typeof file === "string") {
-    throw new ValidationError(
-      "Missing file field",
-      ERROR_CODES.REQUIRED_FIELD_MISSING,
-      { field: "file" }
-    );
+    throw new ValidationError("Missing file field", ERROR_CODES.REQUIRED_FIELD_MISSING, { field: "file" });
+  }
+  const folder = (formData.get("folder") ?? "products") as ImageFolder;
+  if (!IMAGE_FOLDERS.includes(folder)) {
+    throw new ValidationError("Invalid folder", ERROR_CODES.VALIDATION_FAILED, { folder, allowedFolders: IMAGE_FOLDERS });
+  }
+  if (file.size > MAX_UPLOAD_BYTES) {
+    throw new ValidationError(UPLOAD_ERRORS.too_large.message, ERROR_CODES.FILE_TOO_LARGE, {
+      fileSize: file.size,
+      maxSize: MAX_UPLOAD_BYTES,
+      fileName: file.name,
+    });
   }
 
-  if (!ALLOWED_TYPES.has(file.type)) {
-    throw new ValidationError(
-      "Invalid file type. Allowed: jpg, png, webp, gif",
-      ERROR_CODES.INVALID_FILE_TYPE,
-      { fileType: file.type, allowedTypes: Array.from(ALLOWED_TYPES) }
-    );
+  const image = await ingestImage(new Uint8Array(await file.arrayBuffer()), folder);
+  if (!image.ok) {
+    const error = UPLOAD_ERRORS[image.reason];
+    throw new ValidationError(error.message, error.code, { reason: image.reason, fileName: file.name });
   }
-
-  if (file.size > MAX_SIZE_BYTES) {
-    throw new ValidationError(
-      "File too large. Max 10 MB",
-      ERROR_CODES.FILE_TOO_LARGE,
-      { fileSize: file.size, maxSize: MAX_SIZE_BYTES, fileName: file.name }
-    );
-  }
-
-  const ext = extFromMime(file.type);
-  const key = `products/${crypto.randomUUID().replace(/-/g, "")}.${ext}`;
-
-  const arrayBuffer = await file.arrayBuffer();
 
   try {
-    await bucket.put(key, arrayBuffer, {
-      httpMetadata: { 
-        contentType: file.type,
-        cacheControl: "public, max-age=31536000, immutable"
-      },
-      customMetadata: {
-        originalName: file.name,
-        uploadedAt: new Date().toISOString(),
-      },
-    });
+    await c.env.IMAGE_STORE.put(image.key, image.body, "image/webp");
   } catch (error) {
-    throw new SystemError(
-      "Failed to upload image to storage",
-      ERROR_CODES.INTERNAL_SERVER_ERROR,
-      { key, fileName: file.name, error: error instanceof Error ? error.message : String(error) }
-    );
+    throw new SystemError("Failed to upload image to storage", ERROR_CODES.INTERNAL_SERVER_ERROR, {
+      key: image.key,
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 
-  const origin = new URL(c.req.url).origin;
-  const url = `${origin}/images/${key}`;
-
-  return c.json({ success: true, data: { key, url } }, 201);
+  return c.json(
+    { success: true, data: { key: image.key, url: `${imagesBaseUrl(c.env, c.req.url)}/${image.key}`, width: image.width, height: image.height } },
+    201,
+  );
 }
 
+const IMAGE_HEADERS = { "Cache-Control": "public, max-age=31536000, immutable" };
+
 /**
- * GET /images/:key{.+}
- * Serves an image from R2. No auth — images are public.
- * Uses writeHttpMetadata() per R2 docs for correct Content-Type passthrough.
+ * GET /images/:key{.+}?w=&h=&fit=
+ * Public. Without size parameters, the stored image; with them, a WebP
+ * variant snapped to a bounded grid, rendered once and kept in storage.
  */
 export async function serveImage(c: Context<AppContext>) {
-  const bucket = c.env.IMAGES;
-  const key = c.req.param("key");
-
-  if (!key) {
-    throw new ValidationError(
-      "Missing key",
-      ERROR_CODES.REQUIRED_FIELD_MISSING,
-      { field: "key" }
-    );
+  const key = c.req.param("key") ?? "";
+  if (!IMAGE_KEY.test(key)) throw new NotFoundError("Image", key);
+  const spec = variantSpec({ w: c.req.query("w"), h: c.req.query("h"), fit: c.req.query("fit") });
+  if (spec === "invalid") {
+    throw new ValidationError("Invalid image size", ERROR_CODES.VALIDATION_FAILED, { w: c.req.query("w"), h: c.req.query("h") });
   }
 
-  // Prevent path traversal
-  if (key.includes("..") || key.startsWith("/")) {
-    throw new ValidationError(
-      "Invalid key",
-      ERROR_CODES.VALIDATION_FAILED,
-      { key }
-    );
+  const store = c.env.IMAGE_STORE;
+  if (spec === null) {
+    const original = await store.get(key);
+    if (!original) throw new NotFoundError("Image", key);
+    return new Response(original.body, {
+      headers: { ...IMAGE_HEADERS, "Content-Type": original.contentType, ...(original.etag ? { ETag: original.etag } : {}) },
+    });
   }
 
-  try {
-    const object = await bucket.get(key);
-    if (!object) {
-      throw new NotFoundError("Image", key);
-    }
+  const cacheKey = variantKey(key, spec);
+  const cached = await store.get(cacheKey);
+  if (cached) return new Response(cached.body, { headers: { ...IMAGE_HEADERS, "Content-Type": "image/webp" } });
 
-    const headers = new Headers();
-    // writeHttpMetadata copies Content-Type, Content-Disposition, etc. from the stored metadata
-    object.writeHttpMetadata(headers);
-    // Use httpEtag (quoted) — required by HTTP spec
-    headers.set("ETag", object.httpEtag);
-    // Set strong cache headers for images
-    headers.set("Cache-Control", "public, max-age=31536000, immutable");
-    // Additional cache headers for better CDN support
-    headers.set("Expires", new Date(Date.now() + 31536000 * 1000).toUTCString());
-    headers.set("Pragma", "public");
-
-    return new Response(object.body, { headers });
-  } catch (error) {
-    // Re-throw custom errors so middleware can handle them
-    if (error instanceof NotFoundError || error instanceof ValidationError) {
-      throw error;
-    }
-    // Wrap unexpected errors
-    throw new SystemError(
-      "Failed to retrieve image from storage",
-      ERROR_CODES.INTERNAL_SERVER_ERROR,
-      { key, error: error instanceof Error ? error.message : String(error) }
-    );
-  }
+  const original = await store.get(key);
+  if (!original) throw new NotFoundError("Image", key);
+  const body = await renderVariant(original.body, spec);
+  c.executionCtx.waitUntil(store.put(cacheKey, body, "image/webp"));
+  return new Response(body, { headers: { ...IMAGE_HEADERS, "Content-Type": "image/webp" } });
 }
 
 /**
@@ -178,7 +128,7 @@ export async function listProductImages(c: Context<AppContext>) {
 
 /**
  * POST /api/products/:id/images
- * Saves an image record after it's been uploaded to R2.
+ * Saves an image record after it's been uploaded.
  * Body: { key, src, altText?, position? }
  */
 export async function saveProductImage(c: Context<AppContext>) {
@@ -191,6 +141,8 @@ export async function saveProductImage(c: Context<AppContext>) {
     src: string;
     altText?: string;
     position?: number;
+    width?: number;
+    height?: number;
   }>());
 
   if (!jsonData && (!body.key || !body.src)) {
@@ -222,8 +174,8 @@ export async function saveProductImage(c: Context<AppContext>) {
     src: body.src,
     r2Key: body.key,
     altText: body.altText ?? null,
-    width: null,
-    height: null,
+    width: body.width ?? null,
+    height: body.height ?? null,
     srcSm: null,
     srcMd: null,
     srcLg: null,
@@ -312,14 +264,12 @@ export async function reorderProductImages(c: Context<AppContext>) {
 
 /**
  * DELETE /api/products/:id/images/:imageId
- * Deletes image record from DB and object from R2.
+ * Deletes the image record and its stored object (with its variants).
  */
 export async function deleteProductImage(c: Context<AppContext>) {
   const productId = c.req.param("id")!;
   const imageId = c.req.param("imageId")!;
   const db = c.get("db");
-  const bucket = c.env.IMAGES;
-
   const image = await db
     .select()
     .from(productImages)
@@ -330,13 +280,13 @@ export async function deleteProductImage(c: Context<AppContext>) {
     throw new NotFoundError("Image", imageId);
   }
 
-  // Delete from R2 first — a storage failure aborts the whole operation so the
-  // DB record never points at a missing object.
+  // Delete from storage first — a storage failure aborts the whole operation so
+  // the DB record never points at a missing object.
   if (image.r2Key) {
     try {
-      await bucket.delete(image.r2Key);
+      await deleteImage(c.env.IMAGE_STORE, image.r2Key);
     } catch (error) {
-      console.error(`R2 delete failed for key: ${image.r2Key}`, error);
+      console.error(`Image delete failed for key: ${image.r2Key}`, error);
       throw new SystemError(
         "Failed to delete image from storage",
         ERROR_CODES.INTERNAL_SERVER_ERROR,

@@ -29,10 +29,11 @@ Server-side API endpoints that proxy requests to the CodFlow backend:
 Implements the POST/Redirect/GET pattern for Astro actions, handling form submissions and error redirects.
 
 ### `utils/`
-- `image-optimizer.ts` - Cloudflare Image Resizing helpers
-  (`optimizeImage`, `getCardImage`, `getGalleryImage`, `getThumbnailImage`,
-  `getHeroImage`, `getCategoryImage`, `getLogoImage`, `generateSrcSet`).
-  Active only when the optional `MEDIA_DOMAIN` env var is set.
+- `image-optimizer.ts` - resized-image URLs from cod-server's `/images`
+  pipeline (`optimizeImage`, `getCardImage`, `getGalleryImage`,
+  `getThumbnailImage`, `getHeroImage`, `getCategoryImage`, `getLogoImage`).
+  Active only when the optional `MEDIA_URL` env var is set;
+  `media-image-service.ts` applies the same rule to every `<Image>`.
 
 > Astro requires actions and middleware in `src/`, so two proxy files at the
 > package root re-export from here: `src/actions/index.ts` → `@/core/actions`,

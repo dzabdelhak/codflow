@@ -143,7 +143,7 @@ CodFlow v1.1.0 — here's what works today:
 - ✅ D1 scale layer: indexed hot paths, atomic batched order writes, keyset pagination
 - ✅ Auto-generated OpenAPI 3.1 spec at `/api/docs`
 - ✅ Standardized error envelopes with semantic codes
-- ✅ R2 image storage with edge caching
+- ✅ Image storage on S3-compatible SeaweedFS, checked and converted to WebP on upload, resized on request
 - ✅ KV-backed rate limiting
 
 **Known Limitations:**  
@@ -238,10 +238,7 @@ cd cod-astro/theme01 && npm run dev
 
 ### 6. Enable Image Uploads
 
-Product image uploads require R2 API tokens and CORS configuration. See the [R2 setup guide](./cod-server/src/endpoints/images/README.md) for:
-- Creating R2 API tokens
-- Setting CORS policy on the bucket
-- Adding a custom domain for serving images
+Images are stored in S3-compatible storage behind cod-server (SeaweedFS in `docker compose`). See the [image guide](./cod-server/src/endpoints/images/README.md) for the `S3_*`, `IMAGES_PUBLIC_URL` and storefront `MEDIA_URL` settings.
 
 **Need more detail?** See [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md) for production deployment.
 
@@ -274,7 +271,7 @@ wrangler secret put STORE_API_KEY
 
 **Important:** Cloudflare blocks Worker-to-Worker fetch between `*.workers.dev` hosts. For production, put at least `cod-server` on a custom domain and point `COD_SERVER_URL` at it.
 
-**R2 Image Uploads:** For production image uploads, see [R2 setup guide](./cod-server/src/endpoints/images/README.md) for API tokens, CORS policy, and custom domain configuration.
+**Image uploads:** see the [image guide](./cod-server/src/endpoints/images/README.md) for the storage settings.
 
 **Full deployment guide:** [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md)
 

@@ -4,8 +4,8 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] A merchant uploads a product image and sees it resized on the storefront
-- [ ] Oversized or non-image files are refused with a clear message
-- [ ] No R2 or Cloudflare Images code remains
+- [x] A merchant uploads a product image and sees it resized on the storefront
+- [x] Oversized or non-image files are refused with a clear message
+- [x] No R2 or Cloudflare Images code remains

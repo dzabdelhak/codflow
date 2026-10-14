@@ -1,5 +1,5 @@
 /**
- * Landing Pages — Slice 2: management API on real D1 + real route stack.
+ * Landing Pages — Slice 2: management API on real PostgreSQL + real route stack.
  *
  * The real OpenAPIHono router + real error handler + real queries against
  * real migrations. Auth middleware is stubbed with an admin user (the
@@ -12,8 +12,6 @@
  */
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
 import { createTestDb, type TestDb } from "@/test-utils/pg";
-import { readFileSync, readdirSync } from "node:fs";
-import { resolve } from "node:path";
 import { eq } from "drizzle-orm";
 import { OpenAPIHono } from "@hono/zod-openapi";
 import type { AppContext } from "@/types";
@@ -23,26 +21,26 @@ import landingPagesRouter from "./routes";
 import * as schema from "@/db/schema";
 import type { AppDb } from "@/db";
 import { first } from "../../../../cod-shared/db/client";
+import { memoryImageStore } from "@/platform/image-store";
 
 let db: AppDb;
-let rawD1: D1Database;
+let harness: TestDb;
 let app: OpenAPIHono<AppContext>;
 
-/** R2 bucket stub — tracks deleted keys so shared-object guards are testable. */
-const r2DeletedKeys: string[] = [];
-const r2BucketStub = {
-  delete: async (key: string) => {
-    r2DeletedKeys.push(key);
-  },
-} as unknown as R2Bucket;
+/** Image store that records deleted keys so shared-object guards are testable. */
+const deletedKeys: string[] = [];
+const imageStore = memoryImageStore();
+imageStore.delete = async (keys: string[]) => {
+  deletedKeys.push(...keys);
+};
 
 beforeAll(async () => {
-  const harness = await createTestDb();
+  harness = await createTestDb();
   db = harness.db;
 
   app = new OpenAPIHono<AppContext>({ defaultHook: openApiValidationHook });
   app.use("*", async (c, next) => {
-    c.env = { IMAGES: r2BucketStub } as any;
+    c.env = { IMAGE_STORE: imageStore } as any;
     c.set("db", db);
     c.set("user", {
       id: "admin_user_001",
@@ -97,7 +95,7 @@ async function createLp(body: Record<string, unknown>): Promise<Response> {
   });
 }
 
-describe("Slice 2 — landing pages management API (real D1 + real routes)", () => {
+describe("Slice 2 — landing pages management API (real PostgreSQL + real routes)", () => {
   it("creates a draft LP with an auto-generated slug and default spacing", async () => {
     const productId = await seedProduct();
     const res = await createLp({ name: "Zinc v1 — test", productId });
@@ -406,14 +404,7 @@ describe("publicUrl resolution — store domain wins, env falls back, relative l
 
   it("store domain set → https://<domain>/lp/<slug>", async () => {
     const productId = await seedProduct();
-    await harness.setStore({
-      id: "test-store", name: "URL Store", lang: "ar", currency: "DZD",
-      currencySymbol: "دج", domain: "demo.codflow.store",
-      createdAt: NOW(), updatedAt: NOW(),
-  }).onConflictDoUpdate({
-      target: schema.stores.id,
-      set: { domain: "demo.codflow.store" },
-    });
+    await harness.setStore({ domain: "demo.codflow.store" });
 
     const res = await createLp({ name: "Domain URL", productId, slug: "url-domain-" + crypto.randomUUID().slice(0, 6) });
     const body: any = await res.json();
@@ -499,12 +490,12 @@ describe("duplicate + shared R2-object guard", () => {
     // Delete the image on the ORIGINAL — the duplicate still references the key
     const sourceImages = await db.select().from(schema.landingPageImages)
       .where(eq(schema.landingPageImages.landingPageId, sourceId));
-    const deletedBefore = r2DeletedKeys.length;
+    const deletedBefore = deletedKeys.length;
     const del = await app.request(`/api/landing-pages/${sourceId}/images/${sourceImages[0].id}`, { method: "DELETE" });
     expect(del.status).toBe(200);
 
     // R2 object NOT removed (the duplicate's row still references it)
-    expect(r2DeletedKeys.length).toBe(deletedBefore);
+    expect(deletedKeys.length).toBe(deletedBefore);
     const dupImages = await db.select().from(schema.landingPageImages)
       .where(eq(schema.landingPageImages.landingPageId, dup.data.id));
     expect(dupImages.map((i) => i.r2Key)).toEqual([sharedKey]);
@@ -512,7 +503,7 @@ describe("duplicate + shared R2-object guard", () => {
     // Now delete the duplicate's image too — the last reference goes, R2 removed
     const del2 = await app.request(`/api/landing-pages/${dup.data.id}/images/${dupImages[0].id}`, { method: "DELETE" });
     expect(del2.status).toBe(200);
-    expect(r2DeletedKeys[r2DeletedKeys.length - 1]).toBe(sharedKey);
+    expect(deletedKeys).toContain(sharedKey);
   });
 
   it("duplicate of a missing LP is a 404", async () => {

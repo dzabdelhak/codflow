@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { Loader2, UploadCloud, X } from "lucide-react";
-import { ACCEPTED_IMAGE_TYPES, MAX_UPLOAD_MB, partitionUploadFiles } from "@/features/uploads/api";
+import { ACCEPTED_IMAGE_TYPES, MAX_UPLOAD_MB, partitionUploadFiles, uploadFailureKey } from "@/features/uploads/api";
 import { useImageUpload } from "@/features/uploads/useImageUpload";
 import { useT } from "@/i18n/react";
 import { notify } from "@/lib/notify";
@@ -26,8 +26,8 @@ export function CategoryImageUploader({ value, onChange, disabled }: { value?: s
       const { url } = await upload(accepted[0]);
       onChange(url);
       notify.success(common("feedback.uploaded"));
-    } catch {
-      notify.error(common("feedback.upload_failed"));
+    } catch (cause) {
+      notify.error(common(uploadFailureKey(cause)));
     }
   }
 

@@ -9,6 +9,7 @@ import { serve } from "@hono/node-server";
 import app from "@/app";
 import { createDatabase } from "@/db/scope";
 import type { Env } from "@/types";
+import { s3ImageStore } from "@/platform/image-store";
 
 function required(name: string): string {
   const value = process.env[name];
@@ -20,10 +21,18 @@ function required(name: string): string {
 }
 
 const database = createDatabase(required("DATABASE_URL"));
+const imageStore = s3ImageStore({
+  endpoint: required("S3_ENDPOINT"),
+  bucket: process.env.S3_BUCKET ?? "codflow-images",
+  accessKeyId: required("S3_ACCESS_KEY_ID"),
+  secretAccessKey: required("S3_SECRET_ACCESS_KEY"),
+  region: process.env.S3_REGION,
+});
 
 const env = {
   ...process.env,
   DATABASE: database,
+  IMAGE_STORE: imageStore,
   ENVIRONMENT: process.env.ENVIRONMENT ?? "development",
 } as unknown as Env;
 
@@ -38,13 +47,21 @@ const executionCtx = {
 };
 
 const port = Number(process.env.PORT ?? 8787);
-const server = serve({ fetch: (request) => app.fetch(request, env, executionCtx as never), port }, () =>
-  console.log(`cod-server listening on :${port}`),
-);
 
-for (const signal of ["SIGINT", "SIGTERM"] as const) {
-  process.on(signal, () => {
-    server.close();
-    void database.close().finally(() => process.exit(0));
-  });
-}
+imageStore.ensureBucket().then(
+  () => {
+    const server = serve({ fetch: (request) => app.fetch(request, env, executionCtx as never), port }, () =>
+      console.log(`cod-server listening on :${port}`),
+    );
+    for (const signal of ["SIGINT", "SIGTERM"] as const) {
+      process.on(signal, () => {
+        server.close();
+        void database.close().finally(() => process.exit(0));
+      });
+    }
+  },
+  (err) => {
+    console.error("Image storage is unreachable", err);
+    process.exit(1);
+  },
+);

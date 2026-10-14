@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowDown, ArrowUp, ExternalLink, Monitor, Pencil, RefreshCw, Smartphone } from "lucide-react";
 import { Alert, Badge, Button, Card, Field, IconButton, Input, Select, Textarea, useConfirmDialog } from "@/components/ui";
 import { ColorField } from "@/features/settings/components/SettingsSection";
+import { ImageField } from "./ImageField";
 import { useLocale, useT } from "@/i18n/react";
 import { ApiError } from "@/lib/api";
 import { notify } from "@/lib/notify";
@@ -252,11 +253,10 @@ export function DesignEditor() {
           <Card title={t("brand_title")}>
             <div className="space-y-4 p-4">
               <Field label={t("logo_label")} hint={t("logo_hint")}>
-                <Input
-                  dir="ltr"
+                <ImageField
                   value={design.brand.logoUrl ?? ""}
                   placeholder={t("image_placeholder")}
-                  onChange={(event) => setDesign(setBrand(design, { logoUrl: event.currentTarget.value || null }))}
+                  onChange={(logoUrl) => setDesign(setBrand(design, { logoUrl: logoUrl || null }))}
                 />
               </Field>
               <ColorField label={t("primary_label")} hint={t("primary_hint")} value={design.brand.primaryColor} onChange={(primaryColor) => setDesign(setBrand(design, { primaryColor }))} />
@@ -351,11 +351,17 @@ export function DesignEditor() {
                                 placeholder={t("default_placeholder")}
                                 onChange={(event) => setDesign(setSettingText(design, section.id, setting.key, locale, event.currentTarget.value))}
                               />
+                            ) : setting.kind === "image" ? (
+                              <ImageField
+                                value={settingLink(section, setting.key)}
+                                placeholder={t("image_placeholder")}
+                                onChange={(url) => setDesign(setSettingLink(design, section.id, setting.key, url))}
+                              />
                             ) : (
                               <Input
                                 dir="ltr"
                                 value={settingLink(section, setting.key)}
-                                placeholder={setting.kind === "image" ? t("image_placeholder") : t("link_placeholder")}
+                                placeholder={t("link_placeholder")}
                                 onChange={(event) => setDesign(setSettingLink(design, section.id, setting.key, event.currentTarget.value))}
                               />
                             )}

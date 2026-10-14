@@ -4,15 +4,14 @@
  * A product hidden from the storefront catalog (showInStore=false) is a
  * landing-page-only product: its published LP renders and sells as normal,
  * while the catalog list and the product's own store page stay hidden.
- * Proven end-to-end on real D1 through the real store router.
+ * Proven end-to-end on real PostgreSQL through the real store router.
  */
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { createTestDb, type TestDb } from "@/test-utils/pg";
-import { readFileSync, readdirSync } from "node:fs";
-import { resolve } from "node:path";
 import { eq } from "drizzle-orm";
 import { OpenAPIHono } from "@hono/zod-openapi";
 import type { AppContext } from "@/types";
+import { createPool, type Database } from "@/db/scope";
 import { errorHandler } from "@/middleware/error";
 import { openApiValidationHook } from "@/openapi/validation-hook";
 import { storeAuthMiddleware } from "@/middleware/storeAuth";
@@ -21,102 +20,84 @@ import * as schema from "@/db/schema";
 import type { AppDb } from "@/db";
 import { first } from "../../../../cod-shared/db/client";
 
+let harness: TestDb;
 let db: AppDb;
-let rawD1: D1Database;
+let database: Database;
 let app: OpenAPIHono<AppContext>;
-const STORE_KEY = "store-key-hidden-test";
+const KEY = "storefront-key-lp-test";
+const HOST = "lp-test.codflow.test";
 
 beforeAll(async () => {
-  const harness = await createTestDb();
-  db = harness.db;
+  harness = await createTestDb();
+  await harness.createStore("lp-store", [HOST]);
+  db = await harness.connect("lp-store");
+  const appPool = createPool(harness.url, "codflow_app", 30);
+  const platform = createPool(harness.url, "codflow_platform");
+  database = { app: appPool, platform, close: async () => void (await Promise.all([appPool.end(), platform.end()])) };
 
   app = new OpenAPIHono<AppContext>({ defaultHook: openApiValidationHook });
-  app.use("*", async (c, next) => {
-    c.env = {} as never;
-    c.set("db", db);
-    await next();
-  });
   app.use("/store/*", storeAuthMiddleware);
   app.onError(errorHandler);
   app.route("/store", storeRouter);
-
-  registry.push(harness);
 }, 120_000);
 
-const registry: TestDb[] = [];
 afterAll(async () => {
-  for (const mf of registry) await mf.dispose();
+  await database?.close();
+  await harness?.dispose();
 });
 
 const NOW = () => new Date().toISOString();
 let seq = 0;
 
-const STORE_HEADERS = { "X-Store-API-Key": STORE_KEY };
+const env = () => ({ DATABASE: database, STOREFRONT_SERVICE_KEY: KEY }) as never;
+const STORE_HEADERS = { "X-Storefront-Key": KEY, "X-Channel-Host": HOST };
 
-async function getAndSettle(path: string): Promise<Response> {
+function settleCtx() {
   const pending: Promise<unknown>[] = [];
   const executionCtx = {
     waitUntil: (p: Promise<unknown>) => pending.push(p),
     passThroughOnException: () => {},
     props: {} as Record<string, unknown>,
   };
-  const res = await app.request(path, { headers: STORE_HEADERS }, undefined, executionCtx);
+  return { pending, executionCtx: executionCtx as never };
+}
+
+async function getAndSettle(path: string): Promise<Response> {
+  const { pending, executionCtx } = settleCtx();
+  const res = await app.request(path, { headers: STORE_HEADERS }, env(), executionCtx);
   await Promise.allSettled(pending);
   return res;
 }
 
 async function postAndSettle(path: string, body: unknown): Promise<Response> {
-  const pending: Promise<unknown>[] = [];
-  const executionCtx = {
-    waitUntil: (p: Promise<unknown>) => pending.push(p),
-    passThroughOnException: () => {},
-    props: {} as Record<string, unknown>,
-  };
+  const { pending, executionCtx } = settleCtx();
   const res = await app.request(
     path,
-    {
-      method: "POST",
-      headers: { ...STORE_HEADERS, "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    },
-    undefined,
+    { method: "POST", headers: { ...STORE_HEADERS, "Content-Type": "application/json" }, body: JSON.stringify(body) },
+    env(),
     executionCtx,
   );
   await Promise.allSettled(pending);
   return res;
 }
 
-async function sha256hex(text: string): Promise<string> {
-  const data = new TextEncoder().encode(text);
-  const hash = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(hash))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
-
 async function seedStore(): Promise<string> {
-  await harness.setStore({
-    id: "test-store", name: "Hidden Product Store", lang: "ar", currency: "DZD",
-    currencySymbol: "دج", createdAt: NOW(), updatedAt: NOW(),
-  });
-  await db.insert(schema.storeApiKeys).values({
-    id: "sak-hidden-1", storeId: "test-store",
-    keyHash: await sha256hex(STORE_KEY), name: "test",
-    createdAt: NOW(),
-  });
-  return "test-store";
+  return "lp-store";
 }
 
-async function seedProduct(opts: { showInStore: boolean }): Promise<{ id: string; handle: string }> {
-  const id = `prod-hid-${++seq}`;
-  const handle = `hid-product-${seq}`;
+async function seedProduct(opts: { showInStore: boolean } = { showInStore: true }): Promise<{ id: string; handle: string }> {
+  const id = `prod-lp-${++seq}`;
+  const handle = `lp-product-${seq}`;
   await db.insert(schema.products).values({
-    id, name: `HID Product ${seq}`, handle, price: 5000,
-    sku: `HID-SKU-${seq}`,
+    id, name: `LP Product ${seq}`, handle, price: 5000,
+    sku: `LP-SKU-${seq}`,
     hasVariants: false, inventory: 10, trackInventory: true, lowStockThreshold: 2,
-    status: "ACTIVE", visibility: true, showInStore: opts.showInStore,
+    status: "ACTIVE", visibility: true,
     createdAt: NOW(), updatedAt: NOW(),
   });
+  if (!opts.showInStore) {
+    await db.update(schema.channelProducts).set({ published: false }).where(eq(schema.channelProducts.productId, id));
+  }
   return { id, handle };
 }
 
@@ -147,7 +128,7 @@ describe("store-hidden products (showInStore=false) — landing pages keep selli
     const body: any = await res.json();
 
     expect(body.data.product).toMatchObject({
-      id, handle, price: 5000, inventory: 10, showInStore: false,
+      id, handle, price: 5000, inventory: 10,
     });
     expect(Array.isArray(body.data.product.offers)).toBe(true);
   });
@@ -184,7 +165,7 @@ describe("store-hidden products (showInStore=false) — landing pages keep selli
       address: "x",
       deliveryType: "home",
       productId: id,
-      productName: `HID Product ${seq}`,
+      productName: `LP Product ${seq}`,
       quantity: 2,
       pricePerUnit: 5000,
       landingPageSlug: "hidden-order",

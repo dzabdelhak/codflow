@@ -1,7 +1,7 @@
 /**
  * Orphaned-image sweep — the decision half (pure, no I/O).
  *
- * Rich descriptions add a second way for an R2 object to be referenced: inline
+ * Rich descriptions add a second way for a stored image to be referenced: inline
  * `<img src>` inside stored HTML. Gallery rows can be deleted while the same
  * object is still displayed by a description, so "not in `product_images`" is
  * NOT sufficient evidence of an orphan. This module answers only "which of the
@@ -27,6 +27,12 @@ export const MANAGED_IMAGE_PREFIX = "products/";
  */
 const KEY_IN_TEXT_RE = /products\/[A-Za-z0-9][A-Za-z0-9._-]*/g;
 
+/** A resized variant (`<key>~<size>`) lives and dies with the image it was made from. */
+export function baseImageKey(key: string): string {
+  const variant = key.indexOf("~");
+  return variant === -1 ? key : key.slice(0, variant);
+}
+
 export function isManagedImageKey(key: string): boolean {
   return key.startsWith(MANAGED_IMAGE_PREFIX) && key.length > MANAGED_IMAGE_PREFIX.length;
 }
@@ -44,7 +50,7 @@ export function imageKeysInText(
 
 export interface OrphanCandidate {
   key: string;
-  /** R2's upload time. `null` (unknown) must never make an object sweepable. */
+  /** The upload time. `null` (unknown) must never make an object sweepable. */
   uploaded: Date | null;
   /** Carried through for the report; the decision never reads it. */
   size?: number;
@@ -70,7 +76,7 @@ function isSweepable<T extends OrphanCandidate>(
 ): candidate is T & { uploaded: Date } {
   return (
     isManagedImageKey(candidate.key) &&
-    !referenced.has(candidate.key) &&
+    !referenced.has(baseImageKey(candidate.key)) &&
     candidate.uploaded !== null &&
     candidate.uploaded.getTime() < cutoff.getTime()
   );

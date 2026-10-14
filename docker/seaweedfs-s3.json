@@ -1,0 +1,9 @@
+{
+  "identities": [
+    {
+      "name": "codflow",
+      "credentials": [{ "accessKey": "codflow-local", "secretKey": "codflow-local-secret" }],
+      "actions": ["Admin", "Read", "List", "Tagging", "Write"]
+    }
+  ]
+}

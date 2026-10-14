@@ -63,8 +63,9 @@ tests for cod-server, cod-client-astro, and the legacy cod-client).
   calls the API outside a request has no channel.
 - The page cache (`memoryCache`) keys on origin + path, so each hostname has
   its own entries; `src/theme/cache-contracts.test.ts` holds that.
-- `MEDIA_DOMAIN` is optional; unset, the image optimizer passes URLs through
-  unchanged.
+- `MEDIA_URL` (cod-server's public `/images` base) is optional; unset, the
+  image service (`src/core/media-image-service.ts`) and the optimizer pass
+  URLs through unchanged.
 - **astro-icon uses an explicit allowlist** (`icon({ include: { heroicons: […] } })`
   in `astro.config.mjs`). An icon used in markup but missing from it throws
   *at request time* — `astro check`, the validators and the component tests all

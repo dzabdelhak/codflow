@@ -1,8 +1,8 @@
 /**
  * Unified Cloud resource values — single source of truth for CodFlow scripts.
  *
- * Reads <repo-root>/.env (gitignored) for the D1 database name, R2 bucket and
- * worker URLs. Every workspace imports this helper instead of hardcoding
+ * Reads <repo-root>/.env (gitignored) for the D1 database name and worker
+ * URLs. Every workspace imports this helper instead of hardcoding
  * resource values. Precedence: process.env > .env > default.
  *
  * Template keys live in <repo-root>/.env.example.
@@ -16,9 +16,7 @@ const ROOT = fileURLToPath(new URL("../../", import.meta.url));
 const DEFAULTS = {
   COD_ACCOUNT_ID: "",
   COD_DB_NAME: "codflow-os-db",
-  COD_R2_BUCKET_NAME: "codflow-images",
   COD_SERVER_URL: "http://localhost:8787",
-  COD_MEDIA_DOMAIN: "media.example.com",
 };
 
 function parseEnv(text) {
@@ -56,8 +54,6 @@ export function getCloudEnv() {
   return {
     accountId: merged.COD_ACCOUNT_ID,
     dbName: merged.COD_DB_NAME,
-    bucketName: merged.COD_R2_BUCKET_NAME,
     serverUrl: merged.COD_SERVER_URL,
-    mediaDomain: merged.COD_MEDIA_DOMAIN,
   };
 }

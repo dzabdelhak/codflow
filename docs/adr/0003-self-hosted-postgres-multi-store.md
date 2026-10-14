@@ -22,6 +22,10 @@ CodFlow's code. External SaaS is allowed for non-sensitive parts.
 | Domains + TLS | Cloudflare | Caddy with on-demand TLS: certificates issued automatically for each merchant domain and our subdomains |
 | Packaging | wrangler deploys | Docker images + versioned config, reproducible install (Aventy guide §8) |
 
+Images (ticket 10): MinIO stopped publishing Docker images in 2025, so the
+stack runs SeaweedFS behind the same S3 API; resizing is `sharp` in
+cod-server (see `cod-server/src/endpoints/images/README.md`).
+
 Aventy guide rule 8 (several servers from day one): app servers are
 stateless; the outbound order queue reserves each order with a row lock
 (`SELECT … FOR UPDATE SKIP LOCKED`); the one-minute heartbeat is a single

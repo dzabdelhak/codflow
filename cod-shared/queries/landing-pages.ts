@@ -463,6 +463,10 @@ export async function getLandingPageImages(db: AppDb, landingPageId: string) {
     .orderBy(landingPageImages.position);
 }
 
+export async function findLandingPageImage(db: AppDb, imageId: string) {
+  return db.select().from(landingPageImages).where(eq(landingPageImages.id, imageId)).then(first);
+}
+
 export async function getLandingPageImage(
   db: AppDb,
   landingPageId: string,

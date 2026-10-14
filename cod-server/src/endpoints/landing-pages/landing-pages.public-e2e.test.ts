@@ -1,5 +1,5 @@
 /**
- * Landing Pages — Slice 4: public store endpoint on real D1.
+ * Landing Pages — Slice 4: public store endpoint on real PostgreSQL.
  *
  * The real store router + real error handler + real store-auth middleware
  * against real migrations. Covers the public contract: published resolves
@@ -8,11 +8,10 @@
  */
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { createTestDb, type TestDb } from "@/test-utils/pg";
-import { readFileSync, readdirSync } from "node:fs";
-import { resolve } from "node:path";
 import { eq } from "drizzle-orm";
 import { OpenAPIHono } from "@hono/zod-openapi";
 import type { AppContext } from "@/types";
+import { createPool, type Database } from "@/db/scope";
 import { errorHandler } from "@/middleware/error";
 import { openApiValidationHook } from "@/openapi/validation-hook";
 import { storeAuthMiddleware } from "@/middleware/storeAuth";
@@ -21,85 +20,84 @@ import * as schema from "@/db/schema";
 import type { AppDb } from "@/db";
 import { first } from "../../../../cod-shared/db/client";
 
+let harness: TestDb;
 let db: AppDb;
-let rawD1: D1Database;
+let database: Database;
 let app: OpenAPIHono<AppContext>;
-const STORE_KEY = "store-key-lp-test";
+const KEY = "storefront-key-lp-test";
+const HOST = "lp-test.codflow.test";
 
 beforeAll(async () => {
-  const harness = await createTestDb();
-  db = harness.db;
+  harness = await createTestDb();
+  await harness.createStore("lp-store", [HOST]);
+  db = await harness.connect("lp-store");
+  const appPool = createPool(harness.url, "codflow_app", 30);
+  const platform = createPool(harness.url, "codflow_platform");
+  database = { app: appPool, platform, close: async () => void (await Promise.all([appPool.end(), platform.end()])) };
 
   app = new OpenAPIHono<AppContext>({ defaultHook: openApiValidationHook });
-  app.use("*", async (c, next) => {
-    c.env = {} as never;
-    c.set("db", db);
-    await next();
-  });
   app.use("/store/*", storeAuthMiddleware);
   app.onError(errorHandler);
   app.route("/store", storeRouter);
-
-  registry.push(harness);
 }, 120_000);
 
-const registry: TestDb[] = [];
 afterAll(async () => {
-  for (const mf of registry) await mf.dispose();
+  await database?.close();
+  await harness?.dispose();
 });
 
 const NOW = () => new Date().toISOString();
 let seq = 0;
 
-const STORE_HEADERS = { "X-Store-API-Key": STORE_KEY };
+const env = () => ({ DATABASE: database, STOREFRONT_SERVICE_KEY: KEY }) as never;
+const STORE_HEADERS = { "X-Storefront-Key": KEY, "X-Channel-Host": HOST };
 
-/**
- * GET with an executionCtx stub so the handler's waitUntil (deferred view
- * increments) works under app.request — then settle the deferred writes
- * before returning. Pattern from store/otp-gate.test.ts.
- */
-async function getAndSettle(path: string): Promise<Response> {
+function settleCtx() {
   const pending: Promise<unknown>[] = [];
   const executionCtx = {
     waitUntil: (p: Promise<unknown>) => pending.push(p),
     passThroughOnException: () => {},
     props: {} as Record<string, unknown>,
   };
-  const res = await app.request(path, { headers: STORE_HEADERS }, undefined, executionCtx);
+  return { pending, executionCtx: executionCtx as never };
+}
+
+async function getAndSettle(path: string): Promise<Response> {
+  const { pending, executionCtx } = settleCtx();
+  const res = await app.request(path, { headers: STORE_HEADERS }, env(), executionCtx);
   await Promise.allSettled(pending);
   return res;
 }
 
-async function sha256hex(text: string): Promise<string> {
-  const data = new TextEncoder().encode(text);
-  const hash = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(hash))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
+async function postAndSettle(path: string, body: unknown): Promise<Response> {
+  const { pending, executionCtx } = settleCtx();
+  const res = await app.request(
+    path,
+    { method: "POST", headers: { ...STORE_HEADERS, "Content-Type": "application/json" }, body: JSON.stringify(body) },
+    env(),
+    executionCtx,
+  );
+  await Promise.allSettled(pending);
+  return res;
 }
 
 async function seedStore(): Promise<string> {
-  await harness.setStore({
-    id: "test-store", name: "LP Test Store", lang: "ar", currency: "DZD",
-    currencySymbol: "دج", createdAt: NOW(), updatedAt: NOW(),
-  });
-  await db.insert(schema.storeApiKeys).values({
-    id: "sak-lp-1", storeId: "test-store",
-    keyHash: await sha256hex(STORE_KEY), name: "test",
-    createdAt: NOW(),
-  });
-  return "test-store";
+  return "lp-store";
 }
 
-async function seedProduct(): Promise<{ id: string; handle: string }> {
-  const id = `prod-lps-${++seq}`;
-  const handle = `lps-product-${seq}`;
+async function seedProduct(opts: { showInStore: boolean } = { showInStore: true }): Promise<{ id: string; handle: string }> {
+  const id = `prod-lp-${++seq}`;
+  const handle = `lp-product-${seq}`;
   await db.insert(schema.products).values({
-    id, name: `LPS Product ${seq}`, handle, price: 5000,
+    id, name: `LP Product ${seq}`, handle, price: 5000,
+    sku: `LP-SKU-${seq}`,
     hasVariants: false, inventory: 10, trackInventory: true, lowStockThreshold: 2,
     status: "ACTIVE", visibility: true,
     createdAt: NOW(), updatedAt: NOW(),
   });
+  if (!opts.showInStore) {
+    await db.update(schema.channelProducts).set({ published: false }).where(eq(schema.channelProducts.productId, id));
+  }
   return { id, handle };
 }
 
@@ -118,7 +116,7 @@ async function seedPublishedLp(slug: string, productId: string) {
   }
 }
 
-describe("Slice 4 — public GET /store/landing-pages/{slug} (real D1 + store auth)", () => {
+describe("Slice 4 — public GET /store/landing-pages/{slug} (real PostgreSQL + store auth)", () => {
   beforeAll(async () => {
     await seedStore();
   });
@@ -186,7 +184,7 @@ describe("Slice 4 — public GET /store/landing-pages/{slug} (real D1 + store au
   });
 
   it("missing store key is rejected before anything renders", async () => {
-    const res = await app.request("/store/landing-pages/live-page");
+    const res = await app.request("/store/landing-pages/live-page", {}, env());
     expect(res.status).toBe(401);
   });
 });

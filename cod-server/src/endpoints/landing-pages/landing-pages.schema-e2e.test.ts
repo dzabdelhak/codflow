@@ -1,5 +1,5 @@
 /**
- * Landing Pages — Slice 1: schema round-trip on real D1.
+ * Landing Pages — Slice 1: schema round-trip on real PostgreSQL.
  *
  * Proves migration 0019 matches the drizzle schema 1:1 and that the FK
  * contracts hold: image cascade on LP delete, orders blocking LP delete,
@@ -7,13 +7,12 @@
  */
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { createTestDb, type TestDb } from "@/test-utils/pg";
-import { readFileSync, readdirSync } from "node:fs";
-import { resolve } from "node:path";
 import { eq } from "drizzle-orm";
 import * as schema from "@/db/schema";
 import type { AppDb } from "@/db";
 import { landingPages, landingPageImages } from "@/db/schema";
 import { first } from "../../../../cod-shared/db/client";
+import { deleteLandingPageWithGuard } from "./queries";
 
 let db: AppDb;
 let rawD1: D1Database;
@@ -40,7 +39,7 @@ async function seedProduct(id: string) {
   });
 }
 
-describe("Slice 1 — landing pages schema on real D1", () => {
+describe("Slice 1 — landing pages schema on real PostgreSQL", () => {
   it("creates a landing page with defaults and round-trips through drizzle", async () => {
     await seedProduct("prod-lp-s1");
     await db.insert(landingPages).values({
@@ -98,7 +97,7 @@ describe("Slice 1 — landing pages schema on real D1", () => {
     ).toHaveLength(0);
   });
 
-  it("orders.landingPageId is nullable and FK-enforced (attribution shape)", async () => {
+  it("orders.landingPageId is nullable, and a page with attributed orders cannot be deleted", async () => {
     await seedProduct("prod-lp-s3");
     await db.insert(landingPages).values({
       id: "lp-3", slug: "lp-s3slug", name: "Attribution LP", productId: "prod-lp-s3",
@@ -121,11 +120,8 @@ describe("Slice 1 — landing pages schema on real D1", () => {
       .where(eq(schema.orders.id, "ord-lp-s3")).then(first);
     expect(order?.landingPageId).toBe("lp-3");
 
-    // Attributed history blocks LP delete (the app layer refuses; the FK
-    // guarantees referential integrity even if something bypasses it).
-    await expect(
-      db.delete(landingPages).where(eq(landingPages.id, "lp-3")),
-    ).rejects.toThrow();
+    await expect(deleteLandingPageWithGuard(db, "lp-3")).rejects.toMatchObject({ code: "LANDING_PAGE_HAS_ORDERS" });
+    expect(await db.select().from(landingPages).where(eq(landingPages.id, "lp-3")).then(first)).toBeDefined();
   });
 
   it("unattributed order (NULL landingPageId) is the default best-effort shape", async () => {

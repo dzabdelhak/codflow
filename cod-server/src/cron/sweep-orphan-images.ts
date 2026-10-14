@@ -8,13 +8,10 @@ import {
 import { collectReferencedImageKeys } from "../../../cod-shared/queries/image-references";
 import type { Env } from "@/types";
 
-/** R2 accepts at most 1000 keys per delete call. */
-const DELETE_BATCH = 1000;
-
 export interface OrphanImage {
   key: string;
   size: number;
-  /** ISO timestamp of the R2 upload. */
+  /** ISO timestamp of the upload. */
   uploaded: string;
 }
 
@@ -41,7 +38,7 @@ export interface OrphanSweepOptions {
 }
 
 /**
- * Compares the objects in R2's `products/` namespace against every key stored
+ * Compares the objects in storage's `products/` namespace against every key stored
  * data still references, and deletes the difference beyond a grace period.
  *
  * Defaults to a dry run: the report is the product of this job, and enabling
@@ -51,21 +48,17 @@ export async function sweepOrphanImages(
   env: Env,
   { olderThanDays = 30, dryRun = true, now = new Date() }: OrphanSweepOptions = {}
 ): Promise<OrphanSweepReport> {
-  const bucket = env.IMAGES;
+  const store = env.IMAGE_STORE;
 
   const candidates: OrphanCandidate[] = [];
   let cursor: string | undefined;
   do {
-    const page = await bucket.list({ prefix: MANAGED_IMAGE_PREFIX, cursor });
+    const page = await store.list(MANAGED_IMAGE_PREFIX, cursor);
     for (const object of page.objects) {
       if (!isManagedImageKey(object.key)) continue;
-      candidates.push({
-        key: object.key,
-        uploaded: object.uploaded ?? null,
-        size: object.size ?? 0,
-      });
+      candidates.push({ key: object.key, uploaded: object.uploaded, size: object.size });
     }
-    cursor = page.truncated ? page.cursor : undefined;
+    cursor = page.cursor;
   } while (cursor);
 
   const referenced = await collectReferencedImageKeys(getDb(env.DATABASE.platform));
@@ -79,11 +72,8 @@ export async function sweepOrphanImages(
 
   let deleted = 0;
   if (!dryRun && orphans.length > 0) {
-    for (let i = 0; i < orphans.length; i += DELETE_BATCH) {
-      const batch = orphans.slice(i, i + DELETE_BATCH).map((orphan) => orphan.key);
-      await bucket.delete(batch);
-      deleted += batch.length;
-    }
+    await store.delete(orphans.map((orphan) => orphan.key));
+    deleted = orphans.length;
   }
 
   return {

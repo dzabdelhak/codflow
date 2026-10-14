@@ -1,97 +1,47 @@
 # Images
 
-Product and category images are stored in Cloudflare R2. The dashboard uploads
-directly to R2 via presigned URLs (browser → R2, never through the Worker).
-The storefront serves images through the R2 custom domain with Cloudflare Image
-Resizing.
+Product, category, landing-page and branding images are stored in
+S3-compatible storage we host (MinIO in docker-compose), behind cod-server.
+Nothing talks to the bucket but the API.
 
 ## How it works
 
-1. Dashboard calls `POST /api/images/presign` with a MIME type.
-2. Worker generates a signed R2 PUT URL (10-minute expiry) and returns
-   `{ presignedUrl, key, publicUrl }`.
-3. Browser PUTs the file directly to R2 using the presigned URL.
-4. Dashboard calls `POST /api/products/:id/images` with `{ key, src: publicUrl }`
-   to create the database record.
-5. Storefront reads `src` from the database and serves it through
-   `https://<MEDIA_DOMAIN>/...` — Cloudflare Image Resizing rewrites the URL to
-   `/cdn-cgi/image/<params>/<key>` automatically.
+1. The dashboard posts the file to `POST /api/images/upload` (multipart `file`,
+   optional `folder`: `products`, `landing`, `branding`).
+2. cod-server checks the real type from the bytes (JPEG, PNG, WebP or GIF) and
+   the size (10 MB), converts it with sharp to WebP (at most 2400 px on its
+   longest side), stores it under `<folder>/<32 hex>.webp` and returns
+   `{ key, url, width, height }`.
+3. The dashboard saves the record (e.g. `POST /api/products/:id/images` with
+   `{ key, src: url, width, height }`).
+4. `GET /images/<key>` serves the stored image. With `?w=&h=&fit=` it serves a
+   WebP resized once (sizes rounded up to a multiple of 40, at most 2000) and
+   kept beside the original as `<key>~<w>x<h>-<fit>`.
+
+Deleting an image removes the object and its variants. Code lives in
+`src/platform/image-store.ts` (S3/MinIO, and an in-memory store for tests) and
+`src/platform/image-pipeline.ts` (checks, conversion, variants).
+
+## Configuration (cod-server)
+
+| Variable | Meaning |
+|---|---|
+| `S3_ENDPOINT` | MinIO/S3 endpoint, e.g. `http://minio:9000` |
+| `S3_BUCKET` | Bucket (default `codflow-images`; created at start-up if missing) |
+| `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | Credentials |
+| `S3_REGION` | Optional (default `us-east-1`) |
+| `IMAGES_PUBLIC_URL` | Public base of `/images`, e.g. `https://api.example.com/images` (default: the request's origin) |
+
+The storefront's `MEDIA_URL` is the same public base: theme01 asks for resized
+versions of images under it (`src/core/utils/image-optimizer.ts`).
 
 ## Endpoints
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| `POST` | `/api/images/upload` | `products:manage` | Multipart upload through the Worker (≤ 10 MB) |
-| `POST` | `/api/images/presign` | `products:manage` | Generate presigned URL for direct browser → R2 upload |
-| `GET` | `/images/:key` | none | Serve image from R2 (fallback — prefer the R2 custom domain) |
+| `POST` | `/api/images/upload` | `products:manage` | Upload, check and store as WebP (≤ 10 MB) |
+| `GET` | `/images/:key` | none | Serve an image or a resized variant |
 
-The serve route (`GET /images/:key`) uses plain Hono (not OpenAPIHono) because
-the `:key{.+}` regex param is required for keys containing slashes
-(`products/abc.jpg`). A legacy OpenAPI documentation stub exists in
+The serve route uses plain Hono (not OpenAPIHono) because the `:key{.+}` regex
+param is required for keys containing slashes; it is documented through
 `openapi.ts`.
-
-## Required secrets (cod-server)
-
-Set these via `wrangler secret put` — never in `wrangler.toml`:
-
-| Secret | Where to get it |
-|--------|-----------------|
-| `CF_ACCOUNT_ID` | Cloudflare dashboard → top-right account menu |
-| `R2_ACCESS_KEY_ID` | R2 → Manage R2 API Tokens → Create API Token (Object Read & Write) |
-| `R2_SECRET_ACCESS_KEY` | Same token creation — shown once |
-
-`MEDIA_DOMAIN` and `R2_BUCKET_NAME` are non-secret and live in `wrangler.toml [vars]`.
-
-## Required secret (cod-astro/theme01)
-
-| Secret | Value |
-|--------|-------|
-| `MEDIA_DOMAIN` | Your R2 custom domain hostname, e.g. `media.yourdomain.com` |
-
-Set via `wrangler secret put MEDIA_DOMAIN --name <theme01-worker-name>` then
-redeploy the storefront.
-
-## R2 bucket setup
-
-Two one-time steps before image uploads work from a browser:
-
-### 1. Add a custom domain to the R2 bucket
-
-Cloudflare dashboard → R2 → your bucket → Settings → Custom Domains →
-Connect Domain. Enter your media domain (e.g. `media.yourdomain.com`).
-Cloudflare adds the DNS record automatically.
-
-### 2. Set the CORS policy on the bucket
-
-Cloudflare dashboard → R2 → your bucket → Settings → CORS Policy →
-Add CORS policy. Paste this JSON (replace the origin with your dashboard domain):
-
-```json
-[
-  {
-    "AllowedOrigins": [
-      "https://app.yourdomain.com",
-      "http://localhost:3000"
-    ],
-    "AllowedMethods": ["PUT", "GET", "HEAD"],
-    "AllowedHeaders": ["Content-Type", "Content-Length"],
-    "ExposeHeaders": ["ETag"],
-    "MaxAgeSeconds": 3600
-  }
-]
-```
-
-Without this, browser presigned PUT requests are blocked by CORS and image
-uploads fail silently.
-
-## Files
-
-```
-images/
-├── routes.ts     — upload + presign routers; plain-Hono serve router
-├── handlers.ts   — uploadImage, serveImage, listProductImages, saveProductImage,
-│                   reorderProductImages, deleteProductImage
-├── presign.ts    — presigned URL generation via @aws-sdk/client-s3 S3Client
-├── openapi.ts    — legacy OpenAPI stub for the serve route
-└── *.test.ts     — unit + integration tests
-```

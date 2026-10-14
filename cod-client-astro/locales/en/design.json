@@ -3,7 +3,7 @@
   "page_subtitle": "Logo, colours, font and the sections of this channel's page. Changes stay in a draft until you publish them.",
   "brand_title": "Brand",
   "logo_label": "Logo address",
-  "logo_hint": "An https address of the image.",
+  "logo_hint": "An https address of the image, or upload one.",
   "primary_label": "Main colour",
   "primary_hint": "Buttons, prices and highlights.",
   "accent_label": "Secondary colour",
@@ -142,5 +142,8 @@
   "restore_title": "Restoring replaces your unsaved changes?",
   "restore_body": "Version {n} replaces the draft, and your unsaved changes are lost.",
   "font_current": "Current font",
-  "restore_confirm": "Restore"
+  "restore_confirm": "Restore",
+  "upload": "Upload",
+  "uploading": "Uploading…",
+  "upload_failed": "The image could not be uploaded. Try again."
 }

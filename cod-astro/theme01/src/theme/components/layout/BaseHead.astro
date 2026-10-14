@@ -25,7 +25,7 @@ interface Props {
 
 const { title, description, ogImage, noindex, config, primary, fontHref, font, bg, accent, preloadImages } = Astro.props;
 
-import { MEDIA_DOMAIN } from "astro:env/server";
+import { mediaOrigin } from "@/core/utils/image-optimizer";
 ---
 
 <head>
@@ -65,8 +65,8 @@ import { MEDIA_DOMAIN } from "astro:env/server";
   <link href={fontHref} rel="stylesheet" media="print" onload="this.media='all'" />
   <noscript><link href={fontHref} rel="stylesheet" /></noscript>
 
-  <!-- R2 media domain — early connection for product images -->
-  {MEDIA_DOMAIN && <link rel="preconnect" href={`https://${MEDIA_DOMAIN}`} />}
+  <!-- Image service — early connection for product images -->
+  {mediaOrigin() && <link rel="preconnect" href={mediaOrigin()!} />}
 
   <!-- LCP image preload — starts the first stack images' fetches from the
        head (fetchpriority on the img alone waits for the parser to reach it).

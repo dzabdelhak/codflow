@@ -3,7 +3,7 @@
   "page_subtitle": "Logo, couleurs, police et sections de la page de ce canal. Les modifications restent en brouillon jusqu’à la publication.",
   "brand_title": "Marque",
   "logo_label": "Adresse du logo",
-  "logo_hint": "Une adresse https de l’image.",
+  "logo_hint": "Une adresse https de l’image, ou téléversez-en une.",
   "primary_label": "Couleur principale",
   "primary_hint": "Boutons, prix et mises en avant.",
   "accent_label": "Couleur secondaire",
@@ -142,5 +142,8 @@
   "restore_title": "Restaurer et perdre vos modifications ?",
   "restore_body": "La version {n} remplace le brouillon, et vos modifications non enregistrées sont perdues.",
   "font_current": "Police actuelle",
-  "restore_confirm": "Restaurer"
+  "restore_confirm": "Restaurer",
+  "upload": "Téléverser",
+  "uploading": "Téléversement…",
+  "upload_failed": "L’image n’a pas pu être téléversée. Réessayez."
 }

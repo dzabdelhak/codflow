@@ -1,4 +1,4 @@
-import { defineConfig, envField, memoryCache, passthroughImageService } from "astro/config";
+import { defineConfig, envField, memoryCache } from "astro/config";
 import tailwindcss from "@tailwindcss/vite";
 import compress from "@playform/compress";
 import icon from "astro-icon";
@@ -45,9 +45,9 @@ export default defineConfig({
         access: "secret",
         optional: true,
       }),
-      // Optional media/CDN domain serving R2 images (e.g. media.yourdomain.com).
-      // Unset → the image optimizer passes original URLs through unchanged.
-      MEDIA_DOMAIN: envField.string({
+      // Public base of cod-server's image service (e.g. https://api.example.com/images).
+      // Images under it are served resized; unset → URLs pass through unchanged.
+      MEDIA_URL: envField.string({
         context: "server",
         access: "secret",
         optional: true,
@@ -56,8 +56,7 @@ export default defineConfig({
   },
   prefetch: true,
   image: {
-    service: passthroughImageService(),
-    remotePatterns: [{ protocol: "https" }],
+    service: { entrypoint: "./src/core/media-image-service.ts" },
   },
   build: {
     // Inline ALL stylesheets to eliminate render-blocking CSS

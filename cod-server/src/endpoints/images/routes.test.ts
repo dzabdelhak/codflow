@@ -1,223 +1,121 @@
 /**
- * Route-level integration tests for the Images routers.
- * Upload/presign run through the OpenAPIHono router; serve stays plain Hono.
+ * The image routers on the in-memory store: uploads are checked from their
+ * bytes and stored as WebP; serving returns the stored image or a resized
+ * variant, rendered once and kept.
  */
-
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { OpenAPIHono } from "@hono/zod-openapi";
 import { Hono } from "hono";
+import sharp from "sharp";
 import type { AppContext } from "@/types";
 import { errorHandler } from "@/middleware/error";
 import { openApiValidationHook } from "@/openapi/validation-hook";
-import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
+import { memoryImageStore } from "@/platform/image-store";
+import { MAX_UPLOAD_BYTES } from "@/platform/image-pipeline";
 import { uploadRouter, serveRouter } from "./routes";
 
-vi.mock("@aws-sdk/client-s3", () => ({
-  S3Client: class {
-    constructor(_config?: unknown) {}
-  },
-  PutObjectCommand: vi.fn(),
-}));
-vi.mock("@aws-sdk/s3-request-presigner", () => ({
-  getSignedUrl: vi.fn(async () => "https://signed.example.com/upload"),
-}));
+let store: ReturnType<typeof memoryImageStore>;
+let pending: Promise<unknown>[];
 
-function makeFile(name: string, type: string, size = 10) {
-  return new File([new Uint8Array(size)], name, { type });
+function apps() {
+  const env = { IMAGE_STORE: store, IMAGES_PUBLIC_URL: "https://api.example.com/images" };
+  const executionCtx = { waitUntil: (p: Promise<unknown>) => pending.push(p), passThroughOnException() {}, props: {} };
+  const api = new OpenAPIHono<AppContext>({ defaultHook: openApiValidationHook });
+  api.onError(errorHandler);
+  api.use("*", async (c, next) => {
+    c.set("user", { id: "u1", role: "admin", scopes: ["products:manage"] } as never);
+    await next();
+  });
+  api.route("/api/images", uploadRouter);
+  const pub = new Hono<AppContext>();
+  pub.onError(errorHandler);
+  pub.route("/images", serveRouter);
+  return {
+    upload: (form: FormData) => api.request("/api/images/upload", { method: "POST", body: form }, env),
+    serve: (path: string) => pub.request(path, {}, env, executionCtx as never),
+  };
 }
 
-describe("Images routes", () => {
-  let app: OpenAPIHono<AppContext>;
-  let mockBucket: { put: ReturnType<typeof vi.fn>; get: ReturnType<typeof vi.fn> };
-  let testEnv: Record<string, unknown>;
+async function png(width: number, height: number): Promise<Uint8Array> {
+  return new Uint8Array(await sharp({ create: { width, height, channels: 3, background: "#c82a5a" } }).png().toBuffer());
+}
 
-  beforeEach(() => {
-    app = new OpenAPIHono<AppContext>({ defaultHook: openApiValidationHook });
-    mockBucket = {
-      put: vi.fn(async () => undefined),
-      get: vi.fn(async () => null),
-    };
-    testEnv = {
-      DB: {},
-      IMAGES: mockBucket,
-      CF_ACCOUNT_ID: "acct",
-      R2_ACCESS_KEY_ID: "key",
-      R2_SECRET_ACCESS_KEY: "secret",
-      R2_BUCKET_NAME: "bucket",
-      MEDIA_DOMAIN: "cdn.example.com",
-    };
-    app.use("*", async (c, next) => {
-      c.env = testEnv as any;
-      c.set("user", {
-        id: "admin_user_001",
-        email: "admin@example.com",
-        name: "Admin User",
-        role: "admin",
-        status: "active",
-        apiKey: "cod_admin_key",
-      } as any);
-      await next();
-    });
-    app.onError(errorHandler);
-    app.route("/api/images", uploadRouter);
-    app.route("/images", serveRouter as unknown as Hono<AppContext>);
-    vi.clearAllMocks();
+function form(bytes: Uint8Array, name: string, type: string, folder?: string) {
+  const data = new FormData();
+  data.append("file", new File([bytes], name, { type }));
+  if (folder) data.append("folder", folder);
+  return data;
+}
+
+beforeEach(() => {
+  store = memoryImageStore();
+  pending = [];
+});
+
+describe("POST /api/images/upload", () => {
+  it("stores a real image as WebP in its folder and returns its key, address and size", async () => {
+    const res = await apps().upload(form(await png(1200, 800), "shoe.png", "image/png", "landing"));
+    expect(res.status).toBe(201);
+    const { data } = (await res.json()) as { data: { key: string; url: string; width: number; height: number } };
+    expect(data.key).toMatch(/^landing\/[a-f0-9]{32}\.webp$/);
+    expect(data).toMatchObject({ url: `https://api.example.com/images/${data.key}`, width: 1200, height: 800 });
+    expect(store.objects.get(data.key)?.contentType).toBe("image/webp");
   });
 
-  describe("POST /api/images/upload", () => {
-    it("uploads a valid image and returns key + url with 201", async () => {
-      const form = new FormData();
-      form.append("file", makeFile("product.jpg", "image/jpeg"));
-
-      const res = await app.request("/api/images/upload", {
-        method: "POST",
-        body: form,
-      });
-
-      expect(res.status).toBe(201);
-      const body: any = await res.json();
-      expect(body.data.key).toMatch(/^products\/[a-f0-9]+\.jpg$/);
-      expect(body.data.url).toContain("/images/products/");
-      expect(mockBucket.put).toHaveBeenCalledTimes(1);
-    });
-
-    it("returns 400 INVALID_FILE_TYPE for a disallowed file type", async () => {
-      const form = new FormData();
-      form.append("file", makeFile("doc.pdf", "application/pdf"));
-
-      const res = await app.request("/api/images/upload", {
-        method: "POST",
-        body: form,
-      });
-
-      expect(res.status).toBe(400);
-      const body: any = await res.json();
-      expect(body.code).toBe(ERROR_CODES.INVALID_FILE_TYPE);
-    });
-
-    it("returns 400 FILE_TOO_LARGE above 10 MB", async () => {
-      const form = new FormData();
-      form.append(
-        "file",
-        makeFile("big.png", "image/png", 11 * 1024 * 1024)
-      );
-
-      const res = await app.request("/api/images/upload", {
-        method: "POST",
-        body: form,
-      });
-
-      expect(res.status).toBe(400);
-      const body: any = await res.json();
-      expect(body.code).toBe(ERROR_CODES.FILE_TOO_LARGE);
-    });
+  it("refuses a file that is not an image even when it claims to be one", async () => {
+    const res = await apps().upload(form(new TextEncoder().encode("<html>not an image</html>"), "evil.png", "image/png"));
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({ code: "INVALID_FILE_TYPE", error: "This file is not a JPEG, PNG, WebP or GIF image" });
+    expect(store.objects.size).toBe(0);
   });
 
-  describe("POST /api/images/presign", () => {
-    it("returns presigned URL data with 200", async () => {
-      const res = await app.request("/api/images/presign", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contentType: "image/webp" }),
-      });
-
-      expect(res.status).toBe(200);
-      const body: any = await res.json();
-      expect(body.data.presignedUrl).toContain("https://signed");
-      expect(body.data.key).toMatch(/^products\/[a-f0-9]+\.webp$/);
-      expect(body.data.publicUrl).toBe(`https://cdn.example.com/${body.data.key}`);
-    });
-
-    it("returns 400 INVALID_FILE_TYPE for unsupported content types", async () => {
-      const res = await app.request("/api/images/presign", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contentType: "application/pdf" }),
-      });
-
-      expect(res.status).toBe(400);
-      const body: any = await res.json();
-      expect(body.code).toBe(ERROR_CODES.INVALID_FILE_TYPE);
-    });
-
-    it("folder=landing lands the key in the landing/ namespace", async () => {
-      const res = await app.request("/api/images/presign", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contentType: "image/jpeg", folder: "landing" }),
-      });
-
-      expect(res.status).toBe(200);
-      const body: any = await res.json();
-      expect(body.data.key).toMatch(/^landing\/[a-f0-9]+\.jpg$/);
-      expect(body.data.publicUrl).toBe(`https://cdn.example.com/${body.data.key}`);
-    });
-
-    it("rejects arbitrary folder values — clients cannot control key prefixes", async () => {
-      const res = await app.request("/api/images/presign", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contentType: "image/jpeg", folder: "../../etc" }),
-      });
-
-      // Rejected at the route's zod enum (VALIDATION_FAILED); the handler's
-      // allowlist check remains as defense-in-depth for non-route callers.
-      expect(res.status).toBe(400);
-      const body: any = await res.json();
-      expect(["VALIDATION_FAILED", "INVALID_FILE_TYPE"]).toContain(body.code);
-    });
-
-    it("returns 500 when R2 credentials are not configured", async () => {
-      delete testEnv.CF_ACCOUNT_ID;
-
-      const res = await app.request("/api/images/presign", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contentType: "image/jpeg" }),
-      });
-
-      expect(res.status).toBe(500);
-      const body: any = await res.json();
-      expect(body.context.missingCredentials).toContain("CF_ACCOUNT_ID");
-    });
+  it("refuses an oversized file with a clear message", async () => {
+    const res = await apps().upload(form(new Uint8Array(MAX_UPLOAD_BYTES + 1), "big.png", "image/png"));
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({ code: "FILE_TOO_LARGE", error: "File too large. Max 10 MB" });
   });
 
-  describe("GET /images/{key} (public serving)", () => {
-    function r2Object(body: string) {
-      return {
-        body: new Response(body).body,
-        httpEtag: '"etag-1"',
-        writeHttpMetadata: (headers: Headers) => headers.set("Content-Type", "image/jpeg"),
-      };
-    }
+  it("refuses a request body far above the limit before reading it", async () => {
+    const res = await apps().upload(form(new Uint8Array(MAX_UPLOAD_BYTES * 2), "huge.png", "image/png"));
+    expect(res.status).toBe(413);
+    expect(await res.json()).toMatchObject({ code: "FILE_TOO_LARGE" });
+  });
 
-    it("serves an object with immutable cache headers", async () => {
-      mockBucket.get.mockResolvedValue(r2Object("binary"));
+  it("refuses an unknown folder and a missing file", async () => {
+    const folder = await apps().upload(form(await png(10, 10), "a.png", "image/png", "../secrets"));
+    const missing = await apps().upload(new FormData());
+    expect([folder.status, missing.status]).toEqual([400, 400]);
+  });
+});
 
-      const res = await app.request("/images/products/abc.jpg");
+describe("GET /images/{key}", () => {
+  async function uploaded(): Promise<string> {
+    const res = await apps().upload(form(await png(800, 600), "a.png", "image/png"));
+    return ((await res.json()) as { data: { key: string } }).data.key;
+  }
 
-      expect(res.status).toBe(200);
-      expect(res.headers.get("Content-Type")).toBe("image/jpeg");
-      expect(res.headers.get("Cache-Control")).toContain("immutable");
-      expect(mockBucket.get).toHaveBeenCalledWith("products/abc.jpg");
-    });
+  it("serves the stored image with immutable caching", async () => {
+    const key = await uploaded();
+    const res = await apps().serve(`/images/${key}`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe("image/webp");
+    expect(res.headers.get("cache-control")).toContain("immutable");
+  });
 
-    it("rejects path traversal keys with 400", async () => {
-      const res = await app.request("/images/%2e%2e%2fsecret.txt");
+  it("resizes on request, snapped to the grid, and keeps the variant for the next request", async () => {
+    const key = await uploaded();
+    const res = await apps().serve(`/images/${key}?w=300&h=300`);
+    expect(res.status).toBe(200);
+    expect(await sharp(new Uint8Array(await res.arrayBuffer())).metadata()).toMatchObject({ width: 320, height: 320 });
+    await Promise.all(pending);
+    expect(store.objects.has(`${key}~320x320-cover`)).toBe(true);
+  });
 
-      expect(res.status).toBe(400);
-      const body: any = await res.json();
-      expect(body.category).toBe("VALIDATION");
-    });
-
-    it("returns 404 when the object does not exist", async () => {
-      mockBucket.get.mockResolvedValue(null);
-
-      const res = await app.request("/images/products/missing.jpg");
-
-      expect(res.status).toBe(404);
-      const body: any = await res.json();
-      expect(body.code).toBe("IMAGE_NOT_FOUND");
-    });
+  it("answers 404 for an unknown or malformed key and 400 for an out-of-range size", async () => {
+    const key = await uploaded();
+    const unknown = await apps().serve(`/images/products/${"f".repeat(32)}.webp`);
+    const traversal = await apps().serve("/images/products/..%2F..%2Fetc%2Fpasswd");
+    const outOfRange = await apps().serve(`/images/${key}?w=50000`);
+    expect([unknown.status, traversal.status, outOfRange.status]).toEqual([404, 404, 400]);
   });
 });

@@ -11,9 +11,8 @@
  *
  * And the Slice-3 upload contract:
  *   • uploadLandingPageImage: XOR of imageUrl/imageBase64, magic-byte sniff,
- *     8 MB cap, data-URI tolerance, existence guard, workflow enqueue shapes
- *   • getLandingPageImageUploadStatus: full InstanceStatus mapping + the
- *     retention-expiry "unknown" path
+ *     10 MB cap, data-URI tolerance, existence guard, stored as WebP
+ *   • getLandingPageImageUploadStatus: complete or unknown
  *
  * The queries module and the cod-shared URL helpers are mocked — these tests
  * cover the tool layer's own logic, not D1 behavior (that lives in the e2e
@@ -38,6 +37,8 @@ const landingQueries = vi.hoisted(() => ({
   deleteLandingPageImage: vi.fn(),
   countOtherLandingPageImageReferences: vi.fn(),
   reorderLandingPageImagesChecked: vi.fn(),
+  addLandingPageImage: vi.fn(),
+  findLandingPageImage: vi.fn(),
 }));
 
 vi.mock("./queries", () => landingQueries);
@@ -55,8 +56,8 @@ vi.mock("../../../../cod-shared/queries/channel-products", () => ({ ensureInChan
 import {
   getLandingPageTools,
   LANDING_PAGE_TOOL_OUTPUT_SCHEMAS,
-  mapUploadJobStatus,
 } from "./ai-tools";
+import { memoryImageStore } from "@/platform/image-store";
 
 const db = {} as never;
 const ENV = { STOREFRONT_URL: "https://fallback.example.com" };
@@ -327,460 +328,168 @@ const LANDING_PAGE = {
   stats: { views: 0, orders: 0, revenue: 0 },
 };
 
-interface WorkflowMock {
-  create: ReturnType<typeof vi.fn>;
-  get: ReturnType<typeof vi.fn>;
-}
-
-function makeUploadEnv(statusToReturn?: Record<string, unknown>, getThrows = false): {
-  env: Record<string, unknown>;
-  workflow: WorkflowMock;
-  put: ReturnType<typeof vi.fn>;
-} {
-  const workflow = {
-    create: vi.fn(async ({ id }: { id: string }) => ({ id })),
-    get: vi.fn(async () => {
-      if (getThrows) throw new Error("instance not found");
-      return { status: async () => statusToReturn ?? { status: "running" } };
-    }),
-  };
-  const put = vi.fn(async () => undefined);
+function makeUploadEnv() {
+  const store = memoryImageStore();
   const env = {
     STOREFRONT_URL: "https://fallback.example.com",
-    MEDIA_DOMAIN: "media.example.com",
-    IMAGES: { put },
-    LP_IMAGE_UPLOAD_WORKFLOW: workflow,
+    IMAGES_PUBLIC_URL: "https://api.example.com/images",
+    IMAGE_STORE: store,
   };
-  return { env, workflow, put };
+  return { env, store };
+}
+
+function stackFor(row: Record<string, unknown>) {
+  return [{ id: "img-9", landingPageId: UUID, position: 1, altText: null, ...row }];
+}
+
+function pngResponse(): Response {
+  return new Response(Buffer.from(PNG_1x1_BASE64, "base64"), { status: 200, headers: { "content-type": "image/png" } });
 }
 
 describe("uploadLandingPageImage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.unstubAllGlobals();
     landingQueries.getLandingPageById.mockResolvedValue(LANDING_PAGE);
+    landingQueries.addLandingPageImage.mockImplementation(async (_db: unknown, _id: string, image: Record<string, unknown>) =>
+      stackFor(image),
+    );
   });
 
-  it("enqueues a url upload and returns the polling contract", async () => {
-    const { env, workflow, put } = makeUploadEnv();
+  it("downloads a URL, stores it as WebP and adds it to the stack before returning", async () => {
+    const fetcher = vi.fn(async () => pngResponse());
+    vi.stubGlobal("fetch", fetcher);
+    const { env, store } = makeUploadEnv();
+
+    const res = await call(
+      "uploadLandingPageImage",
+      { landingPageId: UUID, imageUrl: "https://images.openai.example/gen.png", contentType: "image/png", altText: "Hero" },
+      env,
+    );
+
+    expect(res).toMatchObject({ success: true, status: "complete", uploadJobId: "img-9" });
+    const image = res.image as Record<string, unknown>;
+    expect(image.r2Key).toMatch(/^landing\/[a-f0-9]{32}\.webp$/);
+    expect(image.src).toBe(`https://api.example.com/images/${image.r2Key}`);
+    expect(store.objects.get(image.r2Key as string)?.contentType).toBe("image/webp");
+    expect(fetcher).toHaveBeenCalledWith("https://images.openai.example/gen.png", expect.anything());
+    expect(landingQueries.addLandingPageImage).toHaveBeenCalledWith(
+      db,
+      UUID,
+      expect.objectContaining({ altText: "Hero", width: 1, height: 1, source: "ai" }),
+    );
+  });
+
+  it("stores base64 bytes, tolerating a data-URI prefix and whitespace", async () => {
+    const { env, store } = makeUploadEnv();
+    const dataUri = `data:image/png;base64,\n${PNG_1x1_BASE64.slice(0, 20)}\n${PNG_1x1_BASE64.slice(20)}`;
+
+    const res = await call("uploadLandingPageImage", { landingPageId: UUID, imageBase64: dataUri, contentType: "image/png" }, env);
+
+    expect(res.success).toBe(true);
+    expect(store.objects.size).toBe(1);
+  });
+
+  it("uses the download_url of a chat client's file object", async () => {
+    const fetcher = vi.fn(async () => pngResponse());
+    vi.stubGlobal("fetch", fetcher);
+    const { env } = makeUploadEnv();
 
     const res = await call(
       "uploadLandingPageImage",
       {
         landingPageId: UUID,
-        imageUrl: "https://images.openai.example/gen.png",
+        image: { download_url: "https://files.oaiusercontent.example/abc", file_id: "file-1" },
         contentType: "image/png",
-        altText: "Hero",
       },
       env,
     );
 
     expect(res.success).toBe(true);
-    expect(res.status).toBe("processing");
-    expect(res.uploadJobId).toMatch(/^lpimg-[a-f0-9]{32}$/);
-    expect(res.r2Key).toMatch(/^landing\/[a-f0-9]{32}\.webp$/);
-    expect(res.src).toBe(`https://media.example.com/${res.r2Key}`);
-    expect(res.note).toContain("getLandingPageImageUploadStatus");
-
-    expect(put).not.toHaveBeenCalled();
-    expect(workflow.create).toHaveBeenCalledTimes(1);
-    const createArgs = workflow.create.mock.calls[0][0];
-    expect(createArgs.id).toBe(res.uploadJobId);
-    expect(createArgs.params).toMatchObject({
-      kind: "url",
-      landingPageId: UUID,
-      r2Key: res.r2Key,
-      contentType: "image/png",
-      imageUrl: "https://images.openai.example/gen.png",
-      altText: "Hero",
-      actor: { id: "user-1", name: "Ada", role: "staff" },
-    });
+    expect(fetcher).toHaveBeenCalledWith("https://files.oaiusercontent.example/abc", expect.anything());
   });
 
-  it("writes base64 bytes to R2 then enqueues a bytes verification job", async () => {
-    const { env, workflow, put } = makeUploadEnv();
+  it("requires exactly one image source", async () => {
+    const { env } = makeUploadEnv();
+    const both = await call(
+      "uploadLandingPageImage",
+      { landingPageId: UUID, imageUrl: "https://x/y.png", imageBase64: PNG_1x1_BASE64, contentType: "image/png" },
+      env,
+    );
+    const neither = await call("uploadLandingPageImage", { landingPageId: UUID, contentType: "image/png" }, env);
+    expect(both.error).toContain("exactly one");
+    expect(neither.error).toContain("exactly one");
+  });
 
-    const res = await call(
+  it("explains an unreachable or expired link", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("no", { status: 403 })));
+    const { env, store } = makeUploadEnv();
+    const res = await call("uploadLandingPageImage", { landingPageId: UUID, imageUrl: "https://x/y.png", contentType: "image/png" }, env);
+    expect(res.success).toBe(false);
+    expect(res.error).toContain("not publicly fetchable");
+    expect(store.objects.size).toBe(0);
+  });
+
+  it("refuses bytes that do not match the declared type, invalid base64 and oversized payloads, storing nothing", async () => {
+    const { env, store } = makeUploadEnv();
+    const mismatch = await call("uploadLandingPageImage", { landingPageId: UUID, imageBase64: PNG_1x1_BASE64, contentType: "image/jpeg" }, env);
+    const invalid = await call("uploadLandingPageImage", { landingPageId: UUID, imageBase64: "%%%not-base64%%%", contentType: "image/png" }, env);
+    const big = Buffer.alloc(11 * 1024 * 1024).toString("base64");
+    const oversized = await call("uploadLandingPageImage", { landingPageId: UUID, imageBase64: big, contentType: "image/png" }, env);
+    expect(mismatch.error).toContain("Content mismatch");
+    expect(invalid.success).toBe(false);
+    expect(oversized.success).toBe(false);
+    expect(store.objects.size).toBe(0);
+    expect(landingQueries.addLandingPageImage).not.toHaveBeenCalled();
+  });
+
+  it("rejects non-http(s) URLs and disallowed content types", async () => {
+    const { env } = makeUploadEnv();
+    const ftp = await call("uploadLandingPageImage", { landingPageId: UUID, imageUrl: "ftp://x/y.png", contentType: "image/png" }, env);
+    const svg = await call("uploadLandingPageImage", { landingPageId: UUID, imageBase64: PNG_1x1_BASE64, contentType: "image/svg+xml" }, env);
+    expect([ftp.success, svg.success]).toEqual([false, false]);
+  });
+
+  it("refuses a nonexistent landing page, a missing store and a missing session", async () => {
+    const { env } = makeUploadEnv();
+    landingQueries.getLandingPageById.mockResolvedValueOnce(null);
+    const missingPage = await call("uploadLandingPageImage", { landingPageId: UUID, imageBase64: PNG_1x1_BASE64, contentType: "image/png" }, env);
+    const noStore = await call(
+      "uploadLandingPageImage",
+      { landingPageId: UUID, imageBase64: PNG_1x1_BASE64, contentType: "image/png" },
+      { STOREFRONT_URL: "https://fallback.example.com" },
+    );
+    const noSession = await call(
       "uploadLandingPageImage",
       { landingPageId: UUID, imageBase64: PNG_1x1_BASE64, contentType: "image/png" },
       env,
-    );
-
-    expect(res.success).toBe(true);
-    expect(put).toHaveBeenCalledWith(
-      res.r2Key,
-      expect.any(Uint8Array),
-      {
-        httpMetadata: {
-          contentType: "image/png",
-          cacheControl: "public, max-age=31536000, immutable",
-        },
-        customMetadata: { source: "ai", uploadedAt: expect.any(String) },
-      },
-    );
-    const createArgs = workflow.create.mock.calls[0][0];
-    expect(createArgs.params).toMatchObject({ kind: "bytes", r2Key: res.r2Key });
-    expect(createArgs.params.imageUrl).toBeUndefined();
-  });
-
-  it("tolerates a data-URI prefix and whitespace in imageBase64", async () => {
-    const { env, put } = makeUploadEnv();
-    const dataUri = `data:image/png;base64,\n${PNG_1x1_BASE64.slice(0, 20)}\n${PNG_1x1_BASE64.slice(20)}`;
-
-    const res = await call(
-      "uploadLandingPageImage",
-      { landingPageId: UUID, imageBase64: dataUri, contentType: "image/png" },
-      env,
-    );
-
-    expect(res.success).toBe(true);
-    expect(put).toHaveBeenCalled();
-  });
-
-  it("rejects providing both imageUrl and imageBase64", async () => {
-    const { env, workflow } = makeUploadEnv();
-    const res = await call(
-      "uploadLandingPageImage",
-      {
-        landingPageId: UUID,
-        imageUrl: "https://x/y.png",
-        imageBase64: PNG_1x1_BASE64,
-        contentType: "image/png",
-      },
-      env,
-    );
-
-    expect(res.success).toBe(false);
-    expect(res.error).toContain("exactly one");
-    expect(workflow.create).not.toHaveBeenCalled();
-  });
-
-  it("rejects providing neither image, imageUrl, nor imageBase64", async () => {
-    const { env } = makeUploadEnv();
-    const res = await call(
-      "uploadLandingPageImage",
-      { landingPageId: UUID, contentType: "image/png" },
-      env,
-    );
-
-    expect(res.success).toBe(false);
-    expect(res.error).toContain("exactly one");
-  });
-
-  describe("image file object (openai/fileParams — ChatGPT path)", () => {
-    it("enqueues a url upload using the client-provided download_url", async () => {
-      const { env, workflow, put } = makeUploadEnv();
-
-      const res = await call(
-        "uploadLandingPageImage",
-        {
-          landingPageId: UUID,
-          image: {
-            download_url: "https://files.oaiusercontent.example/file_abc123?sig=xyz",
-            file_id: "file_abc123",
-            mime_type: "image/png",
-            file_name: "generated.png",
-          },
-          contentType: "image/png",
-        },
-        env,
-      );
-
-      expect(res.success).toBe(true);
-      expect(res.uploadJobId).toMatch(/^lpimg-[a-f0-9]{32}$/);
-      expect(put).not.toHaveBeenCalled();
-      const createArgs = workflow.create.mock.calls[0][0];
-      expect(createArgs.params).toMatchObject({
-        kind: "url",
-        landingPageId: UUID,
-        r2Key: res.r2Key,
-        contentType: "image/png",
-        imageUrl: "https://files.oaiusercontent.example/file_abc123?sig=xyz",
-      });
-    });
-
-    it("rejects combining the image file object with imageUrl", async () => {
-      const { env, workflow } = makeUploadEnv();
-      const res = await call(
-        "uploadLandingPageImage",
-        {
-          landingPageId: UUID,
-          image: { download_url: "https://x/y.png", file_id: "f1" },
-          imageUrl: "https://x/y.png",
-          contentType: "image/png",
-        },
-        env,
-      );
-
-      expect(res.success).toBe(false);
-      expect(res.error).toContain("exactly one");
-      expect(workflow.create).not.toHaveBeenCalled();
-    });
-
-    it("rejects combining the image file object with imageBase64", async () => {
-      const { env, workflow } = makeUploadEnv();
-      const res = await call(
-        "uploadLandingPageImage",
-        {
-          landingPageId: UUID,
-          image: { download_url: "https://x/y.png", file_id: "f1" },
-          imageBase64: PNG_1x1_BASE64,
-          contentType: "image/png",
-        },
-        env,
-      );
-
-      expect(res.success).toBe(false);
-      expect(res.error).toContain("exactly one");
-      expect(workflow.create).not.toHaveBeenCalled();
-    });
-
-    it("rejects a file object missing download_url (schema contract)", async () => {
-      const { env, workflow } = makeUploadEnv();
-      const res = await call(
-        "uploadLandingPageImage",
-        {
-          landingPageId: UUID,
-          image: { file_id: "f1" },
-          contentType: "image/png",
-        },
-        env,
-      );
-
-      expect(res.success).toBe(false);
-      expect(res.error).toContain("download_url");
-      expect(workflow.create).not.toHaveBeenCalled();
-    });
-
-    it("rejects a non-http download_url with an actionable error", async () => {
-      const { env, workflow } = makeUploadEnv();
-      const res = await call(
-        "uploadLandingPageImage",
-        {
-          landingPageId: UUID,
-          image: { download_url: "ftp://x/y.png", file_id: "f1" },
-          contentType: "image/png",
-        },
-        env,
-      );
-
-      expect(res.success).toBe(false);
-      expect(res.error).toContain("http(s)");
-      expect(workflow.create).not.toHaveBeenCalled();
-    });
-  });
-
-  it("rejects non-http(s) imageUrl", async () => {
-    const { env, workflow } = makeUploadEnv();
-    const res = await call(
-      "uploadLandingPageImage",
-      { landingPageId: UUID, imageUrl: "ftp://x/y.png", contentType: "image/png" },
-      env,
-    );
-
-    expect(res.success).toBe(false);
-    expect(res.error).toContain("http(s)");
-    expect(workflow.create).not.toHaveBeenCalled();
-  });
-
-  it("rejects a content mismatch before writing anything", async () => {
-    const { env, workflow, put } = makeUploadEnv();
-    const res = await call(
-      "uploadLandingPageImage",
-      { landingPageId: UUID, imageBase64: PNG_1x1_BASE64, contentType: "image/jpeg" },
-      env,
-    );
-
-    expect(res.success).toBe(false);
-    expect(res.error).toContain("Content mismatch");
-    expect(put).not.toHaveBeenCalled();
-    expect(workflow.create).not.toHaveBeenCalled();
-  });
-
-  it("rejects invalid base64", async () => {
-    const { env, put } = makeUploadEnv();
-    const res = await call(
-      "uploadLandingPageImage",
-      { landingPageId: UUID, imageBase64: "!!!not-base64!!!", contentType: "image/png" },
-      env,
-    );
-
-    expect(res.success).toBe(false);
-    expect(res.error).toContain("valid base64");
-    expect(put).not.toHaveBeenCalled();
-  });
-
-  it("rejects an oversized decoded payload", async () => {
-    const { env, put, workflow } = makeUploadEnv();
-    const oversized = Buffer.alloc(8 * 1024 * 1024 + 128, 65).toString("base64");
-
-    const res = await call(
-      "uploadLandingPageImage",
-      { landingPageId: UUID, imageBase64: oversized, contentType: "image/png" },
-      env,
-    );
-
-    expect(res.success).toBe(false);
-    expect(res.error).toContain("8 MB cap");
-    expect(put).not.toHaveBeenCalled();
-    expect(workflow.create).not.toHaveBeenCalled();
-  });
-
-  it("rejects a disallowed contentType", async () => {
-    const { env } = makeUploadEnv();
-    const res = await call(
-      "uploadLandingPageImage",
-      { landingPageId: UUID, imageUrl: "https://x/y.svg", contentType: "image/svg+xml" },
-      env,
-    );
-
-    expect(res.success).toBe(false);
-    expect(res.error).toContain("contentType");
-  });
-
-  it("refuses to enqueue for a nonexistent landing page", async () => {
-    landingQueries.getLandingPageById.mockResolvedValue(null);
-    const { env, workflow } = makeUploadEnv();
-
-    const res = await call(
-      "uploadLandingPageImage",
-      { landingPageId: UUID, imageUrl: "https://x/y.png", contentType: "image/png" },
-      env,
-    );
-
-    expect(res.success).toBe(false);
-    expect(res.error).toContain("not found");
-    expect(workflow.create).not.toHaveBeenCalled();
-  });
-
-  it("fails gracefully when the workflow binding is missing", async () => {
-    const res = await call(
-      "uploadLandingPageImage",
-      { landingPageId: UUID, imageUrl: "https://x/y.png", contentType: "image/png" },
-      { STOREFRONT_URL: "https://fallback.example.com" },
-    );
-
-    expect(res.success).toBe(false);
-    expect(res.error).toContain("not provisioned");
-  });
-
-  it("fails closed when no session identity is attached", async () => {
-    const { env, workflow } = makeUploadEnv();
-
-    const res = await call(
-      "uploadLandingPageImage",
-      { landingPageId: UUID, imageUrl: "https://x/y.png", contentType: "image/png" },
-      env,
       null,
     );
-
-    expect(res.success).toBe(false);
-    expect(res.error).toContain("session identity");
-    expect(workflow.create).not.toHaveBeenCalled();
+    expect(missingPage.error).toContain("not found");
+    expect(noStore.error).toContain("not available");
+    expect(noSession.error).toContain("session");
   });
 });
 
 describe("getLandingPageImageUploadStatus", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+  beforeEach(() => vi.clearAllMocks());
+
+  it("reports an uploaded image as complete", async () => {
+    landingQueries.findLandingPageImage.mockResolvedValue({ id: "img-9", r2Key: R2_KEY, src: "https://x", position: 1, width: 1, height: 1, altText: null });
+    const res = await call("getLandingPageImageUploadStatus", { uploadJobId: "img-9-abc" });
+    expect(res).toMatchObject({ success: true, status: "complete", image: { imageId: "img-9" } });
   });
 
-  it("maps running states to 'processing'", async () => {
-    for (const state of ["queued", "running", "waiting", "waitingForPause"]) {
-      const { env } = makeUploadEnv({ status: state });
-      const res = await call(
-        "getLandingPageImageUploadStatus",
-        { uploadJobId: "lpimg-abc" },
-        env,
-      );
-      expect(res.status).toBe("processing");
-      expect(res.success).toBe(true);
-    }
-  });
-
-  it("returns the image record on 'complete'", async () => {
-    const { env } = makeUploadEnv({
-      status: "complete",
-      output: { imageId: "img-9", r2Key: "landing/x.png", position: 1 },
-    });
-
-    const res = await call("getLandingPageImageUploadStatus", { uploadJobId: "lpimg-abc" }, env);
-
-    expect(res.status).toBe("complete");
-    expect(res.image).toMatchObject({ imageId: "img-9" });
-    expect(res.advice).toContain("publishLandingPage");
-  });
-
-  it("surfaces the failure message on 'errored'", async () => {
-    const { env } = makeUploadEnv({
-      status: "errored",
-      error: { name: "NonRetryableError", message: "Image URL returned HTTP 404 — not publicly fetchable" },
-    });
-
-    const res = await call("getLandingPageImageUploadStatus", { uploadJobId: "lpimg-abc" }, env);
-
-    expect(res.status).toBe("failed");
-    expect(res.error).toContain("not publicly fetchable");
-  });
-
-  it("maps paused/terminated to 'stopped'", async () => {
-    for (const state of ["paused", "terminated"]) {
-      const { env } = makeUploadEnv({ status: state });
-      const res = await call("getLandingPageImageUploadStatus", { uploadJobId: "lpimg-abc" }, env);
-      expect(res.status).toBe("stopped");
-    }
-  });
-
-  it("reports 'unknown' with recovery advice when the instance is gone (retention expiry)", async () => {
-    const { env } = makeUploadEnv(undefined, true);
-
-    const res = await call("getLandingPageImageUploadStatus", { uploadJobId: "lpimg-old" }, env);
-
-    expect(res.success).toBe(true);
-    expect(res.status).toBe("unknown");
+  it("reports an unknown ID with recovery advice", async () => {
+    landingQueries.findLandingPageImage.mockResolvedValue(undefined);
+    const res = await call("getLandingPageImageUploadStatus", { uploadJobId: "lpimg-abc" });
+    expect(res).toMatchObject({ success: true, status: "unknown" });
     expect(res.advice).toContain("getLandingPageDetails");
   });
 
   it("rejects unknown fields", async () => {
-    const { env } = makeUploadEnv();
-    const res = await call(
-      "getLandingPageImageUploadStatus",
-      { uploadJobId: "lpimg-abc", verbose: true },
-      env,
-    );
-
+    const res = await call("getLandingPageImageUploadStatus", { uploadJobId: "lpimg-abc", verbose: true });
     expect(res.success).toBe(false);
-    expect(res.error).toContain("verbose");
-  });
-});
-
-describe("mapUploadJobStatus (pure)", () => {
-  it("maps every InstanceStatus literal to its view status", () => {
-    const views = [
-      "queued",
-      "running",
-      "waiting",
-      "waitingForPause",
-      "paused",
-      "terminated",
-      "errored",
-      "complete",
-      "unknown",
-    ].map((status) => mapUploadJobStatus({ status }).status);
-    expect(views).toEqual([
-      "processing",
-      "processing",
-      "processing",
-      "processing",
-      "stopped",
-      "stopped",
-      "failed",
-      "complete",
-      "unknown",
-    ]);
-  });
-
-  it("any unmapped status falls through to 'unknown'", () => {
-    expect(mapUploadJobStatus({ status: "something-new" }).status).toBe("unknown");
   });
 });
 
@@ -792,18 +501,15 @@ describe("removeLandingPageImage", () => {
     vi.clearAllMocks();
   });
 
-  it("deletes the R2 object on the last reference, then the row, and returns the stack", async () => {
+  it("deletes the stored object on the last reference, then the row, and returns the stack", async () => {
     landingQueries.getLandingPageImage.mockResolvedValue(imageRow);
     landingQueries.countOtherLandingPageImageReferences.mockResolvedValue(0);
     landingQueries.deleteLandingPageImage.mockResolvedValue(undefined);
     landingQueries.getLandingPageImages.mockResolvedValue([]);
 
-    const put = vi.fn();
-    const del = vi.fn(async () => undefined);
-    const env = {
-      STOREFRONT_URL: "https://fallback.example.com",
-      IMAGES: { put, delete: del },
-    };
+    const store = memoryImageStore();
+    const del = vi.spyOn(store, "delete");
+    const env = { STOREFRONT_URL: "https://fallback.example.com", IMAGE_STORE: store };
 
     const res = await call(
       "removeLandingPageImage",
@@ -814,21 +520,19 @@ describe("removeLandingPageImage", () => {
     expect(res.success).toBe(true);
     expect(res.images).toEqual([]);
     expect(res.count).toBe(0);
-    expect(del).toHaveBeenCalledWith(R2_KEY);
+    expect(del).toHaveBeenCalledWith([R2_KEY]);
     expect(landingQueries.deleteLandingPageImage).toHaveBeenCalledWith(db, UUID, IMG_UUID);
   });
 
-  it("keeps the shared R2 object when another page still references it", async () => {
+  it("keeps the shared stored object when another page still references it", async () => {
     landingQueries.getLandingPageImage.mockResolvedValue(imageRow);
     landingQueries.countOtherLandingPageImageReferences.mockResolvedValue(2);
     landingQueries.deleteLandingPageImage.mockResolvedValue(undefined);
     landingQueries.getLandingPageImages.mockResolvedValue([]);
 
-    const del = vi.fn();
-    const env = {
-      STOREFRONT_URL: "https://fallback.example.com",
-      IMAGES: { put: vi.fn(), delete: del },
-    };
+    const store = memoryImageStore();
+    const del = vi.spyOn(store, "delete");
+    const env = { STOREFRONT_URL: "https://fallback.example.com", IMAGE_STORE: store };
 
     const res = await call(
       "removeLandingPageImage",
@@ -841,17 +545,13 @@ describe("removeLandingPageImage", () => {
     expect(landingQueries.deleteLandingPageImage).toHaveBeenCalled();
   });
 
-  it("aborts before the DB delete when the R2 delete fails", async () => {
+  it("aborts before the DB delete when the storage delete fails", async () => {
     landingQueries.getLandingPageImage.mockResolvedValue(imageRow);
     landingQueries.countOtherLandingPageImageReferences.mockResolvedValue(0);
 
-    const del = vi.fn(async () => {
-      throw new Error("R2 is down");
-    });
-    const env = {
-      STOREFRONT_URL: "https://fallback.example.com",
-      IMAGES: { put: vi.fn(), delete: del },
-    };
+    const store = memoryImageStore();
+    vi.spyOn(store, "delete").mockRejectedValue(new Error("storage is down"));
+    const env = { STOREFRONT_URL: "https://fallback.example.com", IMAGE_STORE: store };
 
     const res = await call(
       "removeLandingPageImage",
@@ -869,7 +569,7 @@ describe("removeLandingPageImage", () => {
 
     const res = await call("removeLandingPageImage", { landingPageId: UUID, imageId: IMG_UUID }, {
       STOREFRONT_URL: "https://fallback.example.com",
-      IMAGES: { put: vi.fn(), delete: vi.fn() },
+      IMAGE_STORE: memoryImageStore(),
     });
 
     expect(res.success).toBe(false);
@@ -1077,35 +777,20 @@ describe("output schemas match what the tools actually return (structuredContent
   });
 
   it("uploadLandingPageImage + status results validate (the ChatGPT pipeline contract)", async () => {
+    landingQueries.getLandingPageById.mockResolvedValue(LANDING_PAGE);
+    landingQueries.addLandingPageImage.mockImplementation(async (_db: unknown, _id: string, image: Record<string, unknown>) => stackFor(image));
     const { env } = makeUploadEnv();
-    const upload = await call(
-      "uploadLandingPageImage",
-      { landingPageId: UUID, imageUrl: "https://x/y.png", contentType: "image/png" },
-      env,
-    );
+    const upload = await call("uploadLandingPageImage", { landingPageId: UUID, imageBase64: PNG_1x1_BASE64, contentType: "image/png" }, env);
+    expect(upload.success).toBe(true);
     expect(LANDING_PAGE_TOOL_OUTPUT_SCHEMAS["uploadLandingPageImage"]!.safeParse(upload).success).toBe(true);
 
-    const { env: envDone } = makeUploadEnv({
-      status: "complete",
-      output: {
-        imageId: "img-9",
-        r2Key: R2_KEY,
-        src: `https://media.example.com/${R2_KEY}`,
-        position: 1,
-        width: 1080,
-        height: 1350,
-        altText: null,
-      },
-    });
-    const done = await call("getLandingPageImageUploadStatus", { uploadJobId: "lpimg-abc" }, envDone);
+    landingQueries.findLandingPageImage.mockResolvedValue({ id: "img-9", r2Key: R2_KEY, src: "https://x", position: 1, width: 1080, height: 1350, altText: null });
+    const done = await call("getLandingPageImageUploadStatus", { uploadJobId: "img-9-abc" });
     expect(LANDING_PAGE_TOOL_OUTPUT_SCHEMAS["getLandingPageImageUploadStatus"]!.safeParse(done).success).toBe(true);
 
-    const { env: envFailed } = makeUploadEnv({
-      status: "errored",
-      error: { name: "NonRetryableError", message: "Image URL returned HTTP 404" },
-    });
-    const failed = await call("getLandingPageImageUploadStatus", { uploadJobId: "lpimg-abc" }, envFailed);
-    expect(LANDING_PAGE_TOOL_OUTPUT_SCHEMAS["getLandingPageImageUploadStatus"]!.safeParse(failed).success).toBe(true);
+    landingQueries.findLandingPageImage.mockResolvedValue(undefined);
+    const unknown = await call("getLandingPageImageUploadStatus", { uploadJobId: "lpimg-abc" });
+    expect(LANDING_PAGE_TOOL_OUTPUT_SCHEMAS["getLandingPageImageUploadStatus"]!.safeParse(unknown).success).toBe(true);
   });
 
   it("archiveLandingPage and reorderLandingPageImages results validate", async () => {

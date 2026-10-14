@@ -41,7 +41,7 @@ import {
   inactiveReason,
 } from "@/features/landing-pages/components/TrackingBadge";
 import { useConversionEventLabel } from "@/components/tracking/ConversionEventPicker";
-import { partitionUploadFiles, ACCEPTED_IMAGE_TYPES } from "@/features/uploads/api";
+import { partitionUploadFiles, ACCEPTED_IMAGE_TYPES, ImageUploadRejectedError, ImageUploadFailedError, uploadFailureKey } from "@/features/uploads/api";
 import { useImageUpload } from "@/features/uploads/useImageUpload";
 import type {
   LandingPage,
@@ -269,8 +269,12 @@ function Gated({ landingPageId }: { landingPageId: string }) {
         }
         notify.success(common("feedback.uploaded"));
       } catch (cause) {
-        setActionError(landingPageErrorMessage(cause, t));
-        notify.error(landingPageErrorMessage(cause, t));
+        const message =
+          cause instanceof ImageUploadRejectedError || cause instanceof ImageUploadFailedError
+            ? common(uploadFailureKey(cause))
+            : landingPageErrorMessage(cause, t);
+        setActionError(message);
+        notify.error(message);
       }
     },
     [canManage, landingPageId, common, t, upload],

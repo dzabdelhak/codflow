@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Loader2, UploadCloud, X } from "lucide-react";
 import { reorderProductImages } from "@/features/products/api";
-import { ACCEPTED_IMAGE_TYPES, MAX_UPLOAD_MB, partitionUploadFiles } from "@/features/uploads/api";
+import { ACCEPTED_IMAGE_TYPES, MAX_UPLOAD_MB, partitionUploadFiles, uploadFailureKey } from "@/features/uploads/api";
 import { useImageUpload } from "@/features/uploads/useImageUpload";
 import type { ProductImage } from "@/features/products/types";
 import { useT } from "@/i18n/react";
@@ -11,6 +11,8 @@ export interface PendingImage {
   clientId: string;
   key: string;
   url: string;
+  width: number | null;
+  height: number | null;
 }
 
 function swapAt<T>(arr: T[], i: number, j: number): T[] {
@@ -56,12 +58,12 @@ export function ProductImageUploader({ existingImages, pendingImages, productId,
     if (!accepted.length) return;
     try {
       for (const file of accepted) {
-        const { key, url } = await upload(file);
-        onPendingAdd({ clientId: crypto.randomUUID(), key, url });
+        const { key, url, width, height } = await upload(file);
+        onPendingAdd({ clientId: crypto.randomUUID(), key, url, width, height });
       }
       notify.success(common("feedback.uploaded"));
-    } catch {
-      notify.error(common("feedback.upload_failed"));
+    } catch (cause) {
+      notify.error(common(uploadFailureKey(cause)));
     }
   }
 

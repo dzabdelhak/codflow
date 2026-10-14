@@ -8,13 +8,13 @@
  * pixel while the Conversions API cannot mirror it — measurable damage, from a
  * merchant doing nothing but renaming their ad account.
  *
- * Real D1: this is a two-table feature with a cascade, and the mock db cannot
- * model either.
+ * Real PostgreSQL: this is a two-table feature with a cascade, and the mock db
+ * cannot model either.
  */
 /// <reference types="vitest/globals" />
 
 import { beforeAll, afterAll, describe, it, expect } from "vitest";
-import { createTestD1, type TestD1 } from "@/test-utils/d1";
+import { createTestDb, type TestDb } from "@/test-utils/pg";
 import * as schema from "@/db/schema";
 import { eq } from "drizzle-orm";
 import {
@@ -24,12 +24,12 @@ import {
 } from "./landing-page-tracking";
 import { duplicateLandingPage } from "./landing-pages";
 
-let harness: TestD1;
+let harness: TestDb;
 const NOW = () => new Date().toISOString();
 let seq = 0;
 
 beforeAll(async () => {
-  harness = await createTestD1();
+  harness = await createTestDb();
 }, 120_000);
 
 afterAll(async () => {
@@ -247,7 +247,6 @@ describe("the row's lifetime", () => {
       conversionEvent: "Purchase",
     });
 
-    await harness.raw.prepare("PRAGMA foreign_keys = ON");
     await harness.db.delete(schema.landingPages).where(eq(schema.landingPages.id, landingPageId));
 
     expect(await getLandingPageTracking(harness.db, landingPageId)).toBeUndefined();

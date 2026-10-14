@@ -3,8 +3,8 @@
 CodFlow is a cash-on-delivery (COD) e-commerce platform for Algeria. Monorepo,
 TypeScript. It is moving from Cloudflare to self-hosted Node.js + PostgreSQL
 (ADR-0003): the API, the storefront and the dashboard run on Node +
-PostgreSQL; images, MCP and background jobs still carry Cloudflare code until
-their tickets in `.scratch/orestor-platform/issues/` port them.
+PostgreSQL, images on S3-compatible storage; MCP and background jobs still
+carry Cloudflare code until their tickets in `.scratch/orestor-platform/issues/` port them.
 
 ## Layout
 
@@ -42,7 +42,7 @@ docker compose up -d db         # PostgreSQL on :5440 — needed by cod-server t
 cd cod-server && npm run typecheck
 cd cod-server && npm test
 cd cod-server && npm run db:setup   # migrate + demo channels + legal pages (DATABASE_URL)
-cd cod-server && npm run dev        # Node, :8787 (DATABASE_URL, STOREFRONT_SERVICE_KEY)
+cd cod-server && npm run dev        # Node, :8787 (DATABASE_URL, STOREFRONT_SERVICE_KEY, S3_* — see below)
 
 docker compose up --build       # whole stack: http://shop1.localhost:8090, http://shop2.localhost:8090
 ```
@@ -60,13 +60,12 @@ admin@example.com for the demo merchant).
 
 The PostgreSQL scripts (`db:migrate`, `db:seed:*`) read `DATABASE_URL` from
 the environment. The remaining Cloudflare scripts (dashboard admin seed and
-deploy, R2 CORS, carrier seeders) still read `<repo-root>/.env` through
+deploy, carrier seeders) still read `<repo-root>/.env` through
 `cod-server/scripts/cloud-env.mjs`. Precedence is
 **`process.env` > `.env` > built-in default**; the committed template is
 `<repo-root>/.env.example`.
 
-Keys: `COD_ACCOUNT_ID`, `COD_DB_NAME`, `COD_R2_BUCKET_NAME`,
-`COD_SERVER_URL`, `COD_MEDIA_DOMAIN`. Add a key to `DEFAULTS` in
+Keys: `COD_ACCOUNT_ID`, `COD_DB_NAME`, `COD_SERVER_URL`. Add a key to `DEFAULTS` in
 `cloud-env.mjs` and to `.env.example` together — a key in one and not the
 other is how these drift.
 
@@ -112,6 +111,13 @@ other is how these drift.
   workspace members. It keeps a single Vite major across astro/vitest;
   removing it reintroduces the dual-Vite boot crash
   (`Missing field 'moduleType'`). Keep it in sync when astro bumps Vite.
+- **Images live in S3-compatible storage behind the API** (SeaweedFS in
+  compose, `docker compose up -d objects`; `S3_ENDPOINT`, `S3_BUCKET`,
+  `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` are required by `src/node.ts`).
+  Every upload goes through `POST /api/images/upload` (`ingestImage`: type from
+  the bytes, 10 MB, stored as WebP); `/images/<key>?w=&h=&fit=` serves resized
+  variants kept as `<key>~…`. Tests use `memoryImageStore()`; there is no
+  presigned or direct-to-bucket path. See `cod-server/src/endpoints/images/README.md`.
 - **Every store-owned table is behind Row-Level Security.** Request code runs
   as the `codflow_app` role inside one transaction per request, pinned to its
   store with `set_config('app.store_id', …, true)` (`cod-server/src/db/scope.ts`).
@@ -144,8 +150,8 @@ other is how these drift.
   point the wizard and later Aventy call — `docs/CHANNEL-CREATION.md`) goes
   through the plan-policy seam (`cod-server/src/platform/plan-policy.ts`) —
   Aventy's plan check plugs in there — and is idempotent on `creationKey`
-  (`stores.creation_key`, unique per merchant). `/webhooks` and `/images` still serve the deployment's
-  only store until their tickets.
+  (`stores.creation_key`, unique per merchant). `/webhooks` still serves the deployment's
+  only store until its ticket.
 - **A landing channel sells one main product** (`stores.channel_type =
   'landing'`): its only `channel_products` row, kept single by the
   `channel_products_landing_single` trigger; it is replaced only through

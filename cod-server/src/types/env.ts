@@ -1,10 +1,11 @@
 /**
  * Server environment, built from process.env by the Node entry (src/node.ts).
  * Cloudflare bindings still listed here belong to code not yet ported
- * (images, MCP, workflows) and are absent at runtime.
+ * (MCP, workflows) and are absent at runtime.
  */
 import type { OAuthHelpers } from "@cloudflare/workers-oauth-provider";
 import type { Database } from "@/db/scope";
+import type { ImageStore } from "@/platform/image-store";
 
 export interface Env {
   /** PostgreSQL pools (app: RLS-confined, platform: cross-store). */
@@ -17,28 +18,14 @@ export interface Env {
   /** Free subdomains are `<subdomain>.<STORE_BASE_DOMAIN>` (default "localhost"). */
   STORE_BASE_DOMAIN?: string;
   STOREFRONT_INTERNAL_URL?: string;
-  /** R2 bucket for product images */
-  IMAGES: R2Bucket;
-  /**
-   * Cloudflare Images binding (write-time transcode to WebP for landing page
-   * uploads). Optional: when absent, uploads fall back to the original
-   * format — the optimization never blocks an upload.
-   */
-  IMAGE_TRANSFORM?: ImagesBinding;
+  /** Image storage (MinIO / S3-compatible), built by src/node.ts from the S3_* variables. */
+  IMAGE_STORE: ImageStore;
+  /** Public base of the image service, e.g. "https://api.example.com/images"; defaults to the request origin + "/images". */
+  IMAGES_PUBLIC_URL?: string;
   /** Deployment environment: "development" | "production" */
   ENVIRONMENT: string;
   /** Worker URL for API documentation (e.g., "http://localhost:8787" or "https://api.yourdomain.com") */
   WORKER_URL?: string;
-  /** Custom domain for serving R2 images publicly (e.g. "media.example.com") */
-  MEDIA_DOMAIN: string;
-  /** R2 bucket name — needed by the S3-compat presign API */
-  R2_BUCKET_NAME: string;
-  /** Cloudflare account ID — used to build R2 S3 endpoint URL */
-  CF_ACCOUNT_ID: string;
-  /** R2 API token key ID (secret — set via wrangler secret put) */
-  R2_ACCESS_KEY_ID: string;
-  /** R2 API token secret (secret — set via wrangler secret put) */
-  R2_SECRET_ACCESS_KEY: string;
   /** Comma-separated list of allowed CORS origins (e.g., "http://localhost:3000,https://app.example.com") */
   ALLOWED_ORIGINS?: string;
   /**
@@ -86,9 +73,4 @@ export interface Env {
    * Fires CAPI Purchase events at order delivery — decoupled from status handler.
    */
   CAPI_WORKFLOW: Workflow;
-  /**
-   * Cloudflare Workflow binding for CodLandingPageImageUploadWorkflow.
-   * Durable background upload of MCP-agent images into the landing page stack.
-   */
-  LP_IMAGE_UPLOAD_WORKFLOW: Workflow;
 }

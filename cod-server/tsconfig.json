@@ -36,15 +36,7 @@
   ],
   "exclude": [
     "node_modules",
-    "../cod-shared/queries/landing-page-tracking.test.ts",
-    "src/cron/sweep-orphan-images.test.ts",
     "src/endpoints/delivery-companies/webhook-events.e2e.test.ts",
-    "src/endpoints/images/images.test.ts",
-    "src/endpoints/landing-pages/landing-pages.api-e2e.test.ts",
-    "src/endpoints/landing-pages/landing-pages.attribution-e2e.test.ts",
-    "src/endpoints/landing-pages/landing-pages.hidden-product-e2e.test.ts",
-    "src/endpoints/landing-pages/landing-pages.public-e2e.test.ts",
-    "src/endpoints/landing-pages/landing-pages.schema-e2e.test.ts",
     "src/endpoints/mcp/handlers.test.ts",
     "src/endpoints/orders/dispatch-limits-e2e.test.ts",
     "src/endpoints/orders/orders.webhook-e2e.test.ts",
@@ -54,7 +46,6 @@
     "src/mcp/authorize.test.ts",
     "src/mcp/registry.test.ts",
     "src/mcp/server-factory.test.ts",
-    "src/workflows/capi-destination.test.ts",
-    "src/workflows/landing-page-image-upload.test.ts"
+    "src/workflows/capi-destination.test.ts"
   ]
 }

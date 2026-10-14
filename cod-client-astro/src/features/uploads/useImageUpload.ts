@@ -6,9 +6,9 @@ import {
 } from "./api";
 import type { ImageUploadFolder, ImageUploadRejection, UploadedImage } from "./api";
 
-/** null = idle; 0–100 while an upload pipeline is in flight. The transport
- *  (fetch PUT) cannot report upload bytes, so only the start of the pipeline
- *  is reported and the value returns to null when the pipeline settles. */
+/** null = idle; 0–100 while an upload is in flight. fetch cannot report
+ *  upload bytes, so only the start is reported and the value returns to null
+ *  when the upload settles. */
 type UploadProgress = number | null;
 
 interface ImageUploadError {

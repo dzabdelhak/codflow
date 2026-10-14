@@ -5,15 +5,17 @@ import * as queries from "./queries";
 import { createLandingPageSchema, updateLandingPageSchema } from "./validation";
 import { getDb } from "@/db";
 import type { Env } from "@/types/env";
-import { sniffImageType } from "@/lib/image-dimensions";
 import {
   BASE64_MAX_INPUT_LENGTH,
-  canonicalImageContentType,
   decodeBase64Image,
+  downloadImage,
   IMAGE_CONTENT_TYPES,
   MAX_IMAGE_BYTES,
-  mintLandingImageUploadIds,
+  storeLandingImage,
 } from "@/lib/landing-image-upload";
+import { deleteImage } from "@/platform/image-store";
+import { imagesBaseUrl } from "@/platform/image-urls";
+import { ACTIONS, logActivity } from "@/lib/activity";
 import { toolOutput } from "@/lib/tool-output-schema";
 import {
   buildLandingPagePublicUrl,
@@ -175,8 +177,8 @@ export const getLandingPageImageUploadStatusSchema = z.strictObject({
 export const LANDING_PAGE_TOOL_META: Record<string, Record<string, unknown>> = {
   uploadLandingPageImage: {
     "openai/fileParams": ["image"],
-    "openai/toolInvocation/invoking": "Starting background image upload…",
-    "openai/toolInvocation/invoked": "Upload job created — poll status until complete",
+    "openai/toolInvocation/invoking": "Uploading the image…",
+    "openai/toolInvocation/invoked": "Image added to the landing page",
   },
 };
 
@@ -269,10 +271,17 @@ export const LANDING_PAGE_TOOL_OUTPUT_SCHEMAS: Record<string, z.ZodType> = {
     message: z.string(),
   }),
   uploadLandingPageImage: toolOutput({
-    uploadJobId: z.string().describe("Poll getLandingPageImageUploadStatus with this ID until 'complete' or 'failed'"),
-    status: z.literal("processing").describe("The upload runs in the background"),
-    r2Key: z.string(),
-    src: z.string().describe("The public URL the image will be served from once stored"),
+    uploadJobId: z.string().describe("The new image's ID (also accepted by getLandingPageImageUploadStatus)"),
+    status: z.literal("complete").describe("The image is stored and in the stack"),
+    image: z.looseObject({
+      imageId: z.string().describe("The inserted image row's UUID — used by removeLandingPageImage and reorderLandingPageImages"),
+      r2Key: z.string(),
+      src: z.string().describe("Public image URL"),
+      position: z.number().int().nullable().describe("Stack position — 1 is the top of the page"),
+      width: z.number().int().nullable(),
+      height: z.number().int().nullable(),
+      altText: z.string().nullable(),
+    }),
     note: z.string(),
   }),
   getLandingPageImageUploadStatus: toolOutput({
@@ -360,54 +369,6 @@ export const archiveLandingPageSchema = z.strictObject({
   landingPageId: z.string().uuid().describe("The UUID of the landing page to archive"),
 });
 
-/** Workflow InstanceStatus → the shape the status tool reports to the model. */
-export interface UploadJobStatusView {
-  status: "processing" | "complete" | "failed" | "stopped" | "unknown";
-  image?: unknown;
-  error?: string;
-  note?: string;
-  advice?: string;
-}
-
-export function mapUploadJobStatus(raw: {
-  status: string;
-  error?: { message?: string } | null;
-  output?: unknown;
-}): UploadJobStatusView {
-  switch (raw.status) {
-    case "queued":
-    case "running":
-    case "waiting":
-    case "waitingForPause":
-      return {
-        status: "processing",
-        note: "The upload is still running — keep polling with the same uploadJobId.",
-      };
-    case "complete":
-      return {
-        status: "complete",
-        image: raw.output ?? null,
-        advice:
-          "The image is in the landing page stack. Review it with getLandingPageDetails, arrange the stack with reorderLandingPageImages if needed, " +
-          "then publishLandingPage to make the link live.",
-      };
-    case "errored":
-      return {
-        status: "failed",
-        error: raw.error?.message ?? "The upload failed for an unknown reason.",
-      };
-    case "paused":
-    case "terminated":
-      return { status: "stopped", note: `The upload job was ${raw.status}.` };
-    default:
-      return {
-        status: "unknown",
-        advice:
-          "Check getLandingPageDetails to see whether the image landed before re-uploading.",
-      };
-  }
-}
-
 export const LANDING_PAGE_TOOL_SCHEMAS: Record<string, z.ZodRawShape> = {
   listLandingPages: listLandingPagesSchema.shape,
   getLandingPageDetails: getLandingPageDetailsSchema.shape,
@@ -425,15 +386,11 @@ export const LANDING_PAGE_TOOL_SCHEMAS: Record<string, z.ZodRawShape> = {
   archiveLandingPage: archiveLandingPageSchema.shape,
 };
 
-/** Env surface the landing-page tools consume: deployment vars, the R2
- *  bucket, and the background upload workflow binding. */
-export type LandingPageToolEnv = Pick<
-  Env,
-  "STOREFRONT_URL" | "IMAGES" | "MEDIA_DOMAIN" | "LP_IMAGE_UPLOAD_WORKFLOW"
->;
+/** Env surface the landing-page tools consume: deployment vars and image storage. */
+export type LandingPageToolEnv = Pick<Env, "STOREFRONT_URL" | "IMAGE_STORE" | "IMAGES_PUBLIC_URL" | "WORKER_SELF_URL">;
 
 /** Verified session identity — structurally satisfied by McpProps. Only the
- *  upload tool needs it (the background workflow audits through this actor). */
+ *  upload tool needs it (the upload is audited through this actor). */
 export interface LandingPageToolSession {
   userId: string;
   role: "admin" | "staff";
@@ -721,17 +678,16 @@ export const getLandingPageTools = (
   uploadLandingPageImage: tool({
     description:
       "Upload an image into a landing page's image stack (the marketing story — price framing, urgency, benefits — lives in the images). " +
-      "ASYNCHRONOUS: this returns an uploadJobId immediately; the actual download/store runs in the background. " +
-      "Afterwards, poll getLandingPageImageUploadStatus with that uploadJobId until it reports 'complete' or 'failed'.\n" +
+      "The image is downloaded, checked and added to the stack before this returns (status 'complete', with the new image).\n" +
       "Pass the image in EXACTLY ONE of three ways:\n" +
       "• image (file object) — the way ChatGPT and chat clients pass a conversation image: the client fills download_url itself. " +
       "Generate the image first, then pass it here.\n" +
       "• imageUrl — any directly-fetchable public http(s) URL (e.g. a re-hosted image). Login-protected or expired links fail with 'not publicly fetchable' — re-host and retry.\n" +
       "• imageBase64 — programmatic clients only. NEVER from a chat client: inline image data is blocked by client safety checks before the call is sent.\n" +
       "contentType must match the actual bytes (ChatGPT image generation outputs image/png) — verified server-side by magic-byte sniffing. " +
-      "Images are STORED as WebP (server-side conversion for fast page loads; if conversion is unavailable the original format is kept). " +
+      "Images are STORED as WebP, at most 2400 px on the longest side, 10 MB max input. " +
       "New images append to the end of the stack; set position to place one (1 = top of the page), or reorder the whole stack later with reorderLandingPageImages. " +
-      "A failed job is safe to retry: every attempt gets a fresh uploadJobId.",
+      "A failed upload is safe to retry.",
     inputSchema: z.object({}).passthrough(), // Layer 1: Permissive input
     execute: async (args) => {
       try {
@@ -747,12 +703,8 @@ export const getLandingPageTools = (
         }
         const data = parsed.data;
 
-        if (!env?.LP_IMAGE_UPLOAD_WORKFLOW || !env.MEDIA_DOMAIN) {
-          return {
-            success: false,
-            error:
-              "Image upload is not available on this deployment — the background upload workflow is not provisioned.",
-          };
+        if (!env?.IMAGE_STORE) {
+          return { success: false, error: "Image upload is not available on this deployment — image storage is not configured." };
         }
         if (!session) {
           return {
@@ -766,24 +718,20 @@ export const getLandingPageTools = (
           return { success: false, error: `Landing page ${data.landingPageId} not found` };
         }
 
-        const { r2Key, instanceId } = mintLandingImageUploadIds();
-
-        // Resolve the three input shapes to the workflow's two entry kinds.
-        let kind: "url" | "bytes";
-        let imageUrl: string | undefined;
-        if (data.image !== undefined) {
-          const { download_url: downloadUrl } = data.image;
+        let bytes: Uint8Array;
+        let uploadKind: "url" | "bytes";
+        const downloadUrl = data.image?.download_url ?? data.imageUrl;
+        if (downloadUrl !== undefined) {
           if (!/^https?:\/\//.test(downloadUrl)) {
             return {
               success: false,
               error: "The image file's download_url must be an http(s) URL — cannot fetch it server-side.",
             };
           }
-          kind = "url";
-          imageUrl = downloadUrl;
-        } else if (data.imageUrl !== undefined) {
-          kind = "url";
-          imageUrl = data.imageUrl;
+          const downloaded = await downloadImage(downloadUrl);
+          if (!downloaded.ok) return { success: false, error: downloaded.error };
+          bytes = downloaded.value;
+          uploadKind = "url";
         } else {
           const imageBase64 = data.imageBase64;
           if (imageBase64 === undefined) {
@@ -793,12 +741,6 @@ export const getLandingPageTools = (
                 "Provide exactly one of image (chat clients — file object), imageUrl (http(s) URL), or imageBase64 (programmatic clients only).",
             };
           }
-          kind = "bytes";
-
-          if (!env.IMAGES) {
-            return { success: false, error: "Image upload is not available — R2 storage is not bound." };
-          }
-          let bytes: Uint8Array;
           try {
             bytes = decodeBase64Image(imageBase64);
           } catch {
@@ -808,76 +750,49 @@ export const getLandingPageTools = (
             return { success: false, error: "imageBase64 decodes to zero bytes." };
           }
           if (bytes.byteLength > MAX_IMAGE_BYTES) {
-            return {
-              success: false,
-              error: `Image exceeds the 8 MB cap (${bytes.byteLength} bytes decoded).`,
-            };
+            return { success: false, error: `Image exceeds the 10 MB cap (${bytes.byteLength} bytes decoded).` };
           }
-          const sniffed = sniffImageType(bytes);
-          const claimed = canonicalImageContentType(data.contentType);
-          if (!sniffed) {
-            return {
-              success: false,
-              error: "imageBase64 is not a recognized image (png, jpeg, webp, or gif).",
-            };
-          }
-          if (sniffed !== claimed) {
-            return {
-              success: false,
-              error: `Content mismatch: imageBase64 contains ${sniffed} but contentType claims ${data.contentType}.`,
-            };
-          }
-          try {
-            await env.IMAGES.put(r2Key, bytes, {
-              httpMetadata: {
-                contentType: claimed,
-                cacheControl: "public, max-age=31536000, immutable",
-              },
-              customMetadata: { source: "ai", uploadedAt: new Date().toISOString() },
-            });
-          } catch (err) {
-            return {
-              success: false,
-              error: `Failed to store image bytes: ${(err as Error).message}`,
-            };
-          }
+          uploadKind = "bytes";
         }
 
-        let instance: { id: string };
-        try {
-          instance = await env.LP_IMAGE_UPLOAD_WORKFLOW.create({
-            id: instanceId,
-            params: {
-              kind,
-              landingPageId: data.landingPageId,
-              r2Key,
-              contentType: data.contentType,
-              ...(imageUrl !== undefined ? { imageUrl } : {}),
-              ...(data.altText !== undefined ? { altText: data.altText } : {}),
-              ...(data.position !== undefined ? { position: data.position } : {}),
-              ...(data.width !== undefined ? { width: data.width } : {}),
-              ...(data.height !== undefined ? { height: data.height } : {}),
-              actor: {
-                id: session.userId,
-                name: session.name || session.email || session.userId,
-                role: session.role,
-              },
-            },
-          });
-        } catch (err) {
-          return {
-            success: false,
-            error: `Failed to start the background upload: ${(err as Error).message}`,
-          };
-        }
+        const stored = await storeLandingImage(env.IMAGE_STORE, imagesBaseUrl(env), bytes, data.contentType);
+        if (!stored.ok) return { success: false, error: stored.error };
+
+        const images = await queries.addLandingPageImage(db, data.landingPageId, {
+          r2Key: stored.value.key,
+          src: stored.value.url,
+          altText: data.altText ?? null,
+          ...(data.position !== undefined ? { position: data.position } : {}),
+          width: stored.value.width,
+          height: stored.value.height,
+          source: "ai",
+        });
+        const image = images.find((row) => row.r2Key === stored.value.key);
+        if (!image) return { success: false, error: "The image was stored but its row is missing from the stack." };
+
+        await logActivity(
+          db,
+          { id: session.userId, name: session.name || session.email || session.userId, role: session.role },
+          ACTIONS.LANDING_PAGE_UPDATED,
+          { type: "landing_page", id: data.landingPageId, label: existing.name },
+          { via: "mcp", action: "image_added", source: "ai", imageId: image.id, r2Key: image.r2Key, uploadKind },
+        );
 
         return {
           success: true,
-          uploadJobId: instance.id,
-          status: "processing",
-          r2Key,
-          src: `https://${env.MEDIA_DOMAIN}/${r2Key}`,
-          note: "The upload runs in the background. Call getLandingPageImageUploadStatus with uploadJobId until status is 'complete' or 'failed'.",
+          uploadJobId: image.id,
+          status: "complete" as const,
+          image: {
+            imageId: image.id,
+            r2Key: image.r2Key,
+            src: image.src,
+            position: image.position,
+            width: image.width,
+            height: image.height,
+            altText: image.altText,
+          },
+          note:
+            "The image is in the landing page stack (stored as WebP). Review it with getLandingPageDetails, reorder with reorderLandingPageImages, then publishLandingPage.",
         };
       } catch (error) {
         return { success: false, error: `Failed to upload image: ${(error as Error).message}` };
@@ -887,10 +802,8 @@ export const getLandingPageTools = (
 
   getLandingPageImageUploadStatus: tool({
     description:
-      "Check the progress of a background uploadLandingPageImage job — pass the uploadJobId that tool returned. " +
-      "Returns status: 'processing' (still running — keep polling), 'complete' (the image is in the stack; includes imageId, src, and position), " +
-      "'failed' (includes a recoverable error — e.g. re-generate the image and retry with a fresh URL), 'stopped', or " +
-      "'unknown' (job state no longer retained — check getLandingPageDetails to see whether the image landed before re-uploading).",
+      "Look up an image returned by uploadLandingPageImage — pass its uploadJobId. Uploads complete synchronously, so this reports " +
+      "'complete' (with the image) or 'unknown' (no such image — check getLandingPageDetails).",
     inputSchema: z.object({}).passthrough(), // Layer 1: Permissive input
     execute: async (args) => {
       try {
@@ -902,33 +815,29 @@ export const getLandingPageTools = (
           };
         }
 
-        if (!env?.LP_IMAGE_UPLOAD_WORKFLOW) {
-          return {
-            success: false,
-            error:
-              "Upload status is not available on this deployment — the background upload workflow is not provisioned.",
-          };
-        }
-
-        let instance: { status(): Promise<{ status: string; error?: { message?: string } | null; output?: unknown }> };
-        try {
-          instance = await env.LP_IMAGE_UPLOAD_WORKFLOW.get(parsed.data.uploadJobId);
-        } catch {
+        const image = await queries.findLandingPageImage(db, parsed.data.uploadJobId);
+        if (!image) {
           return {
             success: true,
             uploadJobId: parsed.data.uploadJobId,
-            status: "unknown",
-            advice:
-              "This job's state is no longer retained (or the ID is not a known job). " +
-              "Check getLandingPageDetails to see whether the image landed before re-uploading.",
+            status: "unknown" as const,
+            advice: "No image with this ID. Check getLandingPageDetails to see the current stack before re-uploading.",
           };
         }
-
-        const raw = await instance.status();
         return {
           success: true,
           uploadJobId: parsed.data.uploadJobId,
-          ...mapUploadJobStatus(raw),
+          status: "complete" as const,
+          image: {
+            imageId: image.id,
+            r2Key: image.r2Key,
+            src: image.src,
+            position: image.position,
+            width: image.width,
+            height: image.height,
+            altText: image.altText,
+          },
+          advice: "Uploads complete synchronously: the image is in the landing page stack.",
         };
       } catch (error) {
         return { success: false, error: `Failed to check upload status: ${(error as Error).message}` };
@@ -961,7 +870,7 @@ export const getLandingPageTools = (
           };
         }
 
-        // Same contract as the dashboard path: R2 delete FIRST — a storage
+        // Same contract as the dashboard path: storage delete FIRST — a storage
         // failure aborts so the DB record never points at a missing object;
         // shared objects (duplicates) survive until their last reference goes.
         if (image.r2Key) {
@@ -971,14 +880,14 @@ export const getLandingPageTools = (
             imageId,
           );
           if (otherRefs === 0) {
-            if (!env?.IMAGES) {
+            if (!env?.IMAGE_STORE) {
               return {
                 success: false,
-                error: "Image removal is not available — R2 storage is not bound on this deployment.",
+                error: "Image removal is not available — image storage is not configured on this deployment.",
               };
             }
             try {
-              await env.IMAGES.delete(image.r2Key);
+              await deleteImage(env.IMAGE_STORE, image.r2Key);
             } catch (err) {
               return {
                 success: false,

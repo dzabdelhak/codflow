@@ -707,7 +707,7 @@ describe("GET /api/openapi.json (merged spec)", () => {
       .toEqual(expect.arrayContaining(["driverId", "type", "orderIds"]));
   });
 
-  it("documents the migrated images upload/presign endpoints from Zod schemas", async () => {
+  it("documents the images upload endpoint from Zod schemas", async () => {
     const app = buildApp();
     const res = await app.request("/api/openapi.json", {}, { WORKER_URL: "https://x" } as any);
     const spec: any = await res.json();
@@ -722,12 +722,8 @@ describe("GET /api/openapi.json (merged spec)", () => {
       upload.requestBody.content["multipart/form-data"].schema.properties.file
     ).toBeDefined();
 
-    const presign = spec.paths["/api/images/presign"]?.post;
-    expect(presign).toBeDefined();
-    expect(presign.operationId).toBe("presignUpload");
-
+    expect(spec.paths["/api/images/presign"]).toBeUndefined();
     expect(spec.components.schemas.UploadedImage).toBeDefined();
-    expect(spec.components.schemas.PresignedUpload).toBeDefined();
   });
 
   it("documents the migrated orders endpoints from Zod schemas", async () => {

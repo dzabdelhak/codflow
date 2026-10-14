@@ -1,12 +1,6 @@
-import { apiFetch } from "@/lib/api";
+import { ApiError, apiFetch } from "@/lib/api";
 
-export type ImageUploadFolder = "products" | "landing";
-
-interface PresignedUpload {
-  presignedUrl: string;
-  key: string;
-  publicUrl: string;
-}
+export type ImageUploadFolder = "products" | "landing" | "branding";
 
 export interface UploadedImage {
   key: string;
@@ -29,7 +23,7 @@ export class ImageUploadRejectedError extends Error {
 
 export class ImageUploadFailedError extends Error {
   constructor(public readonly status: number) {
-    super(`R2 upload failed: ${status}`);
+    super(`Image upload failed: ${status}`);
     this.name = "ImageUploadFailedError";
   }
 }
@@ -37,26 +31,6 @@ export class ImageUploadFailedError extends Error {
 interface DataEnvelope<T> {
   success: boolean;
   data: T;
-}
-
-function json(init: RequestInit = {}): RequestInit {
-  return { ...init, headers: { ...init.headers, "Content-Type": "application/json" } };
-}
-
-/** The one presign call — every dashboard image upload goes through here. */
-export async function presignImageUpload(contentType: string, folder: ImageUploadFolder): Promise<PresignedUpload> {
-  return (
-    await apiFetch<DataEnvelope<PresignedUpload>>(
-      "/api/images/presign",
-      json({ method: "POST", body: JSON.stringify({ contentType, folder }) }),
-    )
-  ).data;
-}
-
-/** Direct browser → R2 PUT against the presigned URL. */
-export async function putFileToR2(presignedUrl: string, file: File): Promise<void> {
-  const putRes = await fetch(presignedUrl, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
-  if (!putRes.ok) throw new ImageUploadFailedError(putRes.status);
 }
 
 /** Same selection semantics the three uploaders had: unsupported types are
@@ -83,34 +57,27 @@ export function validateUploadFile(file: File): void {
   if (file.size > MAX_UPLOAD_MB * 1024 * 1024) throw new ImageUploadRejectedError("file_too_large");
 }
 
-/** Intrinsic pixel size of a file, measured locally. Resolves null on decode
- *  failure or in non-DOM runtimes — dimension capture is fail-open, never
- *  blocks an upload; the storefront just renders that image without reserved
- *  space. Moved here from the landing-page studio. */
-export function measureImageDimensions(file: File): Promise<{ width: number; height: number } | null> {
-  if (typeof Image === "undefined" || typeof URL?.createObjectURL !== "function") {
-    return Promise.resolve(null);
-  }
-  return new Promise((resolve) => {
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      resolve(img.naturalWidth > 0 && img.naturalHeight > 0 ? { width: img.naturalWidth, height: img.naturalHeight } : null);
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      resolve(null);
-    };
-    img.src = url;
-  });
-}
-
-/** Presign → PUT → measure. One implementation for all dashboard uploads. */
+/** The one upload call: the server checks the bytes, stores a WebP and measures it. */
 export async function uploadImageFile(file: File, folder: ImageUploadFolder): Promise<UploadedImage> {
   validateUploadFile(file);
-  const { presignedUrl, key, publicUrl } = await presignImageUpload(file.type, folder);
-  await putFileToR2(presignedUrl, file);
-  const dims = await measureImageDimensions(file);
-  return { key, url: publicUrl, width: dims?.width ?? null, height: dims?.height ?? null };
+  const form = new FormData();
+  form.append("file", file);
+  form.append("folder", folder);
+  try {
+    return (await apiFetch<DataEnvelope<UploadedImage>>("/api/images/upload", { method: "POST", body: form })).data;
+  } catch (cause) {
+    if (cause instanceof ApiError && cause.code === "INVALID_FILE_TYPE") throw new ImageUploadRejectedError("unsupported_type");
+    if (cause instanceof ApiError && cause.code === "FILE_TOO_LARGE") throw new ImageUploadRejectedError("file_too_large");
+    throw new ImageUploadFailedError(cause instanceof ApiError ? cause.status : 0);
+  }
+}
+
+export type UploadFailureKey = "feedback.unsupported_file" | "feedback.file_too_large" | "feedback.upload_failed";
+
+/** The common-namespace message for a failed upload: why it was refused, or that it failed. */
+export function uploadFailureKey(cause: unknown): UploadFailureKey {
+  if (cause instanceof ImageUploadRejectedError) {
+    return cause.reason === "unsupported_type" ? "feedback.unsupported_file" : "feedback.file_too_large";
+  }
+  return "feedback.upload_failed";
 }

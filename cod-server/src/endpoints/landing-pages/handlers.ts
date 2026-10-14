@@ -1,4 +1,5 @@
 import { Context } from "hono";
+import { deleteImage } from "@/platform/image-store";
 import type { AppContext } from "@/types";
 import { getDb } from "@/db";
 import * as queries from "./queries";
@@ -393,14 +394,12 @@ export async function deleteLandingPageImage(c: Context<AppContext>) {
   const db = c.get("db");
   const id = c.req.param("id")!;
   const imageId = c.req.param("imageId")!;
-  const bucket = c.env.IMAGES;
-
   const image = await queries.getLandingPageImage(db, id, imageId);
   if (!image) throw new NotFoundError("Image", imageId);
 
-  // R2 delete first — a storage failure aborts so the DB record never
+  // Storage delete first — a storage failure aborts so the DB record never
   // points at a missing object (same contract as product images).
-  // Shared-object guard: duplicates reference the SAME immutable R2 key;
+  // Shared-object guard: duplicates reference the SAME immutable key;
   // only remove the object when this is its last landing-page reference.
   if (image.r2Key) {
     const otherRefs = await queries.countOtherLandingPageImageReferences(
@@ -410,9 +409,9 @@ export async function deleteLandingPageImage(c: Context<AppContext>) {
     );
     if (otherRefs === 0) {
       try {
-        await bucket.delete(image.r2Key);
+        await deleteImage(c.env.IMAGE_STORE, image.r2Key);
       } catch (error) {
-        console.error(`R2 delete failed for key: ${image.r2Key}`, error);
+        console.error(`Image delete failed for key: ${image.r2Key}`, error);
         throw new SystemError(
           "Failed to delete image from storage",
           ERROR_CODES.INTERNAL_SERVER_ERROR,

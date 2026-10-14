@@ -9,8 +9,8 @@
 #
 # Host ports are overridable: COD_HTTP_PORT, COD_PG_PORT, COD_REDIS_PORT.
 # The storefront key is a local-only default; set COD_STOREFRONT_SERVICE_KEY
-# for anything else. Object storage joins with ticket 10 (MinIO no longer
-# publishes community images — the store is chosen there).
+# for anything else. Images are stored in SeaweedFS (S3 API), reached only by
+# the API; its local credentials are in docker/seaweedfs-s3.json.
 name: codflow
 
 x-storefront-key: &storefront-key ${COD_STOREFRONT_SERVICE_KEY:-local-dev-storefront-key}
@@ -38,6 +38,18 @@ services:
       test: ["CMD", "redis-cli", "ping"]
       interval: 2s
       retries: 30
+
+  # S3-compatible image storage, private to the stack (cod-server is its only client).
+  objects:
+    image: chrislusf/seaweedfs:4.48
+    command: ["server", "-ip.bind=0.0.0.0", "-dir=/data", "-s3", "-s3.config=/etc/seaweedfs/s3.json", "-volume.max=0"]
+    volumes:
+      - objectdata:/data
+      - ./docker/seaweedfs-s3.json:/etc/seaweedfs/s3.json:ro
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8333/healthz"]
+      interval: 2s
+      retries: 60
 
   # Migrations, the two demo channels and their legal pages. Idempotent.
   setup:
@@ -74,8 +86,14 @@ services:
       BETTER_AUTH_JWKS_URL: http://dashboard:4321/api/auth/jwks
       BETTER_AUTH_SECRET: *auth-secret
       MCP_LOGIN_TICKET_SECRET: *ticket-secret
+      S3_ENDPOINT: http://objects:8333
+      S3_BUCKET: codflow-images
+      S3_ACCESS_KEY_ID: codflow-local
+      S3_SECRET_ACCESS_KEY: codflow-local-secret
+      IMAGES_PUBLIC_URL: "http://api.localhost:${COD_HTTP_PORT:-8090}/images"
     depends_on:
       setup: { condition: service_completed_successfully }
+      objects: { condition: service_healthy }
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:8787/health').then(r => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
       interval: 2s
@@ -86,6 +104,7 @@ services:
     environment:
       COD_SERVER_URL: http://api:8787
       STOREFRONT_SERVICE_KEY: *storefront-key
+      MEDIA_URL: "http://api.localhost:${COD_HTTP_PORT:-8090}/images"
     depends_on:
       api: { condition: service_healthy }
 
@@ -113,3 +132,4 @@ services:
 
 volumes:
   pgdata:
+  objectdata:

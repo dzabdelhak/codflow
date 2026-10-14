@@ -29,9 +29,9 @@ export async function scopeForHost(
 }
 
 /**
- * Webhooks and image serving carry no user and no hostname yet: they serve
- * the deployment's only store, and none when there are several (RLS then
- * shows nothing rather than guessing). Their own tickets replace this.
+ * Webhooks carry no user and no hostname yet: they serve the deployment's
+ * only store, and none when there are several (RLS then shows nothing rather
+ * than guessing). Their own ticket replaces this.
  */
 export async function soleStoreId(platform: pg.Pool): Promise<Scope> {
   const { rows } = await platform.query<{ id: string; merchant_id: string }>("select id, merchant_id from stores limit 2");

@@ -368,6 +368,9 @@ export function ProductForm({ productId }: { productId?: string }) {
           await saveProductImage(savedId, {
             key: pendingImages[i].key,
             src: pendingImages[i].url,
+            ...(pendingImages[i].width && pendingImages[i].height
+              ? { width: pendingImages[i].width!, height: pendingImages[i].height! }
+              : {}),
             position: existingImages.length - deletedImageIds.length + i + 1,
           });
         }
