@@ -17,7 +17,7 @@ import LandingPage from "@/theme/components/landing/LandingPage.astro";
 import { getStoreContext } from "@/theme/config/store";
 import { fetchLandingChannel } from "@/core/api/client";
 import { isLandingChannel } from "@/theme/utils/landing-view";
-import { contentWithSections, pageSections, STORE_HOME_SECTIONS } from "@/theme/utils/sections";
+import { contentWithSections, LANDING_SECTIONS, pageSections, STORE_HOME_SECTIONS } from "@/theme/utils/sections";
 import { actions, isInputError } from "astro:actions";
 import { thankYouUrl } from "@/core/utils/thank-you-url";
 
@@ -33,13 +33,14 @@ const serverError = result?.error && !isInputError(result.error) ? result.error.
 const landingProduct = landing?.product ?? null;
 const homeSections = pageSections(config, STORE_HOME_SECTIONS);
 const homeContent = contentWithSections(content, homeSections);
+const landingContent = contentWithSections(content, pageSections(config, LANDING_SECTIONS));
 const landingTitle = config.metaTitle ?? (landingProduct ? `${landingProduct.name} — ${config.name}` : config.name);
 ---
 
 {isLandingChannel(config) ? (
 <StoreLayout
   config={config}
-  content={content}
+  content={landingContent}
   title={landingTitle}
   ogImage={landingProduct?.images?.[0]?.src}
   landing={true}

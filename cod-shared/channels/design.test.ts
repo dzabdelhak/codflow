@@ -71,10 +71,10 @@ describe("what the storefront receives", () => {
       s.type === "hero" ? { ...s, settings: { heroTitle: { ar: "مرحبا", fr: "Bonjour" }, heroCtaHref: "/products" } } : s,
     );
     sections[1].enabled = false;
-    const shown = storefrontSections({ brand, sections }, "fr");
+    const shown = storefrontSections(sections, "fr");
     expect(shown.map((s) => s.type)).not.toContain("categories");
     expect(shown[0]).toEqual({ id: "hero", type: "hero", settings: { heroTitle: "Bonjour", heroCtaHref: "/products" } });
-    expect(storefrontSections({ brand, sections }, "en")[0].settings).toEqual({ heroCtaHref: "/products" });
+    expect(storefrontSections(sections, "en")[0].settings).toEqual({ heroCtaHref: "/products" });
   });
 
   it("turns the chosen font into its family and stylesheet", () => {
@@ -82,6 +82,16 @@ describe("what the storefront receives", () => {
       fontFamily: "Tajawal, sans-serif",
       fontUrl: expect.stringContaining("family=Tajawal"),
     });
+  });
+
+  it("keeps a font the template does not offer, instead of replacing it", () => {
+    const custom = brandFromStore(
+      { logoUrl: null, primaryColor: "#112233", accentColor: "#abc", bgColor: "#fff", fontFamily: "Montserrat, sans-serif" },
+      THEME01_MANIFEST,
+    );
+    expect(custom.fontId).toBe("current");
+    expect(validateDesign(doc(full(), { fontId: "current" }), THEME01_MANIFEST).ok).toBe(true);
+    expect(storefrontBrand(custom, THEME01_MANIFEST)).not.toHaveProperty("fontFamily");
   });
 
   it("starts from the store's current brand", () => {

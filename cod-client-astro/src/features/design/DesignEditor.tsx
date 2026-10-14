@@ -6,7 +6,7 @@ import { useLocale, useT } from "@/i18n/react";
 import { ApiError } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { DESIGN_LOCALES, type DesignLocale } from "../../../../cod-shared/channels/manifests";
-import type { DesignDocument, DesignError } from "../../../../cod-shared/channels/design";
+import { CURRENT_FONT, type DesignDocument, type DesignError } from "../../../../cod-shared/channels/design";
 import {
   designPreviewLink,
   discardDesignDraft,
@@ -114,7 +114,7 @@ export function DesignEditor() {
   const confirm = useConfirmDialog();
   const [state, setState] = useState<DesignState | null>(null);
   const [failed, setFailed] = useState(false);
-  const [document, setDocument] = useState<DesignDocument | null>(null);
+  const [design, setDesign] = useState<DesignDocument | null>(null);
   const [locale, setLocale] = useState<DesignLocale>(uiLocale as DesignLocale);
   const [open, setOpen] = useState<string | null>(null);
   const [busy, setBusy] = useState<"save" | "publish" | "discard" | "restore" | null>(null);
@@ -123,7 +123,7 @@ export function DesignEditor() {
 
   function apply(next: DesignState) {
     setState(next);
-    setDocument(next.current);
+    setDesign(next.current);
     setErrors(null);
   }
 
@@ -141,7 +141,7 @@ export function DesignEditor() {
     void refreshPreview();
   }, []);
 
-  const dirty = !!state && !!document && !sameDocument(document, state.current);
+  const dirty = !!state && !!design && !sameDocument(design, state.current);
 
   useEffect(() => {
     if (!dirty) return;
@@ -170,13 +170,13 @@ export function DesignEditor() {
   }
 
   if (failed) return <Alert role="alert" tone="critical">{t("load_failed")}</Alert>;
-  if (!state || !document) return <p className="text-sm text-muted-foreground" role="status">…</p>;
+  if (!state || !design) return <p className="text-sm text-muted-foreground" role="status">…</p>;
 
   const { manifest } = state;
   const status = dirty ? t("unsaved") : state.draft ? t("draft_saved_status") : state.published ? t("up_to_date") : t("never_published");
 
   async function save() {
-    await run("save", () => saveDesignDraft(document!), () => t("saved"));
+    await run("save", () => saveDesignDraft(design!), () => t("saved"));
   }
 
   async function publish() {
@@ -184,7 +184,7 @@ export function DesignEditor() {
     await run(
       "publish",
       async () => {
-        if (dirty) await saveDesignDraft(document!);
+        if (dirty) await saveDesignDraft(design!);
         return publishDesign();
       },
       (next) => t("published").replace("{n}", String(next.published?.version ?? "")),
@@ -196,6 +196,21 @@ export function DesignEditor() {
     await run("discard", discardDesignDraft, () => t("discarded"));
   }
 
+  async function restore(version: number) {
+    if (
+      dirty &&
+      !(await confirm({
+        title: t("restore_title"),
+        description: t("restore_body").replace("{n}", String(version)),
+        confirmLabel: t("restore_confirm"),
+        tone: "danger",
+      }))
+    ) {
+      return;
+    }
+    await run("restore", () => restoreDesignVersion(version), () => t("restored").replace("{n}", String(version)));
+  }
+
   const canPublish = dirty || !!state.draft || !state.published;
 
   return (
@@ -203,7 +218,7 @@ export function DesignEditor() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Badge tone={dirty ? "warning" : state.draft ? "info" : state.published ? "success" : "neutral"}>{status}</Badge>
         <div className="flex flex-wrap gap-2">
-          {(state.draft || dirty) && state.published && (
+          {(state.draft || dirty) && (
             <Button type="button" variant="secondary" onClick={() => void discard()} disabled={!!busy}>
               {t("discard")}
             </Button>
@@ -239,16 +254,17 @@ export function DesignEditor() {
               <Field label={t("logo_label")} hint={t("logo_hint")}>
                 <Input
                   dir="ltr"
-                  value={document.brand.logoUrl ?? ""}
+                  value={design.brand.logoUrl ?? ""}
                   placeholder={t("image_placeholder")}
-                  onChange={(event) => setDocument(setBrand(document, { logoUrl: event.currentTarget.value || null }))}
+                  onChange={(event) => setDesign(setBrand(design, { logoUrl: event.currentTarget.value || null }))}
                 />
               </Field>
-              <ColorField label={t("primary_label")} hint={t("primary_hint")} value={document.brand.primaryColor} onChange={(primaryColor) => setDocument(setBrand(document, { primaryColor }))} />
-              <ColorField label={t("accent_label")} hint={t("accent_hint")} value={document.brand.accentColor} onChange={(accentColor) => setDocument(setBrand(document, { accentColor }))} />
-              <ColorField label={t("bg_label")} hint={t("bg_hint")} value={document.brand.bgColor} onChange={(bgColor) => setDocument(setBrand(document, { bgColor }))} />
+              <ColorField label={t("primary_label")} hint={t("primary_hint")} value={design.brand.primaryColor} onChange={(primaryColor) => setDesign(setBrand(design, { primaryColor }))} />
+              <ColorField label={t("accent_label")} hint={t("accent_hint")} value={design.brand.accentColor} onChange={(accentColor) => setDesign(setBrand(design, { accentColor }))} />
+              <ColorField label={t("bg_label")} hint={t("bg_hint")} value={design.brand.bgColor} onChange={(bgColor) => setDesign(setBrand(design, { bgColor }))} />
               <Field label={t("font_label")}>
-                <Select value={document.brand.fontId} onChange={(event) => setDocument(setBrand(document, { fontId: event.currentTarget.value }))}>
+                <Select value={design.brand.fontId} onChange={(event) => setDesign(setBrand(design, { fontId: event.currentTarget.value }))}>
+                  {design.brand.fontId === CURRENT_FONT && <option value={CURRENT_FONT}>{t("font_current")}</option>}
                   {manifest.brand.fonts.map((font) => (
                     <option key={font.id} value={font.id}>
                       {font.label}
@@ -276,7 +292,7 @@ export function DesignEditor() {
             }
           >
             <ol className="divide-y divide-border">
-              {document.sections.map((section, index) => {
+              {design.sections.map((section, index) => {
                 const spec = sectionSpec(manifest, section.type);
                 if (!spec) return null;
                 const editing = open === section.id;
@@ -294,20 +310,20 @@ export function DesignEditor() {
                           type="checkbox"
                           checked={section.enabled}
                           disabled={spec.essential}
-                          onChange={(event) => setDocument(setSectionShown(document, manifest, section.id, event.currentTarget.checked))}
+                          onChange={(event) => setDesign(setSectionShown(design, manifest, section.id, event.currentTarget.checked))}
                           className="size-4 accent-primary"
                         />
                         {section.enabled ? t("shown") : t("hidden")}
                       </label>
-                      <IconButton type="button" aria-label={t("move_up")} title={t("move_up")} onClick={() => setDocument(moveSection(document, index, -1))} disabled={index === 0}>
+                      <IconButton type="button" aria-label={t("move_up")} title={t("move_up")} onClick={() => setDesign(moveSection(design, index, -1))} disabled={index === 0}>
                         <ArrowUp size={14} />
                       </IconButton>
                       <IconButton
                         type="button"
                         aria-label={t("move_down")}
                         title={t("move_down")}
-                        onClick={() => setDocument(moveSection(document, index, 1))}
-                        disabled={index === document.sections.length - 1}
+                        onClick={() => setDesign(moveSection(design, index, 1))}
+                        disabled={index === design.sections.length - 1}
                       >
                         <ArrowDown size={14} />
                       </IconButton>
@@ -326,21 +342,21 @@ export function DesignEditor() {
                                 rows={3}
                                 value={settingText(section, setting.key, locale)}
                                 placeholder={t("default_placeholder")}
-                                onChange={(event) => setDocument(setSettingText(document, section.id, setting.key, locale, event.currentTarget.value))}
+                                onChange={(event) => setDesign(setSettingText(design, section.id, setting.key, locale, event.currentTarget.value))}
                               />
                             ) : setting.kind === "text" ? (
                               <Input
                                 dir={locale === "ar" ? "rtl" : "ltr"}
                                 value={settingText(section, setting.key, locale)}
                                 placeholder={t("default_placeholder")}
-                                onChange={(event) => setDocument(setSettingText(document, section.id, setting.key, locale, event.currentTarget.value))}
+                                onChange={(event) => setDesign(setSettingText(design, section.id, setting.key, locale, event.currentTarget.value))}
                               />
                             ) : (
                               <Input
                                 dir="ltr"
                                 value={settingLink(section, setting.key)}
                                 placeholder={setting.kind === "image" ? t("image_placeholder") : t("link_placeholder")}
-                                onChange={(event) => setDocument(setSettingLink(document, section.id, setting.key, event.currentTarget.value))}
+                                onChange={(event) => setDesign(setSettingLink(design, section.id, setting.key, event.currentTarget.value))}
                               />
                             )}
                           </Field>
@@ -376,9 +392,7 @@ export function DesignEditor() {
                       variant="secondary"
                       size="sm"
                       disabled={!!busy}
-                      onClick={() =>
-                        void run("restore", () => restoreDesignVersion(version.version), () => t("restored").replace("{n}", String(version.version)))
-                      }
+                      onClick={() => void restore(version.version)}
                     >
                       {t("restore")}
                     </Button>

@@ -1,5 +1,5 @@
-import { desc, eq } from "drizzle-orm";
-import { channelDesigns, channelDesignVersions, stores } from "../db/schema";
+import { asc, desc, eq, sql } from "drizzle-orm";
+import { channelDesigns, channelDesignVersions, storeDomains, stores } from "../db/schema";
 import type { AppDb } from "../db/client";
 import { first } from "../db/client";
 import { manifestFor, type TemplateManifest } from "../channels/manifests";
@@ -8,8 +8,10 @@ import {
   defaultDesign,
   storefrontBrand,
   validateDesign,
+  type DesignBrand,
   type DesignDocument,
   type DesignError,
+  type DesignSection,
 } from "../channels/design";
 
 export interface PublishedDesign {
@@ -74,7 +76,7 @@ export async function getDesignEditorState(db: AppDb, storeId: string): Promise<
     : null;
   return {
     manifest: template.manifest,
-    current: draft?.document ?? published?.document ?? template.fallback,
+    current: draft?.document ?? { ...(published?.document ?? template.fallback), brand: template.fallback.brand },
     draft,
     published,
     versions,
@@ -153,20 +155,48 @@ export async function publishDesign(db: AppDb, storeId: string, actor: string | 
       primaryColor: brand.primaryColor,
       accentColor: brand.accentColor,
       bgColor: brand.bgColor,
-      fontFamily: brand.fontFamily,
-      fontUrl: brand.fontUrl,
+      ...(brand.fontFamily ? { fontFamily: brand.fontFamily, fontUrl: brand.fontUrl } : {}),
       updatedAt: now,
     })
     .where(eq(stores.id, storeId));
   return { ok: true, version };
 }
 
-export async function storefrontDesignSource(db: AppDb, preview: boolean): Promise<{ version: number; document: DesignDocument | null }> {
+export interface StorefrontDesignSource {
+  version: number;
+  sections: DesignSection[] | null;
+  brand: DesignBrand | null;
+}
+
+export async function storefrontDesignSource(db: AppDb, preview: boolean): Promise<StorefrontDesignSource> {
   const [published, draft] = await Promise.all([
-    latestPublished(db),
+    db
+      .select({
+        version: channelDesignVersions.version,
+        sections: sql<DesignSection[]>`coalesce((select jsonb_agg(s) from jsonb_array_elements(${channelDesignVersions.document}->'sections') s where (s->>'enabled')::boolean), '[]'::jsonb)`,
+      })
+      .from(channelDesignVersions)
+      .orderBy(desc(channelDesignVersions.version))
+      .limit(1)
+      .then(first),
     preview ? db.select({ draft: channelDesigns.draft }).from(channelDesigns).then(first) : Promise.resolve(undefined),
   ]);
   const draftDocument = (draft?.draft as DesignDocument | null | undefined) ?? null;
-  return { version: published?.version ?? 0, document: draftDocument ?? published?.document ?? null };
+  return {
+    version: published?.version ?? 0,
+    sections: draftDocument?.sections ?? published?.sections ?? null,
+    brand: draftDocument?.brand ?? null,
+  };
+}
+
+export async function channelHostname(db: AppDb, storeId: string): Promise<string | null> {
+  const row = await db
+    .select({ hostname: storeDomains.hostname })
+    .from(storeDomains)
+    .where(eq(storeDomains.storeId, storeId))
+    .orderBy(sql`${storeDomains.kind} = 'subdomain' desc`, asc(storeDomains.createdAt))
+    .limit(1)
+    .then(first);
+  return row?.hostname ?? null;
 }
 

@@ -138,5 +138,9 @@
     "trust2Sub": "Point 2 detail",
     "trust3Title": "Point 3",
     "trust3Sub": "Point 3 detail"
-  }
+  },
+  "restore_title": "Restoring replaces your unsaved changes?",
+  "restore_body": "Version {n} replaces the draft, and your unsaved changes are lost.",
+  "font_current": "Current font",
+  "restore_confirm": "Restore"
 }

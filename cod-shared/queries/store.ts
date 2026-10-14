@@ -153,12 +153,12 @@ export async function getStoreConfig(db: AppDb, storeId: string, opts: { preview
   const preview = opts.preview === true;
   const manifest = manifestFor(store.themeId, store.channelType);
   const design = await storefrontDesignSource(db, preview);
-  const document = design.document ?? defaultDesign(manifest, brandFromStore(store, manifest));
+  const sections = design.sections ?? defaultDesign(manifest, brandFromStore(store, manifest)).sections;
 
   return {
     ...publicStore,
-    ...(design.document ? storefrontBrand(design.document.brand, manifest) : {}),
-    design: { version: design.version, preview, sections: storefrontSections(document, store.lang) },
+    ...(design.brand ? storefrontBrand(design.brand, manifest) : {}),
+    design: { version: design.version, preview, sections: storefrontSections(sections, store.lang) },
     checkoutForm: parseCheckoutFormPolicy(checkoutFormJson),
     // Null whenever there is nothing to render — switched off, no number, or a
     // number that no longer normalises. The theme holds one rule about this

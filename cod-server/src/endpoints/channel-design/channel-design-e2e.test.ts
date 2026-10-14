@@ -186,6 +186,12 @@ describe("publishing", () => {
     expect((await dashboard("POST", "/api/channel-design/restore", { version: 99 })).status).toBe(404);
   });
 
+  it("shows a brand changed outside the editor, publicly and in the editor", async () => {
+    await harness.platform.query("update stores set primary_color = '#222222' where id = $1", [store]);
+    expect((await publicConfig()).data!.primaryColor).toBe("#222222");
+    expect((await dashboard("GET", "/api/channel-design")).json.data.current.brand.primaryColor).toBe("#222222");
+  });
+
   it("keeps each channel's versions to itself", async () => {
     const { json } = await dashboard("GET", "/api/channel-design", undefined, other);
     expect(json.data).toMatchObject({ published: null, versions: [] });

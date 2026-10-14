@@ -3,10 +3,10 @@ import type { AppContext } from "@/types";
 import { ConflictError, NotFoundError, ValidationError } from "@/lib/errors/classes";
 import { schedulePurge } from "@/platform/storefront-cache";
 import { signPreviewToken } from "@/platform/design-preview";
-import { primaryHostname } from "@/platform/merchant-stores";
 import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
 import type { DesignError } from "../../../../cod-shared/channels/design";
 import {
+  channelHostname,
   discardDesignDraft,
   getDesignEditorState,
   publishDesign,
@@ -73,7 +73,7 @@ export async function restore(c: Context<AppContext>) {
 export async function preview(c: Context<AppContext>) {
   const storeId = c.get("storeId")!;
   const key = c.env.STOREFRONT_SERVICE_KEY;
-  const hostname = await primaryHostname(c.env.DATABASE.platform, storeId);
+  const hostname = await channelHostname(c.get("db"), storeId);
   if (!key || !hostname) throw new NotFoundError("Storefront address", storeId);
   return c.json({ success: true, data: { hostname, ...signPreviewToken(storeId, key) } }, 200);
 }

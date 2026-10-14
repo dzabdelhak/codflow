@@ -116,5 +116,7 @@ const fontHref = config.fontUrl?.replace(/["<>]/g, "")
     )}
 
     {!hideMobileNav && <MobileNav config={config} content={content} />}
+
+    {config.design?.preview && <script src="../scripts/preview-links.ts"></script>}
   </body>
 </html>

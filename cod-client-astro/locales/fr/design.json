@@ -138,5 +138,9 @@
     "trust2Sub": "Détail du point 2",
     "trust3Title": "Point 3",
     "trust3Sub": "Détail du point 3"
-  }
+  },
+  "restore_title": "Restaurer et perdre vos modifications ?",
+  "restore_body": "La version {n} remplace le brouillon, et vos modifications non enregistrées sont perdues.",
+  "font_current": "Police actuelle",
+  "restore_confirm": "Restaurer"
 }

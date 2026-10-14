@@ -41,9 +41,11 @@ export interface StorefrontBrand {
   primaryColor: string;
   accentColor: string;
   bgColor: string;
-  fontFamily: string;
-  fontUrl: string;
+  fontFamily?: string;
+  fontUrl?: string;
 }
+
+export const CURRENT_FONT = "current";
 
 const HEX = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
 const SECTION_ID = /^[a-z0-9_-]{1,40}$/;
@@ -106,7 +108,7 @@ function validateBrand(raw: unknown, manifest: TemplateManifest, errors: DesignE
   for (const key of ["primaryColor", "accentColor", "bgColor"] as const) {
     if (typeof raw[key] !== "string" || !HEX.test(raw[key] as string)) errors.push({ path: `brand.${key}`, message: "expected a #rgb or #rrggbb colour" });
   }
-  if (!manifest.brand.fonts.some((font) => font.id === raw.fontId)) errors.push({ path: "brand.fontId", message: "not a font this template offers" });
+  if (raw.fontId !== CURRENT_FONT && !manifest.brand.fonts.some((font) => font.id === raw.fontId)) errors.push({ path: "brand.fontId", message: "not a font this template offers" });
   const logo = raw.logoUrl;
   if (logo !== null && logo !== undefined && logo !== "" && (typeof logo !== "string" || logo.length > MAX_URL || !isHttpUrl(logo))) {
     errors.push({ path: "brand.logoUrl", message: "expected an http(s) image address" });
@@ -194,7 +196,7 @@ export function brandFromStore(
     primaryColor: colour(store.primaryColor, "#7c3aed"),
     accentColor: colour(store.accentColor, "#f59e0b"),
     bgColor: colour(store.bgColor, "#f8f8f8"),
-    fontId: (manifest.brand.fonts.find((font) => font.family === store.fontFamily) ?? manifest.brand.fonts[0]).id,
+    fontId: manifest.brand.fonts.find((font) => font.family === store.fontFamily)?.id ?? CURRENT_FONT,
   };
 }
 
@@ -206,19 +208,18 @@ export function defaultDesign(manifest: TemplateManifest, brand: DesignBrand): D
 }
 
 export function storefrontBrand(brand: DesignBrand, manifest: TemplateManifest): StorefrontBrand {
-  const font = manifest.brand.fonts.find((f) => f.id === brand.fontId) ?? manifest.brand.fonts[0];
+  const font = manifest.brand.fonts.find((f) => f.id === brand.fontId);
   return {
     logoUrl: brand.logoUrl,
     primaryColor: brand.primaryColor,
     accentColor: brand.accentColor,
     bgColor: brand.bgColor,
-    fontFamily: font.family,
-    fontUrl: font.url,
+    ...(font ? { fontFamily: font.family, fontUrl: font.url } : {}),
   };
 }
 
-export function storefrontSections(document: DesignDocument, lang: DesignLocale): StorefrontSection[] {
-  return document.sections
+export function storefrontSections(sections: DesignSection[], lang: DesignLocale): StorefrontSection[] {
+  return sections
     .filter((section) => section.enabled)
     .map((section) => {
       const settings: Record<string, string> = {};

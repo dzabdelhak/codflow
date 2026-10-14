@@ -116,3 +116,10 @@ describe("the landing channel", () => {
     expect(read(join(PAGES, "index.astro"))).toMatch(/<LandingPage/);
   });
 });
+
+describe("a design preview", () => {
+  it("keeps the preview token on every link followed inside it", () => {
+    const layout = readFileSync(resolve(__dirname, "layouts/StoreLayout.astro"), "utf8");
+    expect(layout).toMatch(/config\.design\?\.preview && <script src="\.\.\/scripts\/preview-links\.ts"><\/script>/);
+  });
+});

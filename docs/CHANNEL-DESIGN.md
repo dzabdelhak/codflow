@@ -49,10 +49,15 @@ content packs.
   copies an older version into the draft.
 - `POST /preview` returns a one-hour token: `https://<hostname>/?preview=<token>`
   renders the draft — even before the channel is published — uncached,
-  without tracking pixels, and refuses orders.
+  without tracking pixels, and refuses orders; links followed inside it keep
+  the token.
 
-A channel with no published version renders its template's default document,
-built from its current brand columns. The dashboard's **Design** screen edits
+A channel with no published version renders its template's default document.
+The channel's brand columns (`stores` logo, colours, font) are the applied
+brand: publishing writes them, a change made elsewhere (the store settings API)
+shows at once, and the editor starts from them whenever there is no draft. A
+font set before the editor that the template does not list is kept as
+`fontId: "current"` instead of being replaced. The dashboard's **Design** screen edits
 the document with a desktop/mobile preview; Settings no longer edits branding.
 
 ## Images
