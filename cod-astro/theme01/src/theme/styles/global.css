@@ -424,6 +424,24 @@ body.has-mobile-nav[data-sticky-cta="visible"] .wa-widget {
   max-height: calc(100vh - var(--wa-bottom) - 5.5rem);
 }
 
+.lp-sticky-cta {
+  position: fixed;
+  bottom: calc(var(--safe-bottom) + 0.75rem);
+  inset-inline: 0;
+  margin-inline: auto;
+  width: min(24rem, calc(100% - 2rem));
+  z-index: 45;
+  box-shadow: var(--shadow-primary);
+  font-weight: 800;
+  transition: transform 0.25s ease, opacity 0.25s ease;
+}
+.lp-sticky-cta.is-hidden {
+  transform: translateY(150%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+
 /* ── Rich description (merchant-authored HTML) ───────────────────────────── */
 /*
  * Rendered with set:html when a product's descriptionFormat is "html". The

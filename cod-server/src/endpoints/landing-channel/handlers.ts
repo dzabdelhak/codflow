@@ -14,12 +14,9 @@ function notLanding(): never {
   throw new ConflictError("This store is not a landing channel", ERROR_CODES.NOT_A_LANDING_CHANNEL);
 }
 
-async function current(c: Context<AppContext>) {
-  return (await getLandingChannel(c.get("db"), c.get("storeId")!)) ?? notLanding();
-}
-
 export async function get(c: Context<AppContext>) {
-  return c.json({ success: true, data: await current(c) }, 200);
+  const landing = (await getLandingChannel(c.get("db"), c.get("storeId")!)) ?? notLanding();
+  return c.json({ success: true, data: landing }, 200);
 }
 
 export async function replace(c: Context<AppContext>) {
@@ -27,15 +24,21 @@ export async function replace(c: Context<AppContext>) {
   const result = await replaceMainProduct(c.get("db"), c.get("storeId")!, productId);
   if (!result.ok) {
     if (result.reason === "not_landing") notLanding();
+    if (result.reason === "unsellable_product") {
+      throw new ValidationError("This product is archived, draft or hidden", ERROR_CODES.VALIDATION_FAILED, {
+        field: "productId",
+        reason: "unsellable",
+      });
+    }
     throw new ValidationError("This product is not in the catalogue", ERROR_CODES.VALIDATION_FAILED, { field: "productId" });
   }
   schedulePurge(c.env, c.get("storeId"));
-  return c.json({ success: true, data: await current(c) }, 200);
+  return c.json({ success: true, data: result.landing }, 200);
 }
 
 export async function updateRule(c: Context<AppContext>) {
   const { unavailableRule } = body<RuleInput>(c);
-  if (!(await setUnavailableRule(c.get("db"), c.get("storeId")!, unavailableRule))) notLanding();
+  const landing = (await setUnavailableRule(c.get("db"), c.get("storeId")!, unavailableRule)) ?? notLanding();
   schedulePurge(c.env, c.get("storeId"));
-  return c.json({ success: true, data: await current(c) }, 200);
+  return c.json({ success: true, data: landing }, 200);
 }

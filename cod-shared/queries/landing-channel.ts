@@ -37,7 +37,10 @@ export async function isLandingChannel(db: AppDb, storeId: string): Promise<bool
 
 export async function getLandingChannel(db: AppDb, storeId: string): Promise<LandingChannel | null> {
   const unavailableRule = await landingRule(db, storeId);
-  if (!unavailableRule) return null;
+  return unavailableRule ? loadLanding(db, storeId, unavailableRule) : null;
+}
+
+async function loadLanding(db: AppDb, storeId: string, unavailableRule: UnavailableRule): Promise<LandingChannel> {
   const [mainProduct, availability] = await Promise.all([
     db
       .select({
@@ -59,16 +62,20 @@ export async function getLandingChannel(db: AppDb, storeId: string): Promise<Lan
   return { unavailableRule, available: availability?.available === true, mainProduct: mainProduct ?? null };
 }
 
-export type ReplaceMainProductResult = { ok: true } | { ok: false; reason: "not_landing" | "unknown_product" };
+export type ReplaceMainProductResult =
+  | { ok: true; landing: LandingChannel }
+  | { ok: false; reason: "not_landing" | "unknown_product" | "unsellable_product" };
 
 export async function replaceMainProduct(db: AppDb, storeId: string, productId: string): Promise<ReplaceMainProductResult> {
-  if (!(await isLandingChannel(db, storeId))) return { ok: false, reason: "not_landing" };
+  const rule = await landingRule(db, storeId);
+  if (!rule) return { ok: false, reason: "not_landing" };
   const product = await db
-    .select({ id: products.id, deletedAt: products.deletedAt })
+    .select({ deletedAt: products.deletedAt, status: products.status, visibility: products.visibility })
     .from(products)
     .where(eq(products.id, productId))
     .then(first);
   if (!product || product.deletedAt) return { ok: false, reason: "unknown_product" };
+  if (product.status !== "ACTIVE" || !product.visibility) return { ok: false, reason: "unsellable_product" };
   const now = new Date().toISOString();
   await db.delete(channelProducts).where(sql`${channelProducts.productId} <> ${productId}`);
   await db
@@ -78,14 +85,14 @@ export async function replaceMainProduct(db: AppDb, storeId: string, productId: 
       target: [channelProducts.storeId, channelProducts.productId],
       set: { published: true, position: 0, updatedAt: now },
     });
-  return { ok: true };
+  return { ok: true, landing: await loadLanding(db, storeId, rule) };
 }
 
-export async function setUnavailableRule(db: AppDb, storeId: string, rule: UnavailableRule): Promise<boolean> {
+export async function setUnavailableRule(db: AppDb, storeId: string, rule: UnavailableRule): Promise<LandingChannel | null> {
   const updated = await db
     .update(stores)
     .set({ unavailableRule: rule, updatedAt: new Date().toISOString() })
     .where(sql`${stores.id} = ${storeId} and ${stores.channelType} = 'landing'`)
     .returning({ id: stores.id });
-  return updated.length > 0;
+  return updated.length > 0 ? loadLanding(db, storeId, rule) : null;
 }

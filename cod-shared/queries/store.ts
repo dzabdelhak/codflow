@@ -279,11 +279,6 @@ export async function getStoreProductByHandle(
   ]);
 }
 
-/**
- * A landing channel's main product (its one channel_products row) in the full
- * store-product shape, whatever its state: the landing still presents it while
- * it is unavailable, and `main_product_available` says whether it sells.
- */
 export async function getLandingStorefront(db: AppDb, storeId: string) {
   const channel = await db
     .select({
@@ -296,6 +291,7 @@ export async function getLandingStorefront(db: AppDb, storeId: string) {
     .then(first);
   if (!channel || channel.type !== "landing") return null;
   const product = await findStoreProduct(db, [
+    isNull(products.deletedAt),
     sql`exists (select 1 from channel_products cp where cp.product_id = ${products.id})`,
   ]);
   return { unavailableRule: channel.unavailableRule, available: channel.available && product !== null, product };

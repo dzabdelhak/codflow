@@ -2,7 +2,7 @@ import { Context } from "hono";
 import type { AppContext } from "@/types";
 import { assertStoreShippingProfile } from "@/lib/store-shipping-profile";
 import { productUsage } from "@/platform/catalogue";
-import { schedulePurge } from "@/platform/storefront-cache";
+import { schedulePurge, schedulePurgeForProduct } from "@/platform/storefront-cache";
 import { getDb } from "@/db";
 import * as queries from "./queries";
 import * as validation from "./validation";
@@ -137,6 +137,7 @@ export async function updateProduct(c: Context<AppContext>) {
     throw new NotFoundError("Product", productId);
   }
   schedulePurge(c.env, c.get("storeId"));
+  schedulePurgeForProduct(c.env, productId);
   const actor = c.get("user");
   await logActivity(db, actor, ACTIONS.PRODUCT_UPDATED, {
     type: "product", id: product.id, label: product.name,
@@ -153,6 +154,8 @@ export async function updateProductStatus(c: Context<AppContext>) {
   if (!product) {
     throw new NotFoundError("Product", productId);
   }
+  schedulePurge(c.env, c.get("storeId"));
+  schedulePurgeForProduct(c.env, productId);
   const actor = c.get("user");
   await logActivity(db, actor, ACTIONS.PRODUCT_STATUS_CHANGED, {
     type: "product", id: product.id, label: product.name,
@@ -186,6 +189,7 @@ export async function deleteProduct(c: Context<AppContext>) {
 
   await queries.deleteProduct(db, id);
   schedulePurge(c.env, c.get("storeId"));
+  schedulePurgeForProduct(c.env, id);
   const actor = c.get("user");
   await logActivity(db, actor, ACTIONS.PRODUCT_DELETED, { type: "product", id });
   return c.json({ success: true, message: "Product deleted" }, 200);

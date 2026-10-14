@@ -24,6 +24,26 @@ export async function purgeChannelPages(
   }
 }
 
+export async function purgeProductChannels(
+  env: Pick<Env, "DATABASE" | "STOREFRONT_INTERNAL_URL" | "STOREFRONT_SERVICE_KEY">,
+  productId: string,
+  fetcher: typeof fetch = fetch,
+): Promise<void> {
+  if (!env.STOREFRONT_INTERNAL_URL || !env.STOREFRONT_SERVICE_KEY) return;
+  const { rows } = await env.DATABASE.platform.query<{ store_id: string }>(
+    "select store_id from channel_products where product_id = $1",
+    [productId],
+  );
+  await Promise.all(rows.map((r) => purgeChannelPages(env, r.store_id, fetcher)));
+}
+
+export function schedulePurgeForProduct(
+  env: Pick<Env, "DATABASE" | "STOREFRONT_INTERNAL_URL" | "STOREFRONT_SERVICE_KEY">,
+  productId: string,
+): void {
+  void purgeProductChannels(env, productId).catch((err) => console.warn("[storefront-cache] purge failed", err));
+}
+
 export function schedulePurge(
   env: Pick<Env, "DATABASE" | "STOREFRONT_INTERNAL_URL" | "STOREFRONT_SERVICE_KEY">,
   storeId: string | undefined,

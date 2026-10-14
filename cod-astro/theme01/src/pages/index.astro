@@ -23,7 +23,7 @@ import { thankYouUrl } from "@/core/utils/thank-you-url";
 const { config, content, isRTL } = await getStoreContext();
 
 const landing = isLandingChannel(config) ? await fetchLandingChannel() : null;
-const result = landing ? Astro.getActionResult(actions.placeOrder) : undefined;
+const result = isLandingChannel(config) ? Astro.getActionResult(actions.placeOrder) : undefined;
 if (result?.data?.orderNumber) {
   return Astro.redirect(thankYouUrl(result.data), 303);
 }

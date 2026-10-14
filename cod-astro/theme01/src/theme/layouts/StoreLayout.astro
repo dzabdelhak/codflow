@@ -23,7 +23,6 @@ interface Props {
   /** Marketing mode (landing pages): no header, no mobile nav, no footer —
    *  the page is images + form + sticky CTA, nothing else. */
   marketing?: boolean;
-  /** Landing channel: no header, mobile nav or cart; a footer with the legal pages only. */
   landing?: boolean;
   /** LCP images (landing page stack top) — preloaded in <head>. */
   preloadImages?: string[];
@@ -32,6 +31,11 @@ interface Props {
 const { title, description, ogImage, noindex, config: c, content, marketing = false, landing = false, preloadImages } = Astro.props;
 const hideMobileNav = marketing || landing || Astro.props.hideMobileNav;
 const config = c ?? DEFAULT_CONFIG;
+const widgetShown = config.whatsapp
+  ? landing
+    ? config.whatsapp.surfaces?.landing === true
+    : showsWidgetOn(config.whatsapp.surfaces, Astro.url.pathname)
+  : false;
 
 const isRTL = config.lang === "ar";
 const pageTitle = title ?? config.metaTitle ?? config.name;
@@ -101,7 +105,7 @@ const fontHref = config.fontUrl?.replace(/["<>]/g, "")
     {/* WhatsApp Chat Widget — merchant-configurable contact handoff.
         Rendered only when configured, non-null, and enabled on the current surface. 
         EXCEPTION: On thank-you page, we show an inline button instead of the floating widget. */}
-    {config.whatsapp && content && showsWidgetOn(config.whatsapp.surfaces, Astro.url.pathname) && Astro.url.pathname !== "/thank-you" && (
+    {config.whatsapp && content && widgetShown && Astro.url.pathname !== "/thank-you" && (
       <>
         <WhatsAppWidget widget={config.whatsapp} content={content} config={config} />
         {/* Imported for side effect: self-initialises on DOM ready */}

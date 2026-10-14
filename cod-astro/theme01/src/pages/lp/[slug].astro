@@ -5,6 +5,7 @@
 // SAME OrderForm the product page uses — same DOM contract, same scripts — so
 // offers, OTP, wilaya cascade, and tracking all work unmodified.
 // ─────────────────────────────────────────────────────────────────────────────
+import ProductPageData from "@/theme/components/product/ProductPageData.astro";
 import StoreLayout from "@/theme/layouts/StoreLayout.astro";
 import OrderForm from "@/theme/components/order/OrderForm.astro";
 import ShippingIsland from "@/theme/components/product/ShippingIsland.astro";
@@ -88,36 +89,14 @@ const metaDescription = lp.metaDescription || config.metaDescription || undefine
   {product && (
     <div>
       <!-- Data bridge: server-computed values → client script (same contract as product page) -->
-      <div
-        id="page-data"
-        class="sr-only"
-        data-variants={JSON.stringify(product.variants)}
-        data-base-price={basePrice}
-        data-compare-price={comparePrice ?? ""}
-        data-cur={cur}
-        data-is-rtl={isRTL ? "1" : "0"}
-        data-shipping-label={content.shippingLabel}
-        data-shipping-calc={content.shippingCalculated}
-        data-shipping-free={content.shippingFree}
-        data-total-label={content.totalLabel}
-        data-commune-placeholder={content.formCommunePlaceholder}
-        data-commune-loading={content.formCommuneLoading}
-        data-commune-disabled={content.formCommuneDisabled}
-        data-offers={JSON.stringify(product.offers)}
-        data-offer-free-label={content.offerFreeLabel}
-        data-offer-active={content.offerActive}
-        data-offer-unlocked={content.offerUnlocked}
-        data-offer-add-more={content.offerAddMore}
-        data-offer-add-one={content.offerAddOne}
-        data-offer-you-get={content.offerYouGet}
-        data-track-inventory={product.trackInventory ? "1" : "0"}
-        data-shipping-to-confirm={content.shippingToConfirm}
-        data-stock-not-guaranteed={content.stockNotGuaranteed}
-        data-inventory={String(product.inventory)}
-        data-pixel-id={pageConfig.pixelId ?? ""}
-        data-phone-invalid={content.formPhoneInvalid}
-        data-product-id={product.id}
-        data-product-name={product.name}
+      <ProductPageData
+        product={product}
+        basePrice={basePrice}
+        comparePrice={comparePrice}
+        cur={cur}
+        isRTL={isRTL}
+        content={content}
+        pixelId={pageConfig.pixelId}
       />
 
       <!-- Dynamic data Island (Deferred) -->
@@ -192,25 +171,4 @@ const metaDescription = lp.metaDescription || config.metaDescription || undefine
 <script src="../../theme/scripts/otp-step.ts"></script>
 <script src="../../theme/scripts/turnstile-field.ts"></script>
 
-<style>
-  /* Sticky CTA — floats above the image stack until the form scrolls into
-     view (lp-sticky-cta.ts toggles .is-hidden). Colors/radius/shadow come
-     from .btn-primary + tokens; sizes/offsets are layout, not design. */
-  .lp-sticky-cta {
-    position: fixed;
-    bottom: calc(var(--safe-bottom) + 0.75rem);
-    inset-inline: 0;
-    margin-inline: auto;
-    width: min(24rem, calc(100% - 2rem));
-    z-index: 45;
-    box-shadow: var(--shadow-primary);
-    font-weight: 800;
-    transition: transform 0.25s ease, opacity 0.25s ease;
-  }
-  .lp-sticky-cta.is-hidden {
-    transform: translateY(150%);
-    opacity: 0;
-    pointer-events: none;
-  }
-</style>
 <script src="../../theme/scripts/track-abandonment.ts"></script>

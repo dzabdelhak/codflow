@@ -1059,9 +1059,7 @@ export const stores = pgTable("stores", {
   merchantId: text("merchant_id").notNull().references(() => merchants.id),
   defaultShippingProfileId: text("default_shipping_profile_id").references(() => shippingProfiles.id, { onDelete: "set null" }),
   creationKey: text("creation_key"),
-  /** "store" sells a selection of the catalogue; "landing" sells its one main product (its only channel_products row). */
   channelType: text("channel_type", { enum: CHANNEL_TYPES }).notNull().default("store"),
-  /** What a landing's public page does while its main product is unavailable. */
   unavailableRule: text("unavailable_rule", { enum: UNAVAILABLE_RULES }).notNull().default("show_unavailable"),
 }, (t) => ({
   merchantIdx: index("stores_merchant_idx").on(t.merchantId),

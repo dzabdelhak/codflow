@@ -58,7 +58,8 @@ export type NavSection = {
 export function useNavSections(): NavSection[] {
   const identity = useIdentity();
   const tN = useT("navigation");
-  const channelType = useMerchantStores().active?.type ?? "store";
+  const merchantStores = useMerchantStores();
+  const channelType = merchantStores.failed ? "store" : merchantStores.active?.type;
   const landing = channelType === "landing";
   const sections: NavSection[] = [
     {
@@ -141,7 +142,7 @@ export function useNavSections(): NavSection[] {
           id: "products",
           label: tN("sidebar.products"),
           icon: Layers,
-          href: landing ? "/products/main" : "/products",
+          href: channelType === undefined ? undefined : landing ? "/products/main" : "/products",
           scope: "products:read",
           children: [
             {

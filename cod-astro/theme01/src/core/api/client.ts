@@ -98,7 +98,6 @@ export function fetchProductByHandle(handle: string): Promise<any | null> {
   });
 }
 
-/** The landing channel's main product and its availability; null for a store channel. */
 export function fetchLandingChannel(): Promise<LandingChannel | null> {
   return memoForRequest("landing-channel", async () => {
     try {

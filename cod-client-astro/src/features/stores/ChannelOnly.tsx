@@ -4,7 +4,6 @@ import { useT } from "@/i18n/react";
 import type { ChannelType } from "../../../../cod-shared/channels/types";
 import { useMerchantStores } from "./useMerchantStores";
 
-/** Renders `children` only when the active channel is of `type`; a notice otherwise. */
 export function ChannelOnly({ type, children }: { type: ChannelType; children: ReactNode }) {
   const t = useT("products");
   const { active, failed } = useMerchantStores();

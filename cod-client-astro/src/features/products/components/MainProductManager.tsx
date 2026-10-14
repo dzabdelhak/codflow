@@ -45,7 +45,9 @@ function ReplaceDialog({
   }, []);
 
   const candidates = catalogue
-    ? catalogueCandidates(catalogue, query, { includeCarried: true }).filter((p) => p.id !== currentId)
+    ? catalogueCandidates(catalogue, query, { includeCarried: true }).filter(
+        (p) => p.id !== currentId && p.status === "ACTIVE" && p.visibility,
+      )
     : [];
 
   async function confirm() {

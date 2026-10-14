@@ -2,6 +2,7 @@
 // ── STREAMING COMPONENT ──
 // This component handles the product fetch and rendering
 // Allows the parent page to stream layout/head immediately
+import ProductPageData from "@/theme/components/product/ProductPageData.astro";
 import OrderForm from "@/theme/components/order/OrderForm.astro";
 import AddToCartButton from "@/theme/components/cart/AddToCartButton.astro";
 import ProductGallery from "@/theme/components/product/ProductGallery.astro";
@@ -56,36 +57,14 @@ const jsonLd = getProductJsonLd(product, basePrice);
 <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
 
 <!-- Data bridge: server-computed values → client script -->
-<div
-  id="page-data"
-  class="sr-only"
-  data-variants={JSON.stringify(product.variants)}
-  data-base-price={basePrice}
-  data-compare-price={comparePrice ?? ""}
-  data-cur={cur}
-  data-is-rtl={isRTL ? "1" : "0"}
-  data-shipping-label={content.shippingLabel}
-  data-shipping-calc={content.shippingCalculated}
-  data-shipping-free={content.shippingFree}
-  data-total-label={content.totalLabel}
-  data-commune-placeholder={content.formCommunePlaceholder}
-  data-commune-loading={content.formCommuneLoading}
-  data-commune-disabled={content.formCommuneDisabled}
-  data-offers={JSON.stringify(product.offers)}
-  data-offer-free-label={content.offerFreeLabel}
-  data-offer-active={content.offerActive}
-  data-offer-unlocked={content.offerUnlocked}
-  data-offer-add-more={content.offerAddMore}
-  data-offer-add-one={content.offerAddOne}
-  data-offer-you-get={content.offerYouGet}
-  data-track-inventory={product.trackInventory ? "1" : "0"}
-  data-shipping-to-confirm={content.shippingToConfirm}
-  data-stock-not-guaranteed={content.stockNotGuaranteed}
-  data-inventory={String(product.inventory)}
-  data-pixel-id={config.pixelId ?? ""}
-  data-phone-invalid={content.formPhoneInvalid}
-  data-product-id={product.id}
-  data-product-name={product.name}
+<ProductPageData
+  product={product}
+  basePrice={basePrice}
+  comparePrice={comparePrice}
+  cur={cur}
+  isRTL={isRTL}
+  content={content}
+  pixelId={config.pixelId}
 />
 
 <!-- Dynamic data Island (Deferred) -->

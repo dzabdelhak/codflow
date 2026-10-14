@@ -35,8 +35,8 @@ function layoutConfigOf(source: string): string {
 
 /** The identifier behind data-pixel-id — what product.ts fires events at. */
 function pixelSourceOf(source: string): string {
-  const match = source.match(/data-pixel-id=\{([A-Za-z0-9_$]+)\.pixelId/);
-  expect(match, "page must set data-pixel-id from a config object").not.toBeNull();
+  const match = source.match(/(?:data-pixel-id|pixelId)=\{([A-Za-z0-9_$]+)\.pixelId/);
+  expect(match, "page must set the page-data pixel id from a config object").not.toBeNull();
   return match![1];
 }
 

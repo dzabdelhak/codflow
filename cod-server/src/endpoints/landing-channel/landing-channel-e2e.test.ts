@@ -182,6 +182,13 @@ describe("a published landing", () => {
     expect(await res.json()).toMatchObject({ data: { available: true, mainProduct: { productId: "cream", published: true } } });
     expect(await landingRows()).toEqual(["cream"]);
     expect((await dashboard("PUT", "/api/landing-channel/main-product", { productId: "nope" }, landing)).status).toBe(400);
+
+    await harness.platform.query("update products set status = 'DRAFT' where id = 'serum'");
+    const draft = await dashboard("PUT", "/api/landing-channel/main-product", { productId: "serum" }, landing);
+    expect(draft.status).toBe(400);
+    expect(await draft.json()).toMatchObject({ context: { field: "productId", reason: "unsellable" } });
+    expect(await landingRows()).toEqual(["cream"]);
+    await harness.platform.query("update products set status = 'ACTIVE' where id = 'serum'");
   });
 
   it("is not a landing for a store channel", async () => {
@@ -218,6 +225,15 @@ describe("when the main product becomes unavailable", () => {
 
     await harness.platform.query("update products set status = 'ACTIVE' where id = 'cream'");
     expect((await storefront("/store/config")).status).toBe(200);
+  });
+
+  it("stops presenting a deleted main product", async () => {
+    await dashboard("PATCH", "/api/landing-channel", { unavailableRule: "show_unavailable" }, landing);
+    await harness.platform.query("update products set deleted_at = now()::text where id = 'cream'");
+    const page = (await (await storefront("/store/landing")).json()) as { data: { available: boolean; product: unknown } };
+    expect(page.data).toEqual({ unavailableRule: "show_unavailable", available: false, product: null });
+    await harness.platform.query("update products set deleted_at = null where id = 'cream'");
+    await dashboard("PATCH", "/api/landing-channel", { unavailableRule: "suspend" }, landing);
   });
 
   it("suspends a landing whose product was unpublished or deleted, but not one whose stock ran out", async () => {

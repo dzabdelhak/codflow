@@ -228,22 +228,23 @@ export function findProductNotCarried(snapshot: CatalogSnapshot, lines: CartLine
   return null;
 }
 
+function isSellable(product: CatalogProduct | undefined, requirePublished: boolean): product is CatalogProduct {
+  return (
+    product != null &&
+    product.deletedAt === null &&
+    product.status === "ACTIVE" &&
+    product.visibility &&
+    (!requirePublished || product.published)
+  );
+}
+
 export function findProductNotSellable(
   snapshot: CatalogSnapshot,
   lines: CartLine[],
   opts: { requirePublished: boolean },
 ): string | null {
   for (const line of lines) {
-    const product = snapshot.products.get(line.productId);
-    if (
-      !product ||
-      product.deletedAt !== null ||
-      product.status !== "ACTIVE" ||
-      !product.visibility ||
-      (opts.requirePublished && !product.published)
-    ) {
-      return line.productId;
-    }
+    if (!isSellable(snapshot.products.get(line.productId), opts.requirePublished)) return line.productId;
   }
   return null;
 }
@@ -350,12 +351,7 @@ export function resolveCartLines(
     const variant = line.variantId ? snapshot.variants.get(line.variantId) : undefined;
 
     const sellable =
-      product != null &&
-      product.deletedAt === null &&
-      product.status === "ACTIVE" &&
-      product.visibility &&
-      product.published &&
-      (line.variantId == null || (variant != null && variant.active));
+      isSellable(product, true) && (line.variantId == null || (variant != null && variant.active));
 
     const maxQuantity = !product?.trackInventory
       ? null
