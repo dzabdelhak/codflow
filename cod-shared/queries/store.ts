@@ -42,7 +42,7 @@ import {
 } from "../db/schema";
 import type { AppDb } from "../db/client";
 import { deriveDescriptionPlain } from "./products";
-import { aventyGridVersion, channelDefaultProfile, lockDeliveryGrid, resolveDeliveryFee } from "./shipping-resolution";
+import { channelDefaultProfile, lockDeliveryGrid, resolveDeliveryFee } from "./shipping-resolution";
 import { normalizeOrderLines } from "./cart";
 import { publicTrackersFrom, resolvePublicTracking } from "./tracking-config";
 import { attributionColumns, campaignOf, type OrderAttribution } from "../tracking/attribution";
@@ -713,6 +713,7 @@ export async function createStoreOrder(
     customerName: string;
     deliveryFee: number | null;
     deliveryGridVersion?: number | null;
+    aventyGridVersion?: number | null;
   },
   /**
    * Catalog rows already loaded by the caller. The storefront handler loads
@@ -908,7 +909,7 @@ export async function createStoreOrder(
         (line.variantId ? snapshot.variants.get(line.variantId)?.version : snapshot.products.get(line.productId)?.version) ??
         null,
     })),
-    delivery: { type: data.deliveryType, office: null, fee: finalDeliveryFee, gridVersion: gridVersion === null ? null : (await aventyGridVersion(db)) ?? gridVersion },
+    delivery: { type: data.deliveryType, office: null, fee: finalDeliveryFee, gridVersion: gridVersion === null ? null : data.aventyGridVersion ?? gridVersion },
     customer: {
       name: data.customerName,
       phone: data.phone,

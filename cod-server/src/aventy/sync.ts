@@ -4,9 +4,11 @@ import { withStore } from "@/db/scope";
 import type { AppDb } from "../../../cod-shared/db/client";
 import { aventySyncState, AVENTY_DOMAINS, type AventyDomain } from "../../../cod-shared/db/schema";
 import { AventyPermissionError, AventyUnauthorizedError, type AventyClient } from "./client";
-import { applyCatalogueChanges, applyCatalogueSnapshot, applyDeliveryGrid } from "./apply";
+import { applyCatalogueCopies, applyDeliveryGrid, unpublishAllBut, unpublishWithdrawn } from "./apply";
 import { loadChannelKey, markChannelKeyRevoked } from "./keys";
 import { redactKey, type AventyKeyVault } from "./key-vault";
+
+const APPLY_CHUNK = 200;
 
 export interface AventyDeps {
   app: pg.Pool;
@@ -17,7 +19,7 @@ export interface AventyDeps {
 
 export type DomainOutcome = { domain: AventyDomain; result: "synced" | "unchanged" | "not_permitted" | "failed"; detail?: string };
 export type ChannelSyncResult =
-  | { storeId: string; state: "no_key" | "revoked" }
+  | { storeId: string; state: "no_key" | "revoked" | "in_progress" }
   | { storeId: string; state: "synced"; domains: DomainOutcome[] };
 
 async function recordDomain(db: AppDb, domain: AventyDomain, values: { cursor?: string; error: string | null }) {
@@ -40,28 +42,44 @@ async function pullDomain(deps: AventyDeps, channel: { storeId: string; merchant
     return;
   }
   const changes = cursor ? await deps.client.catalogueChanges(key, cursor) : "cursor_expired";
-  if (changes === "cursor_expired") {
-    const snapshot = await deps.client.catalogueSnapshot(key);
-    await inChannel(async (db) => {
-      await applyCatalogueSnapshot(db, snapshot.products);
-      await recordDomain(db, domain, { cursor: snapshot.cursor, error: null });
-    });
-    return;
+  const pulled = changes === "cursor_expired" ? await deps.client.catalogueSnapshot(key) : changes;
+  for (let i = 0; i < pulled.products.length; i += APPLY_CHUNK) {
+    await inChannel((db) => applyCatalogueCopies(db, pulled.products.slice(i, i + APPLY_CHUNK)));
   }
   await inChannel(async (db) => {
-    await applyCatalogueChanges(db, changes.products, changes.removed);
-    await recordDomain(db, domain, { cursor: changes.cursor, error: null });
+    if (changes === "cursor_expired") await unpublishAllBut(db, pulled.products.map((p) => p.id));
+    else await unpublishWithdrawn(db, changes.removed);
+    await recordDomain(db, domain, { cursor: pulled.cursor, error: null });
   });
 }
 
 export async function syncChannel(deps: AventyDeps, channel: { storeId: string; merchantId: string }): Promise<ChannelSyncResult> {
+  const lock = await deps.platform.connect();
+  try {
+    const { rows: [{ locked }] } = await lock.query<{ locked: boolean }>(
+      "select pg_try_advisory_lock(hashtextextended('aventy-sync:' || $1, 0)) as locked",
+      [channel.storeId],
+    );
+    if (!locked) return { storeId: channel.storeId, state: "in_progress" };
+    try {
+      return await syncUnlocked(deps, channel);
+    } finally {
+      await lock.query("select pg_advisory_unlock(hashtextextended('aventy-sync:' || $1, 0))", [channel.storeId]);
+    }
+  } finally {
+    lock.release();
+  }
+}
+
+async function syncUnlocked(deps: AventyDeps, channel: { storeId: string; merchantId: string }): Promise<ChannelSyncResult> {
   const loaded = await loadChannelKey(deps.platform, deps.vault, channel.storeId);
   if (!loaded) return { storeId: channel.storeId, state: "no_key" };
   if (loaded.status === "revoked") return { storeId: channel.storeId, state: "revoked" };
-  const { key } = loaded;
+  const current = loaded;
+  const { key } = current;
 
   const revoked = async (err: AventyUnauthorizedError): Promise<ChannelSyncResult> => {
-    await markChannelKeyRevoked(deps.platform, channel.storeId, redactKey(err.message || "Aventy refused the key", key));
+    await markChannelKeyRevoked(deps.platform, channel.storeId, current, redactKey(err.message || "Aventy refused the key", key));
     return { storeId: channel.storeId, state: "revoked" };
   };
 

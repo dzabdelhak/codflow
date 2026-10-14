@@ -224,7 +224,7 @@ describe("Store API routes (OpenAPIHono)", () => {
         id: "cust_1",
         name: "أحمد بن علي",
       } as any);
-      vi.mocked(queries.resolveDeliveryFee).mockResolvedValue(600 as any);
+      vi.mocked(queries.resolveDeliveryPricing).mockResolvedValue({ fee: 600, aventyGridVersion: null } as any);
       vi.mocked(queries.createStoreOrder).mockResolvedValue({
         id: "ord_1",
         orderNumber: "ORD-20260821-0001",
@@ -256,7 +256,7 @@ describe("Store API routes (OpenAPIHono)", () => {
       } as any);
       vi.mocked(queries.findMissingSku).mockReturnValue(null as any);
       vi.mocked(queries.findOrCreateCustomer).mockResolvedValue({ id: "cust_1", name: "أحمد" } as any);
-      vi.mocked(queries.resolveDeliveryFee).mockResolvedValue(null as any);
+      vi.mocked(queries.resolveDeliveryPricing).mockResolvedValue({ fee: null, aventyGridVersion: null } as any);
       vi.mocked(queries.createStoreOrder).mockResolvedValue({
         id: "ord_1",
         orderNumber: "CMD-00001",

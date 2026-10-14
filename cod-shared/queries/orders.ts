@@ -32,7 +32,6 @@ import { safeLikeTerm } from "./search";
 import { outboundOrderRow } from "./outbound-orders";
 import { getCustomerByPhone, updateCustomer, type UpdateCustomerData } from "./customers";
 import { first } from "../db/client";
-import { aventyGridVersion } from "./shipping-resolution";
 
 export interface OrderFilters {
   status?: (typeof orders.$inferSelect)["status"] | "all";
@@ -189,6 +188,7 @@ export async function createOrder(
   orderData: typeof orders.$inferInsert,
   productsData: Array<typeof orderProducts.$inferInsert>,
   actor?: { id: string; name: string } | null,
+  pricing: { aventyGridVersion?: number | null } = {},
 ) {
   const now = orderData.createdAt ?? new Date().toISOString();
 
@@ -319,7 +319,7 @@ export async function createOrder(
           type: orderData.deliveryType ?? "home",
           office: null,
           fee: orderData.deliveryFeeToConfirm ? null : orderData.deliveryFee ?? 0,
-          gridVersion: orderData.deliveryGridVersion == null ? null : (await aventyGridVersion(db)) ?? orderData.deliveryGridVersion,
+          gridVersion: orderData.deliveryGridVersion == null ? null : pricing.aventyGridVersion ?? orderData.deliveryGridVersion,
         },
         customer: {
           name: orderData.customerName,

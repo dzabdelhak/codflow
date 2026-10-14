@@ -16,7 +16,8 @@ Aventy's API reference. The contract is [AVENTY-INTEGRATION.md](./AVENTY-INTEGRA
 - **Heartbeat:** `task:aventy-heartbeat` runs once a minute across all servers (`src/platform/schedule.ts`) and asks every channel with an active key which domains changed.
 - **Catalogue:** the first pull is a snapshot; after that, changes from the stored cursor. A cursor that is too old falls back to a snapshot. A snapshot unpublishes the channel's Aventy products it no longer lists.
 - **Delivery:** the whole grid is pulled whenever it changed.
-- **Atomic per domain:** each domain is applied and its cursor saved in one transaction, under the channel's RLS scope (`src/aventy/sync.ts`).
+- **Applied in chunks:** products are applied 200 per transaction, under the channel's RLS scope; the cursor is saved only by the last transaction, so a run cut short resumes from the old cursor (`src/aventy/sync.ts`).
+- **One sync per channel:** an advisory lock lets only one sync run per channel at a time, even when two heartbeats overlap.
 
 **Versioned copies.**
 - **Products:** an Aventy product is a catalogue row with `aventy_id` and Aventy's version in `source_version`, apart from the local `version` that the trigger raises on every update. A copy is replaced only by a newer version.
@@ -35,6 +36,10 @@ Aventy's API reference. The contract is [AVENTY-INTEGRATION.md](./AVENTY-INTEGRA
 - **Revoked key:** when Aventy refuses a key (here or in the heartbeat), the key is marked revoked. That channel's entries stay in the queue; the outbound worker skips the channel, and its attempts are not counted, so the channel's creation order holds.
 - **Alerts:** the dashboard banner and the transmission screen show an alert when the key is revoked, or missing while orders go to Aventy.
 - **Resuming:** saving a new key resumes sending at once.
+
+## Known limit
+
+- **One copy per product:** the copy lives in the merchant's one catalogue, so two Aventy channels of the same merchant share it. Price, reserve and description are those of the most recent version either channel received. If Aventy's sites can price or stock the same product differently, these need to move per channel (a schema change, to decide with Aventy's reference).
 
 ## Waiting for Aventy
 

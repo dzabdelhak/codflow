@@ -46,6 +46,7 @@ export async function removeChannelKey(db: AppDb): Promise<boolean> {
 export interface LoadedChannelKey {
   key: string;
   status: "active" | "revoked";
+  ciphertext: string;
 }
 
 export async function loadChannelKey(platform: pg.Pool, vault: AventyKeyVault, storeId: string): Promise<LoadedChannelKey | null> {
@@ -57,20 +58,21 @@ export async function loadChannelKey(platform: pg.Pool, vault: AventyKeyVault, s
   const key = vault.open(storeId, { ciphertext: row.ciphertext, encryptionKeyId: row.keyId });
   if (row.keyId !== vault.currentKeyId) {
     const sealed = vault.seal(storeId, key);
-    await platform.query(
+    const { rowCount } = await platform.query(
       `update channel_aventy_keys set key_ciphertext = $2, encryption_key_id = $3, updated_at = now()
-        where store_id = $1 and encryption_key_id = $4`,
-      [storeId, sealed.ciphertext, sealed.encryptionKeyId, row.keyId],
+        where store_id = $1 and key_ciphertext = $4`,
+      [storeId, sealed.ciphertext, sealed.encryptionKeyId, row.ciphertext],
     );
+    if (rowCount) return { key, status: row.status, ciphertext: sealed.ciphertext };
   }
-  return { key, status: row.status };
+  return { key, status: row.status, ciphertext: row.ciphertext };
 }
 
-export async function markChannelKeyRevoked(platform: pg.Pool, storeId: string, detail: string): Promise<void> {
+export async function markChannelKeyRevoked(platform: pg.Pool, storeId: string, refused: LoadedChannelKey, detail: string): Promise<void> {
   const { rowCount } = await platform.query(
     `update channel_aventy_keys set status = 'revoked', status_detail = $2, status_changed_at = now(), updated_at = now()
-      where store_id = $1 and status = 'active'`,
-    [storeId, detail],
+      where store_id = $1 and status = 'active' and key_ciphertext = $3`,
+    [storeId, detail, refused.ciphertext],
   );
   if (rowCount) console.warn(JSON.stringify({ event: "aventy.key_revoked", storeId, detail }));
 }

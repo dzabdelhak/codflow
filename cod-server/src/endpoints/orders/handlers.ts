@@ -104,6 +104,7 @@ export async function createOrder(c: Context<AppContext>) {
     // Online orders always use the shipping profile to enforce coverage rules.
     let deliveryFee = validated.deliveryFee ?? 0;
     let deliveryGridVersion: number | null = null;
+    let aventyGridVersion: number | null = null;
     if (validated.wilayaId) {
       try {
         const productIds = validated.products.map((p) => p.productId);
@@ -119,6 +120,7 @@ export async function createOrder(c: Context<AppContext>) {
         if (validated.orderType === "online" || validated.deliveryFee == null) {
           deliveryFee = resolved.deliveryFee;
           deliveryGridVersion = gridVersion;
+          aventyGridVersion = resolved.aventyGridVersion;
         }
         // Apply free-shipping offer override
         const productQuantities = new Map(validated.products.map((p) => [p.productId, p.quantity]));
@@ -209,7 +211,7 @@ export async function createOrder(c: Context<AppContext>) {
 
     const actor = c.get("user");
     // Create order — passes actor so stock movements are attributed correctly
-    await queries.createOrder(db, orderData, productsData, actor ? { id: actor.id, name: actor.name ?? "Unknown" } : null);
+    await queries.createOrder(db, orderData, productsData, actor ? { id: actor.id, name: actor.name ?? "Unknown" } : null, { aventyGridVersion });
     await logActivity(db, actor, ACTIONS.ORDER_CREATED, {
       type: "order", id: orderId, label: orderNumber,
     });

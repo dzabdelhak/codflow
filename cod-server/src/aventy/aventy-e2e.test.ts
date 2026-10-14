@@ -8,13 +8,14 @@ import { authMiddleware } from "@/middleware/auth";
 import { dashboardScope } from "@/middleware/dashboardScope";
 import { errorHandler } from "@/middleware/error";
 import { openApiValidationHook } from "@/openapi/validation-hook";
+import * as schema from "@/db/schema";
 import { fakeAventy, product } from "@/test-utils/fake-aventy";
 import { drainOutbound, sendNextOutbound } from "@/platform/outbound/worker";
 import aventyRoutes from "@/endpoints/aventy/routes";
 import transmissionRoutes from "@/endpoints/transmission/routes";
 import storeRouter from "@/endpoints/store/routes";
 import { createAventyKeyVault } from "./key-vault";
-import { saveChannelKey } from "./keys";
+import { loadChannelKey, markChannelKeyRevoked, saveChannelKey } from "./keys";
 import { runAventyHeartbeat, type AventyDeps } from "./sync";
 import { aventyDestination } from "./destination";
 
@@ -225,6 +226,50 @@ describe("syncing from Aventy", () => {
     errors.mockRestore();
     warns.mockRestore();
     aventy.site(KEY_B).failWith = null;
+  });
+});
+
+describe("syncing more than one channel", () => {
+  it("publishes in every channel a product Aventy sends to several, even when the copy is already current", async () => {
+    aventy.publish(KEY_A, product("shared", 1));
+    aventy.publish(KEY_B, product("shared", 1));
+    await runAventyHeartbeat(deps);
+    const { rows } = await harness.platform.query(
+      "select cp.store_id from channel_products cp join products p on p.id = cp.product_id where p.aventy_id = 'shared' and cp.published order by cp.store_id",
+    );
+    expect(rows.map((r) => r.store_id).sort()).toEqual([TEST_STORE_ID, sibling].sort());
+  });
+
+  it("runs one sync per channel at a time", async () => {
+    const holder = await database.platform.connect();
+    await holder.query("select pg_advisory_lock(hashtextextended('aventy-sync:' || $1, 0))", [sibling]);
+    try {
+      const results = await runAventyHeartbeat(deps);
+      expect(results.find((r) => r.storeId === sibling)).toEqual({ storeId: sibling, state: "in_progress" });
+    } finally {
+      await holder.query("select pg_advisory_unlock(hashtextextended('aventy-sync:' || $1, 0))", [sibling]);
+      holder.release();
+    }
+  });
+
+  it("does not revoke a key saved after the refused one was loaded", async () => {
+    const refused = await loadChannelKey(database.platform, vault, sibling);
+    await withStore(database.app, sibling, (db) => saveChannelKey(db, vault, sibling, "av_key_store_b_new_value_99999999"), TEST_MERCHANT_ID);
+    await markChannelKeyRevoked(database.platform, sibling, refused!, "late refusal of the old key");
+    expect((await call("GET", "/api/aventy/key", undefined, {}, sibling)).json.data).toMatchObject({ status: "active", hint: "••••9999" });
+  });
+
+  it("reports the store grid's version, not Aventy's, when a product's own profile priced the order", async () => {
+    const own = await harness.connect();
+    const now = new Date().toISOString();
+    await own.insert(schema.shippingProfiles).values({ id: "sp-own", name: "Own", createdAt: now, updatedAt: now });
+    await own.insert(schema.shippingRules).values({ id: "sr-own", profileId: "sp-own", wilayaId: 16, homePrice: 900, stopDeskPrice: 500, homeEnabled: true, stopDeskEnabled: true, createdAt: now });
+    const { id } = await productRow("shared");
+    await harness.platform.query("update channel_products set shipping_profile_id = 'sp-own' where product_id = $1 and store_id = $2", [id, TEST_STORE_ID]);
+    expect((await placeOrder(id)).status).toBe(201);
+    const { rows: [entry] } = await harness.platform.query("select payload from outbound_orders order by created_at desc limit 1");
+    const { rows: [merchant] } = await harness.platform.query("select delivery_grid_version as v from merchants where id = $1", [TEST_MERCHANT_ID]);
+    expect(entry.payload.delivery).toMatchObject({ fee: 900, gridVersion: merchant.v });
   });
 });
 

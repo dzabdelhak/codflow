@@ -15,7 +15,7 @@ export function aventyDestination(deps: { platform: pg.Pool; vault: AventyKeyVau
         return await deps.client.sendOrder(loaded.key, { sendId: entry.sendId, payload: entry.payload });
       } catch (err) {
         if (err instanceof AventyUnauthorizedError) {
-          await markChannelKeyRevoked(deps.platform, entry.storeId, redactKey(err.message || "Aventy refused the key", loaded.key));
+          await markChannelKeyRevoked(deps.platform, entry.storeId, loaded, redactKey(err.message || "Aventy refused the key", loaded.key));
           return { kind: "unauthorized", reason: "Aventy refused this channel's key" };
         }
         throw new Error(redactKey(err instanceof Error ? err.message : String(err), loaded.key));

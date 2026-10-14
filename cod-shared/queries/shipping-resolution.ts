@@ -43,12 +43,6 @@ export async function lockDeliveryGrid(db: AppDb): Promise<number | null> {
   return row?.version ?? null;
 }
 
-export async function aventyGridVersion(db: AppDb): Promise<number | null> {
-  const row = await db.select({ version: shippingProfiles.sourceVersion }).from(shippingProfiles)
-    .where(eq(shippingProfiles.aventyStoreId, sql`current_setting('app.store_id', true)`)).then(first);
-  return row?.version ?? null;
-}
-
 export async function currentGridVersion(db: AppDb): Promise<number | null> {
   const row = await db.select({ version: merchants.deliveryGridVersion }).from(merchants).then(first);
   return row?.version ?? null;
@@ -116,10 +110,20 @@ function candidateProfileIds(
   return [...ids];
 }
 
-export async function resolveDeliveryFee(
+export async function resolveDeliveryFee(db: AppDb, params: DeliveryFeeParams): Promise<number | null> {
+  return (await resolveDeliveryPricing(db, params)).fee;
+}
+
+export interface DeliveryPricing {
+  fee: number | null;
+  /** Aventy's version of the grid that priced the order, when the channel's Aventy profile alone priced it. */
+  aventyGridVersion: number | null;
+}
+
+export async function resolveDeliveryPricing(
   db: AppDb,
   params: DeliveryFeeParams,
-): Promise<number | null> {
+): Promise<DeliveryPricing> {
   const { productIds, wilayaId, communeId, deliveryType, storeId, subtotal } = params;
 
   // ── Round trip 1: the store default profile + the products' own profiles ──
@@ -142,12 +146,16 @@ export async function resolveDeliveryFee(
     freeShippingThreshold: number | null;
     cartShippingMode: "highest" | "default_profile";
     defaultProfileId: string | null;
+    aventyProfileId: string | null;
+    aventyGridVersion: number | null;
   };
   const settingsStatement = db
     .select({
       freeShippingThreshold: stores.freeShippingThreshold,
       cartShippingMode: stores.cartShippingMode,
       defaultProfileId: DEFAULT_PROFILE_ID,
+      aventyProfileId: sql<string | null>`(select sp.id from shipping_profiles sp where sp.aventy_store_id = "stores"."id")`,
+      aventyGridVersion: sql<number | null>`(select sp.source_version from shipping_profiles sp where sp.aventy_store_id = "stores"."id")`,
     })
     .from(stores)
     .where(eq(stores.id, storeId ?? sql`current_setting('app.store_id', true)`));
@@ -184,7 +192,11 @@ export async function resolveDeliveryFee(
   );
 
   // No profile anywhere: fresh store, nothing configured. Not a refusal.
-  if (profileIds.length === 0) return 0;
+  if (profileIds.length === 0) return { fee: 0, aventyGridVersion: null };
+  const aventyGridVersion =
+    settingsRow?.aventyProfileId && settingsRow.aventyGridVersion != null && profileIds.every((id) => id === settingsRow.aventyProfileId)
+      ? Number(settingsRow.aventyGridVersion)
+      : null;
 
   // ── Round trip 2: each profile's wilaya rule + its commune override ───────
   //
@@ -249,7 +261,7 @@ export async function resolveDeliveryFee(
 
     // A product whose profile does not cover this wilaya cannot be delivered,
     // so neither can the basket. Refusing beats quietly shipping the rest.
-    if (!row) return null;
+    if (!row) return { fee: null, aventyGridVersion: null };
 
     // `??` is the whole commune rule: a NULL column inherits, a 0 does not.
     // `0 ?? x` is 0, which is what "explicitly disabled" has to mean.
@@ -257,7 +269,7 @@ export async function resolveDeliveryFee(
       deliveryType === "home"
         ? (row.cHomeEnabled ?? row.homeEnabled)
         : (row.cStopDeskEnabled ?? row.stopDeskEnabled);
-    if (!enabled) return null;
+    if (!enabled) return { fee: null, aventyGridVersion: null };
 
     const price =
       deliveryType === "home"
@@ -267,7 +279,7 @@ export async function resolveDeliveryFee(
     if (price > fee) fee = price;
   }
 
-  if (fee < 0) return null;
+  if (fee < 0) return { fee: null, aventyGridVersion: null };
 
   // Free-delivery threshold, applied last so it overrides whatever the profile
   // and commune rules produced. `null` (unavailable) is returned above and is
@@ -284,8 +296,8 @@ export async function resolveDeliveryFee(
     subtotal != null &&
     subtotal >= settings.freeShippingThreshold
   ) {
-    return 0;
+    return { fee: 0, aventyGridVersion };
   }
 
-  return fee;
+  return { fee, aventyGridVersion };
 }

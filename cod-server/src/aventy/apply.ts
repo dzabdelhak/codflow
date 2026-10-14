@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { and, eq, inArray, isNotNull, notInArray, sql } from "drizzle-orm";
 import type { AppDb } from "../../../cod-shared/db/client";
 import { first } from "../../../cod-shared/db/client";
@@ -14,16 +14,11 @@ import {
 } from "../../../cod-shared/db/schema";
 import type { AventyDeliveryGrid, AventyProductCopy } from "./client";
 
-export interface CatalogueApplied {
-  applied: number;
-  skipped: number;
-  unpublished: number;
-}
-
 const now = () => new Date().toISOString();
 const slugOf = (text: string) =>
   text.normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "item";
-const handleOf = (copy: AventyProductCopy) => `${slugOf(copy.name)}-aventy-${slugOf(copy.id)}`;
+const idTag = (aventyId: string) => createHash("sha256").update(aventyId).digest("hex").slice(0, 16);
+const handleOf = (copy: AventyProductCopy) => `${slugOf(copy.name)}-av${idTag(copy.id)}`;
 
 async function categoryId(db: AppDb, category: AventyProductCopy["category"]): Promise<string | null> {
   if (!category) return null;
@@ -37,7 +32,7 @@ async function categoryId(db: AppDb, category: AventyProductCopy["category"]): P
   }
   const id = randomUUID();
   await db.insert(productCategories).values({
-    id, name: category.name, slug: `aventy-${slugOf(category.id)}`, aventyId: category.id, createdAt: now(), updatedAt: now(),
+    id, name: category.name, slug: `aventy-${idTag(category.id)}`, aventyId: category.id, createdAt: now(), updatedAt: now(),
   });
   return id;
 }
@@ -54,10 +49,19 @@ function variantOptions(copy: AventyProductCopy): string | null {
   return JSON.stringify([...values].map(([name, set]) => ({ name, values: [...set].map((value) => ({ value })) })));
 }
 
+async function publishInChannel(db: AppDb, productId: string) {
+  await db.insert(channelProducts)
+    .values({ productId, published: true, createdAt: now(), updatedAt: now() })
+    .onConflictDoUpdate({ target: [channelProducts.storeId, channelProducts.productId], set: { published: true, updatedAt: now() } });
+}
+
 async function applyProduct(db: AppDb, copy: AventyProductCopy): Promise<boolean> {
   const existing = await db.select({ id: products.id, sourceVersion: products.sourceVersion }).from(products)
     .where(eq(products.aventyId, copy.id)).then(first);
-  if (existing && existing.sourceVersion !== null && existing.sourceVersion >= copy.version) return false;
+  if (existing && existing.sourceVersion !== null && existing.sourceVersion >= copy.version) {
+    await publishInChannel(db, existing.id);
+    return false;
+  }
 
   const fields = {
     name: copy.name,
@@ -114,9 +118,7 @@ async function applyProduct(db: AppDb, copy: AventyProductCopy): Promise<boolean
     })));
   }
 
-  await db.insert(channelProducts)
-    .values({ productId, published: true, createdAt: now(), updatedAt: now() })
-    .onConflictDoUpdate({ target: [channelProducts.storeId, channelProducts.productId], set: { published: true, updatedAt: now() } });
+  await publishInChannel(db, productId);
   return true;
 }
 
@@ -132,16 +134,18 @@ async function unpublish(db: AppDb, aventyIds: string[] | "all-but", keep: strin
   return changed.length;
 }
 
-export async function applyCatalogueChanges(db: AppDb, copies: AventyProductCopy[], removed: string[]): Promise<CatalogueApplied> {
+export async function applyCatalogueCopies(db: AppDb, copies: AventyProductCopy[]): Promise<number> {
   let applied = 0;
   for (const copy of copies) if (await applyProduct(db, copy)) applied++;
-  return { applied, skipped: copies.length - applied, unpublished: await unpublish(db, removed) };
+  return applied;
 }
 
-export async function applyCatalogueSnapshot(db: AppDb, copies: AventyProductCopy[]): Promise<CatalogueApplied> {
-  let applied = 0;
-  for (const copy of copies) if (await applyProduct(db, copy)) applied++;
-  return { applied, skipped: copies.length - applied, unpublished: await unpublish(db, "all-but", copies.map((c) => c.id)) };
+export function unpublishWithdrawn(db: AppDb, removed: string[]): Promise<number> {
+  return unpublish(db, removed);
+}
+
+export function unpublishAllBut(db: AppDb, listed: string[]): Promise<number> {
+  return unpublish(db, "all-but", listed);
 }
 
 export async function applyDeliveryGrid(db: AppDb, storeId: string, grid: AventyDeliveryGrid): Promise<boolean> {

@@ -346,7 +346,7 @@ export async function createStoreOrder(c: Context<AppContext>) {
   const { subtotal } = priceCartLines(snapshot, lines);
 
   const deliveryGridVersion = await queries.lockDeliveryGrid(db);
-  const deliveryFee = await queries.resolveDeliveryFee(db, {
+  const { fee: deliveryFee, aventyGridVersion } = await queries.resolveDeliveryPricing(db, {
     productIds: [...new Set(lines.map((l) => l.productId))],
     wilayaId: data.wilayaId,
     communeId: data.communeId,
@@ -426,6 +426,7 @@ export async function createStoreOrder(c: Context<AppContext>) {
       customerName: customer.name,
       deliveryFee,
       deliveryGridVersion,
+      aventyGridVersion,
       landingPageId,
       ipAddress,
       userAgent,

@@ -10,7 +10,7 @@ import { offers } from "@/db/schema";
 import { BusinessLogicError } from "@/lib/errors/classes";
 import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
 import { first } from "../../../../cod-shared/db/client";
-import { resolveDeliveryFee as resolveSharedFee } from "../../../../cod-shared/queries/shipping-resolution";
+import { resolveDeliveryPricing } from "../../../../cod-shared/queries/shipping-resolution";
 
 type DB = AppDb;
 
@@ -23,10 +23,11 @@ export interface ResolveFeeInput {
 
 export interface ResolveFeeResult {
   deliveryFee: number;
+  aventyGridVersion: number | null;
 }
 
 export async function resolveDeliveryFee(db: DB, input: ResolveFeeInput): Promise<ResolveFeeResult> {
-  const fee = await resolveSharedFee(db, input);
+  const { fee, aventyGridVersion } = await resolveDeliveryPricing(db, input);
   if (fee === null) {
     throw new BusinessLogicError(
       input.deliveryType === "home"
@@ -36,7 +37,7 @@ export async function resolveDeliveryFee(db: DB, input: ResolveFeeInput): Promis
       { wilayaId: input.wilayaId, communeId: input.communeId, deliveryType: input.deliveryType },
     );
   }
-  return { deliveryFee: fee };
+  return { deliveryFee: fee, aventyGridVersion };
 }
 
 /**

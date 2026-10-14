@@ -2101,8 +2101,6 @@ export const abandonedOrders = pgTable("abandoned_orders", {
 }));
 
 // ─── Aventy ─────────────────────────────────────────────────────────────────
-// A channel fed by Aventy holds its own Aventy key (guide §3) and pulls each
-// domain by snapshot, then changes from a cursor (guide §4.1).
 
 export const AVENTY_KEY_STATUSES = ["active", "revoked"] as const;
 
