@@ -450,7 +450,7 @@ export function ProductForm({ productId }: { productId?: string }) {
           setDescription={setDescription}
           setDescriptionFormat={setDescriptionFormat}
           groups={groups}
-          shippingProfiles={shippingProfiles}
+          shippingProfiles={inChannel ? shippingProfiles : []}
           errors={errors}
           setErrors={setErrors}
           busy={busy}

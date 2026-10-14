@@ -72,7 +72,7 @@ const orderRoute = defineRoute({
   auth: { scope: SCOPES.PRODUCTS_UPDATE },
   tags: ["Channel Products"],
   summary: "Reorder the store's products",
-  description: "Sets the display order: `productIds` from first to last.",
+  description: "Sets the display order: `productIds` lists every product of the store exactly once, from first to last (400 otherwise).",
   operationId: "reorderChannelProducts",
   body: orderSchema,
   responses: listResponse,

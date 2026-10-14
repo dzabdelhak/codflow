@@ -8,6 +8,7 @@
   "error_not_found": "Product not found",
   "error_generic": "Something went wrong. Please try again.",
   "error_delete_has_orders": "Cannot delete a product that has order history",
+  "error_delete_in_other_stores": "Other stores still show this product. Remove it from them first (Products › In this store), or remove it only from this store.",
   "error_duplicate_sku": "This SKU is already in use",
   "error_insufficient_stock": "Stock cannot go below zero",
   "error_validation": "Some fields are invalid",

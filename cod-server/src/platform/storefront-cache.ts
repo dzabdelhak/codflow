@@ -23,3 +23,11 @@ export async function purgeChannelPages(
     console.warn(`[storefront-cache] purge for ${storeId} failed`, err);
   }
 }
+
+export function schedulePurge(
+  env: Pick<Env, "DATABASE" | "STOREFRONT_INTERNAL_URL" | "STOREFRONT_SERVICE_KEY">,
+  storeId: string | undefined,
+): void {
+  if (!storeId) return;
+  void purgeChannelPages(env, storeId).catch((err) => console.warn("[storefront-cache] purge failed", err));
+}

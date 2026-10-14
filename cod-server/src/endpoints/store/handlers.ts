@@ -289,6 +289,9 @@ export async function createStoreOrder(c: Context<AppContext>) {
     new Date().toISOString()
   );
 
+  const notCarried = queries.findProductNotCarried(snapshot, lines);
+  if (notCarried) throw new NotFoundError("Product", notCarried);
+
   const skuMissing = queries.findMissingSku(snapshot, lines);
   if (skuMissing) {
     throw new BusinessLogicError(

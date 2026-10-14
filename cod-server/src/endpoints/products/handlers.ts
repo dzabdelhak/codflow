@@ -1,13 +1,14 @@
 import { Context } from "hono";
 import type { AppContext } from "@/types";
-import { assertStoreShippingProfile } from "@/endpoints/channel-products/handlers";
+import { assertStoreShippingProfile } from "@/lib/store-shipping-profile";
+import { productUsage } from "@/platform/catalogue";
+import { schedulePurge } from "@/platform/storefront-cache";
 import { getDb } from "@/db";
 import * as queries from "./queries";
 import * as validation from "./validation";
 import { logActivity, ACTIONS } from "@/lib/activity";
 import { NotFoundError, BusinessLogicError, ConflictError, SystemError } from "@/lib/errors/classes";
 import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
-import { first } from "../../../../cod-shared/db/client";
 
 export async function listProducts(c: Context<AppContext>) {
   const db = c.get("db");
@@ -69,11 +70,12 @@ export async function createProduct(c: Context<AppContext>) {
   }
 
   try {
-    await assertStoreShippingProfile(c, validated.shippingProfileId);
+    await assertStoreShippingProfile(db, validated.shippingProfileId);
     const product = await queries.createProduct(db, validated);
     if (!product) {
       throw new SystemError("Failed to create product");
     }
+    schedulePurge(c.env, c.get("storeId"));
     const actor = c.get("user");
     await logActivity(db, actor, ACTIONS.PRODUCT_CREATED, {
       type: "product", id: product.id, label: validated.name,
@@ -129,11 +131,12 @@ export async function updateProduct(c: Context<AppContext>) {
     }
   }
 
-  await assertStoreShippingProfile(c, validated.shippingProfileId);
+  await assertStoreShippingProfile(db, validated.shippingProfileId);
   const product = await queries.updateProduct(db, productId, validated);
   if (!product) {
     throw new NotFoundError("Product", productId);
   }
+  schedulePurge(c.env, c.get("storeId"));
   const actor = c.get("user");
   await logActivity(db, actor, ACTIONS.PRODUCT_UPDATED, {
     type: "product", id: product.id, label: product.name,
@@ -165,19 +168,24 @@ export async function deleteProduct(c: Context<AppContext>) {
     throw new NotFoundError("Product", id);
   }
   
-  // Check if product has orders
-  const { orderProducts } = await import("@/db/schema");
-  const { eq } = await import("drizzle-orm");
-  const ordersWithProduct = await db.select().from(orderProducts).where(eq(orderProducts.productId, id)).then(first);
-  if (ordersWithProduct) {
+  const usage = await productUsage(c.env.DATABASE.platform, id, c.get("storeId"));
+  if (usage.hasOrders) {
     throw new BusinessLogicError(
       "Cannot delete product with existing orders",
       ERROR_CODES.PRODUCT_HAS_ORDERS,
       { productId: id, productName: existing.name }
     );
   }
-  
+  if (usage.otherStores > 0) {
+    throw new BusinessLogicError(
+      "Other stores still show this product; remove it from them first",
+      ERROR_CODES.PRODUCT_IN_OTHER_STORES,
+      { productId: id, productName: existing.name, stores: usage.otherStores }
+    );
+  }
+
   await queries.deleteProduct(db, id);
+  schedulePurge(c.env, c.get("storeId"));
   const actor = c.get("user");
   await logActivity(db, actor, ACTIONS.PRODUCT_DELETED, { type: "product", id });
   return c.json({ success: true, message: "Product deleted" }, 200);

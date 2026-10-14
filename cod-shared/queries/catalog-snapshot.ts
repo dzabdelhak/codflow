@@ -28,6 +28,7 @@ export interface CatalogProduct {
   status: string;
   visibility: boolean;
   published: boolean;
+  inChannel: boolean;
   version: number;
 }
 
@@ -62,6 +63,7 @@ const PRODUCT_COLUMNS = {
   status: products.status,
   visibility: products.visibility,
   published: sql<boolean>`exists (select 1 from channel_products cp where cp.product_id = ${products.id} and cp.published)`,
+  inChannel: sql<boolean>`exists (select 1 from channel_products cp where cp.product_id = ${products.id})`,
   version: products.version,
 } as const;
 
@@ -219,6 +221,13 @@ export async function extendSnapshot(
  * A missing SKU is a merchant configuration error, not a shopper error: the
  * order is refused because carriers and stock movements key off it.
  */
+export function findProductNotCarried(snapshot: CatalogSnapshot, lines: CartLine[]): string | null {
+  for (const line of lines) {
+    if (!snapshot.products.get(line.productId)?.inChannel) return line.productId;
+  }
+  return null;
+}
+
 export function findMissingSku(
   snapshot: CatalogSnapshot,
   lines: CartLine[],

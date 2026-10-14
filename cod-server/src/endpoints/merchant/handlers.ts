@@ -9,7 +9,7 @@ import {
   listMerchantStores,
   storeStatusHistory,
 } from "@/platform/merchant-stores";
-import { purgeChannelPages } from "@/platform/storefront-cache";
+import { schedulePurge } from "@/platform/storefront-cache";
 import { localPlanPolicy } from "@/platform/plan-policy";
 import type { ChangeStoreStatusInput, CreateStoreInput, DeleteStoreInput } from "./validation";
 
@@ -62,7 +62,7 @@ export async function changeStatus(c: Context<AppContext>) {
     actor: { id: user.id, name: user.name ?? null, role: user.role },
   });
   if (result.ok) {
-    void purgeChannelPages(c.env, storeId).catch((err) => console.warn("[storefront-cache] purge failed", err));
+    schedulePurge(c.env, storeId);
     return c.json({ success: true, data: result.store }, 200);
   }
   if (result.reason === "not_found") throw new NotFoundError("Store", storeId);

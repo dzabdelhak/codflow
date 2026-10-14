@@ -5,19 +5,23 @@
  */
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { eq } from "drizzle-orm";
-import { createTestDb, type TestDb } from "@/test-utils/pg";
+import { createTestDb, TEST_MERCHANT_ID, TEST_STORE_ID, type TestDb } from "@/test-utils/pg";
 import * as schema from "@/db/schema";
 import type { AppDb } from "@/db";
 import { createProduct, getAllProducts, updateProduct } from "../../../../cod-shared/queries/products";
 import { getStoreProductByHandle, getStoreProducts } from "../../../../cod-shared/queries/store";
+import { createPool, withStore } from "@/db/scope";
+import { productUsage } from "@/platform/catalogue";
 import {
+  ensureInChannel,
+  isCompleteOrder,
   addToChannel,
   listChannelProducts,
   removeFromChannel,
   reorderChannel,
   setChannelSelection,
 } from "../../../../cod-shared/queries/channel-products";
-import { loadCatalogSnapshot, priceCartLines } from "../../../../cod-shared/queries/catalog-snapshot";
+import { findProductNotCarried, loadCatalogSnapshot, priceCartLines } from "../../../../cod-shared/queries/catalog-snapshot";
 import { normalizeOrderLines } from "../../../../cod-shared/queries/cart";
 
 let harness: TestDb;
@@ -158,5 +162,55 @@ describe("prices and versions come from the catalogue", () => {
     const [image] = await storeA.select().from(schema.productImages).where(eq(schema.productImages.id, "i-versioned"));
     const [category] = await storeA.select().from(schema.productCategories).where(eq(schema.productCategories.id, "c-versioned"));
     expect([variant.version, image.version, category.version]).toEqual([2, 2, 2]);
+  });
+});
+
+describe("the selection is enforced everywhere a channel sells", () => {
+  const linesFor = (productId: string) =>
+    normalizeOrderLines({ productId, productName: "x", pricePerUnit: 1, quantity: 1 } as never);
+
+  it("refuses an order for a product the channel does not carry, even if published elsewhere", async () => {
+    const created = (await createProduct(storeA, product("a-only", 700)))!;
+    const lines = linesFor(created.id);
+
+    expect(findProductNotCarried(await loadCatalogSnapshot(storeB, lines, new Date().toISOString()), lines)).toBe(created.id);
+    await addToChannel(storeB, [created.id]);
+    expect(findProductNotCarried(await loadCatalogSnapshot(storeB, lines, new Date().toISOString()), lines)).toBeNull();
+  });
+
+  it("serves a landing-page product only when the channel carries it, published or not", async () => {
+    const created = (await createProduct(storeA, product("lp-product", 800)))!;
+
+    expect(await getStoreProductByHandle(storeB, created.handle, { allowUnlisted: true })).toBeNull();
+    await ensureInChannel(storeB, created.id);
+    expect(await getStoreProductByHandle(storeB, created.handle, { allowUnlisted: true })).not.toBeNull();
+    expect(await getStoreProductByHandle(storeB, created.handle)).toBeNull();
+    expect(ids(await getStoreProducts(storeB, {}))).not.toContain(created.id);
+  });
+
+  it("creates a catalogue product with no store set, carried by no store", async () => {
+    const app = createPool(harness.url, "codflow_app");
+    try {
+      const created = await withStore(app, null, (db) => createProduct(db, product("no-store", 500)), TEST_MERCHANT_ID);
+      expect(created?.inChannel).toBe(false);
+    } finally {
+      await app.end();
+    }
+  });
+
+  it("sees orders and other stores' selections across the account before a delete", async () => {
+    const platform = harness.platform as never;
+    const created = (await createProduct(storeA, product("usage", 600)))!;
+    expect(await productUsage(platform, created.id, TEST_STORE_ID)).toEqual({ hasOrders: false, otherStores: 0 });
+
+    await addToChannel(storeB, [created.id]);
+    expect(await productUsage(platform, created.id, TEST_STORE_ID)).toEqual({ hasOrders: false, otherStores: 1 });
+  });
+
+  it("accepts a reorder only when it lists every product of the store exactly once", () => {
+    expect(isCompleteOrder(["a", "b", "c"], ["c", "a", "b"])).toBe(true);
+    expect(isCompleteOrder(["a", "b", "c"], ["a", "b"])).toBe(false);
+    expect(isCompleteOrder(["a", "b"], ["a", "a"])).toBe(false);
+    expect(isCompleteOrder(["a", "b"], ["a", "x"])).toBe(false);
   });
 });

@@ -13,7 +13,11 @@ import productsRouter from "./routes";
 import * as queries from "./queries";
 import * as variantQueries from "../variants/queries";
 import { NotFoundError, BusinessLogicError, ConflictError } from "@/lib/errors/classes";
+import { productUsage } from "@/platform/catalogue";
 
+vi.mock("@/platform/catalogue", () => ({
+  productUsage: vi.fn(async () => ({ hasOrders: false, otherStores: 0 })),
+}));
 vi.mock("@/db", () => ({ getDb: vi.fn(() => mockDb) }));
 vi.mock("./queries");
 vi.mock("../variants/queries");
@@ -153,7 +157,7 @@ describe("Products routes (OpenAPIHono)", () => {
   beforeEach(() => {
     app = new OpenAPIHono<AppContext>({ defaultHook: openApiValidationHook });
     app.use("*", async (c, next) => {
-      c.env = {} as never;
+      c.env = { DATABASE: { platform: {} } } as never;
       c.set("db", mockDb);
       c.set("user", {
         id: "admin_user_001",
@@ -413,7 +417,7 @@ describe("Products routes (OpenAPIHono)", () => {
 
     it("returns 422 when the product has orders", async () => {
       vi.mocked(queries.getProductById).mockResolvedValue(productRow() as any);
-      mockDb = dbSelectReturning({ orderId: "ord_1", productId: "prod_1" });
+      vi.mocked(productUsage).mockResolvedValueOnce({ hasOrders: true, otherStores: 0 });
 
       const res = await app.request("/api/products/prod_1", { method: "DELETE" });
 

@@ -274,11 +274,13 @@ export async function createProduct(db: AppDb, data: CreateProductData) {
     createdAt: now,
     updatedAt: now,
   });
-  await setChannelSelection(db, id, {
-    published: data.showInStore,
-    featured: data.storeFeatured,
-    shippingProfileId: data.shippingProfileId ?? null,
-  });
+  if (data.showInStore === false || data.storeFeatured || data.shippingProfileId) {
+    await setChannelSelection(db, id, {
+      published: data.showInStore,
+      featured: data.storeFeatured,
+      shippingProfileId: data.shippingProfileId ?? null,
+    });
+  }
 
   return buildProductDetail(db, id);
 }

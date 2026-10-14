@@ -1,4 +1,5 @@
 import { tool } from "ai";
+import { ensureInChannel } from "../../../../cod-shared/queries/channel-products";
 import { z } from "zod";
 import * as queries from "./queries";
 import { createLandingPageSchema, updateLandingPageSchema } from "./validation";
@@ -595,6 +596,7 @@ export const getLandingPageTools = (
         }
 
         const { id, slug } = await queries.createLandingPage(db, parsed.data);
+        await ensureInChannel(db, parsed.data.productId);
         const lp = await queries.getLandingPageById(db, id);
         const baseUrl = await resolveStorefrontBaseUrl(db, env?.STOREFRONT_URL);
         return {

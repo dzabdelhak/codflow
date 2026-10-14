@@ -126,6 +126,7 @@ export function productErrorMessage(cause: unknown, t: (key: string) => string) 
 
   if (code === "PRODUCT_NOT_FOUND") return t("error_not_found");
   if (code === "PRODUCT_HAS_ORDERS") return t("error_delete_has_orders");
+  if (code === "PRODUCT_IN_OTHER_STORES") return t("error_delete_in_other_stores");
   if (code === "INSUFFICIENT_STOCK") return t("error_insufficient_stock");
 
   if (code === "DUPLICATE_SKU") {

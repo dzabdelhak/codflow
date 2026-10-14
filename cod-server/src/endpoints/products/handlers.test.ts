@@ -11,8 +11,12 @@ import { errorHandler } from "@/middleware/error";
 import { ERROR_CODES, ERROR_CATEGORIES } from "../../../../cod-shared/errors/codes";
 import * as handlers from "./handlers";
 import * as queries from "./queries";
+import { productUsage } from "@/platform/catalogue";
 
 // Mock the queries module
+vi.mock("@/platform/catalogue", () => ({
+  productUsage: vi.fn(async () => ({ hasOrders: false, otherStores: 0 })),
+}));
 vi.mock("./queries");
 
 // Mock the database
@@ -46,7 +50,7 @@ describe("Products Endpoint - Error Scenarios", () => {
     
     // Add middleware to inject mock env and user
     app.use("*", async (c, next) => {
-      c.env = {} as never;
+      c.env = { DATABASE: { platform: {} } } as never;
       c.set("db", mockDb);
       c.set("user", {
         id: "user-123",
@@ -377,12 +381,7 @@ describe("Products Endpoint - Error Scenarios", () => {
         shippingProfileId: null,
       });
 
-      // Mock database query to return order with this product
-      mockDb.get.mockResolvedValue({
-        id: "order_prod_1",
-        order_id: "order_123",
-        product_id: "prod_123",
-      });
+      vi.mocked(productUsage).mockResolvedValueOnce({ hasOrders: true, otherStores: 0 });
 
       const res = await app.request("/products/prod_123", {
         method: "DELETE",
@@ -443,8 +442,6 @@ describe("Products Endpoint - Error Scenarios", () => {
         shippingProfileId: null,
       });
 
-      // Mock no orders with this product
-      mockDb.get.mockResolvedValue(null);
 
       // Mock successful deletion
       vi.mocked(queries.deleteProduct).mockResolvedValue({ success: true });

@@ -8,6 +8,7 @@ export {
   loadCatalogSnapshot,
   extendSnapshot,
   findMissingSku,
+  findProductNotCarried,
   priceCartLines,
   resolveCartLines,
   type CatalogSnapshot,

@@ -259,8 +259,9 @@ export async function getStoreProducts(
  *
  * The four catalog green lights apply by default (status=ACTIVE, visibility,
  * published in this channel, not soft-deleted). `allowUnlisted` drops ONLY the
- * channel gate — landing pages link their product deliberately, so a product
- * the channel does not publish still renders there; the other gates still apply.
+ * published gate — landing pages link their product deliberately, so a product
+ * the channel carries but does not publish still renders there; it must still
+ * be carried by the channel, and the other gates still apply.
  */
 export async function getStoreProductByHandle(
   db: AppDb,
@@ -273,11 +274,11 @@ export async function getStoreProductByHandle(
     eq(products.visibility, true),
     isNull(products.deletedAt),
   ];
-  if (!opts?.allowUnlisted) {
-    conditions.push(
-      sql`exists (select 1 from channel_products cp where cp.product_id = ${products.id} and cp.published)`,
-    );
-  }
+  conditions.push(
+    opts?.allowUnlisted
+      ? sql`exists (select 1 from channel_products cp where cp.product_id = ${products.id})`
+      : sql`exists (select 1 from channel_products cp where cp.product_id = ${products.id} and cp.published)`,
+  );
 
   const product = await db
     .select({

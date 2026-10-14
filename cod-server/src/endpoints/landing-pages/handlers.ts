@@ -19,6 +19,7 @@ import {
 import { NotFoundError, SystemError, ValidationError } from "@/lib/errors/classes";
 import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
 import { logActivity, ACTIONS } from "@/lib/activity";
+import { ensureInChannel } from "../../../../cod-shared/queries/channel-products";
 import {
   buildLandingPagePublicUrl,
   resolveStorefrontBaseUrl,
@@ -196,6 +197,7 @@ export async function createLandingPage(c: Context<AppContext>) {
   const body: any = (c.req as any).valid?.("json");
   const data = body ?? createLandingPageSchema.parse(await c.req.json());
   const { id } = await queries.createLandingPage(db, data);
+  if (data.productId) await ensureInChannel(db, data.productId);
   const result = await queries.getLandingPageById(db, id);
   if (!result) throw new SystemError("Failed to load created landing page");
 

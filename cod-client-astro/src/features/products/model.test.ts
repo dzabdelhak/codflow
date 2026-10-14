@@ -119,6 +119,7 @@ describe("products model", () => {
   it("maps business error codes, slugs, and margin", () => {
     expect(productErrorMessage({ code: "PRODUCT_NOT_FOUND" }, t)).toBe("error_not_found");
     expect(productErrorMessage({ code: "PRODUCT_HAS_ORDERS" }, t)).toBe("error_delete_has_orders");
+    expect(productErrorMessage({ code: "PRODUCT_IN_OTHER_STORES" }, t)).toBe("error_delete_in_other_stores");
     expect(productErrorMessage({ code: "DUPLICATE_SKU" }, t)).toBe("error_duplicate_sku");
     expect(productErrorMessage(new Error("boom"), t)).toBe("error_generic");
     expect(toSlug("Cotton T-Shirt!")).toBe("cotton-t-shirt");

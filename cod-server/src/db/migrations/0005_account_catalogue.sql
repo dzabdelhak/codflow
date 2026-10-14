@@ -44,25 +44,38 @@ SELECT store_id, id, show_in_store, store_featured,
        shipping_profile_id, created_at, updated_at
   FROM products;
 --> statement-breakpoint
-WITH ranked AS (
-  SELECT id, row_number() OVER (PARTITION BY merchant_id, handle ORDER BY created_at, id) AS rn FROM products
-)
-UPDATE products p SET handle = p.handle || '-' || r.rn FROM ranked r WHERE r.id = p.id AND r.rn > 1;
---> statement-breakpoint
-WITH ranked AS (
-  SELECT id, row_number() OVER (PARTITION BY merchant_id, sku ORDER BY created_at, id) AS rn FROM products WHERE sku IS NOT NULL
-)
-UPDATE products p SET sku = p.sku || '-' || r.rn FROM ranked r WHERE r.id = p.id AND r.rn > 1;
---> statement-breakpoint
-WITH ranked AS (
-  SELECT id, row_number() OVER (PARTITION BY merchant_id, sku ORDER BY created_at, id) AS rn FROM product_variants
-)
-UPDATE product_variants v SET sku = v.sku || '-' || r.rn FROM ranked r WHERE r.id = v.id AND r.rn > 1;
---> statement-breakpoint
-WITH ranked AS (
-  SELECT id, row_number() OVER (PARTITION BY merchant_id, slug ORDER BY created_at, id) AS rn FROM product_categories
-)
-UPDATE product_categories c SET slug = c.slug || '-' || r.rn FROM ranked r WHERE r.id = c.id AND r.rn > 1;
+DO $$
+DECLARE
+  target text[];
+  dup record;
+  candidate text;
+  candidate_free boolean;
+  n int;
+BEGIN
+  FOREACH target SLICE 1 IN ARRAY ARRAY[
+    ARRAY['products', 'handle'],
+    ARRAY['products', 'sku'],
+    ARRAY['product_variants', 'sku'],
+    ARRAY['product_categories', 'slug']
+  ] LOOP
+    FOR dup IN EXECUTE format(
+      'SELECT id, merchant_id, %2$I AS value FROM (
+         SELECT id, merchant_id, %2$I, row_number() OVER (PARTITION BY merchant_id, %2$I ORDER BY created_at, id) AS rn
+           FROM %1$I WHERE %2$I IS NOT NULL
+       ) ranked WHERE rn > 1', target[1], target[2])
+    LOOP
+      n := 2;
+      LOOP
+        candidate := dup.value || '-' || n;
+        EXECUTE format('SELECT NOT EXISTS (SELECT 1 FROM %1$I WHERE merchant_id = $1 AND %2$I = $2)', target[1], target[2])
+          INTO STRICT candidate_free USING dup.merchant_id, candidate;
+        EXIT WHEN candidate_free;
+        n := n + 1;
+      END LOOP;
+      EXECUTE format('UPDATE %1$I SET %2$I = $1 WHERE id = $2', target[1], target[2]) USING candidate, dup.id;
+    END LOOP;
+  END LOOP;
+END $$;
 --> statement-breakpoint
 ALTER TABLE "products" DROP CONSTRAINT "products_shipping_profile_id_shipping_profiles_id_fk";
 --> statement-breakpoint

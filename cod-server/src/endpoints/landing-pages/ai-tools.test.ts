@@ -50,6 +50,7 @@ const sharedLandingQueries = vi.hoisted(() => ({
 }));
 
 vi.mock("../../../../cod-shared/queries/landing-pages", () => sharedLandingQueries);
+vi.mock("../../../../cod-shared/queries/channel-products", () => ({ ensureInChannel: vi.fn(async () => {}) }));
 
 import {
   getLandingPageTools,

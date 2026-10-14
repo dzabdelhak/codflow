@@ -68,7 +68,7 @@ export async function reorderChannel(db: AppDb, productIds: string[]): Promise<v
   await db.batch(statements as [BatchStatement, ...BatchStatement[]]);
 }
 
-export async function listChannelProducts(db: AppDb) {
+export async function listChannelProducts(db: AppDb, productId?: string) {
   return db
     .select({
       productId: products.id,
@@ -85,8 +85,25 @@ export async function listChannelProducts(db: AppDb) {
     })
     .from(channelProducts)
     .innerJoin(products, eq(products.id, channelProducts.productId))
-    .where(isNull(products.deletedAt))
+    .where(and(isNull(products.deletedAt), productId ? eq(channelProducts.productId, productId) : undefined))
     .orderBy(channelProducts.position, products.name);
+}
+
+export async function getChannelProduct(db: AppDb, productId: string) {
+  return (await listChannelProducts(db, productId))[0];
+}
+
+export async function channelProductIds(db: AppDb): Promise<string[]> {
+  const rows = await db.select({ productId: channelProducts.productId }).from(channelProducts);
+  return rows.map((r) => r.productId);
+}
+
+export async function ensureInChannel(db: AppDb, productId: string): Promise<void> {
+  const now = new Date().toISOString();
+  await db
+    .insert(channelProducts)
+    .values({ productId, published: false, position: nextPosition, createdAt: now, updatedAt: now })
+    .onConflictDoNothing();
 }
 
 export async function catalogueProductIds(db: AppDb, productIds: string[]): Promise<Set<string>> {
@@ -100,4 +117,10 @@ export async function catalogueProductIds(db: AppDb, productIds: string[]): Prom
 
 export async function isStoreShippingProfile(db: AppDb, profileId: string): Promise<boolean> {
   return !!(await db.select({ id: shippingProfiles.id }).from(shippingProfiles).where(eq(shippingProfiles.id, profileId)).then(first));
+}
+
+export function isCompleteOrder(current: readonly string[], ordered: readonly string[]): boolean {
+  const given = new Set(ordered);
+  const existing = new Set(current);
+  return given.size === ordered.length && given.size === existing.size && ordered.every((id) => existing.has(id));
 }
