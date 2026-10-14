@@ -78,6 +78,9 @@ export function demoAventyClient(): AventyClient {
     async deliveryGrid() {
       return { cursor: "demo-1", grid: DEMO_DELIVERY_GRID };
     },
+    async merchantSnapshot() {
+      return { products: DEMO_CATALOGUE, grid: DEMO_DELIVERY_GRID };
+    },
     async sendOrder(_key, { sendId }) {
       const known = received.get(sendId);
       if (known) return { kind: "duplicate", remoteId: known };

@@ -161,15 +161,15 @@ export function templateDesign(templateId: string, manifest: TemplateManifest, b
   };
 }
 
-export function presetBrand(templateId: string, manifest: TemplateManifest): { primaryColor: string; accentColor: string; bgColor: string; fontFamily: string | null; fontUrl: string | null } | null {
+export function presetBrand(templateId: string, manifest: TemplateManifest): { primaryColor: string; accentColor: string; bgColor: string; fontFamily: string; fontUrl: string } | null {
   const preset = templateById(templateId)?.preset;
   if (!preset) return null;
-  const font = manifest.brand.fonts.find((f) => f.id === preset.brand.fontId);
+  const font = manifest.brand.fonts.find((f) => f.id === preset.brand.fontId) ?? manifest.brand.fonts[0];
   return {
     primaryColor: preset.brand.primaryColor,
     accentColor: preset.brand.accentColor,
     bgColor: preset.brand.bgColor,
-    fontFamily: font?.family ?? null,
-    fontUrl: font?.url ?? null,
+    fontFamily: font.family,
+    fontUrl: font.url,
   };
 }

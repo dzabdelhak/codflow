@@ -12,7 +12,7 @@ import type { ShippingProfile } from "@/features/delivery/types";
 import { CHANNEL_TEMPLATES, type ChannelTemplate } from "../../../../cod-shared/channels/templates";
 import { FONTS } from "../../../../cod-shared/channels/manifests";
 import { AVAILABLE_CHANNEL_TYPES, CHANNEL_TYPES, UNAVAILABLE_RULES, type ChannelType } from "../../../../cod-shared/channels/types";
-import { changeStoreStatus, createStore, importAventyCatalogue, storeBaseDomain } from "./api";
+import { changeStoreStatus, createStore, importAventyCatalogue } from "./api";
 import { baseDomainOf, suggestSubdomain, type MerchantStore } from "./store-choice";
 import { useMerchantStores } from "./useMerchantStores";
 import {
@@ -118,8 +118,8 @@ function TemplatePreview({ template }: { template: ChannelTemplate }) {
         })}
       </span>
       <span className="flex items-center gap-1.5 border-t border-black/5 px-2 py-1 text-[10px] text-black/60">
-        {[brand.primaryColor, brand.accentColor, brand.bgColor].map((colour) => (
-          <span key={colour} className="h-3 w-3 rounded-full border border-black/10" style={{ background: colour }} />
+        {[brand.primaryColor, brand.accentColor, brand.bgColor].map((colour, index) => (
+          <span key={index} className="h-3 w-3 rounded-full border border-black/10" style={{ background: colour }} />
         ))}
         <span className="ms-auto">{font?.label}</span>
       </span>
@@ -151,16 +151,16 @@ export function StoreWizard({ userId }: { userId: string }) {
   const t = useT("navigation");
   const tp = useT("products");
   const locale = useLocale();
-  const { stores } = useMerchantStores();
+  const { stores, baseDomain: platformBase } = useMerchantStores();
   const [arrival] = useState(aventyArrival);
   const [draft, setDraft] = useState<WizardDraft>(() => withArrival(loadDraft(userId) ?? newDraft(), arrival));
   const [aventyLinked, setAventyLinked] = useState(arrival !== null);
-  const [fallbackBase, setFallbackBase] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [created, setCreated] = useState<{ store: MerchantStore; created: boolean } | null>(null);
   const [live, setLive] = useState(false);
+  const [readied, setReadied] = useState(false);
   const [imported, setImported] = useState(false);
   const [catalogue, setCatalogue] = useState<Product[] | null>(null);
   const [profiles, setProfiles] = useState<ShippingProfile[] | null>(null);
@@ -171,10 +171,14 @@ export function StoreWizard({ userId }: { userId: string }) {
   }, [userId, draft]);
 
   useEffect(() => {
+    if (!arrival) {
+      setImported(true);
+      return;
+    }
     importAventyCatalogue()
       .then(({ linked }) => setAventyLinked(linked), () => undefined)
       .finally(() => setImported(true));
-  }, []);
+  }, [arrival]);
 
   const needsCatalogue = draft.step === "products" || draft.step === "summary";
   useEffect(() => {
@@ -193,11 +197,7 @@ export function StoreWizard({ userId }: { userId: string }) {
     listShippingProfiles().then(setProfiles, () => setProfiles([]));
   }, [draft.step, profiles]);
 
-  useEffect(() => {
-    if (stores && stores.length === 0 && fallbackBase === null) storeBaseDomain().then(setFallbackBase, () => undefined);
-  }, [stores, fallbackBase]);
-
-  const baseDomain = baseDomainOf(stores ?? []) ?? fallbackBase;
+  const baseDomain = platformBase ?? baseDomainOf(stores ?? []);
   const update = (changes: Partial<WizardDraft>) => setDraft((current) => ({ ...current, ...changes }));
 
   function goNext() {
@@ -237,7 +237,10 @@ export function StoreWizard({ userId }: { userId: string }) {
     setBusy(true);
     setSubmitError(null);
     try {
-      await changeStoreStatus(id, "ready");
+      if (!readied) {
+        await changeStoreStatus(id, "ready");
+        setReadied(true);
+      }
       await changeStoreStatus(id, "published");
       setLive(true);
     } catch (cause) {
@@ -304,7 +307,7 @@ export function StoreWizard({ userId }: { userId: string }) {
 
   return (
     <div className="space-y-4">
-      {aventyLinked && (
+      {(aventyLinked || catalogue?.some((product) => product.aventyId)) && (
         <Alert tone="info">
           <span className="font-semibold">{t("stores.wizard.aventy.title")}</span> {t("stores.wizard.aventy.body")}
         </Alert>

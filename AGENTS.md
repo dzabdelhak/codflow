@@ -98,7 +98,8 @@ to `src/types/env.ts` (cod-server) and, when production needs it, to
 - Dashboard data access goes through the API seam (`cod-client-astro/src/lib/api.ts`).
   Components never call `fetch` directly, and the dashboard does not query the
   database for business data — authorization lives in cod-server. (Its auth
-  server reads identity tables for sign-in; nothing else.)
+  server reads identity tables for sign-in, and creates the merchant and admin
+  user of a first Aventy link — identity rows only; nothing else.)
 
 ## Known traps
 

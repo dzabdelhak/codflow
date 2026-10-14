@@ -27,6 +27,7 @@ export interface AventyClient {
   catalogueChanges(key: string, cursor: string): Promise<{ cursor: string; products: AventyProductCopy[]; removed: string[] } | "cursor_expired">;
   deliveryGrid(key: string): Promise<{ cursor: string; grid: AventyDeliveryGrid }>;
   sendOrder(key: string, order: { sendId: string; payload: unknown }): Promise<DestinationAnswer>;
+  merchantSnapshot?(ref: string): Promise<{ products: AventyProductCopy[]; grid: AventyDeliveryGrid }>;
 }
 
 export class AventyUnauthorizedError extends Error {}
@@ -38,5 +39,7 @@ export class AventyPermissionError extends Error {
 }
 
 export function aventyClientFromEnv(env: Record<string, string | undefined>): AventyClient | null {
-  return env.AVENTY_DEMO === "1" ? demoAventyClient() : null;
+  if (env.AVENTY_DEMO !== "1") return null;
+  if (env.ENVIRONMENT === "production") throw new Error("AVENTY_DEMO=1 is refused in production: the demo client accepts orders without sending them");
+  return demoAventyClient();
 }

@@ -190,6 +190,9 @@ function buildAuth(env: ServerEnv) {
             platform: () => platform,
             claimOnce: async (jti, ttl) =>
               (await (await dashboardRedis()).set(`aventy-link:${jti}`, "1", { condition: "NX", expiration: { type: "EX", value: ttl } })) === "OK",
+            releaseClaim: async (jti) => {
+              await (await dashboardRedis()).del(`aventy-link:${jti}`);
+            },
           }),
           // Attaches real scopes (user_scopes join) to every session response so
           // the Identity contract is truthful end-to-end. Not added to the JWT

@@ -12,7 +12,7 @@ describe("ready-made templates", () => {
     const result = validateDesign(design, manifest);
     expect(result.ok ? [] : result.errors).toEqual([]);
     expect(design.sections.map((s) => s.type).sort()).toEqual(manifest.sections.map((s) => s.type).sort());
-    expect(presetBrand(template.id, manifest)?.fontFamily).toBeTruthy();
+    expect(presetBrand(template.id, manifest)?.fontFamily).toBe(manifest.brand.fonts.find((f) => f.id === template.preset.brand.fontId)?.family);
   });
 
   it("offers three store templates and two landing templates, the classic ones first", () => {

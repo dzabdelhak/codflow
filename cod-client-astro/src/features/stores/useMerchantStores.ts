@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { activeStoreId, setActiveStoreId } from "@/lib/active-store";
-import { listMyStores } from "./api";
+import { listMyStoresWithBase } from "./api";
 import { pickActiveStore, type MerchantStore } from "./store-choice";
 
-let loading: Promise<MerchantStore[]> | undefined;
+let loading: Promise<{ stores: MerchantStore[]; baseDomain: string }> | undefined;
 const listeners = new Set<() => void>();
 
 export function refreshMerchantStores(): void {
@@ -14,6 +14,7 @@ export function refreshMerchantStores(): void {
 /** The merchant's stores and the active one — fetched once per page, shared by every caller. */
 export function useMerchantStores() {
   const [stores, setStores] = useState<MerchantStore[] | null>(null);
+  const [baseDomain, setBaseDomain] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   const [version, setVersion] = useState(0);
 
@@ -27,12 +28,16 @@ export function useMerchantStores() {
 
   useEffect(() => {
     let alive = true;
-    loading ??= listMyStores().catch((err) => {
+    loading ??= listMyStoresWithBase().catch((err) => {
       loading = undefined;
       throw err;
     });
     loading.then(
-      (list) => alive && setStores(list),
+      (list) => {
+        if (!alive) return;
+        setStores(list.stores);
+        setBaseDomain(list.baseDomain);
+      },
       () => alive && setFailed(true),
     );
     return () => {
@@ -41,7 +46,7 @@ export function useMerchantStores() {
   }, [version]);
 
   const active = stores ? pickActiveStore(stores, activeStoreId()) : null;
-  return { stores, active, failed };
+  return { stores, active, failed, baseDomain };
 }
 
 /** Make `storeId` the active store and reload, so every screen reads it. */

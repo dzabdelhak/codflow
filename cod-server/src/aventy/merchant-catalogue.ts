@@ -31,8 +31,8 @@ async function seedDeliveryGrid(db: AppDb, grid: AventyDeliveryGrid) {
 
 export async function importMerchantCatalogue(app: pg.Pool, client: AventyClient | null, merchantId: string): Promise<MerchantCatalogueImport> {
   const ref = AVENTY_MERCHANT.exec(merchantId)?.[1];
-  if (!ref || !client) return { linked: false };
-  const [{ products }, { grid }] = await Promise.all([client.catalogueSnapshot(ref), client.deliveryGrid(ref)]);
+  if (!ref || !client?.merchantSnapshot) return { linked: false };
+  const { products, grid } = await client.merchantSnapshot(ref);
   const applied = await withStore(app, null, async (db) => {
     const count = await applyCatalogueCopies(db, products, { publish: false });
     await seedDeliveryGrid(db, grid);

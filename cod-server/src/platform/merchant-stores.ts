@@ -113,7 +113,8 @@ export async function createMerchantStore(
   const hostname = `${subdomain}.${input.baseDomain}`;
   const type = input.type ?? "store";
   const templateId = input.templateId ?? defaultTemplateFor(type);
-  if (!isTemplateFor(type, templateId)) return { ok: false, reason: "unknown_template" };
+  const brand = isTemplateFor(type, templateId) ? presetBrand(templateId, manifestFor(templateId, type)) : null;
+  if (!brand) return { ok: false, reason: "unknown_template" };
   const productIds = [...new Set(input.productIds ?? [])];
   if (type === "landing" && productIds.length !== 1) return { ok: false, reason: "main_product_required" };
   const customDomain = input.customDomain?.trim() ? normaliseDomain(input.customDomain, input.baseDomain) : null;
@@ -175,8 +176,9 @@ export async function createMerchantStore(
     const now = new Date().toISOString();
     await client.query(
       `insert into stores (id, name, merchant_id, order_prefix, theme_id, checkout_form_json, default_shipping_profile_id, creation_key,
-                           channel_type, unavailable_rule, domain, created_at, updated_at)
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $10, $11, $12, $9, $9)`,
+                           channel_type, unavailable_rule, domain, primary_color, accent_color, bg_color, font_family, font_url,
+                           created_at, updated_at)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $10, $11, $12, $13, $14, $15, $16, $17, $9, $9)`,
       [
         id,
         input.name.trim(),
@@ -190,22 +192,22 @@ export async function createMerchantStore(
         type,
         input.unavailableRule ?? "show_unavailable",
         hostname,
+        brand.primaryColor,
+        brand.accentColor,
+        brand.bgColor,
+        brand.fontFamily,
+        brand.fontUrl,
       ],
     );
-    const brand = presetBrand(templateId, manifestFor(templateId, type));
-    if (brand) {
-      await client.query(
-        `update stores set primary_color = $2, accent_color = $3, bg_color = $4,
-                font_family = coalesce($5, font_family), font_url = coalesce($6, font_url) where id = $1`,
-        [id, brand.primaryColor, brand.accentColor, brand.bgColor, brand.fontFamily, brand.fontUrl],
-      );
-    }
     await client.query(
       "insert into store_domains (hostname, store_id, kind, created_at, status, verified_at, is_primary) values ($1, $2, 'subdomain', $3, 'verified', $3, true)",
       [hostname, id, now],
     );
     if (customDomain) {
-      const claimed = await claimCustomDomain(client, id, customDomain, new Date(now));
+      const claimed = await claimCustomDomain(client, id, customDomain, new Date(now)).catch((err: { code?: string }) => {
+        if (err.code === "23505") return { ok: false as const, reason: "taken" as const };
+        throw err;
+      });
       if (!claimed.ok) return refuse({ ok: false, reason: "domain_taken" });
     }
     if (productIds.length > 0) {

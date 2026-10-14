@@ -51,6 +51,7 @@ export interface AventyEntryOptions {
   secret: () => string | undefined;
   platform: () => pg.Pool;
   claimOnce: (jti: string, ttlSeconds: number) => Promise<boolean>;
+  releaseClaim: (jti: string) => Promise<void>;
 }
 
 export function aventyEntry(options: AventyEntryOptions) {
@@ -66,15 +67,20 @@ export function aventyEntry(options: AventyEntryOptions) {
         const verified = verifyLinkToken(secret, token);
         if (!verified.ok) throw refuse(verified.reason === "expired" ? "expired" : "invalid");
         const { claims } = verified;
-        const ttl = Math.max(1, claims.exp - Math.floor(Date.now() / 1000)) + 60;
-        if (!(await options.claimOnce(claims.jti, ttl))) throw refuse("used");
-
         const provisioned = await provisionAventyMerchant(options.platform(), claims);
         if (!provisioned.ok) throw refuse(provisioned.reason);
         const user = await ctx.context.internalAdapter.findUserById(provisioned.userId);
         if (!user) throw refuse("invalid");
-        const session = await ctx.context.internalAdapter.createSession(user.id);
-        await setSessionCookie(ctx, { session, user });
+
+        const ttl = Math.max(1, claims.exp - Math.floor(Date.now() / 1000)) + 60;
+        if (!(await options.claimOnce(claims.jti, ttl))) throw refuse("used");
+        try {
+          const session = await ctx.context.internalAdapter.createSession(user.id);
+          await setSessionCookie(ctx, { session, user });
+        } catch (err) {
+          await options.releaseClaim(claims.jti).catch(() => {});
+          throw err;
+        }
         throw ctx.redirect(`/stores/new?from=aventy&shop=${encodeURIComponent(claims.shop)}`);
       }),
     },
