@@ -168,8 +168,8 @@ export async function createMerchantStore(
     const now = new Date().toISOString();
     await client.query(
       `insert into stores (id, name, merchant_id, order_prefix, theme_id, checkout_form_json, default_shipping_profile_id, creation_key,
-                           channel_type, unavailable_rule, created_at, updated_at)
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $10, $11, $9, $9)`,
+                           channel_type, unavailable_rule, domain, created_at, updated_at)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $10, $11, $12, $9, $9)`,
       [
         id,
         input.name.trim(),
@@ -182,10 +182,11 @@ export async function createMerchantStore(
         now,
         type,
         input.unavailableRule ?? "show_unavailable",
+        hostname,
       ],
     );
     await client.query(
-      "insert into store_domains (hostname, store_id, kind, created_at, verified_at, is_primary) values ($1, $2, 'subdomain', $3, $3, true)",
+      "insert into store_domains (hostname, store_id, kind, created_at, status, verified_at, is_primary) values ($1, $2, 'subdomain', $3, 'verified', $3, true)",
       [hostname, id, now],
     );
     if (productIds.length > 0) {

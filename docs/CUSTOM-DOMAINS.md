@@ -27,22 +27,25 @@ HTTPS status.
    - `platform_target_not_configured`.
 
    "Check again" re-runs the check. A verified domain whose DNS has moved away
-   becomes failed and stops being served.
+   becomes failed and stops being served. A lookup that fails
+   (`dns_lookup_failed`) leaves a verified domain connected.
 3. **HTTPS.** Nothing to do. On the first HTTPS visit, Caddy asks
    `GET /platform/tls-ask?domain=` (internal only), and cod-server answers 200
    only for a verified domain of a channel that is not archived. Caddy then
    issues the certificate (Let's Encrypt in production, its local CA in
-   compose). The screen probes the live certificate through `TLS_PROBE_HOST`.
+   compose). The screen's list probes the live certificate on the platform's
+   own proxy, and keeps an active result for 10 minutes.
 4. **Primary.** One verified domain per channel is primary: the free address
    at first. The storefront 301-redirects every other address of the channel
    (GET and HEAD, outside previews) to the primary, keeping the path and query.
-   Making a domain primary also sets `stores.domain`, and purges the channel's
-   cached pages.
+   `stores.domain` always holds the primary hostname, which is used for share
+   links and Meta's event source URL. Making a domain primary purges the
+   channel's cached pages.
 5. **Remove.** Any custom domain except the primary. The free address cannot be
    removed.
 
-A hostname belongs to one channel. Another channel can claim it only while the
-first claim is unverified and older than 72 hours. A channel holds at most 10
+A hostname belongs to one channel. Another channel can claim it only when the
+first claim was never verified and is older than 72 hours. A channel holds at most 10
 custom domains. Every change is written to the activity log (`domain.*`).
 
 ## Settings
@@ -54,7 +57,7 @@ On cod-server:
 | `CUSTOM_DOMAIN_TARGET` | Hostname merchants CNAME their subdomains to (e.g. `stores.codflow.app`). |
 | `CUSTOM_DOMAIN_IPV4` | Comma-separated public IPv4 addresses root domains point their A records to. |
 | `DNS_SERVERS` | Optional resolvers for the check (default: the system's). |
-| `TLS_PROBE_HOST`, `TLS_PROBE_PORT` | Where to reach Caddy to read a domain's certificate (default: the domain itself, 443). |
+| `TLS_PROBE_HOST`, `TLS_PROBE_PORT` | Where to reach Caddy to read a domain's certificate. Default: `CUSTOM_DOMAIN_TARGET`, else the first `CUSTOM_DOMAIN_IPV4`, port 443. The probe never connects to the merchant's own DNS answer. |
 
 Caddy:
 - Production: `docker/Caddyfile.production.example`. Set `BASE_DOMAIN` and

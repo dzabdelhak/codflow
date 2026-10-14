@@ -1,5 +1,6 @@
 import type { Context } from "hono";
 import type { AppContext } from "@/types";
+import { jsonBody } from "@/lib/route-builder";
 import { BusinessLogicError, ConflictError, NotFoundError, ValidationError } from "@/lib/errors/classes";
 import { ACTIONS, logActivity } from "@/lib/activity";
 import { schedulePurge } from "@/platform/storefront-cache";
@@ -14,36 +15,43 @@ import {
   verifyChannelDomain,
   type ChannelDomain,
 } from "@/platform/channel-domains";
+import type { CertificateStatus } from "@/platform/tls-probe";
 import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
 import type { AddDomainInput } from "./validation";
-
-function body<T>(c: Context<AppContext>): T {
-  return (c.req as unknown as { valid(target: "json"): T }).valid("json");
-}
 
 const storeOf = (c: Context<AppContext>) => c.get("storeId")!;
 const audit = (c: Context<AppContext>, action: (typeof ACTIONS)[keyof typeof ACTIONS], hostname: string, metadata?: Record<string, unknown>) =>
   logActivity(c.get("db"), c.get("user"), action, { type: "domain", id: hostname, label: hostname }, metadata);
 
-async function withCertificates(c: Context<AppContext>, domains: ChannelDomain[]) {
-  return Promise.all(
-    domains.map(async (domain) => ({
-      ...domain,
-      certificate: domain.kind === "custom" && domain.status === "verified" ? await c.env.CERT_PROBE(domain.hostname) : null,
-    })),
-  );
+const CERTIFICATE_TTL_MS = 10 * 60 * 1000;
+const certificates = new Map<string, { at: number; certificate: CertificateStatus }>();
+
+async function certificateOf(c: Context<AppContext>, hostname: string, probe: boolean): Promise<CertificateStatus | null> {
+  const cached = certificates.get(hostname);
+  if (cached && Date.now() - cached.at < CERTIFICATE_TTL_MS) return cached.certificate;
+  if (!probe) return cached?.certificate ?? null;
+  const certificate = await c.env.CERT_PROBE(hostname);
+  if (certificate.status === "active") certificates.set(hostname, { at: Date.now(), certificate });
+  else certificates.delete(hostname);
+  return certificate;
 }
 
-async function state(c: Context<AppContext>, status: 200 | 201 = 200) {
+async function state(c: Context<AppContext>, status: 200 | 201 = 200, probe = false) {
   const domains = await listChannelDomains(c.env.DATABASE.platform, storeOf(c));
   const targets = domainTargets(c.env);
-  return c.json({ success: true, data: { domains: await withCertificates(c, domains), dns: targets } }, status);
+  const withCertificates = await Promise.all(
+    domains.map(async (domain: ChannelDomain) => ({
+      ...domain,
+      certificate: domain.kind === "custom" && domain.status === "verified" ? await certificateOf(c, domain.hostname, probe) : null,
+    })),
+  );
+  return c.json({ success: true, data: { domains: withCertificates, dns: targets } }, status);
 }
 
-export const list = (c: Context<AppContext>) => state(c);
+export const list = (c: Context<AppContext>) => state(c, 200, true);
 
 export async function add(c: Context<AppContext>) {
-  const { hostname } = body<AddDomainInput>(c);
+  const { hostname } = jsonBody<AddDomainInput>(c);
   const result = await addChannelDomain(c.env.DATABASE.platform, storeOf(c), hostname, c.env.STORE_BASE_DOMAIN ?? "localhost");
   if (!result.ok) {
     switch (result.reason) {

@@ -36,11 +36,11 @@ async function main() {
         continue;
       }
       await database.platform.query(
-        "insert into stores (id, name, merchant_id, order_prefix, status, created_at, updated_at) values ($1, $2, $3, $4, 'published', $5, $5)",
-        [channel.id, channel.name, DEMO_MERCHANT_ID, orderPrefixFor(channel.host.split(".")[0]), now],
+        "insert into stores (id, name, merchant_id, order_prefix, status, domain, created_at, updated_at) values ($1, $2, $3, $4, 'published', $6, $5, $5)",
+        [channel.id, channel.name, DEMO_MERCHANT_ID, orderPrefixFor(channel.host.split(".")[0]), now, channel.host],
       );
       await database.platform.query(
-        "insert into store_domains (hostname, store_id, kind, created_at, verified_at, is_primary) values ($1, $2, 'subdomain', $3, $3, true)",
+        "insert into store_domains (hostname, store_id, kind, created_at, status, verified_at, is_primary) values ($1, $2, 'subdomain', $3, 'verified', $3, true)",
         [channel.host, channel.id, now],
       );
 

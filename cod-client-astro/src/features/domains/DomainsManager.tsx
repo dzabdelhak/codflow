@@ -27,7 +27,7 @@ import {
   type ChannelDomain,
   type DomainsState,
 } from "./api";
-import { domainProblem, isRootDomain } from "./model";
+import { domainProblem, isRootDomain, recordName } from "./model";
 
 const STATUS_TONE = { pending: "neutral", verified: "success", failed: "critical" } as const;
 
@@ -54,11 +54,11 @@ function errorKey(cause: unknown): string {
 function DnsRecords({ hostname, dns }: { hostname: string; dns: DomainsState["dns"] }) {
   const t = useT("domains");
   const root = isRootDomain(hostname);
-  const rows = root
-    ? dns.ipv4.map((ip) => ({ type: "A", name: "@", value: ip }))
-    : dns.cname
-      ? [{ type: "CNAME", name: hostname, value: dns.cname }]
-      : dns.ipv4.map((ip) => ({ type: "A", name: hostname, value: ip }));
+  const name = recordName(hostname);
+  const rows =
+    !root && dns.cname
+      ? [{ type: "CNAME", name, value: dns.cname }]
+      : dns.ipv4.map((ip) => ({ type: "A", name, value: ip }));
   if (rows.length === 0) return <p className="text-xs text-muted-foreground">{t("dns_not_configured")}</p>;
   return (
     <div className="space-y-1.5">

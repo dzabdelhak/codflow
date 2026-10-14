@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { domainProblem, isRootDomain } from "./model";
+import { domainProblem, isRootDomain, recordName } from "./model";
 
 describe("domain problems", () => {
   it("explain why a failed domain is not connected", () => {
@@ -19,5 +19,13 @@ describe("root domains", () => {
     expect(isRootDomain("boutique.com.dz")).toBe(true);
     expect(isRootDomain("shop.boutique.dz")).toBe(false);
     expect(isRootDomain("www.boutique.com.dz")).toBe(false);
+  });
+});
+
+describe("DNS record names", () => {
+  it("are relative to the zone the merchant manages at the registrar", () => {
+    expect(recordName("boutique.dz")).toBe("@");
+    expect(recordName("shop.boutique.dz")).toBe("shop");
+    expect(recordName("a.shop.boutique.com.dz")).toBe("a.shop");
   });
 });

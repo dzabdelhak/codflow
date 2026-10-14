@@ -1,5 +1,6 @@
 import type { Context } from "hono";
 import type { AppContext } from "@/types";
+import { jsonBody } from "@/lib/route-builder";
 import { ConflictError, NotFoundError, ValidationError } from "@/lib/errors/classes";
 import { schedulePurge } from "@/platform/storefront-cache";
 import { signPreviewToken } from "@/platform/design-preview";
@@ -14,10 +15,6 @@ import {
   saveDesignDraft,
 } from "../../../../cod-shared/queries/channel-design";
 import type { DraftInput, RestoreInput } from "./validation";
-
-function body<T>(c: Context<AppContext>): T {
-  return (c.req as unknown as { valid(target: "json"): T }).valid("json");
-}
 
 function invalid(errors: DesignError[]): never {
   throw new ValidationError("The design document does not match the template", ERROR_CODES.VALIDATION_FAILED, { errors });
@@ -34,7 +31,7 @@ const actor = (c: Context<AppContext>) => c.get("user").name ?? c.get("user").em
 export const get = state;
 
 export async function saveDraft(c: Context<AppContext>) {
-  const result = await saveDesignDraft(c.get("db"), c.get("storeId")!, body<DraftInput>(c).document, actor(c));
+  const result = await saveDesignDraft(c.get("db"), c.get("storeId")!, jsonBody<DraftInput>(c).document, actor(c));
   if (!result.ok) {
     if (result.reason === "invalid") invalid(result.errors);
     throw new NotFoundError("Store", c.get("storeId")!);
@@ -61,7 +58,7 @@ export async function publish(c: Context<AppContext>) {
 }
 
 export async function restore(c: Context<AppContext>) {
-  const { version } = body<RestoreInput>(c);
+  const { version } = jsonBody<RestoreInput>(c);
   const result = await restoreDesignVersion(c.get("db"), c.get("storeId")!, version, actor(c));
   if (!result.ok) {
     if (result.reason === "invalid") invalid(result.errors);

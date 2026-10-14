@@ -26,12 +26,15 @@ let store: string;
 let other: string;
 
 const records: Record<string, { cname?: string[]; a?: string[] }> = {};
+let resolverDown = false;
 const fakeDns: DnsLookup = {
   cname: async (host) => {
+    if (resolverDown) throw Object.assign(new Error("timeout"), { code: "ETIMEOUT" });
     if (records[host]?.cname) return records[host].cname!;
     throw Object.assign(new Error("no data"), { code: "ENODATA" });
   },
   a: async (host) => {
+    if (resolverDown) throw Object.assign(new Error("timeout"), { code: "ETIMEOUT" });
     if (records[host]?.a) return records[host].a!;
     throw Object.assign(new Error("not found"), { code: "ENOTFOUND" });
   },
@@ -134,6 +137,26 @@ describe("adding a domain", () => {
     expect((await dashboard("POST", "/api/channel-domains", { hostname: "old-claim.dz" })).status).toBe(201);
     expect(await domainOf("old-claim.dz")).toMatchObject({ status: "pending" });
   });
+
+  it("never lets another channel take a domain that was verified once, even after a failed check", async () => {
+    await harness.platform.query(
+      `insert into store_domains (hostname, store_id, kind, created_at, status, verified_at, last_error)
+       values ('was-live.dz', $1, 'custom', '2020-01-01T00:00:00.000Z', 'failed', '2020-01-02T00:00:00.000Z', 'points_elsewhere:198.51.100.7')`,
+      [other],
+    );
+    const res = await dashboard("POST", "/api/channel-domains", { hostname: "was-live.dz" });
+    expect([res.status, res.json.code]).toEqual([409, "DOMAIN_TAKEN"]);
+  });
+
+  it("serves nothing for a domain row inserted without a status", async () => {
+    await harness.platform.query(
+      "insert into store_domains (hostname, store_id, kind, created_at) values ('raw-insert.dz', $1, 'custom', now()::text)",
+      [store],
+    );
+    expect((await storefront("raw-insert.dz")).status).toBe(404);
+    expect(await tlsAsk("raw-insert.dz")).toBe(404);
+    await harness.platform.query("delete from store_domains where hostname = 'raw-insert.dz'");
+  });
 });
 
 describe("verification", () => {
@@ -153,11 +176,8 @@ describe("verification", () => {
   it("succeeds once the domain points at the platform, then serves it and allows its certificate", async () => {
     records["boutique-nour.dz"] = { cname: ["stores.codflow.test."] };
     const res = await dashboard("POST", "/api/channel-domains/boutique-nour.dz/verify");
-    expect(res.json.data.domains.find((d) => d.hostname === "boutique-nour.dz")).toMatchObject({
-      status: "verified",
-      lastError: null,
-      certificate: { status: "missing" },
-    });
+    expect(res.json.data.domains.find((d) => d.hostname === "boutique-nour.dz")).toMatchObject({ status: "verified", lastError: null });
+    expect(await domainOf("boutique-nour.dz")).toMatchObject({ certificate: { status: "missing" } });
     expect((await storefront("boutique-nour.dz")).status).toBe(200);
     expect(await tlsAsk("boutique-nour.dz")).toBe(200);
     expect(await tlsAsk("dom-shop.codflow.test")).toBe(200);
@@ -181,6 +201,9 @@ describe("the primary domain", () => {
   it("is what the storefront redirects the channel's other domains to", async () => {
     const before = (await (await storefront("dom-shop.codflow.test")).json()) as { data: { primaryHostname: string } };
     expect(before.data.primaryHostname).toBe("dom-shop.codflow.test");
+    await dashboard("POST", "/api/channel-domains/dom-shop.codflow.test/primary");
+    const { rows: [initial] } = await harness.platform.query("select domain from stores where id = $1", [store]);
+    expect(initial.domain).toBe("dom-shop.codflow.test");
 
     const res = await dashboard("POST", "/api/channel-domains/boutique-nour.dz/primary");
     expect(res.json.data.domains[0]).toMatchObject({ hostname: "boutique-nour.dz", isPrimary: true });
@@ -190,6 +213,17 @@ describe("the primary domain", () => {
     expect(after.data.primaryHostname).toBe("boutique-nour.dz");
     const { rows: [row] } = await harness.platform.query("select domain from stores where id = $1", [store]);
     expect(row.domain).toBe("boutique-nour.dz");
+  });
+
+  it("stays connected when the DNS lookup itself fails", async () => {
+    resolverDown = true;
+    const res = await dashboard("POST", "/api/channel-domains/boutique-nour.dz/verify");
+    resolverDown = false;
+    expect(res.json.data.domains.find((d) => d.hostname === "boutique-nour.dz")).toMatchObject({
+      status: "verified",
+      lastError: "dns_lookup_failed",
+    });
+    expect((await storefront("boutique-nour.dz")).status).toBe(200);
   });
 
   it("stops being redirected to once its DNS no longer points at the platform", async () => {

@@ -147,7 +147,7 @@ export async function createTestDb(): Promise<TestDb> {
     );
     for (const [index, hostname] of hostnames.entries()) {
       await platform.query(
-        "insert into store_domains (hostname, store_id, kind, created_at, is_primary) values ($1, $2, 'subdomain', $3, $4)",
+        "insert into store_domains (hostname, store_id, kind, created_at, status, verified_at, is_primary) values ($1, $2, 'subdomain', $3, 'verified', $3, $4)",
         [hostname, id, now, index === 0],
       );
     }

@@ -83,8 +83,8 @@ export async function addChannelDomain(
   try {
     await client.query("begin");
     await client.query("select 1 from stores where id = $1 for no key update", [storeId]);
-    const { rows: [existing] } = await client.query<{ store_id: string; status: DomainStatus; created_at: string }>(
-      "select store_id, status, created_at from store_domains where hostname = $1 for update",
+    const { rows: [existing] } = await client.query<{ store_id: string; verified_at: string | null; created_at: string }>(
+      "select store_id, verified_at, created_at from store_domains where hostname = $1 for update",
       [hostname],
     );
     if (existing?.store_id === storeId) {
@@ -92,7 +92,7 @@ export async function addChannelDomain(
       return { ok: false, reason: "already_added" };
     }
     if (existing) {
-      const stale = existing.status !== "verified" && now.getTime() - Date.parse(existing.created_at) > PENDING_CLAIM_TTL_MS;
+      const stale = existing.verified_at === null && now.getTime() - Date.parse(existing.created_at) > PENDING_CLAIM_TTL_MS;
       if (!stale) {
         await client.query("rollback");
         return { ok: false, reason: "taken" };
@@ -169,7 +169,8 @@ export async function verifyChannelDomain(
   const at = now.toISOString();
   const { rows: [domain] } = await platform.query<ChannelDomain>(
     `update store_domains
-        set status = $3, checked_at = $4, last_error = $5,
+        set status = case when $5 = 'dns_lookup_failed' and status = 'verified' then status else $3 end,
+            checked_at = $4, last_error = $5,
             verified_at = case when $3 = 'verified' then coalesce(verified_at, $4) else verified_at end
       where hostname = $1 and store_id = $2
       returning ${COLUMNS}`,
@@ -184,8 +185,8 @@ export async function setPrimaryDomain(platform: pg.Pool, storeId: string, hostn
   const client = await platform.connect();
   try {
     await client.query("begin");
-    const { rows: [row] } = await client.query<{ status: DomainStatus; kind: string }>(
-      "select status, kind from store_domains where hostname = $1 and store_id = $2 for update",
+    const { rows: [row] } = await client.query<{ status: DomainStatus }>(
+      "select status from store_domains where hostname = $1 and store_id = $2 for update",
       [hostname, storeId],
     );
     if (!row || row.status !== "verified") {
@@ -194,11 +195,7 @@ export async function setPrimaryDomain(platform: pg.Pool, storeId: string, hostn
     }
     await client.query("update store_domains set is_primary = false where store_id = $1 and is_primary", [storeId]);
     await client.query("update store_domains set is_primary = true where hostname = $1", [hostname]);
-    await client.query("update stores set domain = $2, updated_at = $3 where id = $1", [
-      storeId,
-      row.kind === "custom" ? hostname : null,
-      new Date().toISOString(),
-    ]);
+    await client.query("update stores set domain = $2, updated_at = $3 where id = $1", [storeId, hostname, new Date().toISOString()]);
     await client.query("commit");
     return { ok: true };
   } catch (err) {
@@ -219,8 +216,11 @@ export async function removeChannelDomain(platform: pg.Pool, storeId: string, ho
   if (!row) return { ok: false, reason: "not_found" };
   if (row.kind === "subdomain") return { ok: false, reason: "is_subdomain" };
   if (row.is_primary) return { ok: false, reason: "is_primary" };
-  await platform.query("delete from store_domains where hostname = $1 and store_id = $2", [hostname, storeId]);
-  return { ok: true };
+  const { rowCount } = await platform.query(
+    "delete from store_domains where hostname = $1 and store_id = $2 and kind = 'custom' and not is_primary",
+    [hostname, storeId],
+  );
+  return rowCount === 1 ? { ok: true } : { ok: false, reason: "is_primary" };
 }
 
 export async function certificateAllowed(platform: pg.Pool, hostname: string): Promise<boolean> {

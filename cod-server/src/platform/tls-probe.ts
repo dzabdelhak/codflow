@@ -27,7 +27,7 @@ export function probeCertificate(
         validTo: new Date(cert.valid_to).toISOString(),
       });
     });
-    socket.once("timeout", () => done({ status: "error", message: "timeout" }));
+    socket.once("timeout", () => done({ status: "missing" }));
     socket.once("error", (err: NodeJS.ErrnoException) =>
       done(err.code === "ECONNREFUSED" || /alert|handshake/i.test(err.message) ? { status: "missing" } : { status: "error", message: err.code ?? err.message }),
     );

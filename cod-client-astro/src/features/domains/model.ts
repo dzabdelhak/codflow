@@ -12,8 +12,17 @@ export function domainProblem(domain: Pick<ChannelDomain, "status" | "lastError"
   return { key: "dns_lookup_failed" };
 }
 
-export function isRootDomain(hostname: string): boolean {
+function zoneOf(hostname: string): string {
   const labels = hostname.split(".");
-  if (labels.length <= 2) return true;
-  return labels.length === 3 && /^(com|net|org|edu|gov|co|ac)$/.test(labels[1]) && labels[2].length === 2;
+  const secondLevel = labels.length >= 3 && /^(com|net|org|edu|gov|co|ac)$/.test(labels.at(-2)!) && labels.at(-1)!.length === 2;
+  return labels.slice(secondLevel ? -3 : -2).join(".");
+}
+
+export function isRootDomain(hostname: string): boolean {
+  return zoneOf(hostname) === hostname;
+}
+
+export function recordName(hostname: string): string {
+  const zone = zoneOf(hostname);
+  return zone === hostname ? "@" : hostname.slice(0, -(zone.length + 1));
 }

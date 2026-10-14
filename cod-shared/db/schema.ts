@@ -1100,7 +1100,7 @@ export const storeDomains = pgTable("store_domains", {
     .references(() => stores.id, { onDelete: "cascade" }),
   kind: text("kind", { enum: ["subdomain", "custom"] }).notNull(),
   createdAt: text("created_at").notNull(),
-  status: text("status", { enum: ["pending", "verified", "failed"] }).notNull().default("verified"),
+  status: text("status", { enum: ["pending", "verified", "failed"] }).notNull().default("pending"),
   verifiedAt: text("verified_at"),
   checkedAt: text("checked_at"),
   lastError: text("last_error"),

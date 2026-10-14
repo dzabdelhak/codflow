@@ -283,3 +283,7 @@ export function defineRoute(def: RouteDefinition): BuiltRoute {
     ...(def.validationHook ? { validationHook: def.validationHook } : {}),
   };
 }
+
+export function jsonBody<T>(c: Context<AppContext>): T {
+  return (c.req as unknown as { valid(target: "json"): T }).valid("json");
+}
