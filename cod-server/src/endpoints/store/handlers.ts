@@ -34,7 +34,7 @@ import { first } from "../../../../cod-shared/db/client";
 export async function getStoreConfig(c: Context<AppContext>) {
   const storeId = c.get("storeId")!;
   const db = c.get("db");
-  const store = await queries.getStoreConfig(db, storeId);
+  const store = await queries.getStoreConfig(db, storeId, { preview: c.get("designPreview") === true });
   if (!store) {
     throw new NotFoundError("Store", storeId);
   }

@@ -32,7 +32,8 @@
     "whatsapp": "WhatsApp",
     "stores": "Boutiques",
     "store_products": "Dans cette boutique",
-    "main_product": "Produit principal"
+    "main_product": "Produit principal",
+    "design": "Design"
   },
   "navbar": {
     "search_placeholder": "Rechercher des commandes, clients...",

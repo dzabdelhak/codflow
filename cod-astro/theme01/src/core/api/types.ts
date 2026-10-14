@@ -103,7 +103,20 @@ export interface StoreConfig {
    */
   whatsapp?: StoreWhatsAppWidget | null;
   channelType?: "store" | "landing";
+  design?: StorefrontDesign;
   unavailableRule?: UnavailableRule;
+}
+
+export interface StorefrontSection {
+  id: string;
+  type: string;
+  settings: Record<string, string>;
+}
+
+export interface StorefrontDesign {
+  version: number;
+  preview: boolean;
+  sections: StorefrontSection[];
 }
 
 export type UnavailableRule = "hide_order_form" | "show_unavailable" | "suspend";

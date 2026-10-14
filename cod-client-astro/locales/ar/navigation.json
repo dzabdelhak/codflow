@@ -32,7 +32,8 @@
     "whatsapp": "واتساب",
     "stores": "المتاجر",
     "store_products": "في هذا المتجر",
-    "main_product": "المنتج الرئيسي"
+    "main_product": "المنتج الرئيسي",
+    "design": "التصميم"
   },
   "navbar": {
     "search_placeholder": "البحث عن طلبات، عملاء...",

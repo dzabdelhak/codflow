@@ -171,7 +171,9 @@
     "cart_enabled_note": "« Ajouter au panier » apparaît à côté de votre formulaire de commande, sans le remplacer. Les clients qui achètent un seul produit conservent la même commande en une étape. Un client avec plusieurs produits les confirme ensemble sur une page de commande.",
     "tracking_per_page_label": "Pixels par page de destination",
     "tracking_per_page_hint": "Permet à une page de destination d'envoyer ses données à son propre pixel plutôt qu'à celui-ci. Tant que c'est désactivé, toutes les pages utilisent le pixel ci-dessus.",
-    "tracking_per_page_next_step": "Ouvrez maintenant une page de destination dans le Studio et donnez-lui son propre pixel. Les pages que vous ne modifiez pas continuent d'utiliser le pixel de la boutique."
+    "tracking_per_page_next_step": "Ouvrez maintenant une page de destination dans le Studio et donnez-lui son propre pixel. Les pages que vous ne modifiez pas continuent d'utiliser le pixel de la boutique.",
+    "branding_moved": "Le logo, les couleurs et la police se modifient désormais dans l’éditeur de design, avec un aperçu, et s’appliquent à la publication.",
+    "branding_open_editor": "Ouvrir l’éditeur de design"
   },
   "shipping": {
     "title": "Tarifs de livraison",

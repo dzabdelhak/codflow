@@ -13,6 +13,7 @@ import type { AppContext } from "@/types";
 import { requestScope, scopeForHost, type Scope } from "@/db/scope";
 import { channelPublicAccess } from "../../../cod-shared/channels/lifecycle";
 import { ERROR_CODES } from "../../../cod-shared/errors/codes";
+import { previewTokenStore } from "@/platform/design-preview";
 
 function sameSecret(given: string, expected: string): boolean {
   const a = Buffer.from(given);
@@ -30,6 +31,11 @@ export async function resolveStorefrontStore(c: Context<AppContext>): Promise<Sc
   if (!host) return c.json({ error: "Missing channel host" }, 400);
 
   const scope = await scopeForHost(c.env.DATABASE.platform, host);
+  const previewToken = c.req.header("X-Preview-Token");
+  if (scope && previewToken && c.req.method === "GET" && previewTokenStore(previewToken, expected) === scope.storeId) {
+    c.set("designPreview", true);
+    return { storeId: scope.storeId, merchantId: scope.merchantId };
+  }
   const access = scope ? channelPublicAccess(scope.channel) : "hidden";
   if (access === "hidden") return c.json({ error: "Unknown store" }, 404);
   if (access === "unavailable") {

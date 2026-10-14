@@ -92,7 +92,7 @@ function SettingsContent() {
       case "general":
         return <GeneralSettings storeConfig={storeConfig} onSave={handleSave} />;
       case "branding":
-        return <BrandingSettings storeConfig={storeConfig} onSave={handleSave} />;
+        return <BrandingSettings />;
       case "seo":
         return <SeoSettings storeConfig={storeConfig} onSave={handleSave} />;
       case "cart":

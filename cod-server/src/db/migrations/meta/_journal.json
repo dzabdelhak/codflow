@@ -71,6 +71,13 @@
       "when": 1791972683068,
       "tag": "0009_landing_channel",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791975383347,
+      "tag": "0010_channel_design",
+      "breakpoints": true
     }
   ]
 }

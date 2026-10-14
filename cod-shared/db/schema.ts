@@ -759,6 +759,24 @@ export const channelProducts = pgTable("channel_products", {
   pk: primaryKey({ columns: [t.storeId, t.productId] }),
 }));
 
+export const channelDesigns = pgTable("channel_designs", {
+  storeId: storeIdColumn().primaryKey(),
+  draft: jsonb("draft"),
+  draftBaseVersion: integer("draft_base_version"),
+  updatedAt: text("updated_at").notNull(),
+  updatedBy: text("updated_by"),
+});
+
+export const channelDesignVersions = pgTable("channel_design_versions", {
+  storeId: storeIdColumn(),
+  version: integer("version").notNull(),
+  document: jsonb("document").notNull(),
+  publishedAt: text("published_at").notNull(),
+  publishedBy: text("published_by"),
+}, (t) => ({
+  pk: primaryKey({ columns: [t.storeId, t.version] }),
+}));
+
 export const productVariants = pgTable("product_variants", {
   merchantId: merchantIdColumn(),
   id: text("id").primaryKey(),

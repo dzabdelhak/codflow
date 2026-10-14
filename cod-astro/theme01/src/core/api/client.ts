@@ -6,17 +6,19 @@
 import { STOREFRONT_SERVICE_KEY, COD_SERVER_URL as _COD_SERVER_URL } from "astro:env/server";
 const COD_SERVER_URL = _COD_SERVER_URL ?? "http://localhost:8787";
 import type { StoreConfig, Commune, Review, StorePagePublic, LandingChannel } from "./types";
-import { currentRequestHost, memoForRequest } from "./request-host";
+import { currentPreviewToken, currentRequestHost, memoForRequest } from "./request-host";
 
 /**
  * The API picks the channel from the visitor's hostname, which it trusts only
  * alongside the storefront's service key.
  */
-function storeHeaders() {
+function storeHeaders(): Record<string, string> {
+  const preview = currentPreviewToken();
   return {
     "X-Storefront-Key": STOREFRONT_SERVICE_KEY ?? "",
     "X-Channel-Host": currentRequestHost() ?? "",
     "Content-Type": "application/json",
+    ...(preview ? { "X-Preview-Token": preview } : {}),
   };
 }
 

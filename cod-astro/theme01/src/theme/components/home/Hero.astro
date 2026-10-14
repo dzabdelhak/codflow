@@ -4,9 +4,11 @@ import { Icon } from "astro-icon/components";
 
 interface Props {
   content: StoreFrontContent;
+  image?: string;
+  ctaHref?: string;
 }
 
-const { content } = Astro.props;
+const { content, image, ctaHref = "/products" } = Astro.props;
 ---
 
 <section class="hero-bg-subtle overflow-hidden relative -mt-[calc(4.5rem+var(--safe-top))] pt-[calc(4.5rem+var(--safe-top))]">
@@ -43,7 +45,7 @@ const { content } = Astro.props;
           {/* CTA buttons */}
           <div class="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4 animate-fade-in-up [animation-delay:300ms]">
             <a
-              href="/products"
+              href={ctaHref}
               class="btn-primary group !w-full sm:!w-auto !px-10 h-14 sm:h-16 text-base"
             >
               {content.heroCtaPrimary}
@@ -57,6 +59,16 @@ const { content } = Astro.props;
               {content.heroCtaSecondary}
             </a>
           </div>
+          {image && (
+            <img
+              src={image}
+              alt=""
+              class="mx-auto mt-6 block w-full max-w-3xl h-auto rounded-[var(--radius-card)]"
+              loading="eager"
+              fetchpriority="high"
+              decoding="async"
+            />
+          )}
         </div>
       </div>
 

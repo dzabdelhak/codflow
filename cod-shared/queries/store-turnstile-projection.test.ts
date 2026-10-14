@@ -43,6 +43,7 @@ function makeDb(rows: unknown[]) {
       where: () => c,
       innerJoin: () => c,
       orderBy: () => c,
+      limit: () => c,
       get: vi.fn(async () => value),
       // Queries take rows[0] for a single-row read; list reads get the array.
       then: (resolve: (v: unknown) => void) =>

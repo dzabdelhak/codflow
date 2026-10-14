@@ -4,9 +4,9 @@
 
 **Blocked by:** 04
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The theme renders a channel's home page entirely from its section-state document
-- [ ] Each template exposes a manifest; the editor offers only what the manifest declares
-- [ ] Draft changes are invisible publicly until published; previewing shows desktop and mobile
-- [ ] Publishing bumps the section-state version and can return to the last published version
+- [x] The theme renders a channel's home page entirely from its section-state document
+- [x] Each template exposes a manifest; the editor offers only what the manifest declares
+- [x] Draft changes are invisible publicly until published; previewing shows desktop and mobile
+- [x] Publishing bumps the section-state version and can return to the last published version

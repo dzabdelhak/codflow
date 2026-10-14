@@ -6,6 +6,7 @@ import {
   Gift,
   Layers,
   Megaphone,
+  Palette,
   MessageCircle,
   LayoutDashboard,
   Package,
@@ -233,6 +234,13 @@ export function useNavSections(): NavSection[] {
           href: "/stores",
           label: tN("sidebar.stores"),
           icon: Store,
+        },
+        {
+          kind: "leaf",
+          href: "/design",
+          label: tN("sidebar.design"),
+          icon: Palette,
+          scope: "admin",
         },
         {
           kind: "leaf",

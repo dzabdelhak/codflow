@@ -56,6 +56,14 @@ export async function listMerchantStores(platform: pg.Pool, merchantId: string):
   return rows;
 }
 
+export async function primaryHostname(platform: pg.Pool, storeId: string): Promise<string | null> {
+  const { rows } = await platform.query<{ hostname: string }>(
+    "select hostname from store_domains where store_id = $1 order by (kind = 'subdomain') desc, created_at limit 1",
+    [storeId],
+  );
+  return rows[0]?.hostname ?? null;
+}
+
 export async function firstStoreId(platform: pg.Pool, merchantId: string): Promise<string | null> {
   const { rows } = await platform.query<{ id: string }>(
     "select id from stores where merchant_id = $1 order by created_at, id limit 1",

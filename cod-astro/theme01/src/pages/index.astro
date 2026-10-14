@@ -1,8 +1,8 @@
 ---
 // ── Home page layout ────────────────────────────────────────────────────────
-// Full home page: hero, categories, best sellers, how it works,
-// new arrivals, features bar, promo banner, testimonials.
-// Streaming components fetch their own data in parallel for optimal performance.
+// Rendered from the channel's section list (its published design document):
+// order, visibility and texts come from there. Streaming components fetch
+// their own data in parallel.
 // ─────────────────────────────────────────────────────────────────────────────
 import StoreLayout from "@/theme/layouts/StoreLayout.astro";
 import Hero from "@/theme/components/home/Hero.astro";
@@ -17,6 +17,7 @@ import LandingPage from "@/theme/components/landing/LandingPage.astro";
 import { getStoreContext } from "@/theme/config/store";
 import { fetchLandingChannel } from "@/core/api/client";
 import { isLandingChannel } from "@/theme/utils/landing-view";
+import { contentWithSections, pageSections, STORE_HOME_SECTIONS } from "@/theme/utils/sections";
 import { actions, isInputError } from "astro:actions";
 import { thankYouUrl } from "@/core/utils/thank-you-url";
 
@@ -30,6 +31,8 @@ if (result?.data?.orderNumber) {
 const fieldErrors = isInputError(result?.error) ? result.error.fields : {};
 const serverError = result?.error && !isInputError(result.error) ? result.error.message : null;
 const landingProduct = landing?.product ?? null;
+const homeSections = pageSections(config, STORE_HOME_SECTIONS);
+const homeContent = contentWithSections(content, homeSections);
 const landingTitle = config.metaTitle ?? (landingProduct ? `${landingProduct.name} — ${config.name}` : config.name);
 ---
 
@@ -58,38 +61,25 @@ const landingTitle = config.metaTitle ?? (landingProduct ? `${landingProduct.nam
   )}
 </StoreLayout>
 ) : (
-<StoreLayout config={config} content={content}>
-  <!-- Hero renders immediately (no data fetch) -->
-  <Hero content={content} />
-
-  <!-- CategoryCards streams (fetches categories) -->
-  <CategoryCards content={content} />
-
-  <!-- BestSellers streams (fetches featured products) -->
-  <BestSellers
-    currencySymbol={config.currencySymbol}
-    content={content}
-  />
-
-  <!-- HowItWorks renders immediately (presentational) -->
-  <HowItWorks content={content} />
-
-  <!-- NewArrivals streams (fetches products) -->
-  <NewArrivals
-    currencySymbol={config.currencySymbol}
-    content={content}
-  />
-
-  <!-- FeaturesBar renders immediately (presentational) -->
-  <FeaturesBar content={content} />
-
-  <!-- Promo banner renders immediately (presentational) -->
-  <WhatsAppCTA content={content} />
-
-  <!-- CustomerTestimonials streams (fetches reviews, conditional) -->
-  <CustomerTestimonials
-    config={config}
-    content={content}
-  />
+<StoreLayout config={config} content={homeContent}>
+  {homeSections.map((section) =>
+    section.type === "hero" ? (
+      <Hero content={homeContent} image={section.settings.heroImage} ctaHref={section.settings.heroCtaHref} />
+    ) : section.type === "categories" ? (
+      <CategoryCards content={homeContent} />
+    ) : section.type === "best_sellers" ? (
+      <BestSellers currencySymbol={config.currencySymbol} content={homeContent} />
+    ) : section.type === "how_it_works" ? (
+      <HowItWorks content={homeContent} />
+    ) : section.type === "new_arrivals" ? (
+      <NewArrivals currencySymbol={config.currencySymbol} content={homeContent} />
+    ) : section.type === "features" ? (
+      <FeaturesBar content={homeContent} />
+    ) : section.type === "promo" ? (
+      <WhatsAppCTA content={homeContent} ctaHref={section.settings.promoCtaHref} />
+    ) : section.type === "testimonials" ? (
+      <CustomerTestimonials config={config} content={homeContent} />
+    ) : null,
+  )}
 </StoreLayout>
 )}

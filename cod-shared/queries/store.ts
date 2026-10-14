@@ -47,6 +47,9 @@ import { normalizeOrderLines } from "./cart";
 import { resolvePublicTracking } from "./tracking-config";
 import { chunkIds } from "./d1-limits";
 import { getFooterPages, getPublicLegalContact } from "./store-pages";
+import { storefrontDesignSource } from "./channel-design";
+import { manifestFor } from "../channels/manifests";
+import { brandFromStore, defaultDesign, storefrontBrand, storefrontSections } from "../channels/design";
 import type { PageLocale } from "../legal/kinds";
 import {
   loadCatalogSnapshot,
@@ -116,7 +119,7 @@ export interface StoreOrderData {
   userAgent?: string;
 }
 
-export async function getStoreConfig(db: AppDb, storeId: string) {
+export async function getStoreConfig(db: AppDb, storeId: string, opts: { preview?: boolean } = {}) {
   const store = await db.select().from(stores).where(eq(stores.id, storeId)).then(first);
   if (!store) return null;
   const [tracking, otpRow, turnstileRow, pages, legalContact] = await Promise.all([
@@ -147,16 +150,22 @@ export async function getStoreConfig(db: AppDb, storeId: string) {
   // removed by name here — the storefront gets the resolved projection instead,
   // which is also the only shape a theme should ever have to understand.
   const { checkoutFormJson, whatsappWidgetJson, orderSeq: _seq, merchantId: _merchant, creationKey: _creationKey, ...publicStore } = store;
+  const preview = opts.preview === true;
+  const manifest = manifestFor(store.themeId, store.channelType);
+  const design = await storefrontDesignSource(db, preview);
+  const document = design.document ?? defaultDesign(manifest, brandFromStore(store, manifest));
 
   return {
     ...publicStore,
+    ...(design.document ? storefrontBrand(design.document.brand, manifest) : {}),
+    design: { version: design.version, preview, sections: storefrontSections(document, store.lang) },
     checkoutForm: parseCheckoutFormPolicy(checkoutFormJson),
     // Null whenever there is nothing to render — switched off, no number, or a
     // number that no longer normalises. The theme holds one rule about this
     // feature: render it, or don't. Costs no extra query: the column rides the
     // store row this function already selected in full.
     whatsapp: resolveStorefrontWidget(whatsappWidgetJson),
-    pixelId: tracking.pixelId,
+    pixelId: preview ? null : tracking.pixelId,
     conversionEvent: tracking.conversionEvent,
     pages,
     legalContact,

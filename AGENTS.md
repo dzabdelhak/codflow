@@ -154,6 +154,13 @@ other is how these drift.
   out of stock) the page follows `stores.unavailable_rule`; `suspend` is
   computed at channel resolution, the status stays `published`. See
   `docs/LANDING-CHANNEL.md`.
+- **Public pages render from the channel's section-state document**
+  (`docs/CHANNEL-DESIGN.md`): theme01 maps each section type to a component;
+  the template's manifest (`cod-shared/channels/manifests.ts`) declares the
+  sections and settings `validateDesign` accepts. A new section or text needs
+  the manifest, the renderer and the content packs together
+  (`manifest-contracts.test.ts`). Publishing writes the brand into `stores`;
+  `?preview=<token>` renders the draft uncached.
 - **One catalogue per merchant; each store selects from it.** `products`,
   `product_variants`, `product_images`, `product_categories` and
   `stock_movements` are under merchant RLS (`app.merchant_id`), so every

@@ -29,7 +29,11 @@ import { CHANNEL_CACHE_PATH, channelTag, shouldPurge } from "./channel-cache";
  */
 export const onRequest = defineMiddleware((context, next) =>
   // Every API call made while rendering this request names this channel.
-  withRequestHost(context.request.headers.get("host") ?? context.url.host, () => handle(context, next)),
+  withRequestHost(
+    context.request.headers.get("host") ?? context.url.host,
+    () => handle(context, next),
+    context.url.searchParams.get("preview"),
+  ),
 );
 
 async function handle(context: APIContext, next: MiddlewareNext) {
@@ -45,7 +49,8 @@ async function handle(context: APIContext, next: MiddlewareNext) {
     context.locals.channelUnavailable = true;
     return next("/unavailable");
   }
-  context.cache.set({ tags: [tag] });
+  if (context.url.searchParams.has("preview")) context.cache.set(false);
+  else context.cache.set({ tags: [tag] });
 
   const { action, setActionResult, serializeActionResult } = getActionContext(context);
 

@@ -171,7 +171,9 @@
     "cart_enabled_note": "\"Add to cart\" appears next to your order form — it does not replace it. Customers buying a single product keep the same one-step checkout. A customer with several products confirms them together on a checkout page.",
     "tracking_per_page_label": "Per-landing-page pixels",
     "tracking_per_page_hint": "Let an individual landing page report to its own pixel instead of this one. While this is off, every page uses the pixel above.",
-    "tracking_per_page_next_step": "Now open a landing page in the Studio and give it its own pixel. Pages you don't change keep using the store pixel."
+    "tracking_per_page_next_step": "Now open a landing page in the Studio and give it its own pixel. Pages you don't change keep using the store pixel.",
+    "branding_moved": "Logo, colours and font are now edited in the design editor, with a preview, and applied when you publish.",
+    "branding_open_editor": "Open the design editor"
   },
   "shipping": {
     "title": "Shipping Rates",

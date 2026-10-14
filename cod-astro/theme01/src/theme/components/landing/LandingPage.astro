@@ -7,6 +7,7 @@ import { Icon } from "astro-icon/components";
 import type { LandingChannel, StoreConfig } from "@/core/api/types";
 import type { StoreFrontContent } from "@/theme/config/content";
 import { filledTexts, landingOrderSection } from "@/theme/utils/landing-view";
+import { contentWithSections, LANDING_SECTIONS, pageSections, sectionSetting } from "@/theme/utils/sections";
 
 interface Props {
   landing: LandingChannel & { product: NonNullable<LandingChannel["product"]> };
@@ -17,7 +18,9 @@ interface Props {
   serverError: string | null;
 }
 
-const { landing, config, content, isRTL, fieldErrors, serverError } = Astro.props;
+const { landing, config, content: baseContent, isRTL, fieldErrors, serverError } = Astro.props;
+const sections = pageSections(config, LANDING_SECTIONS);
+const content = contentWithSections(baseContent, sections);
 const product = landing.product;
 const cur = config.currencySymbol;
 const defaultVariant = product.hasVariants
@@ -28,8 +31,9 @@ const comparePrice: number | null = defaultVariant?.compareAtPrice ?? product.co
 const hasDiscount = comparePrice != null && comparePrice > basePrice;
 const discountPct = hasDiscount ? Math.round((1 - basePrice / comparePrice!) * 100) : 0;
 const images: Array<{ id: string; src: string; altText: string | null }> = product.images ?? [];
-const cover = images[0] ?? null;
-const section = landingOrderSection(landing);
+const bannerImage = sectionSetting(sections, "banner", "landingBannerImage");
+const cover = bannerImage ? { id: "banner", src: bannerImage, altText: null } : (images[0] ?? null);
+const orderSection = landingOrderSection(landing);
 const benefits = filledTexts(content.landingBenefit1, content.landingBenefit2, content.landingBenefit3, content.landingBenefit4);
 const faq = [
   { q: content.landingFaq1Q, a: content.landingFaq1A },
@@ -44,7 +48,7 @@ const reassurance = [
 const fmt = (n: number) => n.toLocaleString("ar-DZ");
 ---
 
-{section === "form" && (
+{orderSection === "form" && (
   <ProductPageData
     product={product}
     basePrice={basePrice}
@@ -55,172 +59,177 @@ const fmt = (n: number) => n.toLocaleString("ar-DZ");
     pixelId={config.pixelId}
   />
 )}
-{section === "form" && <ShippingIsland server:defer productId={product.id} />}
+{orderSection === "form" && <ShippingIsland server:defer productId={product.id} />}
 
-<section data-landing-section="banner" class="px-4 pt-8 pb-6 sm:pt-12">
-  <div class="mx-auto max-w-5xl grid gap-6 lg:grid-cols-2 lg:items-center">
-    <div>
-      <p class="text-xs font-black uppercase tracking-widest" style="color: var(--clr-primary)">{content.landingEyebrow}</p>
-      <h1 class="mt-2 text-3xl sm:text-4xl font-black leading-tight tracking-tight" style="color: var(--clr-text)">{product.name}</h1>
-      <p class="mt-4 text-3xl font-black" style="color: var(--clr-primary)">
-        {fmt(basePrice)} <span class="text-lg font-bold">{cur}</span>
-      </p>
-      {section === "form" && (
-        <a href="#order-section-wrapper" class="btn-primary mt-6 inline-flex items-center gap-2">
-          {content.orderCta}
-          <Icon name="heroicons:chevron-down" class="w-5 h-5" />
-        </a>
-      )}
-    </div>
-    {cover && (
-      <img
-        src={cover.src}
-        alt={cover.altText ?? product.name}
-        class="block w-full h-auto rounded-[var(--radius-card)]"
-        style="background: var(--clr-surface);"
-        loading="eager"
-        fetchpriority="high"
-        decoding="async"
-      />
-    )}
-  </div>
-</section>
-
-{product.description && (
-  <section data-landing-section="product" class="px-4 py-6">
-    <div class="mx-auto max-w-3xl">
-      <h2 class="mb-4 text-xl font-black" style="color: var(--clr-text)">{content.landingDescriptionTitle}</h2>
-      <ProductDescription description={product.description} format={product.descriptionFormat} />
-    </div>
-  </section>
-)}
-
-{images.length > 1 && (
-  <section data-landing-section="gallery" class="px-4 py-6">
-    <div class="mx-auto max-w-5xl">
-      <h2 class="mb-4 text-xl font-black" style="color: var(--clr-text)">{content.landingGalleryTitle}</h2>
-      <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        {images.slice(1).map((image) => (
+{sections.map((section) =>
+  section.type === "banner" ? (
+    <section data-landing-section="banner" class="px-4 pt-8 pb-6 sm:pt-12">
+      <div class="mx-auto max-w-5xl grid gap-6 lg:grid-cols-2 lg:items-center">
+        <div>
+          <p class="text-xs font-black uppercase tracking-widest" style="color: var(--clr-primary)">{content.landingEyebrow}</p>
+          <h1 class="mt-2 text-3xl sm:text-4xl font-black leading-tight tracking-tight" style="color: var(--clr-text)">{product.name}</h1>
+          <p class="mt-4 text-3xl font-black" style="color: var(--clr-primary)">
+            {fmt(basePrice)} <span class="text-lg font-bold">{cur}</span>
+          </p>
+          {orderSection === "form" && (
+            <a href="#order-section-wrapper" class="btn-primary mt-6 inline-flex items-center gap-2">
+              {content.orderCta}
+              <Icon name="heroicons:chevron-down" class="w-5 h-5" />
+            </a>
+          )}
+        </div>
+        {cover && (
           <img
-            src={image.src}
-            alt={image.altText ?? product.name}
-            class="block w-full aspect-square object-cover rounded-[var(--radius-card)]"
+            src={cover.src}
+            alt={cover.altText ?? product.name}
+            class="block w-full h-auto rounded-[var(--radius-card)]"
             style="background: var(--clr-surface);"
-            loading="lazy"
+            loading="eager"
+            fetchpriority="high"
             decoding="async"
           />
-        ))}
+        )}
       </div>
-    </div>
-  </section>
-)}
-
-{benefits.length > 0 && (
-  <section data-landing-section="benefits" class="px-4 py-6">
-    <div class="mx-auto max-w-3xl">
-      <h2 class="mb-4 text-xl font-black" style="color: var(--clr-text)">{content.landingBenefitsTitle}</h2>
-      <ul class="grid gap-3 sm:grid-cols-2">
-        {benefits.map((benefit) => (
-          <li class="card flex items-start gap-3 p-4">
-            <Icon name="heroicons:check-badge" class="w-5 h-5 shrink-0 text-primary" />
-            <span class="text-sm font-bold" style="color: var(--clr-text)">{benefit}</span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  </section>
-)}
-
-<section data-landing-section="price" class="px-4 py-6">
-  <div class="mx-auto max-w-xl card p-5 text-center">
-    <p class="text-xs font-black uppercase tracking-widest" style="color: var(--clr-text-2)">{content.landingPriceTitle}</p>
-    <p class="mt-2 text-4xl font-black" style="color: var(--clr-primary)">
-      {fmt(basePrice)} <span class="text-xl font-bold">{cur}</span>
-    </p>
-    {hasDiscount && (
-      <p class="mt-1 text-sm font-bold" style="color: var(--clr-text-2)">
-        <span class="line-through">{fmt(comparePrice!)} {cur}</span>
-        <span class="ms-2" style="color: var(--clr-primary)">{content.landingDiscountLabel.replace("{pct}", String(discountPct))}</span>
-      </p>
-    )}
-  </div>
-</section>
-
-{section === "form" && (
-  <section data-landing-section="order-form" class="px-4 py-8" id="order-section-wrapper">
-    <div class="max-w-xl mx-auto">
-      <OrderForm
-        product={product}
-        content={content}
-        fieldErrors={fieldErrors}
-        serverError={serverError}
-        basePrice={basePrice}
-        defaultVariant={defaultVariant ?? null}
-        cur={cur}
-        isRTL={isRTL}
-        offers={product.offers}
-        defaultVariantId={defaultVariant?.id ?? null}
-        otpEnabled={config.otpEnabled === true}
-        turnstileEnabled={config.turnstileEnabled === true}
-        turnstileSiteKey={config.turnstileSiteKey ?? null}
-        pages={config.pages ?? []}
-        formPolicy={config.checkoutForm}
-      />
-    </div>
-  </section>
-)}
-
-{section === "unavailable" && (
-  <section data-landing-section="unavailable" class="px-4 py-8">
-    <div class="mx-auto max-w-xl card p-6 text-center" role="status">
-      <Icon name="heroicons:exclamation-triangle" class="mx-auto w-8 h-8" style="color: var(--clr-text-2)" />
-      <h2 class="mt-3 text-xl font-black" style="color: var(--clr-text)">{content.landingUnavailableTitle}</h2>
-      <p class="mt-2 text-sm font-bold" style="color: var(--clr-text-2)">{content.landingUnavailableBody}</p>
-    </div>
-  </section>
-)}
-
-{faq.length > 0 && (
-  <section data-landing-section="faq" class="px-4 py-6">
-    <div class="mx-auto max-w-3xl">
-      <h2 class="mb-4 text-xl font-black" style="color: var(--clr-text)">{content.landingFaqTitle}</h2>
-      <div class="space-y-3">
-        {faq.map((item) => (
-          <details class="card p-4">
-            <summary class="cursor-pointer text-sm font-black" style="color: var(--clr-text)">{item.q}</summary>
-            <p class="mt-2 text-sm font-medium" style="color: var(--clr-text-2)">{item.a}</p>
-          </details>
-        ))}
-      </div>
-    </div>
-  </section>
-)}
-
-<section data-landing-section="reassurance" class="px-4 py-8">
-  <div class="mx-auto max-w-5xl">
-    <h2 class="mb-4 text-center text-xl font-black" style="color: var(--clr-text)">{content.landingReassuranceTitle}</h2>
-    <div class="grid gap-3 sm:grid-cols-3">
-      {reassurance.map((item) => (
-        <div class="card flex items-center gap-3 p-4">
-          <Icon name={item.icon} class="w-6 h-6 shrink-0 text-primary" />
-          <div>
-            <p class="text-sm font-black" style="color: var(--clr-text)">{item.title}</p>
-            <p class="text-xs font-bold" style="color: var(--clr-text-2)">{item.sub}</p>
+    </section>
+  ) :
+  section.type === "product" ? product.description && (
+      <section data-landing-section="product" class="px-4 py-6">
+        <div class="mx-auto max-w-3xl">
+          <h2 class="mb-4 text-xl font-black" style="color: var(--clr-text)">{content.landingDescriptionTitle}</h2>
+          <ProductDescription description={product.description} format={product.descriptionFormat} />
+        </div>
+      </section>
+  ) :
+  section.type === "gallery" ? images.length > 1 && (
+      <section data-landing-section="gallery" class="px-4 py-6">
+        <div class="mx-auto max-w-5xl">
+          <h2 class="mb-4 text-xl font-black" style="color: var(--clr-text)">{content.landingGalleryTitle}</h2>
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {images.slice(1).map((image) => (
+              <img
+                src={image.src}
+                alt={image.altText ?? product.name}
+                class="block w-full aspect-square object-cover rounded-[var(--radius-card)]"
+                style="background: var(--clr-surface);"
+                loading="lazy"
+                decoding="async"
+              />
+            ))}
           </div>
         </div>
-      ))}
-    </div>
-  </div>
-</section>
+      </section>
+  ) :
+  section.type === "benefits" ? benefits.length > 0 && (
+      <section data-landing-section="benefits" class="px-4 py-6">
+        <div class="mx-auto max-w-3xl">
+          <h2 class="mb-4 text-xl font-black" style="color: var(--clr-text)">{content.landingBenefitsTitle}</h2>
+          <ul class="grid gap-3 sm:grid-cols-2">
+            {benefits.map((benefit) => (
+              <li class="card flex items-start gap-3 p-4">
+                <Icon name="heroicons:check-badge" class="w-5 h-5 shrink-0 text-primary" />
+                <span class="text-sm font-bold" style="color: var(--clr-text)">{benefit}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+  ) :
+  section.type === "price" ? (
+    <section data-landing-section="price" class="px-4 py-6">
+      <div class="mx-auto max-w-xl card p-5 text-center">
+        <p class="text-xs font-black uppercase tracking-widest" style="color: var(--clr-text-2)">{content.landingPriceTitle}</p>
+        <p class="mt-2 text-4xl font-black" style="color: var(--clr-primary)">
+          {fmt(basePrice)} <span class="text-xl font-bold">{cur}</span>
+        </p>
+        {hasDiscount && (
+          <p class="mt-1 text-sm font-bold" style="color: var(--clr-text-2)">
+            <span class="line-through">{fmt(comparePrice!)} {cur}</span>
+            <span class="ms-2" style="color: var(--clr-primary)">{content.landingDiscountLabel.replace("{pct}", String(discountPct))}</span>
+          </p>
+        )}
+      </div>
+    </section>
+  ) :
+  section.type === "order_form" ? (
+    <>
+      {orderSection === "form" && (
+        <section data-landing-section="order-form" class="px-4 py-8" id="order-section-wrapper">
+          <div class="max-w-xl mx-auto">
+            <OrderForm
+              product={product}
+              content={content}
+              fieldErrors={fieldErrors}
+              serverError={serverError}
+              basePrice={basePrice}
+              defaultVariant={defaultVariant ?? null}
+              cur={cur}
+              isRTL={isRTL}
+              offers={product.offers}
+              defaultVariantId={defaultVariant?.id ?? null}
+              otpEnabled={config.otpEnabled === true}
+              turnstileEnabled={config.turnstileEnabled === true}
+              turnstileSiteKey={config.turnstileSiteKey ?? null}
+              pages={config.pages ?? []}
+              formPolicy={config.checkoutForm}
+            />
+          </div>
+        </section>
+      )}
+      {orderSection === "unavailable" && (
+        <section data-landing-section="unavailable" class="px-4 py-8">
+          <div class="mx-auto max-w-xl card p-6 text-center" role="status">
+            <Icon name="heroicons:exclamation-triangle" class="mx-auto w-8 h-8" style="color: var(--clr-text-2)" />
+            <h2 class="mt-3 text-xl font-black" style="color: var(--clr-text)">{content.landingUnavailableTitle}</h2>
+            <p class="mt-2 text-sm font-bold" style="color: var(--clr-text-2)">{content.landingUnavailableBody}</p>
+          </div>
+        </section>
+      )}
+    </>
+  ) :
+  section.type === "faq" ? faq.length > 0 && (
+    <section data-landing-section="faq" class="px-4 py-6">
+      <div class="mx-auto max-w-3xl">
+        <h2 class="mb-4 text-xl font-black" style="color: var(--clr-text)">{content.landingFaqTitle}</h2>
+        <div class="space-y-3">
+          {faq.map((item) => (
+            <details class="card p-4">
+              <summary class="cursor-pointer text-sm font-black" style="color: var(--clr-text)">{item.q}</summary>
+              <p class="mt-2 text-sm font-medium" style="color: var(--clr-text-2)">{item.a}</p>
+            </details>
+          ))}
+        </div>
+      </div>
+    </section>
+  ) :
+  section.type === "reassurance" ? (
+    <section data-landing-section="reassurance" class="px-4 py-8">
+      <div class="mx-auto max-w-5xl">
+        <h2 class="mb-4 text-center text-xl font-black" style="color: var(--clr-text)">{content.landingReassuranceTitle}</h2>
+        <div class="grid gap-3 sm:grid-cols-3">
+          {reassurance.map((item) => (
+            <div class="card flex items-center gap-3 p-4">
+              <Icon name={item.icon} class="w-6 h-6 shrink-0 text-primary" />
+              <div>
+                <p class="text-sm font-black" style="color: var(--clr-text)">{item.title}</p>
+                <p class="text-xs font-bold" style="color: var(--clr-text-2)">{item.sub}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  ) :
+  null,
+)}
 
-{section === "form" && (
+{orderSection === "form" && (
   <a href="#order-section-wrapper" id="lp-sticky-cta" class="btn-primary lp-sticky-cta">
     {content.orderCta}
     <Icon name="heroicons:chevron-down" class="w-5 h-5" />
   </a>
 )}
 
-{section === "form" && (
+{orderSection === "form" && (
   <>
     <script src="../../scripts/product.ts"></script>
     <script src="../../scripts/lp-sticky-cta.ts"></script>
