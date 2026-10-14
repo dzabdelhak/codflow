@@ -5,11 +5,17 @@ import { notify } from "@/lib/notify";
 import { useT } from "@/i18n/react";
 import { Button, Alert, inputClass } from "@/components/ui";
 
+const AVENTY_REFUSALS = ["invalid", "expired", "used", "email_taken", "inactive", "not_configured"];
+
 export function SignInForm({ next }: { next?: string | null }) {
   const t = useT("auth");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [aventy] = useState(() => {
+    const reason = new URLSearchParams(window.location.search).get("aventy");
+    return reason && AVENTY_REFUSALS.includes(reason) ? reason : null;
+  });
   const [busy, setBusy] = useState(false);
 
   async function onSubmit(e: SyntheticEvent<HTMLFormElement>) {
@@ -53,6 +59,11 @@ export function SignInForm({ next }: { next?: string | null }) {
           {t("subtitle")}
         </p>
       </div>
+      {aventy && (
+        <Alert role="alert" tone="warning">
+          {t(`aventy_link.${aventy}`)}
+        </Alert>
+      )}
       <div>
         <label
           className="mb-1.5 block text-sm font-semibold text-foreground"

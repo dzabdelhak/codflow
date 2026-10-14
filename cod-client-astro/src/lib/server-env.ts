@@ -9,6 +9,7 @@ export interface ServerEnv {
   PUBLIC_API_URL: string;
   PUBLIC_TRUSTED_ORIGINS?: string;
   BETTER_AUTH_SECRET: string;
+  AVENTY_LINK_SECRET?: string;
 }
 
 const REQUIRED = ["DATABASE_URL", "REDIS_URL", "PUBLIC_APP_URL", "PUBLIC_API_URL", "BETTER_AUTH_SECRET"] as const;

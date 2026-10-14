@@ -162,6 +162,12 @@ to `src/types/env.ts` (cod-server) and, when production needs it, to
   carry `aventy_id` + `source_version` (Aventy's version, applied only when
   newer); never compare or overwrite them with the local trigger `version`.
   The HTTP client waits for Aventy's API reference — see `docs/AVENTY-CONNECTOR.md`.
+- **Aventy's button signs a one-time link** (`AVENTY_LINK_SECRET`, dashboard;
+  `cod-shared/aventy/link-token.ts`): `/api/auth/aventy/enter` creates the
+  merchant `aventy-<ref>` and its admin on first use and opens the wizard. The
+  `aventy-` merchant id prefix is what marks an Aventy merchant (no column).
+  `AVENTY_DEMO=1` swaps in the demo client (`src/aventy/demo-client.ts`);
+  compose runs it with a mock Aventy at http://aventy.localhost:8090.
 - **A duplicate is PostgreSQL error 23505**, often wrapped by Drizzle: test
   it with `violatesUnique(err, "<constraint>")` (`cod-shared/db/errors.ts`),
   never by matching SQLite's "UNIQUE constraint failed".
@@ -225,7 +231,10 @@ to `src/types/env.ts` (cod-server) and, when production needs it, to
   sections and settings `validateDesign` accepts. A new section or text needs
   the manifest, the renderer and the content packs together
   (`manifest-contracts.test.ts`). Publishing writes the brand into `stores`;
-  `?preview=<token>` renders the draft uncached.
+  `?preview=<token>` renders the draft uncached. Ready-made templates
+  (`cod-shared/channels/templates.ts`) are starting designs on a base manifest:
+  `stores.theme_id` holds the template id, and an unpublished channel renders
+  `templateDesign`, never `defaultDesign` directly.
 - **One catalogue per merchant; each store selects from it.** `products`,
   `product_variants`, `product_images`, `product_categories` and
   `stock_movements` are under merchant RLS (`app.merchant_id`), so every

@@ -21,6 +21,10 @@ export const createStoreSchema = z.object({
     .refine((m) => m.home || m.stopDesk, { message: "Offer at least one delivery mode" })
     .optional(),
   defaultShippingProfileId: z.string().min(1).nullable().optional(),
+  customDomain: z.string().trim().max(253).optional().openapi({
+    description: "The merchant's own domain, if it has one. Added as a pending domain of the channel; it serves once its DNS points at the platform (verify it from the Domains screen).",
+    example: "www.maison-lina.dz",
+  }),
   templateId: z.string().min(1).optional().openapi({ description: "A template of the channel's type; default `theme01` for a store, `landing01` for a landing.", example: "theme01" }),
 });
 

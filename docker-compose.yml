@@ -5,7 +5,8 @@
 # then open http://shop1.localhost:8090 and http://shop2.localhost:8090 — two
 # demo channels served by the same storefront, each showing only its own data —
 # and the dashboard at http://app.localhost:8090 (admin@example.com, password
-# COD_ADMIN_PASSWORD, default "admin-dev-password").
+# COD_ADMIN_PASSWORD, default "admin-dev-password"). http://aventy.localhost:8090
+# is a mock of Aventy's seller space whose button opens the creation wizard.
 #
 # Host ports are overridable: COD_HTTP_PORT, COD_PG_PORT, COD_REDIS_PORT.
 # The storefront key is a local-only default; set COD_STOREFRONT_SERVICE_KEY
@@ -18,6 +19,7 @@ x-storefront-key: &storefront-key ${COD_STOREFRONT_SERVICE_KEY:-local-dev-storef
 x-auth-secret: &auth-secret ${COD_BETTER_AUTH_SECRET:-local-dev-better-auth-secret-0123456789abcdef}
 x-s3-access-key: &s3-access-key ${COD_S3_ACCESS_KEY:-codflow-local}
 x-s3-secret-key: &s3-secret-key ${COD_S3_SECRET_KEY:-codflow-local-secret}
+x-aventy-link-secret: &aventy-link-secret ${COD_AVENTY_LINK_SECRET:-local-dev-aventy-link-secret-0123456789abcdef}
 
 services:
   db:
@@ -100,6 +102,7 @@ services:
       ORDER_DESTINATION: ${ORDER_DESTINATION:-test}
       OUTBOUND_TEST_FAILURE_RATE: ${OUTBOUND_TEST_FAILURE_RATE:-0}
       AVENTY_KEY_ENCRYPTION_KEY: ${COD_AVENTY_KEY_ENCRYPTION_KEY:-6c6f63616c2d6465762d6176656e74792d6b65792d30313233343536373839ab}
+      AVENTY_DEMO: ${COD_AVENTY_DEMO:-1}
     depends_on:
       setup: { condition: service_completed_successfully }
       objects: { condition: service_healthy }
@@ -130,15 +133,26 @@ services:
       PUBLIC_APP_URL: "http://app.localhost:${COD_HTTP_PORT:-8090}"
       PUBLIC_API_URL: "http://api.localhost:${COD_HTTP_PORT:-8090}"
       BETTER_AUTH_SECRET: *auth-secret
+      AVENTY_LINK_SECRET: *aventy-link-secret
     depends_on:
       admin: { condition: service_completed_successfully }
       redis: { condition: service_healthy }
+
+  # A mock of Aventy's seller space, for demos: its "Créer un canal de vente"
+  # button signs a one-time link into the dashboard (http://aventy.localhost:8090).
+  aventy-demo:
+    image: node:22-alpine
+    command: ["node", "/app/server.mjs"]
+    volumes: ["./demo/aventy:/app:ro"]
+    environment:
+      AVENTY_LINK_SECRET: *aventy-link-secret
+      ORESTOR_APP_URL: "http://app.localhost:${COD_HTTP_PORT:-8090}"
 
   caddy:
     image: caddy:2-alpine
     ports: ["${COD_HTTP_PORT:-8090}:80", "${COD_HTTPS_PORT:-8443}:443"]
     volumes: ["./docker/Caddyfile:/etc/caddy/Caddyfile:ro", "caddydata:/data"]
-    depends_on: [api, storefront, dashboard]
+    depends_on: [api, storefront, dashboard, aventy-demo]
 
 volumes:
   caddydata:

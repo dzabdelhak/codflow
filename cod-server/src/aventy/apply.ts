@@ -55,11 +55,11 @@ async function publishInChannel(db: AppDb, productId: string) {
     .onConflictDoUpdate({ target: [channelProducts.storeId, channelProducts.productId], set: { published: true, updatedAt: now() } });
 }
 
-async function applyProduct(db: AppDb, copy: AventyProductCopy): Promise<boolean> {
+async function applyProduct(db: AppDb, copy: AventyProductCopy, publish: boolean): Promise<boolean> {
   const existing = await db.select({ id: products.id, sourceVersion: products.sourceVersion }).from(products)
     .where(eq(products.aventyId, copy.id)).then(first);
   if (existing && existing.sourceVersion !== null && existing.sourceVersion >= copy.version) {
-    await publishInChannel(db, existing.id);
+    if (publish) await publishInChannel(db, existing.id);
     return false;
   }
 
@@ -118,7 +118,7 @@ async function applyProduct(db: AppDb, copy: AventyProductCopy): Promise<boolean
     })));
   }
 
-  await publishInChannel(db, productId);
+  if (publish) await publishInChannel(db, productId);
   return true;
 }
 
@@ -134,9 +134,10 @@ async function unpublish(db: AppDb, aventyIds: string[] | "all-but", keep: strin
   return changed.length;
 }
 
-export async function applyCatalogueCopies(db: AppDb, copies: AventyProductCopy[]): Promise<number> {
+export async function applyCatalogueCopies(db: AppDb, copies: AventyProductCopy[], { publish = true }: { publish?: boolean } = {}): Promise<number> {
+  await db.execute(sql`select pg_advisory_xact_lock(hashtextextended('aventy-catalogue:' || current_setting('app.merchant_id'), 0))`);
   let applied = 0;
-  for (const copy of copies) if (await applyProduct(db, copy)) applied++;
+  for (const copy of copies) if (await applyProduct(db, copy, publish)) applied++;
   return applied;
 }
 

@@ -1,5 +1,6 @@
 import type { AventyDomain } from "../../../cod-shared/db/schema";
 import type { DestinationAnswer } from "@/platform/outbound/destination";
+import { demoAventyClient } from "./demo-client";
 
 export interface AventyProductCopy {
   id: string;
@@ -36,6 +37,6 @@ export class AventyPermissionError extends Error {
   }
 }
 
-export function aventyClientFromEnv(_env: Record<string, string | undefined>): AventyClient | null {
-  return null;
+export function aventyClientFromEnv(env: Record<string, string | undefined>): AventyClient | null {
+  return env.AVENTY_DEMO === "1" ? demoAventyClient() : null;
 }

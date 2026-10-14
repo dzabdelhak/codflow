@@ -28,3 +28,11 @@ Still needs Aventy's API reference, demo store and test keys:
 
 Criteria 2 and 3 pass against the fake and still need checking against the demo store.
 
+## Demo build (Oct 14 2026)
+
+For the presentation to Aventy (`docs/DEMO-AVENTY.md`):
+- the signed one-time link from Aventy's button, verified by the dashboard, which creates the merchant and its admin on first use and opens the creation wizard (criterion 1 against our proposed token; Aventy to confirm its shape);
+- the merchant's Aventy catalogue and delivery grid imported before any channel exists (demo client, `AVENTY_DEMO=1`);
+- ready-made templates (3 store, 2 landing) and the optional own domain in the creation call;
+- a mock of Aventy's seller space in docker compose.
+

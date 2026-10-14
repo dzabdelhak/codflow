@@ -6,6 +6,7 @@ import { ACTIONS, logActivity } from "@/lib/activity";
 import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
 import { aventySyncState } from "../../../../cod-shared/db/schema";
 import { channelKeyStatus, removeChannelKey, saveChannelKey } from "@/aventy/keys";
+import { importMerchantCatalogue } from "@/aventy/merchant-catalogue";
 
 export const saveKeySchema = z.object({
   key: z.string().trim().min(16).max(512).openapi({ description: "The channel's key, created by the merchant in Aventy. Never returned." }),
@@ -40,4 +41,9 @@ export async function getAventySync(c: Context<AppContext>) {
     success: true,
     data: rows.map((r) => ({ domain: r.domain, syncedAt: r.syncedAt?.toISOString() ?? null, lastError: r.lastError })),
   });
+}
+
+export async function importAventyCatalogue(c: Context<AppContext>) {
+  const data = await importMerchantCatalogue(c.env.DATABASE.app, c.env.AVENTY_CLIENT ?? null, c.get("user").merchantId);
+  return c.json({ success: true, data });
 }

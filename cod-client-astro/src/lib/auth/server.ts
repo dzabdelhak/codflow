@@ -31,6 +31,7 @@ import { sendTransactionalEmail } from "../../../../cod-shared/lib/transactional
 import { dashboardDatabase, dashboardRedis } from "../server-db";
 import { serverEnv, type ServerEnv } from "../server-env";
 import { redisSecondaryStorage } from "./redis-storage";
+import { aventyEntry } from "./aventy-entry";
 
 /** The store whose name and email settings a merchant's account emails use: its first store. */
 async function firstStoreOf(userId: string): Promise<{ storeId: string; merchantId: string } | null> {
@@ -184,6 +185,12 @@ function buildAuth(env: ServerEnv) {
           },
         },
         plugins: [
+          aventyEntry({
+            secret: () => env.AVENTY_LINK_SECRET,
+            platform: () => platform,
+            claimOnce: async (jti, ttl) =>
+              (await (await dashboardRedis()).set(`aventy-link:${jti}`, "1", { condition: "NX", expiration: { type: "EX", value: ttl } })) === "OK",
+          }),
           // Attaches real scopes (user_scopes join) to every session response so
           // the Identity contract is truthful end-to-end. Not added to the JWT
           // payload — scopes stay server-resolved per request.

@@ -70,6 +70,35 @@ export type AddDomainResult =
   | { ok: true; domain: ChannelDomain }
   | { ok: false; reason: "invalid" | "taken" | "already_added" | "limit" };
 
+export async function claimCustomDomain(
+  client: pg.PoolClient,
+  storeId: string,
+  hostname: string,
+  now: Date,
+): Promise<AddDomainResult> {
+  const { rows: [existing] } = await client.query<{ store_id: string; verified_at: string | null; created_at: string }>(
+    "select store_id, verified_at, created_at from store_domains where hostname = $1 for update",
+    [hostname],
+  );
+  if (existing?.store_id === storeId) return { ok: false, reason: "already_added" };
+  if (existing) {
+    const stale = existing.verified_at === null && now.getTime() - Date.parse(existing.created_at) > PENDING_CLAIM_TTL_MS;
+    if (!stale) return { ok: false, reason: "taken" };
+    await client.query("delete from store_domains where hostname = $1", [hostname]);
+  }
+  const { rows: [count] } = await client.query<{ n: number }>(
+    "select count(*)::int as n from store_domains where store_id = $1 and kind = 'custom'",
+    [storeId],
+  );
+  if (count.n >= MAX_DOMAINS_PER_CHANNEL) return { ok: false, reason: "limit" };
+  const { rows: [domain] } = await client.query<ChannelDomain>(
+    `insert into store_domains (hostname, store_id, kind, created_at, status, is_primary)
+     values ($1, $2, 'custom', $3, 'pending', false) returning ${COLUMNS}`,
+    [hostname, storeId, now.toISOString()],
+  );
+  return { ok: true, domain };
+}
+
 export async function addChannelDomain(
   platform: pg.Pool,
   storeId: string,
@@ -83,37 +112,9 @@ export async function addChannelDomain(
   try {
     await client.query("begin");
     await client.query("select 1 from stores where id = $1 for no key update", [storeId]);
-    const { rows: [existing] } = await client.query<{ store_id: string; verified_at: string | null; created_at: string }>(
-      "select store_id, verified_at, created_at from store_domains where hostname = $1 for update",
-      [hostname],
-    );
-    if (existing?.store_id === storeId) {
-      await client.query("rollback");
-      return { ok: false, reason: "already_added" };
-    }
-    if (existing) {
-      const stale = existing.verified_at === null && now.getTime() - Date.parse(existing.created_at) > PENDING_CLAIM_TTL_MS;
-      if (!stale) {
-        await client.query("rollback");
-        return { ok: false, reason: "taken" };
-      }
-      await client.query("delete from store_domains where hostname = $1", [hostname]);
-    }
-    const { rows: [count] } = await client.query<{ n: number }>(
-      "select count(*)::int as n from store_domains where store_id = $1 and kind = 'custom'",
-      [storeId],
-    );
-    if (count.n >= MAX_DOMAINS_PER_CHANNEL) {
-      await client.query("rollback");
-      return { ok: false, reason: "limit" };
-    }
-    const { rows: [domain] } = await client.query<ChannelDomain>(
-      `insert into store_domains (hostname, store_id, kind, created_at, status, is_primary)
-       values ($1, $2, 'custom', $3, 'pending', false) returning ${COLUMNS}`,
-      [hostname, storeId, now.toISOString()],
-    );
-    await client.query("commit");
-    return { ok: true, domain };
+    const result = await claimCustomDomain(client, storeId, hostname, now);
+    await client.query(result.ok ? "commit" : "rollback");
+    return result;
   } catch (err) {
     await client.query("rollback").catch(() => {});
     if ((err as { code?: string }).code === "23505") return { ok: false, reason: "taken" };

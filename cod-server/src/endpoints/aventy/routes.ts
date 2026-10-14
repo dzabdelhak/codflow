@@ -77,10 +77,32 @@ const getSync = defineRoute({
   handler: h.getAventySync,
 });
 
+const importCatalogue = defineRoute({
+  method: "post",
+  path: "/catalogue/import",
+  auth: "admin",
+  tags: ["Aventy"],
+  summary: "Import the merchant's Aventy catalogue",
+  description: "For a merchant that came from Aventy: copies its Aventy products into the merchant's catalogue (versioned like the channel sync, published in no channel), so the creation wizard can offer them. `linked: false` for any other merchant, or when the platform has no Aventy client.",
+  operationId: "importAventyCatalogue",
+  responses: {
+    200: {
+      description: "What was imported",
+      content: jsonContent(SuccessResponseSchema(z.object({
+        linked: z.boolean(),
+        listed: z.number().int().optional(),
+        applied: z.number().int().optional(),
+      }))),
+    },
+  },
+  handler: h.importAventyCatalogue,
+});
+
 const router = new OpenAPIHono<AppContext>();
 router.openapi(getKey.route, getKey.handler);
 router.openapi(saveKey.route, saveKey.handler);
 router.openapi(removeKey.route, removeKey.handler);
 router.openapi(getSync.route, getSync.handler);
+router.openapi(importCatalogue.route, importCatalogue.handler);
 
 export default router;

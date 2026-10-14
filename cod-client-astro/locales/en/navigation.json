@@ -198,11 +198,23 @@
       "template": {
         "theme01": {
           "name": "Classic store",
-          "description": "Home page, catalogue, categories, product pages, cart, checkout, confirmation and content pages."
+          "description": "Violet and amber, every home-page section: hero, categories, best sellers, how it works, new arrivals, features, promotion and reviews."
+        },
+        "boutique": {
+          "name": "Fashion boutique",
+          "description": "Charcoal and gold on cream, Tajawal font. Opens on a fashion photo and the new arrivals — made for clothing, bags and accessories."
+        },
+        "electro": {
+          "name": "High-tech",
+          "description": "Blue and cyan, IBM Plex font. A tech banner, then the store's strengths and best sellers — made for electronics and gadgets."
         },
         "landing01": {
           "name": "Product landing page",
           "description": "Banner, product presentation, gallery, benefits, price, order form, FAQ and reassurance."
+        },
+        "flash": {
+          "name": "Flash offer",
+          "description": "Red and yellow, Almarai font. Price and order form right under the banner, benefits already written — made for a limited-time offer."
         }
       },
       "summary": {
@@ -212,13 +224,15 @@
         "products": "Products",
         "delivery": "Delivery modes",
         "template": "Template",
-        "main_product": "Main product"
+        "main_product": "Main product",
+        "custom_domain": "Own domain"
       },
       "problem": {
         "name_required": "Give the store a name.",
         "subdomain_invalid": "Use 3 to 40 lower-case letters, digits or hyphens. Some names are reserved.",
         "no_delivery_mode": "Offer at least one delivery mode.",
-        "main_product_required": "Choose the main product of the landing page."
+        "main_product_required": "Choose the main product of the landing page.",
+        "domain_invalid": "Enter a domain like www.myshop.dz, or leave the field empty."
       },
       "next": "Continue",
       "back": "Back",
@@ -233,7 +247,19 @@
       "error_template": "This template is not available for this channel type. Choose another one.",
       "error_forbidden": "Only an account administrator can create a store.",
       "done_existing": "This store had already been created by an earlier attempt, with the answers given then. Change its settings from its dashboard.",
-      "products_hint_landing": "Choose the one catalogue product this landing page sells. You can replace it later."
+      "products_hint_landing": "Choose the one catalogue product this landing page sells. You can replace it later.",
+      "aventy": {
+        "badge": "Aventy",
+        "title": "Welcome from Aventy.",
+        "body": "Your Aventy products are in your catalogue: choose the ones this channel sells."
+      },
+      "publish_now": "Put it online now",
+      "view_store": "Open the store ↗",
+      "custom_domain_label": "Your own domain (optional)",
+      "custom_domain_hint": "If you already have a domain. It goes online once its DNS points at the platform; you can also add it later from Domains.",
+      "error_domain_taken": "This domain is already used by another channel.",
+      "done_live": "It is online at its address.",
+      "done_domain": "{domain} is waiting for its DNS: point it at the platform, then verify it from the Domains page."
     }
   }
 }

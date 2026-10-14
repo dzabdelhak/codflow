@@ -12,6 +12,14 @@ export async function listMyStores(): Promise<MerchantStore[]> {
   return (await apiFetch<DataEnvelope<MerchantStore[]>>("/api/merchant/stores")).data;
 }
 
+export async function importAventyCatalogue(): Promise<{ linked: boolean }> {
+  return (await apiFetch<DataEnvelope<{ linked: boolean }>>("/api/aventy/catalogue/import", { method: "POST" })).data;
+}
+
+export async function storeBaseDomain(): Promise<string> {
+  return (await apiFetch<DataEnvelope<MerchantStore[]> & { baseDomain: string }>("/api/merchant/stores")).baseDomain;
+}
+
 export async function createStore(input: CreationRequest): Promise<{ store: MerchantStore; created: boolean }> {
   const { data, created } = await apiFetch<DataEnvelope<MerchantStore> & { created: boolean }>("/api/merchant/stores", {
     method: "POST",

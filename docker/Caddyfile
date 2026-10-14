@@ -22,6 +22,10 @@ http://app.localhost {
 	reverse_proxy dashboard:4321
 }
 
+http://aventy.localhost {
+	reverse_proxy aventy-demo:8080
+}
+
 http:// {
 	reverse_proxy storefront:4321 {
 		header_up X-Visitor-IP {remote_host}

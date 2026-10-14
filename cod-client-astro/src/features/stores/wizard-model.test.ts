@@ -41,6 +41,15 @@ describe("store creation wizard", () => {
     expect(stepProblem({ ...draft, name: "Nour", subdomain: "nour" }, "general")).toBeNull();
   });
 
+  it("takes an optional own domain, sent only when given", () => {
+    const draft = { ...newDraft("key-1"), name: "Nour", subdomain: "nour" };
+    expect(stepProblem({ ...draft, customDomain: "not a domain" }, "general")).toBe("domain_invalid");
+    expect(stepProblem({ ...draft, customDomain: "https://www.nour.dz/" }, "general")).toBeNull();
+    expect(creationRequest({ ...draft, customDomain: " www.nour.dz " }).customDomain).toBe("www.nour.dz");
+    expect(creationRequest(draft).customDomain).toBeUndefined();
+    expect(stepForError("DOMAIN_TAKEN", "customDomain")).toBe("general");
+  });
+
   it("makes a landing sell exactly one main product, chosen in the products step", () => {
     const landing = withType({ ...newDraft("k"), productIds: ["p1", "p2"] }, "landing");
     expect(landing).toMatchObject({ type: "landing", templateId: "landing01", productIds: ["p1"] });

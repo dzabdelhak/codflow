@@ -15,7 +15,7 @@ import type { ChangeStoreStatusInput, CreateStoreInput, DeleteStoreInput } from 
 
 export async function listStores(c: Context<AppContext>) {
   const data = await listMerchantStores(c.env.DATABASE.platform, c.get("user").merchantId);
-  return c.json({ success: true, data }, 200);
+  return c.json({ success: true, data, baseDomain: c.env.STORE_BASE_DOMAIN ?? "localhost" }, 200);
 }
 
 export async function createStore(c: Context<AppContext>) {
@@ -34,6 +34,7 @@ export async function createStore(c: Context<AppContext>) {
       deliveryModes: body.deliveryModes,
       defaultShippingProfileId: body.defaultShippingProfileId,
       templateId: body.templateId,
+      customDomain: body.customDomain,
     },
     localPlanPolicy(),
   );
@@ -72,6 +73,10 @@ export async function createStore(c: Context<AppContext>) {
       throw new ValidationError("Unknown template for this channel type", ERROR_CODES.VALIDATION_FAILED, {
         field: "templateId",
       });
+    case "invalid_domain":
+      throw new ValidationError("This is not a domain name the channel can use", ERROR_CODES.INVALID_DOMAIN, { field: "customDomain" });
+    case "domain_taken":
+      throw new ConflictError("This domain is already used by another channel", ERROR_CODES.DOMAIN_TAKEN, { field: "customDomain" });
   }
 }
 

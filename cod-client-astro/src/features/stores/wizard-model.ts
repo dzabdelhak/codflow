@@ -11,6 +11,7 @@ export interface WizardDraft {
   name: string;
   subdomain: string;
   subdomainEdited: boolean;
+  customDomain: string;
   productIds: string[];
   deliveryModes: { home: boolean; stopDesk: boolean };
   defaultShippingProfileId: string | null;
@@ -29,6 +30,7 @@ export function newDraft(creationKey: string = crypto.randomUUID()): WizardDraft
     name: "",
     subdomain: "",
     subdomainEdited: false,
+    customDomain: "",
     productIds: [],
     deliveryModes: { home: true, stopDesk: true },
     defaultShippingProfileId: null,
@@ -77,12 +79,15 @@ export function clearDraft(userId: string): void {
   } catch {}
 }
 
-export type StepProblem = "name_required" | "subdomain_invalid" | "main_product_required" | "no_delivery_mode" | null;
+export type StepProblem = "name_required" | "subdomain_invalid" | "domain_invalid" | "main_product_required" | "no_delivery_mode" | null;
+
+const DOMAIN = /^(?:https?:\/\/)?[^\s/.]+(?:\.[^\s/.]+)+\/?$/i;
 
 export function stepProblem(draft: WizardDraft, step: WizardStep): StepProblem {
   if (step === "general") {
     if (!draft.name.trim()) return "name_required";
     if (!SUBDOMAIN.test(draft.subdomain)) return "subdomain_invalid";
+    if (draft.customDomain.trim() && !DOMAIN.test(draft.customDomain.trim())) return "domain_invalid";
   }
   if (step === "products" && draft.type === "landing" && draft.productIds.length !== 1) return "main_product_required";
   if (step === "delivery" && !draft.deliveryModes.home && !draft.deliveryModes.stopDesk) return "no_delivery_mode";
@@ -110,6 +115,7 @@ export function creationRequest(draft: WizardDraft) {
     type: draft.type,
     name: draft.name.trim(),
     subdomain: draft.subdomain,
+    customDomain: draft.customDomain.trim() || undefined,
     creationKey: draft.creationKey,
     productIds: draft.productIds,
     deliveryModes: draft.deliveryModes,
@@ -120,7 +126,7 @@ export function creationRequest(draft: WizardDraft) {
 }
 
 export function stepForError(code: string | undefined, field: unknown): WizardStep {
-  if (code === "INVALID_SUBDOMAIN" || code === "SUBDOMAIN_TAKEN") return "general";
+  if (code === "INVALID_SUBDOMAIN" || code === "SUBDOMAIN_TAKEN" || field === "customDomain") return "general";
   if (field === "productIds") return "products";
   if (field === "defaultShippingProfileId" || field === "deliveryModes") return "delivery";
   if (field === "templateId") return "template";

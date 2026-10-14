@@ -198,11 +198,23 @@
       "template": {
         "theme01": {
           "name": "Boutique classique",
-          "description": "Accueil, catalogue, catégories, fiches produits, panier, commande, confirmation et pages de contenu."
+          "description": "Violet et ambre, toutes les sections d'accueil : bannière, catégories, meilleures ventes, fonctionnement, nouveautés, atouts, promotion et avis."
+        },
+        "boutique": {
+          "name": "Boutique mode",
+          "description": "Anthracite et or sur fond crème, police Tajawal. S'ouvre sur une photo mode et les nouveautés — pour vêtements, sacs et accessoires."
+        },
+        "electro": {
+          "name": "High-tech",
+          "description": "Bleu et cyan, police IBM Plex. Une bannière high-tech, puis les atouts de la boutique et les meilleures ventes — pour l'électronique et les gadgets."
         },
         "landing01": {
-          "name": "Landing produit",
-          "description": "Bannière, présentation du produit, galerie, bénéfices, prix, formulaire de commande, FAQ et réassurance."
+          "name": "Page produit",
+          "description": "Bannière, présentation du produit, galerie, avantages, prix, formulaire de commande, FAQ et réassurance."
+        },
+        "flash": {
+          "name": "Offre flash",
+          "description": "Rouge et jaune, police Almarai. Prix et formulaire juste sous la bannière, avantages déjà rédigés — pour une offre limitée dans le temps."
         }
       },
       "summary": {
@@ -212,13 +224,15 @@
         "products": "Produits",
         "delivery": "Modes de livraison",
         "template": "Template",
-        "main_product": "Produit principal"
+        "main_product": "Produit principal",
+        "custom_domain": "Domaine personnel"
       },
       "problem": {
         "name_required": "Donnez un nom à la boutique.",
         "subdomain_invalid": "Utilisez 3 à 40 lettres minuscules, chiffres ou tirets. Certains noms sont réservés.",
         "no_delivery_mode": "Proposez au moins un mode de livraison.",
-        "main_product_required": "Choisissez le produit principal de la landing page."
+        "main_product_required": "Choisissez le produit principal de la landing page.",
+        "domain_invalid": "Saisissez un domaine comme www.maboutique.dz, ou laissez le champ vide."
       },
       "next": "Continuer",
       "back": "Retour",
@@ -233,7 +247,19 @@
       "error_template": "Ce modèle n’est pas disponible pour ce type de canal. Choisissez-en un autre.",
       "error_forbidden": "Seul un administrateur du compte peut créer une boutique.",
       "done_existing": "Cette boutique avait déjà été créée lors d’une tentative précédente, avec les réponses données alors. Modifiez ses réglages depuis son tableau de bord.",
-      "products_hint_landing": "Choisissez le produit du catalogue que cette landing page vend. Vous pourrez le remplacer plus tard."
+      "products_hint_landing": "Choisissez le produit du catalogue que cette landing page vend. Vous pourrez le remplacer plus tard.",
+      "aventy": {
+        "badge": "Aventy",
+        "title": "Bienvenue depuis Aventy.",
+        "body": "Vos produits Aventy sont dans votre catalogue : choisissez ceux que ce canal vend."
+      },
+      "publish_now": "Mettre en ligne maintenant",
+      "view_store": "Ouvrir la boutique ↗",
+      "custom_domain_label": "Votre propre domaine (facultatif)",
+      "custom_domain_hint": "Si vous avez déjà un domaine. Il est mis en ligne dès que son DNS pointe vers la plateforme ; vous pouvez aussi l'ajouter plus tard depuis Domaines.",
+      "error_domain_taken": "Ce domaine est déjà utilisé par un autre canal.",
+      "done_live": "Elle est en ligne à son adresse.",
+      "done_domain": "{domain} attend son DNS : faites-le pointer vers la plateforme, puis vérifiez-le depuis la page Domaines."
     }
   }
 }

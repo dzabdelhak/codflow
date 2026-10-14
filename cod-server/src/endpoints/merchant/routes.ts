@@ -45,7 +45,10 @@ const listStoresRoute = defineRoute({
   description: "The stores of the signed-in user's merchant, for the store switcher.",
   operationId: "listMerchantStores",
   responses: {
-    200: { description: "The merchant's stores", content: jsonContent(SuccessResponseSchema(z.array(MerchantStoreSchema))) },
+    200: {
+      description: "The merchant's stores, and the base domain their free subdomains live under",
+      content: jsonContent(SuccessResponseSchema(z.array(MerchantStoreSchema)).extend({ baseDomain: z.string().openapi({ example: "codflow.app" }) })),
+    },
   },
   handler: handlers.listStores,
 });

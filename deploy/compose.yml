@@ -138,6 +138,7 @@ services:
       PUBLIC_APP_URL: *public-app-url
       PUBLIC_API_URL: *public-api-url
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?}
+      AVENTY_LINK_SECRET: ${AVENTY_LINK_SECRET:-}
     depends_on:
       setup: { condition: service_completed_successfully }
       redis: { condition: service_healthy }

@@ -6,6 +6,7 @@ import type { ImageStore } from "@/platform/image-store";
 import type { DnsLookup } from "@/platform/channel-domains";
 import type { CertificateStatus } from "@/platform/tls-probe";
 import type { AventyKeyVault } from "@/aventy/key-vault";
+import type { AventyClient } from "@/aventy/client";
 
 export interface Env {
   /** PostgreSQL pools (app: RLS-confined, platform: cross-store). */
@@ -37,6 +38,8 @@ export interface Env {
   CERT_PROBE: (hostname: string) => Promise<CertificateStatus>;
   /** Seals channels' Aventy keys; built by src/node.ts from AVENTY_KEY_ENCRYPTION_KEY (null when unset). */
   AVENTY_KEY_VAULT: AventyKeyVault | null;
+  /** Talks to Aventy; built by src/node.ts (the demo client when AVENTY_DEMO=1, null until the real one exists). */
+  AVENTY_CLIENT?: AventyClient | null;
   /** Deployment environment: "development" | "production" */
   ENVIRONMENT: string;
   /** Comma-separated list of allowed CORS origins (e.g., "http://localhost:3000,https://app.example.com") */

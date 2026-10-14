@@ -7,7 +7,8 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { OpenAPIHono } from "@hono/zod-openapi";
 import type { AppContext } from "@/types";
-import { createPool, type Database } from "@/db/scope";
+import { createPool, withStore, type Database } from "@/db/scope";
+import { getStoreConfig } from "../../../../cod-shared/queries/store";
 import { createTestDb, type TestDb } from "@/test-utils/pg";
 import { authMiddleware } from "@/middleware/auth";
 import { dashboardScope } from "@/middleware/dashboardScope";
@@ -132,6 +133,39 @@ describe("creating a store channel", () => {
     const resumed = await create({ name: "Resume", subdomain: "resume-shop", creationKey: "key-resume", productIds: ["cat-1"] });
     expect(resumed.status).toBe(201);
     expect(await storesWithKey("key-resume")).toHaveLength(1);
+  });
+
+  it("starts a store from a ready-made template with that template's colours, font and sections", async () => {
+    const res = await create({ name: "Mode", subdomain: "mode-shop", templateId: "boutique", productIds: ["cat-1"] });
+    expect(res.status).toBe(201);
+    const { data } = (await res.json()) as { data: { id: string } };
+    const { rows: [store] } = await harness.platform.query(
+      "select theme_id, primary_color, accent_color, bg_color, font_family from stores where id = $1",
+      [data.id],
+    );
+    expect(store).toEqual({ theme_id: "boutique", primary_color: "#1f2937", accent_color: "#c9a227", bg_color: "#faf7f2", font_family: "Tajawal, sans-serif" });
+    const config = await withStore(database.app, data.id, (db) => getStoreConfig(db, data.id), merchant);
+    expect(config?.design.sections.map((s) => s.type).slice(0, 2)).toEqual(["hero", "new_arrivals"]);
+    expect(config?.design.sections.find((s) => s.type === "hero")?.settings.heroTitle).toBeTruthy();
+  });
+
+  it("adds the merchant's own domain as pending, and refuses an invalid or taken one without creating the channel", async () => {
+    const res = await create({ name: "Own", subdomain: "own-domain", customDomain: "https://WWW.Maison-Own.dz/" });
+    expect(res.status).toBe(201);
+    const { data } = (await res.json()) as { data: { id: string } };
+    const { rows } = await harness.platform.query(
+      "select hostname, kind, status, is_primary from store_domains where store_id = $1 order by kind",
+      [data.id],
+    );
+    expect(rows).toEqual([
+      { hostname: "www.maison-own.dz", kind: "custom", status: "pending", is_primary: false },
+      { hostname: "own-domain.codflow.test", kind: "subdomain", status: "verified", is_primary: true },
+    ]);
+
+    expect((await create({ name: "Bad", subdomain: "bad-domain", customDomain: "shop.codflow.test" })).status).toBe(400);
+    const taken = await create({ name: "Taken", subdomain: "taken-domain", customDomain: "www.maison-own.dz" });
+    expect(taken.status).toBe(409);
+    expect((await harness.platform.query("select 1 from store_domains where hostname = 'taken-domain.codflow.test'")).rowCount).toBe(0);
   });
 
   it("refuses another account's shipping profile, an unknown template and a type not available yet", async () => {

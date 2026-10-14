@@ -50,7 +50,8 @@ import { chunkIds } from "./id-chunks";
 import { getFooterPages, getPublicLegalContact } from "./store-pages";
 import { storefrontDesignSource } from "./channel-design";
 import { manifestFor } from "../channels/manifests";
-import { brandFromStore, defaultDesign, storefrontBrand, storefrontSections } from "../channels/design";
+import { brandFromStore, storefrontBrand, storefrontSections } from "../channels/design";
+import { templateDesign } from "../channels/templates";
 import type { PageLocale } from "../legal/kinds";
 import {
   loadCatalogSnapshot,
@@ -155,7 +156,7 @@ export async function getStoreConfig(db: AppDb, storeId: string, opts: { preview
   const preview = opts.preview === true;
   const manifest = manifestFor(store.themeId, store.channelType);
   const design = await storefrontDesignSource(db, preview);
-  const sections = design.sections ?? defaultDesign(manifest, brandFromStore(store, manifest)).sections;
+  const sections = design.sections ?? templateDesign(store.themeId, manifest, brandFromStore(store, manifest)).sections;
 
   return {
     ...publicStore,

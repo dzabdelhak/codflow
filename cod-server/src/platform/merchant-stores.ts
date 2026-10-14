@@ -4,7 +4,9 @@ import { getDb } from "../../../cod-shared/db/client";
 import { seedStorePages } from "../../../cod-shared/queries/store-pages";
 import type { PlanPolicy } from "./plan-policy";
 import { orderPrefixFor } from "../../../cod-shared/queries/order-numbers";
-import { defaultTemplateFor, isTemplateFor } from "../../../cod-shared/channels/templates";
+import { defaultTemplateFor, isTemplateFor, presetBrand } from "../../../cod-shared/channels/templates";
+import { manifestFor } from "../../../cod-shared/channels/manifests";
+import { claimCustomDomain, normaliseDomain } from "./channel-domains";
 import type { ChannelType, UnavailableRule } from "../../../cod-shared/channels/types";
 import {
   DEFAULT_CHECKOUT_FORM_POLICY,
@@ -77,7 +79,9 @@ export type CreateStoreResult =
   | { ok: false; reason: "unknown_products"; productIds: string[] }
   | { ok: false; reason: "main_product_required" }
   | { ok: false; reason: "unknown_shipping_profile" }
-  | { ok: false; reason: "unknown_template" };
+  | { ok: false; reason: "unknown_template" }
+  | { ok: false; reason: "invalid_domain" }
+  | { ok: false; reason: "domain_taken" };
 
 export interface CreateStoreInput {
   merchantId: string;
@@ -91,6 +95,7 @@ export interface CreateStoreInput {
   deliveryModes?: { home: boolean; stopDesk: boolean };
   defaultShippingProfileId?: string | null;
   templateId?: string;
+  customDomain?: string;
 }
 
 async function storeById(client: pg.PoolClient, id: string): Promise<MerchantStore> {
@@ -111,6 +116,8 @@ export async function createMerchantStore(
   if (!isTemplateFor(type, templateId)) return { ok: false, reason: "unknown_template" };
   const productIds = [...new Set(input.productIds ?? [])];
   if (type === "landing" && productIds.length !== 1) return { ok: false, reason: "main_product_required" };
+  const customDomain = input.customDomain?.trim() ? normaliseDomain(input.customDomain, input.baseDomain) : null;
+  if (input.customDomain?.trim() && !customDomain) return { ok: false, reason: "invalid_domain" };
 
   const client = await platform.connect();
   const refuse = async <T extends CreateStoreResult>(result: T): Promise<T> => {
@@ -185,10 +192,22 @@ export async function createMerchantStore(
         hostname,
       ],
     );
+    const brand = presetBrand(templateId, manifestFor(templateId, type));
+    if (brand) {
+      await client.query(
+        `update stores set primary_color = $2, accent_color = $3, bg_color = $4,
+                font_family = coalesce($5, font_family), font_url = coalesce($6, font_url) where id = $1`,
+        [id, brand.primaryColor, brand.accentColor, brand.bgColor, brand.fontFamily, brand.fontUrl],
+      );
+    }
     await client.query(
       "insert into store_domains (hostname, store_id, kind, created_at, status, verified_at, is_primary) values ($1, $2, 'subdomain', $3, 'verified', $3, true)",
       [hostname, id, now],
     );
+    if (customDomain) {
+      const claimed = await claimCustomDomain(client, id, customDomain, new Date(now));
+      if (!claimed.ok) return refuse({ ok: false, reason: "domain_taken" });
+    }
     if (productIds.length > 0) {
       await client.query(
         `insert into channel_products (store_id, product_id, position, created_at, updated_at)

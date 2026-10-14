@@ -68,6 +68,7 @@ const env = {
   DOMAIN_DNS: systemDns(process.env.DNS_SERVERS?.split(",").map((s) => s.trim()).filter(Boolean)),
   CERT_PROBE: certificateProbe(),
   AVENTY_KEY_VAULT: aventyVault,
+  AVENTY_CLIENT: aventyClient,
   ENVIRONMENT: process.env.ENVIRONMENT ?? "development",
 } as unknown as Env;
 

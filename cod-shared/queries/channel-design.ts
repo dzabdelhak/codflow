@@ -3,9 +3,9 @@ import { channelDesigns, channelDesignVersions, storeDomains, stores } from "../
 import type { AppDb } from "../db/client";
 import { first } from "../db/client";
 import { manifestFor, type TemplateManifest } from "../channels/manifests";
+import { templateDesign } from "../channels/templates";
 import {
   brandFromStore,
-  defaultDesign,
   storefrontBrand,
   validateDesign,
   type DesignBrand,
@@ -45,7 +45,7 @@ async function storeTemplate(db: AppDb, storeId: string) {
     .then(first);
   if (!store) return null;
   const manifest = manifestFor(store.themeId, store.channelType);
-  return { manifest, fallback: defaultDesign(manifest, brandFromStore(store, manifest)) };
+  return { manifest, fallback: templateDesign(store.themeId, manifest, brandFromStore(store, manifest)) };
 }
 
 async function latestPublished(db: AppDb): Promise<PublishedDesign | null> {

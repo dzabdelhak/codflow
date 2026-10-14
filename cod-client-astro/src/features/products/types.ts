@@ -87,6 +87,7 @@ export interface Product {
   variantsCount?: number;
   totalInventory?: number;
   primaryImageSrc?: string | null;
+  aventyId?: string | null;
   reviewCount?: number;
   avgRating?: number | null;
   createdAt: string;
