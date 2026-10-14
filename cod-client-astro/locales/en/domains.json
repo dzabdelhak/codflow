@@ -1,0 +1,60 @@
+{
+  "page_title": "Domains",
+  "page_subtitle": "The addresses shoppers use to reach this store. Your own domain gets HTTPS automatically once it points at us.",
+  "add_title": "Connect your own domain",
+  "add_subtitle": "Buy the domain at any registrar, add it here, then create the DNS record shown.",
+  "add_label": "Domain name",
+  "add": "Add domain",
+  "added": "Domain added. Create the DNS record below, then verify.",
+  "column_domain": "Domain",
+  "column_status": "Status",
+  "column_certificate": "HTTPS",
+  "column_actions": "Actions",
+  "primary": "Primary",
+  "free_address": "Free address",
+  "status": {
+    "pending": "Waiting for DNS",
+    "verified": "Connected",
+    "failed": "Not pointing to us"
+  },
+  "problem": {
+    "no_dns_records": "No DNS record found yet. DNS changes can take up to a few hours to spread.",
+    "points_elsewhere": "The domain points to {values}, not to us.",
+    "dns_lookup_failed": "The DNS lookup failed. Try again in a few minutes.",
+    "platform_target_not_configured": "Custom domains are not configured on this platform yet."
+  },
+  "checked_at": "Last checked {date}",
+  "dns_hint_root": "At your registrar, set these A records for {domain}:",
+  "dns_hint_sub": "At your registrar, create this record for {domain}:",
+  "dns_not_configured": "Custom domains are not configured on this platform yet.",
+  "dns_type": "Type",
+  "dns_name": "Name",
+  "dns_value": "Value",
+  "certificate": {
+    "platform": "Included",
+    "active": "Secured",
+    "untrusted": "Test certificate",
+    "until": "until {date}",
+    "pending": "Being issued on first visit",
+    "error": "Could not check"
+  },
+  "verify": "Verify",
+  "check_again": "Check again",
+  "make_primary": "Make primary",
+  "primary_set": "Primary domain changed. Other addresses now redirect to it.",
+  "remove": "Remove",
+  "remove_title": "Remove {domain}?",
+  "remove_body": "The store stops answering on this address and its certificate is no longer renewed.",
+  "removed": "Domain removed.",
+  "redirect_note": "Visitors who open any other address of this store are redirected to the primary domain.",
+  "load_failed": "The domains could not be loaded.",
+  "error": {
+    "invalid": "Enter a domain name like boutique.dz or shop.boutique.dz. Addresses under the platform's own domain cannot be added.",
+    "taken": "This domain is already connected to another store.",
+    "already_added": "This domain is already in the list.",
+    "limit": "A store can have at most 10 custom domains.",
+    "not_verified": "Only a connected domain can be the primary one.",
+    "not_removable": "The free address and the primary domain cannot be removed.",
+    "generic": "Something went wrong. Try again."
+  }
+}

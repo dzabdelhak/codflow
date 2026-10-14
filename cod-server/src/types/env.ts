@@ -6,6 +6,8 @@
 import type { OAuthHelpers } from "@cloudflare/workers-oauth-provider";
 import type { Database } from "@/db/scope";
 import type { ImageStore } from "@/platform/image-store";
+import type { DnsLookup } from "@/platform/channel-domains";
+import type { CertificateStatus } from "@/platform/tls-probe";
 
 export interface Env {
   /** PostgreSQL pools (app: RLS-confined, platform: cross-store). */
@@ -22,6 +24,14 @@ export interface Env {
   IMAGE_STORE: ImageStore;
   /** Public base of the image service, e.g. "https://api.example.com/images"; defaults to the request origin + "/images". */
   IMAGES_PUBLIC_URL?: string;
+  /** Hostname merchants point a custom domain's CNAME at (e.g. "stores.codflow.app"). */
+  CUSTOM_DOMAIN_TARGET?: string;
+  /** Comma-separated IPv4 addresses an apex custom domain's A records point at. */
+  CUSTOM_DOMAIN_IPV4?: string;
+  /** DNS lookups for domain verification, built by src/node.ts (DNS_SERVERS optional). */
+  DOMAIN_DNS: DnsLookup;
+  /** Reads the HTTPS certificate a domain is served with, built by src/node.ts (TLS_PROBE_HOST/PORT optional). */
+  CERT_PROBE: (hostname: string) => Promise<CertificateStatus>;
   /** Deployment environment: "development" | "production" */
   ENVIRONMENT: string;
   /** Worker URL for API documentation (e.g., "http://localhost:8787" or "https://api.yourdomain.com") */

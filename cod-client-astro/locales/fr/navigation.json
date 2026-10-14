@@ -33,7 +33,8 @@
     "stores": "Boutiques",
     "store_products": "Dans cette boutique",
     "main_product": "Produit principal",
-    "design": "Design"
+    "design": "Design",
+    "domains": "Domaines"
   },
   "navbar": {
     "search_placeholder": "Rechercher des commandes, clients...",

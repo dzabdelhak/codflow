@@ -15,6 +15,7 @@ import merchantRoutes from "@/endpoints/merchant/routes";
 import channelProductsRoutes from "@/endpoints/channel-products/routes";
 import landingChannelRoutes from "@/endpoints/landing-channel/routes";
 import channelDesignRoutes from "@/endpoints/channel-design/routes";
+import channelDomainRoutes, { tlsAskRouter } from "@/endpoints/channel-domains/routes";
 import { storeAuthMiddleware } from "@/middleware/storeAuth";
 import { errorHandler } from "@/middleware/error";
 
@@ -69,6 +70,7 @@ app.use("/webhooks/*", soleStoreScope);
 
 // Image serving — no auth required (public, cacheable)
 app.route("/images", serveRouter);
+app.route("/platform/tls-ask", tlsAskRouter);
 
 // OpenAPI documentation — no auth required (public)
 // Must be mounted BEFORE app.use("/api/*", authMiddleware)
@@ -119,6 +121,7 @@ app.route("/api/product-groups", productGroupsRoutes);
 app.route("/api/channel-products", channelProductsRoutes);
 app.route("/api/landing-channel", landingChannelRoutes);
 app.route("/api/channel-design", channelDesignRoutes);
+app.route("/api/channel-domains", channelDomainRoutes);
 app.route("/api/landing-pages", landingPagesRoutes);
 app.route("/api/store-pages", storePagesRoutes);
 app.route("/api/checkout-form", checkoutFormRoutes);

@@ -38,7 +38,7 @@ export async function getStoreConfig(c: Context<AppContext>) {
   if (!store) {
     throw new NotFoundError("Store", storeId);
   }
-  return c.json({ success: true, data: store }, 200);
+  return c.json({ success: true, data: { ...store, primaryHostname: c.get("primaryHostname") ?? null } }, 200);
 }
 
 export async function listStoreProducts(c: Context<AppContext>) {

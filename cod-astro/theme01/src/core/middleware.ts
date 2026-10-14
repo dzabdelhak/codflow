@@ -9,6 +9,7 @@ import { getActionContext } from "astro:actions";
 import { withRequestHost } from "./api/request-host";
 import { loadStoreConfig } from "./api/client";
 import { CHANNEL_CACHE_PATH, channelTag, shouldPurge } from "./channel-cache";
+import { primaryRedirect } from "./primary-host";
 
 /**
  * POST/Redirect/GET pattern for Astro Actions (Astro 5 docs pattern).
@@ -40,7 +41,7 @@ async function handle(context: APIContext, next: MiddlewareNext) {
   if (context.url.pathname === CHANNEL_CACHE_PATH) return next();
 
   const tag = channelTag(context.request.headers.get("host") ?? context.url.host);
-  const { status } = await loadStoreConfig();
+  const { status, data } = await loadStoreConfig();
   if (shouldPurge(tag, status !== 404 && status !== 503)) await context.cache.invalidate({ tags: [tag] }).catch(() => {});
   if (status === 404) {
     return new Response("Not found", { status: 404, headers: { "Content-Type": "text/plain; charset=utf-8" } });
@@ -49,7 +50,17 @@ async function handle(context: APIContext, next: MiddlewareNext) {
     context.locals.channelUnavailable = true;
     return next("/unavailable");
   }
-  if (context.url.searchParams.has("preview")) context.cache.set(false);
+  const preview = context.url.searchParams.has("preview");
+  if (!preview && (context.request.method === "GET" || context.request.method === "HEAD")) {
+    const target = primaryRedirect(
+      context.url,
+      context.request.headers.get("host") ?? context.url.host,
+      context.request.headers.get("x-forwarded-proto"),
+      data?.primaryHostname,
+    );
+    if (target) return context.redirect(target, 301);
+  }
+  if (preview) context.cache.set(false);
   else context.cache.set({ tags: [tag] });
 
   const { action, setActionResult, serializeActionResult } = getActionContext(context);

@@ -141,8 +141,6 @@
     "api_key_missing": "API key not available. It will appear here after your next re-deployment.",
     "error_load": "Could not load store settings",
     "domain_label": "Storefront domain",
-    "domain_placeholder": "store.example.com",
-    "domain_hint": "Your storefront's custom domain. Landing page share URLs are built from it. Leave empty to use the deployment's default storefront URL.",
     "delivery_pricing_title": "Delivery pricing",
     "delivery_pricing_subtitle": "Free-delivery threshold and how a multi-product basket is charged",
     "free_shipping_threshold_label": "Free delivery above (DZD)",
@@ -164,7 +162,9 @@
     "tracking_per_page_hint": "Let an individual landing page report to its own pixel instead of this one. While this is off, every page uses the pixel above.",
     "tracking_per_page_next_step": "Now open a landing page in the Studio and give it its own pixel. Pages you don't change keep using the store pixel.",
     "branding_moved": "Logo, colours and font are now edited in the design editor, with a preview, and applied when you publish.",
-    "branding_open_editor": "Open the design editor"
+    "branding_open_editor": "Open the design editor",
+    "domain_moved": "Domains are managed on the Domains page: add, verify and choose the primary one.",
+    "domain_open": "Manage domains"
   },
   "shipping": {
     "title": "Shipping Rates",

@@ -4,6 +4,7 @@ import {
   FileText,
   FolderOpen,
   Gift,
+  Globe,
   Layers,
   Megaphone,
   Palette,
@@ -240,6 +241,13 @@ export function useNavSections(): NavSection[] {
           href: "/design",
           label: tN("sidebar.design"),
           icon: Palette,
+          scope: "admin",
+        },
+        {
+          kind: "leaf",
+          href: "/domains",
+          label: tN("sidebar.domains"),
+          icon: Globe,
           scope: "admin",
         },
         {

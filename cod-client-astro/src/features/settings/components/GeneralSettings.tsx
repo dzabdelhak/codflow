@@ -10,11 +10,10 @@ export function GeneralSettings({
   onSave,
 }: {
   storeConfig: StoreConfig;
-  onSave: (payload: { name?: string; domain?: string | null; lang?: StoreLang }) => Promise<void>;
+  onSave: (payload: { name?: string; lang?: StoreLang }) => Promise<void>;
 }) {
   const t = useT("settings");
   const [name, setName] = useState(storeConfig.name);
-  const [domain, setDomain] = useState(storeConfig.domain ?? "");
   const [lang, setLang] = useState<StoreLang>(storeConfig.lang);
 
   return (
@@ -25,9 +24,6 @@ export function GeneralSettings({
       onSave={async () => {
         await onSave({
           name: name.trim() || storeConfig.name,
-          // Empty input clears the domain (links fall back to the deployment's
-          // storefront URL); otherwise send the trimmed hostname.
-          domain: domain.trim() === "" ? null : domain.trim(),
           lang,
         });
       }}
@@ -39,15 +35,10 @@ export function GeneralSettings({
           placeholder={t("store.name_placeholder")}
         />
       </FieldRow>
-      <FieldRow label={t("store.domain_label")} hint={t("store.domain_hint")}>
-        <Input
-          value={domain}
-          onChange={(event) => setDomain(event.currentTarget.value)}
-          placeholder={t("store.domain_placeholder")}
-          dir="ltr"
-          spellCheck={false}
-          autoComplete="off"
-        />
+      <FieldRow label={t("store.domain_label")} hint={t("store.domain_moved")}>
+        <a href="/domains" className="text-sm font-semibold text-brand underline">
+          {t("store.domain_open")}
+        </a>
       </FieldRow>
       <FieldRow label={t("store.lang_label")}>
         <Select

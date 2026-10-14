@@ -145,10 +145,10 @@ export async function createTestDb(): Promise<TestDb> {
       "insert into stores (id, name, merchant_id, status, created_at, updated_at) values ($1, $2, $3, 'published', $4, $4)",
       [id, `Store ${id}`, merchantId, now],
     );
-    for (const hostname of hostnames) {
+    for (const [index, hostname] of hostnames.entries()) {
       await platform.query(
-        "insert into store_domains (hostname, store_id, kind, created_at) values ($1, $2, 'subdomain', $3)",
-        [hostname, id, now],
+        "insert into store_domains (hostname, store_id, kind, created_at, is_primary) values ($1, $2, 'subdomain', $3, $4)",
+        [hostname, id, now, index === 0],
       );
     }
     return id;

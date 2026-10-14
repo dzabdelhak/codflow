@@ -141,8 +141,6 @@
     "api_key_missing": "Clé API non disponible. Elle apparaîtra ici après votre prochain redéploiement.",
     "error_load": "Impossible de charger les paramètres de la boutique",
     "domain_label": "Domaine de la vitrine",
-    "domain_placeholder": "boutique.exemple.com",
-    "domain_hint": "Le domaine personnalisé de votre vitrine. Les liens de partage des pages d'atterrissage en sont dérivés. Laissez vide pour utiliser l'URL par défaut du déploiement.",
     "delivery_pricing_title": "Tarifs de livraison",
     "delivery_pricing_subtitle": "Seuil de livraison gratuite et tarification d'un panier multi-produits",
     "free_shipping_threshold_label": "Livraison gratuite à partir de (DZD)",
@@ -164,7 +162,9 @@
     "tracking_per_page_hint": "Permet à une page de destination d'envoyer ses données à son propre pixel plutôt qu'à celui-ci. Tant que c'est désactivé, toutes les pages utilisent le pixel ci-dessus.",
     "tracking_per_page_next_step": "Ouvrez maintenant une page de destination dans le Studio et donnez-lui son propre pixel. Les pages que vous ne modifiez pas continuent d'utiliser le pixel de la boutique.",
     "branding_moved": "Le logo, les couleurs et la police se modifient désormais dans l’éditeur de design, avec un aperçu, et s’appliquent à la publication.",
-    "branding_open_editor": "Ouvrir l’éditeur de design"
+    "branding_open_editor": "Ouvrir l’éditeur de design",
+    "domain_moved": "Les domaines se gèrent sur la page Domaines : ajout, vérification et choix du domaine principal.",
+    "domain_open": "Gérer les domaines"
   },
   "shipping": {
     "title": "Tarifs de livraison",

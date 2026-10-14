@@ -40,7 +40,7 @@ async function main() {
         [channel.id, channel.name, DEMO_MERCHANT_ID, orderPrefixFor(channel.host.split(".")[0]), now],
       );
       await database.platform.query(
-        "insert into store_domains (hostname, store_id, kind, created_at) values ($1, $2, 'subdomain', $3)",
+        "insert into store_domains (hostname, store_id, kind, created_at, verified_at, is_primary) values ($1, $2, 'subdomain', $3, $3, true)",
         [channel.host, channel.id, now],
       );
 

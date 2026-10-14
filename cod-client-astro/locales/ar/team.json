@@ -116,7 +116,12 @@
       "review.approved": "وافق على تقييم",
       "review.rejected": "رفض تقييمًا",
       "review.deleted": "حذف تقييمًا",
-      "store.status_changed": "غيّر حالة المتجر"
+      "store.status_changed": "غيّر حالة المتجر",
+      "domain.added": "أضاف نطاقًا",
+      "domain.verified": "تحقق من نطاق",
+      "domain.verification_failed": "فشل التحقق من النطاق",
+      "domain.primary_set": "حدد النطاق الرئيسي",
+      "domain.removed": "حذف نطاقًا"
     },
     "table": {
       "action": "الإجراء",

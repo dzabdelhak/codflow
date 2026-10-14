@@ -132,6 +132,15 @@ other is how these drift.
   (`STOREFRONT_SERVICE_KEY`, identical on cod-server and theme01); cod-server
   trusts the hostname only with the key. Hostname → store lives in
   `store_domains`.
+- **A channel's hostnames live in `store_domains`, and only verified ones
+  serve.** A custom domain is `pending` until its DNS points at
+  `CUSTOM_DOMAIN_TARGET` / `CUSTOM_DOMAIN_IPV4`
+  (`cod-server/src/platform/channel-domains.ts`). `scopeForHost` and Caddy's
+  on-demand TLS `ask` (`/platform/tls-ask`) both ignore unverified rows. One
+  domain per channel is primary (`is_primary`, unique per store), and theme01
+  301-redirects every other hostname to it. The dashboard's Domains screen is
+  the only way to change them; `domain` is no longer a store setting. See
+  `docs/CUSTOM-DOMAINS.md`.
 - **A channel serves its public pages only when `published`**
   (`cod-shared/channels/lifecycle.ts`): `suspended` answers the storefront
   with 503 `CHANNEL_UNAVAILABLE` (theme01 renders a neutral page), every

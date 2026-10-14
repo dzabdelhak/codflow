@@ -103,6 +103,7 @@ export interface StoreConfig {
    */
   whatsapp?: StoreWhatsAppWidget | null;
   channelType?: "store" | "landing";
+  primaryHostname?: string | null;
   design?: StorefrontDesign;
   unavailableRule?: UnavailableRule;
 }

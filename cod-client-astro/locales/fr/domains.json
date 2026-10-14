@@ -1,0 +1,60 @@
+{
+  "page_title": "Domaines",
+  "page_subtitle": "Les adresses qui mènent les clients à cette boutique. Votre propre domaine passe en HTTPS automatiquement dès qu'il pointe vers nous.",
+  "add_title": "Connecter votre propre domaine",
+  "add_subtitle": "Achetez le domaine chez n'importe quel registraire, ajoutez-le ici, puis créez l'enregistrement DNS indiqué.",
+  "add_label": "Nom de domaine",
+  "add": "Ajouter le domaine",
+  "added": "Domaine ajouté. Créez l'enregistrement DNS ci-dessous, puis vérifiez.",
+  "column_domain": "Domaine",
+  "column_status": "Statut",
+  "column_certificate": "HTTPS",
+  "column_actions": "Actions",
+  "primary": "Principal",
+  "free_address": "Adresse gratuite",
+  "status": {
+    "pending": "En attente du DNS",
+    "verified": "Connecté",
+    "failed": "Ne pointe pas vers nous"
+  },
+  "problem": {
+    "no_dns_records": "Aucun enregistrement DNS trouvé pour l'instant. La propagation peut prendre quelques heures.",
+    "points_elsewhere": "Le domaine pointe vers {values}, pas vers nous.",
+    "dns_lookup_failed": "La recherche DNS a échoué. Réessayez dans quelques minutes.",
+    "platform_target_not_configured": "Les domaines personnalisés ne sont pas encore configurés sur cette plateforme."
+  },
+  "checked_at": "Dernière vérification {date}",
+  "dns_hint_root": "Chez votre registraire, définissez ces enregistrements A pour {domain} :",
+  "dns_hint_sub": "Chez votre registraire, créez cet enregistrement pour {domain} :",
+  "dns_not_configured": "Les domaines personnalisés ne sont pas encore configurés sur cette plateforme.",
+  "dns_type": "Type",
+  "dns_name": "Nom",
+  "dns_value": "Valeur",
+  "certificate": {
+    "platform": "Inclus",
+    "active": "Sécurisé",
+    "untrusted": "Certificat de test",
+    "until": "jusqu'au {date}",
+    "pending": "Émis à la première visite",
+    "error": "Vérification impossible"
+  },
+  "verify": "Vérifier",
+  "check_again": "Revérifier",
+  "make_primary": "Définir comme principal",
+  "primary_set": "Domaine principal modifié. Les autres adresses redirigent désormais vers lui.",
+  "remove": "Supprimer",
+  "remove_title": "Supprimer {domain} ?",
+  "remove_body": "La boutique ne répondra plus sur cette adresse et son certificat ne sera plus renouvelé.",
+  "removed": "Domaine supprimé.",
+  "redirect_note": "Les visiteurs qui ouvrent une autre adresse de cette boutique sont redirigés vers le domaine principal.",
+  "load_failed": "Impossible de charger les domaines.",
+  "error": {
+    "invalid": "Saisissez un nom de domaine comme boutique.dz ou shop.boutique.dz. Les adresses sous le domaine de la plateforme ne peuvent pas être ajoutées.",
+    "taken": "Ce domaine est déjà connecté à une autre boutique.",
+    "already_added": "Ce domaine est déjà dans la liste.",
+    "limit": "Une boutique peut avoir au plus 10 domaines personnalisés.",
+    "not_verified": "Seul un domaine connecté peut devenir principal.",
+    "not_removable": "L'adresse gratuite et le domaine principal ne peuvent pas être supprimés.",
+    "generic": "Une erreur s'est produite. Réessayez."
+  }
+}

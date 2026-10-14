@@ -1,0 +1,28 @@
+# Production front proxy. Copy to Caddyfile and set BASE_DOMAIN and ACME_EMAIL
+# in Caddy's environment. Every channel hostname — the free <slug>.BASE_DOMAIN
+# addresses and the merchants' own domains — gets its Let's Encrypt certificate
+# on the first visit, and only when cod-server's /platform/tls-ask says the
+# hostname is a verified domain of a live channel. Keep /platform/* off the
+# public API host. Mount /data on a volume: it holds the certificates.
+{
+	email {$ACME_EMAIL}
+	on_demand_tls {
+		ask http://api:8787/platform/tls-ask
+	}
+}
+
+api.{$BASE_DOMAIN} {
+	respond /platform/* 404
+	reverse_proxy api:8787
+}
+
+app.{$BASE_DOMAIN} {
+	reverse_proxy dashboard:4321
+}
+
+https:// {
+	tls {
+		on_demand
+	}
+	reverse_proxy storefront:4321
+}

@@ -116,7 +116,12 @@
       "review.approved": "Approved a review",
       "review.rejected": "Rejected a review",
       "review.deleted": "Deleted a review",
-      "store.status_changed": "Changed store status"
+      "store.status_changed": "Changed store status",
+      "domain.added": "Added a domain",
+      "domain.verified": "Verified a domain",
+      "domain.verification_failed": "Domain verification failed",
+      "domain.primary_set": "Set the primary domain",
+      "domain.removed": "Removed a domain"
     },
     "table": {
       "action": "Action",

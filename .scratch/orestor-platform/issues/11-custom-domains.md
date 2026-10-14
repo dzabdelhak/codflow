@@ -4,9 +4,9 @@
 
 **Blocked by:** 04
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Adding a domain shows DNS instructions and an "en attente" status
-- [ ] After DNS points to the platform, verification succeeds and HTTPS works without manual steps
-- [ ] Caddy refuses a certificate for a domain no channel has verified
-- [ ] Non-primary domains redirect to the primary one
+- [x] Adding a domain shows DNS instructions and an "en attente" status
+- [x] After DNS points to the platform, verification succeeds and HTTPS works without manual steps
+- [x] Caddy refuses a certificate for a domain no channel has verified
+- [x] Non-primary domains redirect to the primary one

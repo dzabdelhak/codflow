@@ -1100,8 +1100,14 @@ export const storeDomains = pgTable("store_domains", {
     .references(() => stores.id, { onDelete: "cascade" }),
   kind: text("kind", { enum: ["subdomain", "custom"] }).notNull(),
   createdAt: text("created_at").notNull(),
+  status: text("status", { enum: ["pending", "verified", "failed"] }).notNull().default("verified"),
+  verifiedAt: text("verified_at"),
+  checkedAt: text("checked_at"),
+  lastError: text("last_error"),
+  isPrimary: boolean("is_primary").notNull().default(false),
 }, (t) => ({
   storeIdx: index("store_domains_store_idx").on(t.storeId),
+  onePrimaryPerStore: uniqueIndex("store_domains_one_primary").on(t.storeId).where(sql`${t.isPrimary}`),
 }));
 
 export const storeApiKeys = pgTable("store_api_keys", {

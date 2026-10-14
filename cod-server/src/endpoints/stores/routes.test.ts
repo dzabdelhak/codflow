@@ -207,26 +207,18 @@ describe("Stores routes (OpenAPIHono)", () => {
       );
     });
 
-    it("passes domain through to the query layer", async () => {
-      // Same class of bug, pre-existing: domain was writable per
-      // validation.ts but absent from the route's own copy.
+    it("no longer writes the domain — it follows the primary domain (Domains page)", async () => {
       vi.mocked(queries.getStore).mockResolvedValue(storeRow());
-      vi.mocked(queries.updateStore).mockResolvedValue(
-        storeRow({ domain: "shop.example.com" }),
-      );
+      vi.mocked(queries.updateStore).mockResolvedValue(storeRow());
 
       const res = await app.request("/api/stores/me", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ domain: "shop.example.com" }),
+        body: JSON.stringify({ name: "Renamed", domain: "shop.example.com" }),
       });
 
       expect(res.status).toBe(200);
-      expect(queries.updateStore).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.anything(),
-        expect.objectContaining({ domain: "shop.example.com" }),
-      );
+      expect(vi.mocked(queries.updateStore).mock.calls[0][2]).not.toHaveProperty("domain");
     });
 
     it("returns 400 for invalid hex color", async () => {

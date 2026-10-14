@@ -66,6 +66,11 @@ export const ACTIONS = {
   // Store Pages (legal pages + custom pages) — "who rewrote our refund
   // policy, and when" is a question a merchant with staff will ask.
   STORE_STATUS_CHANGED:    "store.status_changed",
+  DOMAIN_ADDED:            "domain.added",
+  DOMAIN_VERIFIED:         "domain.verified",
+  DOMAIN_VERIFICATION_FAILED: "domain.verification_failed",
+  DOMAIN_PRIMARY_SET:      "domain.primary_set",
+  DOMAIN_REMOVED:          "domain.removed",
 
   STORE_PAGE_CREATED:      "store_page.created",
   STORE_PAGE_UPDATED:      "store_page.updated",

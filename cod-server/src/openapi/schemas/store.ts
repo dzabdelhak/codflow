@@ -483,6 +483,10 @@ export const StoreConfigSchema = z
       example: "0x4AAAAAAAxxxxxxxxxxxx",
     }),
     status: z.enum(CHANNEL_STATUSES),
+    primaryHostname: z.string().nullable().openapi({
+      description: "The channel's primary domain; the storefront redirects its other domains to it",
+      example: "boutique-nour.dz",
+    }),
     channelType: z.enum(CHANNEL_TYPES).openapi({
       description: "`store` renders the catalogue pages; `landing` renders one page around its main product (GET /store/landing).",
     }),

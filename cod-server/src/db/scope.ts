@@ -14,18 +14,20 @@ export { createPool, createDatabase, withStore, type Database, type DbRole } fro
 export async function scopeForHost(
   platform: pg.Pool,
   hostname: string,
-): Promise<(Scope & { channel: PublicChannel }) | null> {
-  const { rows } = await platform.query<{ store_id: string; merchant_id: string } & PublicChannel>(
+): Promise<(Scope & { channel: PublicChannel; primaryHostname: string | null }) | null> {
+  const { rows } = await platform.query<{ store_id: string; merchant_id: string; primary_hostname: string | null } & PublicChannel>(
     `select d.store_id, s.merchant_id, s.status, s.channel_type as type, s.unavailable_rule as "unavailableRule",
-            s.channel_type <> 'landing' or main_product_available(s.id) as "mainProductAvailable"
+            s.channel_type <> 'landing' or main_product_available(s.id) as "mainProductAvailable",
+            (select p.hostname from store_domains p
+              where p.store_id = s.id and p.is_primary and p.status = 'verified') as primary_hostname
        from store_domains d join stores s on s.id = d.store_id
-      where d.hostname = $1`,
-    [hostname.split(":")[0].toLowerCase()],
+      where d.hostname = $1 and d.status = 'verified'`,
+    [hostname.split(":")[0].toLowerCase().replace(/\.$/, "")],
   );
   const row = rows[0];
   if (!row) return null;
-  const { store_id, merchant_id, ...channel } = row;
-  return { storeId: store_id, merchantId: merchant_id, channel };
+  const { store_id, merchant_id, primary_hostname, ...channel } = row;
+  return { storeId: store_id, merchantId: merchant_id, channel, primaryHostname: primary_hostname };
 }
 
 /**

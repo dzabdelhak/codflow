@@ -32,6 +32,7 @@ export async function resolveStorefrontStore(c: Context<AppContext>): Promise<Sc
 
   const scope = await scopeForHost(c.env.DATABASE.platform, host);
   const previewToken = c.req.header("X-Preview-Token");
+  if (scope) c.set("primaryHostname", scope.primaryHostname);
   if (scope && previewToken && c.req.method === "GET" && previewTokenStore(previewToken, expected) === scope.storeId) {
     c.set("designPreview", true);
     return { storeId: scope.storeId, merchantId: scope.merchantId };

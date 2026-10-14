@@ -185,7 +185,7 @@ export async function createMerchantStore(
       ],
     );
     await client.query(
-      "insert into store_domains (hostname, store_id, kind, created_at) values ($1, $2, 'subdomain', $3)",
+      "insert into store_domains (hostname, store_id, kind, created_at, verified_at, is_primary) values ($1, $2, 'subdomain', $3, $3, true)",
       [hostname, id, now],
     );
     if (productIds.length > 0) {

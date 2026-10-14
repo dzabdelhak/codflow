@@ -18,6 +18,7 @@ export interface AppVariables {
   /** The request's database handle: one connection, one transaction, pinned to storeId. */
   db: AppDb;
   designPreview?: boolean;
+  primaryHostname?: string | null;
 }
 
 /**

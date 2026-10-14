@@ -33,7 +33,8 @@
     "stores": "المتاجر",
     "store_products": "في هذا المتجر",
     "main_product": "المنتج الرئيسي",
-    "design": "التصميم"
+    "design": "التصميم",
+    "domains": "النطاقات"
   },
   "navbar": {
     "search_placeholder": "البحث عن طلبات، عملاء...",

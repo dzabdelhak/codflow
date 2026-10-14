@@ -1,12 +1,20 @@
 # Local front proxy. api.* is the API, app.* the dashboard; every other
 # hostname is a channel served by the storefront. Caddy passes the Host header
 # through unchanged.
-# Production (automatic TLS per merchant domain) comes with ticket 11.
+#
+# HTTPS (:8443 on the host) issues a certificate on the first visit to a
+# hostname, from Caddy's local CA, and only for hostnames cod-server's
+# /platform/tls-ask accepts (verified channel domains). Production uses the
+# same rule with Let's Encrypt — see Caddyfile.production.example.
 {
-	auto_https off
+	auto_https disable_redirects
+	on_demand_tls {
+		ask http://api:8787/platform/tls-ask
+	}
 }
 
 http://api.localhost {
+	respond /platform/* 404
 	reverse_proxy api:8787
 }
 
@@ -15,5 +23,12 @@ http://app.localhost {
 }
 
 http:// {
+	reverse_proxy storefront:4321
+}
+
+https:// {
+	tls internal {
+		on_demand
+	}
 	reverse_proxy storefront:4321
 }

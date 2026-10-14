@@ -240,6 +240,8 @@ cd cod-astro/theme01 && npm run dev
 
 Images are stored in S3-compatible storage behind cod-server (SeaweedFS in `docker compose`). See the [image guide](./cod-server/src/endpoints/images/README.md) for the `S3_*`, `IMAGES_PUBLIC_URL` and storefront `MEDIA_URL` settings.
 
+Merchants connect their own domains from the dashboard's Domains screen; Caddy issues their certificates on demand. See [`docs/CUSTOM-DOMAINS.md`](./docs/CUSTOM-DOMAINS.md).
+
 **Need more detail?** See [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md) for production deployment.
 
 ---

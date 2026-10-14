@@ -116,7 +116,12 @@
       "review.approved": "A approuvé un avis",
       "review.rejected": "A rejeté un avis",
       "review.deleted": "A supprimé un avis",
-      "store.status_changed": "A changé le statut de la boutique"
+      "store.status_changed": "A changé le statut de la boutique",
+      "domain.added": "A ajouté un domaine",
+      "domain.verified": "A vérifié un domaine",
+      "domain.verification_failed": "Vérification du domaine échouée",
+      "domain.primary_set": "A défini le domaine principal",
+      "domain.removed": "A supprimé un domaine"
     },
     "table": {
       "action": "Action",
