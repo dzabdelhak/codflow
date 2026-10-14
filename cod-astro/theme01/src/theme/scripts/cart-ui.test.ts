@@ -733,19 +733,24 @@ describe("free-delivery progress", () => {
 });
 
 describe("Meta Pixel", () => {
-  afterEach(() => Reflect.deleteProperty(window, "fbq"));
+  afterEach(() => {
+    Reflect.deleteProperty(window, "fbq");
+    Reflect.deleteProperty(window, "__codTrackers");
+  });
 
   it("reports an add to cart", async () => {
     const fbq = vi.fn();
     (window as unknown as { fbq: unknown }).fbq = fbq;
+    (window as unknown as { __codTrackers: unknown }).__codTrackers = { meta: "PIX", tiktok: null, snap: null, ga4: null, googleAds: null, consentRequired: false };
     await boot();
     el<HTMLInputElement>("qty-input").value = "2";
 
     click(addButton());
 
-    const addEvents = fbq.mock.calls.filter((call) => call[1] === "AddToCart");
+    const addEvents = fbq.mock.calls.filter((call) => call[2] === "AddToCart");
     expect(addEvents).toHaveLength(1);
-    expect(addEvents[0][2]).toMatchObject({ content_ids: ["p1"], num_items: 2, currency: "DZD" });
+    expect(addEvents[0][1]).toBe("PIX");
+    expect(addEvents[0][3]).toMatchObject({ content_ids: ["p1"], num_items: 2, currency: "DZD" });
   });
 
   it("stays silent for a store with no pixel", async () => {

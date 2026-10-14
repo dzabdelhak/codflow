@@ -16,9 +16,9 @@ Honest list of what needs more testing or improvement.
 
 ## Not Fully Tested
 
-### Meta CAPI Workflow
+### Server-side conversions
 
-⚠️ **Not production-tested** — The `CodCapiWorkflow` exists and runs locally, but has not been verified with real Meta Pixel accounts in production.
+⚠️ **Not production-tested** — the conversion jobs (Meta, TikTok, Snapchat, GA4) are tested against faked provider APIs and checked locally against the real endpoints with test credentials, but have not been verified with real ad accounts in production.
 
 ### Carrier Integrations
 

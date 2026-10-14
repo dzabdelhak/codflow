@@ -31,7 +31,7 @@ const capiClient = vi.hoisted(() => ({
     }),
   ),
 }));
-vi.mock("@/lib/capi", () => capiClient);
+vi.mock("@/lib/capi", async (importOriginal) => ({ ...(await importOriginal<object>()), ...capiClient }));
 
 import { OpenAPIHono } from "@hono/zod-openapi";
 import type { AppContext } from "@/types";
@@ -40,9 +40,13 @@ import { openApiValidationHook } from "@/openapi/validation-hook";
 import { createTestD1, type TestD1 } from "@/test-utils/d1";
 import * as schema from "@/db/schema";
 import storeRouter from "./routes";
-import { CodCapiWorkflow } from "@/workflows/capi";
+import type pg from "pg";
+import { createPool } from "@/db/scope";
+import { runDueJobs } from "@/platform/jobs";
+import { conversionJobHandler, enqueueConversions } from "@/tracking/conversions";
 
 let harness: TestD1;
+let platform: pg.Pool;
 let app: OpenAPIHono<AppContext>;
 const NOW = () => new Date().toISOString();
 const STORE_ID = "test-store";
@@ -50,6 +54,7 @@ let seq = 0;
 
 beforeAll(async () => {
   harness = await createTestD1();
+  platform = createPool(harness.url, "codflow_platform");
 
   app = new OpenAPIHono<AppContext>({ defaultHook: openApiValidationHook });
   app.use("*", async (c, next) => {
@@ -63,6 +68,7 @@ beforeAll(async () => {
 }, 120_000);
 
 afterAll(async () => {
+  await platform?.end();
   await harness?.dispose();
 });
 
@@ -199,38 +205,16 @@ async function landingPageTracking(slug: string) {
 }
 
 /**
- * The pixel the real CAPI Workflow sends this order's sale to.
- *
- * Runs `run()` against the same database, with the Meta client stubbed, and
- * reads the destination back off the event it produced. Deliberately not a
- * second call to the resolver: that would agree with the endpoint even if the
- * Workflow forgot to pass the landing page along, which is precisely the
- * mistake this property exists to catch.
+ * The pixel the conversion job sends this order's sale to: queued the way the
+ * checkout queues it, then run by the real job handler with the Meta client
+ * stubbed. Not a second call to the resolver — that would agree with the
+ * endpoint even if the job forgot the landing page.
  */
 async function capiDestinationFor(orderId: string): Promise<string | null> {
   capiClient.sendCapiEvent.mockClear();
-  const workflow = new CodCapiWorkflow({} as never, {} as never);
-  const step = {
-    async do(_name: string, configOrCallback: unknown, maybeCallback?: unknown) {
-      const callback =
-        typeof configOrCallback === "function" ? configOrCallback : maybeCallback;
-      return (callback as () => unknown)();
-    },
-  };
-
-  await workflow.run(
-    {
-      payload: {
-        orderId,
-        eventName: "Purchase",
-        stage: "checkout",
-        triggeredAt: Math.floor(Date.now() / 1000),
-        triggerStatus: "order_created",
-      },
-    } as never,
-    step as never,
-  );
-
+  await harness.platform.query("delete from jobs");
+  await enqueueConversions(harness.db, { orderId, stage: "checkout" });
+  await runDueJobs(platform, { conversion: conversionJobHandler(platform) });
   return (capiClient.sendCapiEvent.mock.calls[0]?.[0] as string | undefined) ?? null;
 }
 
@@ -247,7 +231,7 @@ describe("the landing page endpoint", () => {
 
     const { tracking } = await landingPageTracking(slug);
 
-    expect(tracking).toEqual({ pixelId: "1111111111", conversionEvent: "Purchase" });
+    expect(tracking).toMatchObject({ pixelId: "1111111111", conversionEvent: "Purchase" });
   });
 
   it("reports the page's own pixel and conversion event", async () => {
@@ -256,7 +240,7 @@ describe("the landing page endpoint", () => {
 
     const { tracking } = await landingPageTracking(slug);
 
-    expect(tracking).toEqual({ pixelId: "8888888888", conversionEvent: "Lead" });
+    expect(tracking).toMatchObject({ pixelId: "8888888888", conversionEvent: "Lead" });
   });
 
   it("reports the store pixel while the master switch is off", async () => {
@@ -265,7 +249,7 @@ describe("the landing page endpoint", () => {
 
     const { tracking } = await landingPageTracking(slug);
 
-    expect(tracking).toEqual({ pixelId: "1111111111", conversionEvent: "Purchase" });
+    expect(tracking).toMatchObject({ pixelId: "1111111111", conversionEvent: "Purchase" });
   });
 
   it("reports no pixel when the store has tracking switched off", async () => {
@@ -274,7 +258,7 @@ describe("the landing page endpoint", () => {
 
     const { tracking } = await landingPageTracking(slug);
 
-    expect(tracking).toEqual({ pixelId: null, conversionEvent: "Purchase" });
+    expect(tracking).toMatchObject({ pixelId: null, conversionEvent: "Purchase" });
   });
 
   it("never carries either access token", async () => {
@@ -358,15 +342,13 @@ describe("the order tracking endpoint", () => {
 
     const { body, raw } = await orderTracking(orderId);
 
-    expect(Object.keys(body!.data).sort()).toEqual(["event", "pixelId"]);
+    expect(Object.keys(body!.data).sort()).toEqual(["event", "events", "pixelId", "trackers"]);
     expect(raw).not.toContain("Karim");
     expect(raw).not.toContain("EAAG");
   });
 });
 
-// Pending port, ticket 12: the CAPI sender is still a Cloudflare Workflow and
-// moves to the PostgreSQL job queue there; this property is re-proven against it.
-describe.skip("the browser and the Conversions API cannot disagree", () => {
+describe("the browser and the Conversions API cannot disagree", () => {
   // The property the whole feature rests on. For every combination, the pixel
   // the thank-you page fires at must be the pixel the server will mirror to —
   // otherwise Meta records two conversions in two ad accounts.
@@ -418,9 +400,7 @@ describe.skip("the browser and the Conversions API cannot disagree", () => {
       const { body } = await orderTracking(orderId);
       const browserPixel = body?.data.pixelId ?? null;
 
-      // The pixel the REAL Workflow sends to — driven end to end, not the
-      // resolver asked a second time. Comparing the resolver against itself
-      // would pass even if the Workflow forgot to pass the landing page.
+      // The pixel the real conversion job sends to — driven end to end.
       const serverPixel = await capiDestinationFor(orderId);
 
       expect(browserPixel).toBe(serverPixel);

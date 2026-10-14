@@ -8,6 +8,7 @@ import { NotFoundError, SystemError, ValidationError, ExternalApiError } from "@
 import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
 import { getPixelConfig as queryPixelConfig, upsertPixelConfig } from "../../../../cod-shared/queries/pixel-config";
 import { maskApiKey } from "@/lib/mask";
+import { schedulePurge } from "@/platform/storefront-cache";
 import { getOtpConfigRaw, upsertOtpConfig } from "../../../../cod-shared/queries/otp-config";
 import { getTurnstileConfigRaw, upsertTurnstileConfig } from "../../../../cod-shared/queries/turnstile-config";
 import { getEmailConfigRaw, upsertEmailConfig } from "../../../../cod-shared/queries/email-config";
@@ -16,6 +17,17 @@ import { createSendiliClient, SendiliError, SENDILI_ERRORS } from "../../../../c
 // @hono/zod-openapi's `z` is zod plus `.openapi()`, which the shared
 // pixelConfigSchema needs because the route documents itself from it.
 import { z } from "@hono/zod-openapi";
+import { isValidIdentifier, normaliseIdentifier, type IdentifierField } from "../../../../cod-shared/tracking/identifiers";
+
+const identifier = (field: IdentifierField, message: string) =>
+  z
+    .string()
+    .nullable()
+    .optional()
+    .transform((v) => (v == null || v.trim() === "" ? v === undefined ? undefined : null : normaliseIdentifier(field, v)))
+    .refine((v) => v == null || isValidIdentifier(field, v), { message });
+
+const writeOnly = z.string().max(2000).nullable().optional();
 
 export async function getMyStore(c: Context<AppContext>) {
   const db = c.get("db");
@@ -56,7 +68,7 @@ export async function updateMyStore(c: Context<AppContext>) {
  * back off after every save. One schema, so the two cannot drift.
  */
 export const pixelConfigSchema = z.object({
-  pixelId: z.string().min(1),
+  pixelId: identifier("metaPixelId", "A Meta pixel id is 15 or 16 digits"),
   adAccountName: z.string().max(200).nullable().optional(),
   accessToken: z.string().default("").openapi({
     description:
@@ -70,6 +82,18 @@ export const pixelConfigSchema = z.object({
     description:
       "Master switch for per-landing-page pixels. Omitted keeps the stored value — an unrelated edit must not return every landing page to the store pixel.",
   }),
+  tiktokPixelId: identifier("tiktokPixelId", "A TikTok pixel code is 20 letters and digits"),
+  tiktokAccessToken: writeOnly,
+  tiktokTestEventCode: z.string().max(100).nullable().optional(),
+  snapPixelId: identifier("snapPixelId", "A Snap pixel id looks like 1a2b3c4d-…, 36 characters"),
+  snapAccessToken: writeOnly,
+  ga4MeasurementId: identifier("ga4MeasurementId", "A GA4 measurement id looks like G-XXXXXXXXXX"),
+  ga4ApiSecret: writeOnly,
+  googleAdsId: identifier("googleAdsId", "A Google Ads id looks like AW-1234567890"),
+  googleAdsLabel: identifier("googleAdsLabel", "A conversion label is 6 to 40 letters, digits, - or _"),
+  consentRequired: z.boolean().optional(),
+}).openapi({
+  description: "Secrets (access tokens, API secret) are write-only: omitted or empty keeps the stored value, null clears it.",
 });
 
 /** Safe projection — the access token never leaves the API, only a masked hint. */
@@ -85,6 +109,16 @@ function pixelConfigResponse(row: NonNullable<Awaited<ReturnType<typeof queryPix
     testMode: row.testMode,
     enabled: row.enabled,
     perPageTrackingEnabled: row.perPageTrackingEnabled,
+    tiktokPixelId: row.tiktokPixelId,
+    tiktokAccessTokenMasked: row.tiktokAccessToken ? maskApiKey(row.tiktokAccessToken) : null,
+    tiktokTestEventCode: row.tiktokTestEventCode,
+    snapPixelId: row.snapPixelId,
+    snapAccessTokenMasked: row.snapAccessToken ? maskApiKey(row.snapAccessToken) : null,
+    ga4MeasurementId: row.ga4MeasurementId,
+    ga4ApiSecretMasked: row.ga4ApiSecret ? maskApiKey(row.ga4ApiSecret) : null,
+    googleAdsId: row.googleAdsId,
+    googleAdsLabel: row.googleAdsLabel,
+    consentRequired: row.consentRequired,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -108,6 +142,7 @@ export async function savePixelConfig(c: Context<AppContext>) {
   if (!result) {
     throw new SystemError("Failed to save pixel config");
   }
+  schedulePurge(c.env, store.id);
   return c.json({ success: true, data: pixelConfigResponse(result) }, 200);
 }
 

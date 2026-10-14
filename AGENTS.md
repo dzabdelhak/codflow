@@ -3,8 +3,9 @@
 CodFlow is a cash-on-delivery (COD) e-commerce platform for Algeria. Monorepo,
 TypeScript. It is moving from Cloudflare to self-hosted Node.js + PostgreSQL
 (ADR-0003): the API, the storefront and the dashboard run on Node +
-PostgreSQL, images on S3-compatible storage; MCP and background jobs still
-carry Cloudflare code until their tickets in `.scratch/orestor-platform/issues/` port them.
+PostgreSQL, images on S3-compatible storage, background jobs on a PostgreSQL
+job queue; MCP still carries Cloudflare code until its ticket in
+`.scratch/orestor-platform/issues/` ports it.
 
 ## Layout
 
@@ -141,6 +142,20 @@ other is how these drift.
   301-redirects every other hostname to it. The dashboard's Domains screen is
   the only way to change them; `domain` is no longer a store setting. See
   `docs/CUSTOM-DOMAINS.md`.
+- **Background work is a row in `jobs`** (`cod-server/src/platform/jobs.ts`).
+  Enqueue with `enqueueJob(db, …)` inside the request's transaction (the row
+  gets the request's store; a `dedupKey` makes it idempotent); `src/node.ts`
+  runs the worker (`FOR UPDATE SKIP LOCKED`, backoff, `PermanentJobError` for
+  refusals). Handlers run on the platform pool and must filter by the job's
+  `storeId`. Server-side conversions are the first kind
+  (`cod-server/src/tracking/`); see `docs/TRACKING.md`.
+- **Tracking is per channel and resolved server-side.** `store_pixel_config`
+  holds every platform's ids and secrets; `/store/config` exposes only
+  `trackers` (public ids). The theme fires through
+  `src/core/tracking/track.ts`, never at `fbq`/`ttq`/`snaptr`/`gtag`
+  directly (`tracking-contracts.test.ts`); browser and server use the order id
+  as the deduplication id. Provider event names live in
+  `cod-shared/tracking/events.ts`.
 - **A channel serves its public pages only when `published`**
   (`cod-shared/channels/lifecycle.ts`): `suspended` answers the storefront
   with 503 `CHANNEL_UNAVAILABLE` (theme01 renders a neutral page), every

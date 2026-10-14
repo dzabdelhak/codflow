@@ -15,7 +15,7 @@ import {
   showWilayaModes,
 } from "./delivery-fields";
 // fbq only exists when the merchant configured a pixel — one shared guard.
-import { trackAt } from "./pixel";
+import { track } from "@/core/tracking/track";
 import { initCustomFields } from "./custom-fields";
 import { initRequiredSelects } from "./select-required";
 
@@ -591,67 +591,31 @@ export function initProductPage() {
   // Initialize address fields visibility based on default delivery type (home)
   toggleAddressFields();
 
-  // ── META PIXEL EVENTS ─────────────────────────────────────────────────────
-  const pixelId   = el.dataset.pixelId || "";
+  // ── TRACKING EVENTS ───────────────────────────────────────────────────────
+  // Fired at every tracker the head loaded (core/tracking/track.ts); the
+  // order form's fbc/fbp and attribution are filled by core/tracking/attribution.ts.
   const productId = el.dataset.productId || "";
-
-  function getCookie(name: string): string | null {
-    return (
-      document.cookie
-        .split("; ")
-        .find((r) => r.startsWith(name + "="))
-        ?.split("=")[1] ?? null
-    );
-  }
+  const item = () => [{ id: productId, quantity: 1, price: currentPrice }];
 
   // 1. ViewContent — fires once immediately after page init
-  if (pixelId) {
-    // trackAt, not track: this page's events belong to the pixel the page
-    // loaded — which on a landing page with its own pixel is not the store's.
-    trackAt(pixelId, "ViewContent", {
-      content_ids: [productId],
-      content_type: "product",
-      value: currentPrice,
-      currency: "DZD",
-    });
-  }
+  track("ViewContent", { items: item(), value: currentPrice });
 
   // 2. InitiateCheckout — fires once when the shopper STARTS the checkout:
-  //    first focus, keystroke, or selection inside the order form. Seeing the
-  //    form is not starting checkout — Meta's event means the process began.
-  if (pixelId) {
-    const orderSection = document.getElementById("order-section");
-    if (orderSection) {
-      let checkoutStarted = false;
-      const fireInitiateCheckout = () => {
-        if (checkoutStarted) return;
-        checkoutStarted = true;
-        trackAt(pixelId, "InitiateCheckout", {
-          content_ids: [productId],
-          content_type: "product",
-          value: currentPrice,
-          currency: "DZD",
-        });
-        orderSection.removeEventListener("focusin", fireInitiateCheckout);
-        orderSection.removeEventListener("input", fireInitiateCheckout);
-        orderSection.removeEventListener("change", fireInitiateCheckout);
-      };
-      orderSection.addEventListener("focusin", fireInitiateCheckout);
-      orderSection.addEventListener("input", fireInitiateCheckout);
-      orderSection.addEventListener("change", fireInitiateCheckout);
-    }
-  }
-
-  // 3. Populate fbc/fbp hidden inputs right before form submits so the values
-  //    travel with the order payload to cod-server for CAPI attribution.
-  const orderForm = document.querySelector<HTMLFormElement>("form[method=POST]");
-  const fbcInput = document.getElementById("fbc-input") as HTMLInputElement | null;
-  const fbpInput = document.getElementById("fbp-input") as HTMLInputElement | null;
-  if (orderForm && (fbcInput || fbpInput)) {
-    orderForm.addEventListener("submit", () => {
-      if (fbcInput) fbcInput.value = getCookie("_fbc") ?? "";
-      if (fbpInput) fbpInput.value = getCookie("_fbp") ?? "";
-    });
+  //    first focus, keystroke, or selection inside the order form.
+  const orderSection = document.getElementById("order-section");
+  if (orderSection) {
+    let checkoutStarted = false;
+    const fireInitiateCheckout = () => {
+      if (checkoutStarted) return;
+      checkoutStarted = true;
+      track("InitiateCheckout", { items: item(), value: currentPrice });
+      orderSection.removeEventListener("focusin", fireInitiateCheckout);
+      orderSection.removeEventListener("input", fireInitiateCheckout);
+      orderSection.removeEventListener("change", fireInitiateCheckout);
+    };
+    orderSection.addEventListener("focusin", fireInitiateCheckout);
+    orderSection.addEventListener("input", fireInitiateCheckout);
+    orderSection.addEventListener("change", fireInitiateCheckout);
   }
 }
 

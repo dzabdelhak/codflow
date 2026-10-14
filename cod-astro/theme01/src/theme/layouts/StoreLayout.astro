@@ -6,6 +6,8 @@ import Footer from "@/theme/components/layout/Footer.astro";
 import CartDrawer from "@/theme/components/cart/CartDrawer.astro";
 import MobileNav from "@/theme/components/layout/MobileNav.astro";
 import WhatsAppWidget from "@/theme/components/chat/WhatsAppWidget.astro";
+import ConsentBanner from "@/theme/components/layout/ConsentBanner.astro";
+import { hasTrackers, pageTrackers } from "@/core/tracking/config";
 import { showsWidgetOn } from "@/theme/utils/shows-widget-on";
 import type { StoreConfig } from "@/core/api/types";
 import type { StoreFrontContent } from "@/theme/config/content";
@@ -31,6 +33,8 @@ interface Props {
 const { title, description, ogImage, noindex, config: c, content, marketing = false, landing = false, preloadImages } = Astro.props;
 const hideMobileNav = marketing || landing || Astro.props.hideMobileNav;
 const config = c ?? DEFAULT_CONFIG;
+const pageTrackerSet = pageTrackers(config.pixelId, config.trackers);
+const consentAsked = pageTrackerSet.consentRequired && hasTrackers(pageTrackerSet);
 const widgetShown = config.whatsapp
   ? landing
     ? config.whatsapp.surfaces?.landing === true
@@ -114,6 +118,8 @@ const fontHref = config.fontUrl?.replace(/["<>]/g, "")
         </script>
       </>
     )}
+
+    {consentAsked && content && <ConsentBanner content={content} />}
 
     {!hideMobileNav && <MobileNav config={config} content={content} />}
 

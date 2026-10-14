@@ -4,9 +4,9 @@
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Two channels of one account fire to their own pixel ids only
-- [ ] An order produces one conversion per platform even when browser and server both send it
-- [ ] UTMs captured on landing are stored on the order
-- [ ] Server-side events survive an app restart (queued in PostgreSQL); no Workflow code remains
+- [x] Two channels of one account fire to their own pixel ids only
+- [x] An order produces one conversion per platform even when browser and server both send it
+- [x] UTMs captured on landing are stored on the order
+- [x] Server-side events survive an app restart (queued in PostgreSQL); no Workflow code remains

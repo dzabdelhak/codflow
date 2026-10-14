@@ -8,10 +8,9 @@ interface Props {
   cur: string;
   isRTL: boolean;
   content: StoreFrontContent;
-  pixelId: string | null | undefined;
 }
 
-const { product, basePrice, comparePrice, cur, isRTL, content, pixelId } = Astro.props;
+const { product, basePrice, comparePrice, cur, isRTL, content } = Astro.props;
 ---
 
 <div
@@ -40,7 +39,6 @@ const { product, basePrice, comparePrice, cur, isRTL, content, pixelId } = Astro
   data-shipping-to-confirm={content.shippingToConfirm}
   data-stock-not-guaranteed={content.stockNotGuaranteed}
   data-inventory={String(product.inventory)}
-  data-pixel-id={pixelId ?? ""}
   data-phone-invalid={content.formPhoneInvalid}
   data-product-id={product.id}
   data-product-name={product.name}

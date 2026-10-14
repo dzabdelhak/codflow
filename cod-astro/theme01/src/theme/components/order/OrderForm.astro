@@ -90,6 +90,7 @@ const comparePrice = defaultVariant?.compareAtPrice ?? product.compareAtPrice ??
     <!-- Meta Pixel tracking (populated by JS at submit time) -->
     <input type="hidden" name="fbc" id="fbc-input" value="" />
     <input type="hidden" name="fbp" id="fbp-input" value="" />
+    <input type="hidden" name="attribution" value="" />
     <input type="hidden" name="productName"        value={product.name} />
     <input type="hidden" name="pricePerUnit"       value={basePrice} id="price-input" />
     <input type="hidden" name="variantId"          value={defaultVariant?.id ?? ""} id="variant-id-input" />

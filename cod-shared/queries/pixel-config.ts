@@ -21,7 +21,7 @@ export async function getPixelConfig(db: AppDb, storeId?: string) {
 }
 
 export interface UpsertPixelConfigData {
-  pixelId: string;
+  pixelId?: string | null;
   adAccountName?: string | null;
   accessToken?: string;
   testEventCode?: string | null;
@@ -34,6 +34,43 @@ export interface UpsertPixelConfigData {
    * store pixel.
    */
   perPageTrackingEnabled?: boolean;
+  tiktokPixelId?: string | null;
+  tiktokAccessToken?: string | null;
+  tiktokTestEventCode?: string | null;
+  snapPixelId?: string | null;
+  snapAccessToken?: string | null;
+  ga4MeasurementId?: string | null;
+  ga4ApiSecret?: string | null;
+  googleAdsId?: string | null;
+  googleAdsLabel?: string | null;
+  consentRequired?: boolean;
+}
+
+type Existing = Awaited<ReturnType<typeof getPixelConfig>>;
+
+function kept(value: string | null | undefined, previous: string | null | undefined): string | null {
+  if (value === undefined) return previous ?? null;
+  return value?.trim() || null;
+}
+
+function secret(value: string | null | undefined, previous: string | null | undefined): string | null {
+  if (value === null) return null;
+  return value?.trim() || previous || null;
+}
+
+function providerColumns(data: UpsertPixelConfigData, existing: Existing) {
+  return {
+    tiktokPixelId: kept(data.tiktokPixelId, existing?.tiktokPixelId),
+    tiktokAccessToken: secret(data.tiktokAccessToken, existing?.tiktokAccessToken),
+    tiktokTestEventCode: kept(data.tiktokTestEventCode, existing?.tiktokTestEventCode),
+    snapPixelId: kept(data.snapPixelId, existing?.snapPixelId),
+    snapAccessToken: secret(data.snapAccessToken, existing?.snapAccessToken),
+    ga4MeasurementId: kept(data.ga4MeasurementId, existing?.ga4MeasurementId),
+    ga4ApiSecret: secret(data.ga4ApiSecret, existing?.ga4ApiSecret),
+    googleAdsId: kept(data.googleAdsId, existing?.googleAdsId),
+    googleAdsLabel: kept(data.googleAdsLabel, existing?.googleAdsLabel),
+    consentRequired: data.consentRequired ?? existing?.consentRequired ?? false,
+  };
 }
 
 export async function upsertPixelConfig(
@@ -58,7 +95,8 @@ export async function upsertPixelConfig(
     return db
       .update(storePixelConfig)
       .set({
-        pixelId: data.pixelId,
+        pixelId: kept(data.pixelId, existing.pixelId),
+        ...providerColumns(data, existing),
         adAccountName,
         accessToken,
         testEventCode,
@@ -77,7 +115,8 @@ export async function upsertPixelConfig(
   const row = {
     id: crypto.randomUUID(),
     storeId,
-    pixelId: data.pixelId,
+    pixelId: kept(data.pixelId, null),
+    ...providerColumns(data, undefined),
     adAccountName,
     accessToken,
     testEventCode,

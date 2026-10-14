@@ -219,7 +219,7 @@ describe("resolvePublicTracking — what a browser is allowed to know", () => {
   it("reports no pixel when the store has never configured tracking", async () => {
     const storeId = await seedStore();
 
-    expect(await resolvePublicTracking(db, { storeId })).toEqual({
+    expect(await resolvePublicTracking(db, { storeId })).toMatchObject({
       pixelId: null,
       conversionEvent: "Purchase",
     });
@@ -231,7 +231,7 @@ describe("resolvePublicTracking — what a browser is allowed to know", () => {
     const storeId = await seedStore();
     await seedStorePixel(storeId, { enabled: false, conversionEvent: "Lead" });
 
-    expect(await resolvePublicTracking(db, { storeId })).toEqual({
+    expect(await resolvePublicTracking(db, { storeId })).toMatchObject({
       pixelId: null,
       conversionEvent: "Purchase",
     });
@@ -241,7 +241,7 @@ describe("resolvePublicTracking — what a browser is allowed to know", () => {
     const storeId = await seedStore();
     await seedStorePixel(storeId, { pixelId: "3333333333", conversionEvent: "Purchase_Delivered" });
 
-    expect(await resolvePublicTracking(db, { storeId })).toEqual({
+    expect(await resolvePublicTracking(db, { storeId })).toMatchObject({
       pixelId: "3333333333",
       conversionEvent: "Purchase_Delivered",
     });
@@ -255,7 +255,7 @@ describe("resolvePublicTracking — what a browser is allowed to know", () => {
     const storeId = await seedStore();
     await seedStorePixel(storeId, { pixelId: "" });
 
-    expect(await resolvePublicTracking(db, { storeId })).toEqual({
+    expect(await resolvePublicTracking(db, { storeId })).toMatchObject({
       pixelId: null,
       conversionEvent: "Purchase",
     });
@@ -270,7 +270,31 @@ describe("resolvePublicTracking — what a browser is allowed to know", () => {
     const publicTracking = await resolvePublicTracking(db, { storeId });
 
     expect(JSON.stringify(publicTracking)).not.toContain("EAAG-must-never-ship");
-    expect(Object.keys(publicTracking).sort()).toEqual(["conversionEvent", "pixelId"]);
+    expect(Object.keys(publicTracking).sort()).toEqual(["conversionEvent", "pixelId", "trackers"]);
+  });
+
+  it("carries the other trackers' public ids and none of their secrets", async () => {
+    const storeId = await seedStore();
+    await seedStorePixel(storeId, {
+      tiktokPixelId: "TIKTOKPIXEL000000001",
+      tiktokAccessToken: "tt-must-never-ship",
+      snapPixelId: "6b9d1f3a-1111-4c2d-9e8f-1234567890ab",
+      snapAccessToken: "snap-must-never-ship",
+      ga4MeasurementId: "G-ABC123DEF4",
+      ga4ApiSecret: "ga-must-never-ship",
+      consentRequired: true,
+    });
+
+    const publicTracking = await resolvePublicTracking(db, { storeId });
+
+    expect(publicTracking.trackers).toEqual({
+      tiktok: "TIKTOKPIXEL000000001",
+      snap: "6b9d1f3a-1111-4c2d-9e8f-1234567890ab",
+      ga4: "G-ABC123DEF4",
+      googleAds: null,
+      consentRequired: true,
+    });
+    expect(JSON.stringify(publicTracking)).not.toMatch(/must-never-ship/);
   });
 });
 
@@ -434,7 +458,7 @@ describe("the public projection under an override", () => {
       conversionEvent: "Lead",
     });
 
-    expect(await resolvePublicTracking(db, { storeId, landingPageId })).toEqual({
+    expect(await resolvePublicTracking(db, { storeId, landingPageId })).toMatchObject({
       pixelId: "8888888888",
       conversionEvent: "Lead",
     });
@@ -450,7 +474,7 @@ describe("the public projection under an override", () => {
     const publicTracking = await resolvePublicTracking(db, { storeId, landingPageId });
 
     expect(JSON.stringify(publicTracking)).not.toContain("EAAG-page-must-never-ship");
-    expect(Object.keys(publicTracking).sort()).toEqual(["conversionEvent", "pixelId"]);
+    expect(Object.keys(publicTracking).sort()).toEqual(["conversionEvent", "pixelId", "trackers"]);
   });
 })
 ;

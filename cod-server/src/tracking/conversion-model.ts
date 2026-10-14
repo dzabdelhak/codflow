@@ -5,7 +5,7 @@
  * - Storefront checkout (Pixel + CAPI)
  * - Merchant call-center phone confirmation (dashboard status update)
  * - Courier logistics delivery (Yalidine / ZR Express webhooks)
- * - CAPI Workflow execution, validation, and idempotency claims
+ * - the conversion job (queued in PostgreSQL), deduplicated per provider
  *
  * Grounded in .agents/skills/meta-ads/SKILL.md and official Meta documentation:
  * - capi-deduplication.md (eventID === event_id, matching event_name)
@@ -77,19 +77,6 @@ export function resolveConversionForStage(
 }
 
 /**
- * Centralized deterministic Workflow ID constructor.
- * Guarantees that any trigger source (dashboard, webhook, or checkout) targeting the
- * same business conversion event produces the exact same Cloudflare Workflow instance ID.
- */
-export function getCapiWorkflowId(
-  orderId: string,
-  stage: ConversionStage,
-  eventName: MetaEventName
-): string {
-  return `capi-${orderId}-${stage}-${eventName}`;
-}
-
-/**
  * The page Meta is told an event happened on.
  *
  * Meta matches `event_source_url` against the verified domain and shows it in
@@ -97,8 +84,7 @@ export function getCapiWorkflowId(
  * costs nothing — it is the same domain — and says which creative produced the
  * sale, where "/thank-you" says nothing at all.
  *
- * Built in one place because both senders need it: the checkout handler at
- * order time and the Workflow at every later stage. Two copies would drift,
+ * Built in one place because every stage's conversion job needs it. Two copies would drift,
  * and an event's source URL changing between the checkout and the delivery
  * mirror is the kind of inconsistency nobody notices until attribution is
  * already wrong.

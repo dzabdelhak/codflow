@@ -121,13 +121,17 @@ CodFlow v1.1.0 — here's what works today:
 - ✅ Partial returns with automatic inventory restock
 
 ### Growth Engine
+- ✅ Per-channel trackers: Meta, TikTok, Snapchat, GA4 and Google Ads, with identifier format checks, a test event per platform and a diagnostics list
+- ✅ Browser events (page view, product view, add to cart, checkout start, conversion) plus server-side conversions for Meta, TikTok, Snapchat and GA4, deduplicated by the order id
+- ✅ UTMs and ad click ids kept for the session and stored on the order (the campaign also reaches the Aventy payload)
+- ✅ Optional per-channel consent banner: no tracker loads and no server-side conversion is sent before the visitor accepts
 - ✅ Meta Pixel (browser) + Conversions API (server) dual setup with event deduplication
 - ✅ Merchant-chosen conversion event: `Lead` at order placement or `Purchase` at confirmed delivery
 - ✅ Test Mode toggle routes CAPI events to Meta's test stream (`test_event_code`)
 - ✅ Graph API v26.0 with 7-day attribution window compliance
 - ✅ PII hashed per Meta spec (phone, names, city, zip, country, external_id); IP, User-Agent, `fbp`, `fbc` sent unhashed as required
 - ✅ `fbp` and `fbc` attribution preservation
-- ✅ Durable retry with Cloudflare Workflows (network + Meta 5xx, exponential backoff)
+- ✅ Durable retry through a PostgreSQL job queue (network, 429 and 5xx, exponential backoff; survives restarts)
 - ✅ CAPI event audit log (`capi_event_log`) for every send attempt
 
 ### AI & Agentic (MCP)
@@ -295,7 +299,7 @@ wrangler secret put STORE_API_KEY
        │  (Astro 7)    │  API    │ (Hono + Workflows) API   │  (Astro 7)      │
        └───────┬───────┘         └───┬─────┬───────┘        └─────────────────┘
                │                     │     │
-               │               /webhooks   │ CodCapiWorkflow
+               │               /webhooks   │ conversion jobs
                │              carrier calls│
                │                     │     └─────────▶ Meta Conversions API
                │                     │                 (Purchase @ delivered)

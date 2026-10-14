@@ -1,0 +1,65 @@
+---
+import type { StoreFrontContent } from "@/theme/content";
+
+interface Props {
+  content: StoreFrontContent;
+}
+
+const { content } = Astro.props;
+---
+
+<div id="consent-banner" class="consent-banner" role="dialog" aria-live="polite" aria-label={content.consentText} hidden>
+  <p class="text-sm font-semibold" style="color: var(--clr-text)">{content.consentText}</p>
+  <div class="flex gap-2 shrink-0">
+    <button type="button" data-consent="denied" class="consent-refuse">{content.consentRefuse}</button>
+    <button type="button" data-consent="granted" class="btn-primary !w-auto !h-10 !px-4 !text-sm">{content.consentAccept}</button>
+  </div>
+</div>
+
+<style>
+  .consent-banner {
+    position: fixed;
+    inset-inline: 0.75rem;
+    bottom: calc(0.75rem + var(--safe-bottom));
+    z-index: 60;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    border-radius: var(--radius-card);
+    border: 1px solid var(--clr-border);
+    background: var(--clr-surface);
+    box-shadow: var(--shadow-lg);
+  }
+  .consent-refuse {
+    height: 2.5rem;
+    padding-inline: 1rem;
+    border-radius: var(--radius-btn);
+    border: 1px solid var(--clr-border);
+    background: var(--clr-surface-alt);
+    color: var(--clr-text-2);
+    font-weight: 700;
+    font-size: 0.875rem;
+    cursor: pointer;
+  }
+  .consent-banner[hidden] {
+    display: none;
+  }
+</style>
+
+<script>
+  import { consentDecision, setConsent } from "@/core/tracking/track";
+
+  const banner = document.getElementById("consent-banner");
+  if (banner && !consentDecision()) {
+    banner.hidden = false;
+    banner.addEventListener("click", (event) => {
+      const choice = (event.target as HTMLElement).closest<HTMLElement>("[data-consent]")?.dataset.consent;
+      if (!choice) return;
+      setConsent(choice === "granted");
+      banner.hidden = true;
+    });
+  }
+</script>

@@ -545,16 +545,20 @@ describe("editing the basket here", () => {
 });
 
 describe("Meta Pixel", () => {
-  afterEach(() => Reflect.deleteProperty(window, "fbq"));
+  afterEach(() => {
+    Reflect.deleteProperty(window, "fbq");
+    Reflect.deleteProperty(window, "__codTrackers");
+  });
 
   function installPixel() {
     const fbq = vi.fn();
     (window as unknown as { fbq: unknown }).fbq = fbq;
+    (window as unknown as { __codTrackers: unknown }).__codTrackers = { meta: "PIX", tiktok: null, snap: null, ga4: null, googleAds: null, consentRequired: false };
     return fbq;
   }
 
   function initiateEvents(fbq: ReturnType<typeof vi.fn>) {
-    return fbq.mock.calls.filter((call) => call[1] === "InitiateCheckout");
+    return fbq.mock.calls.filter((call) => call[2] === "InitiateCheckout").map((call) => call.slice(1));
   }
 
   it("does not report a checkout merely because the page was opened", async () => {

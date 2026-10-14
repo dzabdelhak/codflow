@@ -55,7 +55,6 @@ export default defineConfig({
       // Stub the Workers runtime module so @cloudflare/workers-oauth-provider
       // can load under Node in unit tests (see src/test-utils/cloudflare-workers.ts).
       'cloudflare:workers': resolve(__dirname, './src/test-utils/cloudflare-workers.ts'),
-      'cloudflare:workflows': resolve(__dirname, './src/test-utils/cloudflare-workflows.ts'),
     }
   },
 

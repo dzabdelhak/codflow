@@ -124,12 +124,12 @@ Pixel script loaded
   └─ InitiateCheckout  (first interaction in the order form)   Order placed ──┐
   └─ Lead + eventID    (thank-you page)  ──┐                                 │
                                           │                                 ▼
-                                    same eventID ──→ CAPI Workflow: server Lead (if you chose Lead)
+                                    same eventID ──→ conversion job: server Lead (if you chose Lead)
                                           │        Meta counts ONE (dedup, 48h window)
                                                                             │
                                         Order delivered ───────────────────┤
                                                                             ▼
-                                                           CAPI Workflow: server Purchase (if you chose Purchase)
+                                                           conversion job: server Purchase (if you chose Purchase)
 ```
 
 - **Deduplication:** when you choose **Lead**, the browser and the server
@@ -139,9 +139,8 @@ Pixel script loaded
   browser event's speed and the server event's reliability.
 - **Purchase is server-only:** it fires when an order is marked **Delivered**
   (or *Out for delivery* for the far southern wilayas, to stay inside Meta's
-  7-day window). If Meta is temporarily down, it retries automatically up to
-  5 times with backoff — a Meta hiccup can never block or delay your delivery
-  flow.
+  7-day window). If Meta is temporarily down, it retries automatically with
+  backoff — a Meta hiccup can never block or delay your delivery flow.
 - **Attribution preserved:** the `_fbc` (ad click) and `_fbp` (browser)
   cookies are captured **at order placement** and stored with the order, so
   the delivery-day Purchase event still attributes back to the ad the
@@ -149,26 +148,28 @@ Pixel script loaded
 
 ### When exactly does CAPI fire? (the trigger chain)
 
-Both server events run as **durable Cloudflare Workflows** — queued, retried
-on failure (5 attempts with backoff), and audit-logged. Nothing here depends
-on a browser still being open.
+Both server events are **conversion jobs** in CodFlow's PostgreSQL queue —
+queued in the same transaction as the order change, retried on failure with
+backoff (they survive a restart), and audit-logged. Nothing here depends on a
+browser still being open. The same jobs carry TikTok, Snapchat and GA4
+conversions when those are configured — see [TRACKING.md](./TRACKING.md).
 
 **Lead** — fires the moment an order is placed:
 
 ```
 Storefront checkout → order accepted (201)
-                      └─ Workflow "capi-{orderId}-Lead" starts
+                      └─ conversion job queued (one per platform, keyed by the order id)
                           ├─ you chose Lead?  → send to Meta (dedup'd with the browser Lead)
                           └─ you chose Purchase? → skip silently, no event
 ```
 
 **Purchase** — fires when an order *reaches delivery*. There are two ways an
-order gets there, and both trigger the same Workflow:
+order gets there, and both queue the same job:
 
 ```
 1. You / your team updates the order in the dashboard
    Dashboard → Orders → mark Delivered ──┐
-                                          ├──→ Workflow "capi-{orderId}-Purchase"
+                                          ├──→ conversion job for the order's Purchase
 2. The carrier's webhook updates it automatically          │
    Yalidine / ZR Express webhook → status "Livré"/"Delivered" ┘
                                           │
@@ -180,7 +181,7 @@ order gets there, and both trigger the same Workflow:
 **ZR Express**, their systems call CodFlow's webhook whenever the shipment
 moves — picked up, out for delivery, delivered, returned. When the webhook
 reports *delivered*, CodFlow marks the order Delivered **and** starts the
-Purchase Workflow in the same instant: no one has to touch the dashboard.
+Purchase job in the same instant: no one has to touch the dashboard.
 
 The other carriers (**NOEST, EcoTrack**) don't send webhooks to CodFlow —
 their status is pulled when you open the order in the dashboard — so for
@@ -264,7 +265,7 @@ selected.
 **Does my carrier need webhooks for tracking to work?**
 No — webhooks only change **how quickly** the Purchase event starts. With
 Yalidine or ZR Express, the carrier reports *delivered* to CodFlow
-automatically and the Purchase Workflow starts by itself. With NOEST or
+automatically and the Purchase job is queued by itself. With NOEST or
 EcoTrack, it starts when your team updates the order in the dashboard. The
 `Lead` conversion event never depends on carriers — it fires at order
 placement either way.

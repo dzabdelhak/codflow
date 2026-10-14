@@ -1,3 +1,4 @@
+import type { PublicTrackersInput } from "@/core/tracking/config";
 import { z } from "astro/zod";
 import { 
   ProductSchema, 
@@ -83,6 +84,8 @@ export interface StoreConfig {
   checkoutForm?: CheckoutFormPolicy;
   pixelId?: string | null;
   conversionEvent?: "Purchase" | "Purchase_Confirmed" | "Purchase_Delivered" | "Lead" | null;
+  /** The channel's other trackers (public ids); Meta is `pixelId`. Absent on a cod-server from before ticket 12. */
+  trackers?: PublicTrackersInput;
   /**
    * Published pages that opt into the footer, titled in the store's own
    * language, ordered for display. The checkout consent line resolves Terms/

@@ -15,7 +15,7 @@ System map and technical design.
 │  │ (Astro 7)   │──▶  │   (Hono 4)   │ ◀── │  (Astro 7)      │  │
 │  └─────────────┘ API └───┬─────┬────┘ JWT └─────────────────┘  │
 │                          │     │                                │
-│                    /webhooks   │ CodCapiWorkflow                │
+│                    /webhooks   │ conversion jobs                │
 │                   carriers     └──────▶ Meta CAPI              │
 │                                                                  │
 │  ┌───────────────────┐  ┌────────┐  ┌──────────────────────┐  │
@@ -78,11 +78,11 @@ import { SCOPES } from "../../cod-shared/rbac/scopes";
    └─▶ POST /webhooks/{carrier}
        └─▶ Verify HMAC
        └─▶ Update order: delivered
-       └─▶ Trigger CodCapiWorkflow
+       └─▶ Queue the conversion jobs (same transaction)
 
-5. Workflow fires Meta CAPI Purchase event
+5. The job worker sends each conversion (Meta, TikTok, Snapchat, GA4)
    └─▶ Hash customer PII
-   └─▶ POST to Meta Conversions API
+   └─▶ POST to the provider, event id = order id
 ```
 
 ---
@@ -104,13 +104,12 @@ cod-server/src/endpoints/
 └── mcp/          # AI agent API
 ```
 
-### Workflows
+### Background jobs
 
-**CodCapiWorkflow** runs in the background when orders are delivered:
-- Checks Meta 7-day attribution window
-- Hashes customer PII
-- Fires Meta Conversions API Purchase event
-- Logs result to D1
+The `jobs` table is the PostgreSQL job queue (`src/platform/jobs.ts`): the
+worker started by `src/node.ts` claims due jobs with `FOR UPDATE SKIP LOCKED`,
+retries failures with backoff and keeps them across restarts. Server-side
+conversions are its first job kind (`src/tracking/`, `docs/TRACKING.md`).
 
 ---
 

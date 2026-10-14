@@ -33,16 +33,12 @@ function layoutConfigOf(source: string): string {
   return match![1];
 }
 
-/** The identifier behind data-pixel-id — what product.ts fires events at. */
-function pixelSourceOf(source: string): string {
-  const match = source.match(/(?:data-pixel-id|pixelId)=\{([A-Za-z0-9_$]+)\.pixelId/);
-  expect(match, "page must set the page-data pixel id from a config object").not.toBeNull();
-  return match![1];
-}
-
 const landingPage = read("pages/lp/[slug].astro");
 const thankYou = read("pages/thank-you.astro");
-const productDetail = read("theme/components/product/ProductDetailContent.astro");
+const themeScripts = ["theme/scripts/product.ts", "theme/scripts/pixel.ts", "theme/scripts/cart-ui.ts", "theme/scripts/checkout.ts"].map(
+  (path) => [path, read(path)] as const,
+);
+const tracker = read("core/tracking/track.ts");
 
 describe("the landing page", () => {
   it("renders the pixel the server resolved for it, not the store's", () => {
@@ -50,14 +46,6 @@ describe("the landing page", () => {
     // already runs. Falling back to `config.pixelId` here would put a page
     // with its own pixel back on the store's.
     expect(landingPage).toMatch(/lp\.tracking/);
-  });
-
-  it("loads and fires at one and the same pixel", () => {
-    // The head initialises whatever config the layout gets; product.ts fires
-    // ViewContent and InitiateCheckout at data-pixel-id. If those two name
-    // different values, the page installs one pixel and reports to another —
-    // and with trackSingle the events would reach nothing at all.
-    expect(layoutConfigOf(landingPage)).toBe(pixelSourceOf(landingPage));
   });
 
   it("does not fall back to the bare store config for either", () => {
@@ -85,33 +73,30 @@ describe("the thank-you page", () => {
     expect(thankYou).not.toMatch(/config\.conversionEvent/);
   });
 
-  it("fires the sale at one named pixel", () => {
-    // trackSingle rather than track: immune to a future change that
-    // initialises a second pixel on the page and silently double-reports.
-    //
-    // Asserted on the CALL, not on the file: a first attempt matched the word
-    // anywhere in the source, so the comment above the call kept it green
-    // after the call itself was changed back to `track`.
-    const call = thankYou.match(/fbq\(\s*'([a-zA-Z]+)'\s*,\s*([^,]+),/);
-    expect(call, "thank-you page must fire an fbq event").not.toBeNull();
-    expect(call![1]).toBe("trackSingle");
-    // trackSingle's second argument is the pixel — the resolved one, not a
-    // literal and not the store config.
-    expect(call![2]).toContain("pixelId");
+  it("fires the sale with the event the server chose for each tracker", () => {
+    expect(thankYou).toMatch(/tracking\?\.events/);
+    expect(thankYou).toMatch(/track\("Purchase"/);
   });
 
   it("still ties the browser event to the order id for deduplication", () => {
-    // capi-deduplication.md: browser eventID must equal the server event_id,
-    // and the names must match, or the conversion counts twice.
-    expect(thankYou).toMatch(/eventID/);
+    // The server-side conversion uses the order id as its event id; the
+    // browser must send the same id, or the conversion counts twice.
+    expect(thankYou).toMatch(/eventId: data\.orderId/);
   });
 });
 
-describe("the product page", () => {
-  it("keeps using the store pixel", () => {
-    // A product page belongs to no landing page. Per-page pixels are a
-    // campaign-level idea, and the catalogue is not a campaign.
-    expect(productDetail).toMatch(/config\.pixelId/);
-    expect(productDetail).not.toMatch(/tracking/);
+describe("theme scripts", () => {
+  it("fire through the core tracker, never at a provider directly", () => {
+    // The core tracker fires at the pixels the head loaded — the ones the
+    // server resolved for this page — so a script cannot pick another one.
+    for (const [path, source] of themeScripts) {
+      expect(source, path).not.toMatch(/\b(fbq|ttq|snaptr|gtag)\s*\(/);
+    }
+  });
+
+  it("reach Meta at one named pixel", () => {
+    // trackSingle rather than track: a second pixel initialised on the page
+    // later could not silently start receiving the same events.
+    expect(tracker).toMatch(/"trackSingle",\s*t\.meta/);
   });
 });

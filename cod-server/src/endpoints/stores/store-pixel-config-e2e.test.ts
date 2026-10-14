@@ -68,7 +68,7 @@ beforeEach(async () => {
 });
 
 const VALID = {
-  pixelId: "1234567890",
+  pixelId: "1234567890123456",
   accessToken: "EAAG-real-token",
   conversionEvent: "Purchase",
 };
@@ -143,7 +143,7 @@ describe("saving the store's tracking settings", () => {
     });
 
     expect(await storedRow()).toMatchObject({
-      pixelId: "1234567890",
+      pixelId: "1234567890123456",
       accessToken: "EAAG-real-token",
       adAccountName: "Zinc Ads",
       testMode: true,

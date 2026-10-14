@@ -44,7 +44,8 @@ import type { AppDb } from "../db/client";
 import { deriveDescriptionPlain } from "./products";
 import { channelDefaultProfile, lockDeliveryGrid, resolveDeliveryFee } from "./shipping-resolution";
 import { normalizeOrderLines } from "./cart";
-import { resolvePublicTracking } from "./tracking-config";
+import { publicTrackersFrom, resolvePublicTracking } from "./tracking-config";
+import { attributionColumns, campaignOf, type OrderAttribution } from "../tracking/attribution";
 import { chunkIds } from "./d1-limits";
 import { getFooterPages, getPublicLegalContact } from "./store-pages";
 import { storefrontDesignSource } from "./channel-design";
@@ -115,6 +116,7 @@ export interface StoreOrderData {
   customFieldAnswers?: CustomFieldAnswer[];
   fbc?: string;
   fbp?: string;
+  attribution?: OrderAttribution;
   ipAddress?: string;
   userAgent?: string;
 }
@@ -167,6 +169,7 @@ export async function getStoreConfig(db: AppDb, storeId: string, opts: { preview
     whatsapp: resolveStorefrontWidget(whatsappWidgetJson),
     pixelId: preview ? null : tracking.pixelId,
     conversionEvent: tracking.conversionEvent,
+    trackers: preview ? publicTrackersFrom(null) : tracking.trackers,
     pages,
     legalContact,
     otpEnabled: otpRow?.enabled === true,
@@ -913,6 +916,7 @@ export async function createStoreOrder(
       address: data.address ?? null,
     },
     journey: data.items?.length ? "cart" : "direct",
+    campaign: campaignOf(data.attribution),
     stockNotGuaranteed: !stockConfirmed,
     submittedAt: now,
     userAgent: data.userAgent ?? null,
@@ -942,6 +946,7 @@ export async function createStoreOrder(
       ipAddress: data.ipAddress ?? null,
       userAgent: data.userAgent ?? null,
       landingPageId: data.landingPageId ?? null,
+      ...attributionColumns(data.attribution),
       createdAt: now,
       updatedAt: now,
       // Ride the existing insert rather than adding statements: the commit is

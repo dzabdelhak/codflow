@@ -71,9 +71,31 @@ export interface EffectiveTrackingConfig {
 export interface PublicTracking {
   pixelId: string | null;
   conversionEvent: ConversionEvent;
+  trackers: PublicTrackers;
 }
 
-const NO_TRACKING: PublicTracking = { pixelId: null, conversionEvent: "Purchase" };
+export interface PublicTrackers {
+  tiktok: string | null;
+  snap: string | null;
+  ga4: string | null;
+  googleAds: { id: string; label: string | null } | null;
+  consentRequired: boolean;
+}
+
+export interface ChannelTracking {
+  enabled: boolean;
+  consentRequired: boolean;
+  conversionEvent: ConversionEvent;
+  testMode: boolean;
+  meta: EffectiveTrackingConfig | null;
+  tiktok: { pixelId: string; accessToken: string | null; testEventCode: string | null } | null;
+  snap: { pixelId: string; accessToken: string | null } | null;
+  ga4: { measurementId: string; apiSecret: string | null } | null;
+  googleAds: { id: string; label: string | null } | null;
+}
+
+const NO_TRACKERS: PublicTrackers = { tiktok: null, snap: null, ga4: null, googleAds: null, consentRequired: false };
+const NO_TRACKING: PublicTracking = { pixelId: null, conversionEvent: "Purchase", trackers: NO_TRACKERS };
 
 /** The two config tables are deliberate mirrors, so one mapper serves both. */
 type ConfigRow = Pick<
@@ -81,14 +103,28 @@ type ConfigRow = Pick<
   "pixelId" | "accessToken" | "conversionEvent" | "testMode" | "testEventCode" | "enabled"
 >;
 
+type ProviderColumns = Pick<
+  typeof storePixelConfig.$inferSelect,
+  | "tiktokPixelId"
+  | "tiktokAccessToken"
+  | "tiktokTestEventCode"
+  | "snapPixelId"
+  | "snapAccessToken"
+  | "ga4MeasurementId"
+  | "ga4ApiSecret"
+  | "googleAdsId"
+  | "googleAdsLabel"
+  | "consentRequired"
+>;
+
 /** A store's row, as read from D1 or assembled by a caller that batched it. */
-export type StoreConfigRow = ConfigRow & StoreTrackingSwitches;
+export type StoreConfigRow = ConfigRow & StoreTrackingSwitches & Partial<ProviderColumns>;
 /** A landing page's row, same shape minus the store-level switches. */
 export type PageConfigRow = ConfigRow;
 
 function toEffective(row: ConfigRow): EffectiveTrackingConfig {
   return {
-    pixelId: row.pixelId,
+    pixelId: row.pixelId ?? "",
     accessToken: row.accessToken,
     conversionEvent: row.conversionEvent,
     testMode: row.testMode,
@@ -106,7 +142,7 @@ export interface StoreTrackingSwitches {
 /** What a page's override says, from either the row or an API payload. */
 export interface PageTrackingSwitches {
   enabled: boolean;
-  pixelId: string;
+  pixelId: string | null;
 }
 
 /**
@@ -157,16 +193,57 @@ export function publicTrackingFrom(
   storeRow: StoreConfigRow | null | undefined,
   pageRow: PageConfigRow | null | undefined,
 ): PublicTracking {
+  const trackers = publicTrackersFrom(storeRow);
   const config = effectiveTrackingFrom(storeRow, pageRow);
-  if (!config?.enabled || !config.pixelId) return NO_TRACKING;
+  if (!config?.enabled || !config.pixelId) return { ...NO_TRACKING, trackers };
 
-  return { pixelId: config.pixelId, conversionEvent: config.conversionEvent };
+  return { pixelId: config.pixelId, conversionEvent: config.conversionEvent, trackers };
 }
 
-export async function resolveTrackingConfig(
-  db: AppDb,
-  ctx: TrackingContext,
-): Promise<EffectiveTrackingConfig | null> {
+export function publicTrackersFrom(storeRow: StoreConfigRow | null | undefined): PublicTrackers {
+  if (!storeRow?.enabled) return NO_TRACKERS;
+  return {
+    tiktok: storeRow.tiktokPixelId || null,
+    snap: storeRow.snapPixelId || null,
+    ga4: storeRow.ga4MeasurementId || null,
+    googleAds: storeRow.googleAdsId ? { id: storeRow.googleAdsId, label: storeRow.googleAdsLabel || null } : null,
+    consentRequired: storeRow.consentRequired ?? false,
+  };
+}
+
+export function publicTrackersOf(tracking: ChannelTracking | null | undefined): PublicTrackers {
+  if (!tracking?.enabled) return NO_TRACKERS;
+  return {
+    tiktok: tracking.tiktok?.pixelId ?? null,
+    snap: tracking.snap?.pixelId ?? null,
+    ga4: tracking.ga4?.measurementId ?? null,
+    googleAds: tracking.googleAds,
+    consentRequired: tracking.consentRequired,
+  };
+}
+
+export function channelTrackingFrom(
+  storeRow: StoreConfigRow | null | undefined,
+  pageRow: PageConfigRow | null | undefined,
+): ChannelTracking | null {
+  if (!storeRow) return null;
+  const meta = effectiveTrackingFrom(storeRow, pageRow);
+  return {
+    enabled: storeRow.enabled,
+    consentRequired: storeRow.consentRequired ?? false,
+    conversionEvent: storeRow.conversionEvent,
+    testMode: storeRow.testMode,
+    meta: meta?.pixelId ? meta : null,
+    tiktok: storeRow.tiktokPixelId
+      ? { pixelId: storeRow.tiktokPixelId, accessToken: storeRow.tiktokAccessToken || null, testEventCode: storeRow.tiktokTestEventCode || null }
+      : null,
+    snap: storeRow.snapPixelId ? { pixelId: storeRow.snapPixelId, accessToken: storeRow.snapAccessToken || null } : null,
+    ga4: storeRow.ga4MeasurementId ? { measurementId: storeRow.ga4MeasurementId, apiSecret: storeRow.ga4ApiSecret || null } : null,
+    googleAds: storeRow.googleAdsId ? { id: storeRow.googleAdsId, label: storeRow.googleAdsLabel || null } : null,
+  };
+}
+
+async function trackingRows(db: AppDb, ctx: TrackingContext) {
   const storeRow = await db
     .select()
     .from(storePixelConfig)
@@ -186,15 +263,26 @@ export async function resolveTrackingConfig(
           .then(first)
       : undefined;
 
-  return effectiveTrackingFrom(storeRow, pageRow);
+  return { storeRow, pageRow };
+}
+
+export async function resolveTrackingConfig(
+  db: AppDb,
+  ctx: TrackingContext,
+): Promise<EffectiveTrackingConfig | null> {
+  const rows = await trackingRows(db, ctx);
+  return rows ? effectiveTrackingFrom(rows.storeRow, rows.pageRow) : null;
+}
+
+export async function resolveChannelTracking(db: AppDb, ctx: TrackingContext): Promise<ChannelTracking | null> {
+  const rows = await trackingRows(db, ctx);
+  return rows ? channelTrackingFrom(rows.storeRow, rows.pageRow) : null;
 }
 
 export async function resolvePublicTracking(
   db: AppDb,
   ctx: TrackingContext,
 ): Promise<PublicTracking> {
-  const config = await resolveTrackingConfig(db, ctx);
-  if (!config?.enabled || !config.pixelId) return NO_TRACKING;
-
-  return { pixelId: config.pixelId, conversionEvent: config.conversionEvent };
+  const rows = await trackingRows(db, ctx);
+  return rows ? publicTrackingFrom(rows.storeRow, rows.pageRow) : NO_TRACKING;
 }

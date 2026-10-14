@@ -66,7 +66,7 @@ export interface ToolRegistryEntry {
   /**
    * Factory that returns one or more tool definitions. Called only when
    * scopes pass. Receives the Worker env so tool domains can reach bindings
-   * (R2, workflows) and deployment vars (STOREFRONT_URL) without
+   * (R2) and deployment vars (STOREFRONT_URL) without
    * restructuring.
    */
   build: ToolFactory;

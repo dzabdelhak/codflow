@@ -249,6 +249,9 @@ export interface StoreFrontContent {
   qtyMaxStock: string;
   stockNotGuaranteed: string;
   deliveryFeeToConfirmNote: string;
+  consentText: string;
+  consentAccept: string;
+  consentRefuse: string;
   channelUnavailableTitle: string;
   channelUnavailableBody: string;
   freeShippingBadge: string;

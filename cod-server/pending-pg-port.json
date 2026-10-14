@@ -3,11 +3,8 @@
   "src/endpoints/mcp/handlers.test.ts": "16 \u2014 MCP server",
   "src/endpoints/orders/dispatch-limits-e2e.test.ts": "carriers \u2014 no ticket yet (delivery is Aventy's on the platform, ADR-0002)",
   "src/endpoints/orders/orders.webhook-e2e.test.ts": "carriers \u2014 no ticket yet (delivery is Aventy's on the platform, ADR-0002)",
-  "src/endpoints/store/capi-checkout-decision.test.ts": "12 \u2014 pixels and server-side events",
-  "src/endpoints/store/capi-lead-trigger.test.ts": "12 \u2014 pixels and server-side events",
   "src/endpoints/webhooks/yalidine-webhook.e2e.test.ts": "carriers \u2014 no ticket yet (delivery is Aventy's on the platform, ADR-0002)",
   "src/mcp/authorize.test.ts": "16 \u2014 MCP server",
   "src/mcp/registry.test.ts": "16 \u2014 MCP server",
-  "src/mcp/server-factory.test.ts": "16 \u2014 MCP server",
-  "src/workflows/capi-destination.test.ts": "12 \u2014 pixels and server-side events"
+  "src/mcp/server-factory.test.ts": "16 \u2014 MCP server"
 }

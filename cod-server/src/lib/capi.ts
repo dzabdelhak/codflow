@@ -2,12 +2,11 @@
  * Meta Conversions API (CAPI) client.
  *
  * Shared by:
- *  - endpoints/store/handlers.ts — inline Lead mirror at order placement
- *  - workflows/capi.ts           — durable Purchase event at delivery
+ *  - tracking/senders.ts — the conversion job's Meta sender
  *
  * All PII is SHA-256 hashed before sending (Meta requirement).
  * Phones are normalised to the Algerian country code 213.
- * Throws on network errors and Meta 5xx (retryable by the Workflow);
+ * Throws on network errors and Meta 5xx (retried by the job queue);
  * returns { success: false } on 4xx (Meta rejects the whole batch).
  */
 
@@ -15,7 +14,7 @@ const META_API_VERSION = "v26.0";
 const META_API_BASE = "https://graph.facebook.com";
 const DZ_COUNTRY_CODE = "213";
 
-async function sha256hex(value: string): Promise<string> {
+export async function sha256hex(value: string): Promise<string> {
   const data = new TextEncoder().encode(value.toLowerCase().replace(/\s+/g, ""));
   const buf = await crypto.subtle.digest("SHA-256", data);
   return Array.from(new Uint8Array(buf))
@@ -23,7 +22,7 @@ async function sha256hex(value: string): Promise<string> {
     .join("");
 }
 
-function normalisePhone(raw: string): string {
+export function normalisePhone(raw: string): string {
   let p = raw.replace(/\D/g, "");
   p = p.replace(/^0+/, "");
   if (!p.startsWith(DZ_COUNTRY_CODE)) p = DZ_COUNTRY_CODE + p;
@@ -31,7 +30,7 @@ function normalisePhone(raw: string): string {
 }
 
 /** a-z only, diacritics folded — for ct/zp-style values per Meta docs. */
-function normaliseAsciiText(raw: string): string {
+export function normaliseAsciiText(raw: string): string {
   return raw
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -40,7 +39,7 @@ function normaliseAsciiText(raw: string): string {
 }
 
 /** Unicode letters only, diacritics folded, lowercased — for fn/ln. */
-function normaliseName(raw: string): string {
+export function normaliseName(raw: string): string {
   return raw
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")

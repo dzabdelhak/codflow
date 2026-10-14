@@ -1,3 +1,4 @@
+import { ATTRIBUTION_TEXT_FIELDS } from "../../../../cod-shared/tracking/attribution";
 import { z } from "zod";
 import { toLocalAlgerianMobile } from "../../../../cod-shared/lib/phone";
 
@@ -97,6 +98,27 @@ export const storeOrderSchema = z.object({
   // Meta Pixel tracking cookies captured by the storefront at placement time.
   fbc: z.string().optional(),
   fbp: z.string().optional(),
+  attribution: z.preprocess(
+    (v) => {
+      if (typeof v !== "string") return v ?? undefined;
+      try {
+        return JSON.parse(v);
+      } catch {
+        return undefined;
+      }
+    },
+    z
+      .object({
+        ...Object.fromEntries(
+          ATTRIBUTION_TEXT_FIELDS.map((field) => [
+            field,
+            z.preprocess((v) => (typeof v === "string" && v.trim() ? v.trim().slice(0, 300) : undefined), z.string().optional()),
+          ]),
+        ),
+        consent: z.boolean().optional(),
+      })
+      .optional(),
+  ),
   // WhatsApp OTP verification proof (HMAC token from /store/otp/verify, or a
   // bypass token when dzverify could not serve the send). Required only when
   // the store's OTP verification is enabled.

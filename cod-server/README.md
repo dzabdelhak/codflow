@@ -137,14 +137,14 @@ wrangler secret put R2_SECRET_ACCESS_KEY
 ```
 cod-server/
 ├── src/
-│   ├── index.ts               # Hono app entry — wires routes, MCP server, CAPI workflow, cron
+│   ├── index.ts               # Hono app entry — wires routes, MCP server, cron
 │   ├── types/                 # Env bindings (mirrors wrangler.toml), app context types
 │   ├── db/                    # D1 + Drizzle helpers (schema re-export, migrate, migrations/)
 │   ├── middleware/            # better-auth session/bearer auth, store API key, CORS, error handling
 │   ├── endpoints/             # One folder per domain (see route list below)
 │   ├── lib/                   # Meta CAPI client, activity log, shared errors
 │   ├── mcp/                   # MCP remote server (OAuth provider wiring + scope-gated tool registry)
-│   ├── workflows/             # Durable Cloudflare Workflows (CodCapiWorkflow)
+│   ├── tracking/              # Server-side conversions: enqueue, job handler, provider senders
 │   ├── cron/                  # Scheduled handlers (abandoned-order sweep)
 │   ├── openapi/               # OpenAPI assembly: security schemes, Swagger UI, shared Zod schemas — the served spec generates from route definitions
 │   ├── rbac/                  # Scope-based authorization middleware
@@ -190,12 +190,13 @@ dashboard's sign-in sessions mint the access tokens via the login-ticket relay
 (`/authorize`), and dangerous tools require HMAC-sealed stateless
 confirmation. The tool factories are gated by RBAC scopes.
 
-### Meta CAPI workflow
-`src/workflows/` (CodCapiWorkflow) fires Meta Conversions API `Purchase` events
-when an order reaches `delivered` — or `out_for_delivery` for long-haul southern
-wilayas (5–10 day delivery). Decoupled from the order status handler — an
-analytics failure can never affect order state. Disabled for stores without an
-enabled `storePixelConfig` (or a missing `accessToken`).
+### Server-side conversions
+`src/tracking/` queues one conversion per configured provider (Meta, TikTok,
+Snapchat, GA4) in the `jobs` table, in the transaction that places or advances
+the order, at the stage the merchant optimises for. The worker started by
+`src/node.ts` (`src/platform/jobs.ts`, `FOR UPDATE SKIP LOCKED`) sends them
+with the order id as the deduplication id and retries outages. See
+`docs/TRACKING.md`.
 
 ### Abandoned orders
 An hourly cron sweeps pending orders older than 30 minutes to `abandoned`.

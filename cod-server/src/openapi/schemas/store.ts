@@ -78,7 +78,7 @@ export const StorePixelConfigSchema = z
   .object({
     id: z.string(),
     storeId: z.string(),
-    pixelId: z.string().openapi({ example: "1234567890123456" }),
+    pixelId: z.string().nullable().openapi({ example: "1234567890123456" }),
     adAccountName: z.string().nullable().openapi({
       description: "Merchant's own label for the Meta ad account — reference only, never sent to Meta.",
     }),
@@ -101,6 +101,18 @@ export const StorePixelConfigSchema = z
       description:
         "Master switch for per-landing-page pixels. While false (the default), every landing page reports to this pixel no matter what is configured against it — which is also this feature's rollback.",
       example: false,
+    }),
+    tiktokPixelId: z.string().nullable(),
+    tiktokAccessTokenMasked: z.string().nullable(),
+    tiktokTestEventCode: z.string().nullable(),
+    snapPixelId: z.string().nullable(),
+    snapAccessTokenMasked: z.string().nullable(),
+    ga4MeasurementId: z.string().nullable(),
+    ga4ApiSecretMasked: z.string().nullable(),
+    googleAdsId: z.string().nullable(),
+    googleAdsLabel: z.string().nullable(),
+    consentRequired: z.boolean().openapi({
+      description: "When true, the storefront asks for consent and loads no tracker, and no server-side event is sent, until the shopper accepts.",
     }),
     createdAt: z.string().datetime(),
     updatedAt: z.string().datetime(),
@@ -295,6 +307,18 @@ export const StoreProductDetailSchema = z
   })
   .openapi("StoreProductDetail");
 
+export const StorePublicTrackersSchema = z
+  .object({
+    tiktok: z.string().nullable(),
+    snap: z.string().nullable(),
+    ga4: z.string().nullable(),
+    googleAds: z.object({ id: z.string(), label: z.string().nullable() }).nullable(),
+    consentRequired: z.boolean(),
+  })
+  .openapi("StorePublicTrackers", {
+    description: "The channel's other trackers, public ids only; Meta is `pixelId`. Every one is null while tracking is switched off.",
+  });
+
 export const StorePublicTrackingSchema = z
   .object({
     pixelId: z.string().nullable().openapi({
@@ -309,6 +333,7 @@ export const StorePublicTrackingSchema = z
           "Which moment counts as a conversion here. Inert while pixelId is null.",
         example: "Purchase",
       }),
+    trackers: StorePublicTrackersSchema,
   })
   .openapi("StorePublicTracking");
 
@@ -357,6 +382,10 @@ export const StoreOrderTrackingSchema = z
           "The browser event the thank-you page should fire, or null when none should — tracking is off, or the merchant's conversion fires further down the funnel from the server only.",
         example: "Purchase",
       }),
+    trackers: StorePublicTrackersSchema,
+    events: z
+      .record(z.enum(["meta", "tiktok", "snap", "ga4", "googleAds"]), z.enum(["Purchase", "Lead"]).nullable())
+      .openapi({ description: "The browser event per tracker, null where none fires. Every one uses the order id as its deduplication id." }),
   })
   .openapi("StoreOrderTracking");
 
@@ -483,6 +512,7 @@ export const StoreConfigSchema = z
       example: "0x4AAAAAAAxxxxxxxxxxxx",
     }),
     status: z.enum(CHANNEL_STATUSES),
+    trackers: StorePublicTrackersSchema,
     primaryHostname: z.string().nullable().openapi({
       description: "The channel's primary domain; the storefront redirects its other domains to it",
       example: "boutique-nour.dz",

@@ -65,7 +65,7 @@ export type UpdateStoreData = Partial<
 export interface PixelConfig {
   id: string;
   storeId: string;
-  pixelId: string;
+  pixelId: string | null;
   adAccountName: string | null;
   accessTokenMasked: string;
   testEventCode: string | null;
@@ -74,12 +74,47 @@ export interface PixelConfig {
   enabled: boolean;
   /** Master switch for per-landing-page pixels — off means every page uses this one. */
   perPageTrackingEnabled: boolean;
+  tiktokPixelId: string | null;
+  tiktokAccessTokenMasked: string | null;
+  tiktokTestEventCode: string | null;
+  snapPixelId: string | null;
+  snapAccessTokenMasked: string | null;
+  ga4MeasurementId: string | null;
+  ga4ApiSecretMasked: string | null;
+  googleAdsId: string | null;
+  googleAdsLabel: string | null;
+  consentRequired: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
+export type ServerTrackingProvider = "meta" | "tiktok" | "snap" | "ga4";
+
+export interface TrackingTestResult {
+  provider: ServerTrackingProvider;
+  ok: boolean;
+  message: string | null;
+  reference: string | null;
+}
+
+export interface ConversionEventRow {
+  id: string;
+  provider: ServerTrackingProvider;
+  eventName: "Purchase" | "Lead";
+  stage: "checkout" | "confirmed" | "delivered";
+  status: "pending" | "running" | "done" | "failed";
+  attempts: number;
+  lastError: string | null;
+  result: { skipped?: string } | null;
+  createdAt: string;
+  finishedAt: string | null;
+  nextAttemptAt: string;
+  orderId: string | null;
+  orderNumber: string | null;
+}
+
 export interface SavePixelConfigData {
-  pixelId: string;
+  pixelId: string | null;
   adAccountName?: string | null;
   accessToken?: string;
   testEventCode?: string | null;
@@ -88,6 +123,16 @@ export interface SavePixelConfigData {
   enabled?: boolean;
   /** Omitted keeps the stored value — an unrelated edit must not reset it. */
   perPageTrackingEnabled?: boolean;
+  tiktokPixelId?: string | null;
+  tiktokAccessToken?: string;
+  tiktokTestEventCode?: string | null;
+  snapPixelId?: string | null;
+  snapAccessToken?: string;
+  ga4MeasurementId?: string | null;
+  ga4ApiSecret?: string;
+  googleAdsId?: string | null;
+  googleAdsLabel?: string | null;
+  consentRequired?: boolean;
 }
 
 /** WhatsApp OTP verification configuration (dzverify). Absent until first saved — null = disabled. */

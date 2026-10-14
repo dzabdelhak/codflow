@@ -11,7 +11,7 @@ import { assertTurnstile } from "./turnstile-gate";
 // function of (policy, submitted form), with nothing to stub.
 import { applyCheckoutPolicy } from "../../../../cod-shared/checkout-form/apply";
 import { checkoutPolicyMessage } from "../../../../cod-shared/checkout-form/messages";
-import { resolveTrackingConfig } from "../../../../cod-shared/queries/tracking-config";
+import { publicTrackersOf, resolveChannelTracking } from "../../../../cod-shared/queries/tracking-config";
 import {
   normalizeOrderLines,
   CartValidationError,
@@ -21,11 +21,8 @@ import {
 // ./queries so there is nothing for a test to stub and no way for the priced
 // subtotal to diverge from what the engine charges.
 import { priceCartLines } from "../../../../cod-shared/queries/catalog-snapshot";
-import {
-  resolveConversionForStage,
-  getCapiWorkflowId,
-  conversionSourceUrl,
-} from "@/workflows/capi-helpers";
+import { resolveConversionForStage } from "@/tracking/capi-helpers";
+import { enqueueConversions } from "@/tracking/conversions";
 import { stores, orders } from "../../../../cod-shared/db/schema";
 import { eq } from "drizzle-orm";
 import type { PageLocale } from "../../../../cod-shared/legal/kinds";
@@ -156,23 +153,33 @@ export async function getStoreOrderTracking(c: Context<AppContext>) {
     .then(first);
   if (!order) throw new NotFoundError("Order", orderId);
 
-  const config = await resolveTrackingConfig(db, {
+  const tracking = await resolveChannelTracking(db, {
     storeId: c.get("storeId")!,
     landingPageId: order.landingPageId,
   });
-
-  if (!config?.enabled || !config.pixelId) {
-    return c.json({ success: true, data: { pixelId: null, event: null } }, 200);
-  }
-
-  const decision = resolveConversionForStage(config.conversionEvent, "checkout");
+  const live = tracking?.enabled ? tracking : null;
+  const browserEvent = (mode: Parameters<typeof resolveConversionForStage>[0] | undefined, present: boolean) => {
+    if (!present) return null;
+    const decision = resolveConversionForStage(mode, "checkout");
+    return decision.shouldFire ? decision.eventName ?? null : null;
+  };
+  const metaEvent = browserEvent(live?.meta?.conversionEvent, Boolean(live?.meta));
+  const storeMode = live?.conversionEvent;
 
   return c.json(
     {
       success: true,
       data: {
-        pixelId: config.pixelId,
-        event: decision.shouldFire ? decision.eventName ?? null : null,
+        pixelId: live?.meta?.pixelId ?? null,
+        event: metaEvent,
+        trackers: publicTrackersOf(live),
+        events: {
+          meta: metaEvent,
+          tiktok: browserEvent(storeMode, Boolean(live?.tiktok)),
+          snap: browserEvent(storeMode, Boolean(live?.snap)),
+          ga4: browserEvent(storeMode, Boolean(live?.ga4)),
+          googleAds: browserEvent(storeMode, Boolean(live?.googleAds?.label)),
+        },
       },
     },
     200,
@@ -376,74 +383,7 @@ export async function createStoreOrder(c: Context<AppContext>) {
     snapshot
   );
 
-  // Meta CAPI conversion event at checkout — evaluated against merchant's tracking mode.
-  // When mode is instant "Purchase", sends Purchase (matching the thank-you Pixel).
-  // When mode is "Lead", sends Lead (matching the thank-you Pixel).
-  // When mode is "Purchase_Confirmed" or "Purchase_Delivered", skips at checkout
-  // and fires down-funnel via server CAPI.
-  if (c.env.CAPI_WORKFLOW) {
-    try {
-      const storeId = c.get("storeId");
-      const tracking =
-        storeId && typeof db.select === "function"
-          ? await resolveTrackingConfig(db, { storeId, landingPageId })
-          : null;
-      const decision = resolveConversionForStage(tracking?.conversionEvent, "checkout");
-
-      if (decision.shouldFire && decision.eventName) {
-        let storeRow: { domain: string | null } | undefined = undefined;
-        if (storeId && typeof db.select === "function") {
-          storeRow = await db
-            .select({ domain: stores.domain })
-            .from(stores)
-            .where(eq(stores.id, storeId))
-            .then(first);
-        }
-
-        // The landing page the ad pointed at, when this order came from one —
-        // same rule the Workflow uses for every later stage, so an order's
-        // source URL does not change between its checkout and delivery events.
-        //
-        // Keyed on landingPageId, not the raw slug: attribution is
-        // best-effort, and a slug that did not resolve is not this order's
-        // page. The Workflow reads the attributed page from the order, so
-        // naming an unresolved slug here would give one order two source URLs.
-        let eventSourceUrl = conversionSourceUrl(
-          storeRow?.domain,
-          landingPageId ? data.landingPageSlug : null,
-        );
-
-        if (!eventSourceUrl) {
-          const referer = c.req.header("Referer");
-          if (referer && (referer.startsWith("http://") || referer.startsWith("https://"))) {
-            eventSourceUrl = referer;
-          }
-        }
-
-        const workflowId = getCapiWorkflowId(order.id, "checkout", decision.eventName);
-
-        c.executionCtx.waitUntil(
-          c.env.CAPI_WORKFLOW.create({
-            id: workflowId,
-            params: {
-              orderId: order.id,
-              eventName: decision.eventName,
-              stage: "checkout",
-              triggeredAt: Math.floor(Date.now() / 1000),
-              triggerStatus: "order_created",
-              eventSourceUrl,
-            },
-          }).catch((err: unknown) =>
-            console.error(`[capi-workflow] checkout ${decision.eventName} trigger failed:`, (err as Error)?.message)
-          )
-        );
-      }
-    } catch (err) {
-      console.error("[capi-workflow] checkout evaluation failed:", (err as Error)?.message);
-    }
-  } else {
-    console.error("[capi-workflow] CAPI_WORKFLOW binding is undefined — worker needs re-provision");
-  }
+  await enqueueConversions(db, { orderId: order.id, stage: "checkout", refererUrl: c.req.header("Referer") });
 
   return c.json(
     {

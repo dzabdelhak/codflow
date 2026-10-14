@@ -611,6 +611,16 @@ export const orders = pgTable("orders", {
   deliveryFeeToConfirm: boolean("delivery_fee_to_confirm").notNull().default(false),
   stockConfirmed: boolean("stock_confirmed").notNull().default(true),
   deliveryGridVersion: integer("delivery_grid_version"),
+  utmSource: text("utm_source"),
+  utmMedium: text("utm_medium"),
+  utmCampaign: text("utm_campaign"),
+  utmContent: text("utm_content"),
+  utmTerm: text("utm_term"),
+  gclid: text("gclid"),
+  ttclid: text("ttclid"),
+  fbclid: text("fbclid"),
+  adCookies: jsonb("ad_cookies").$type<{ ttp?: string; scid?: string; gaClientId?: string }>(),
+  trackingConsent: boolean("tracking_consent"),
 }, (t) => ({
   orderNumberPerStore: uniqueIndex("orders_store_order_number_unique").on(t.storeId, t.orderNumber),
 }));
@@ -629,6 +639,28 @@ export const outboundOrders = pgTable("outbound_orders", {
   sentAt: timestamp("sent_at", { mode: "date", withTimezone: true }),
 }, (t) => ({
   due: index("outbound_orders_due_idx").on(t.nextAttemptAt, t.id).where(sql`status = 'pending'`),
+}));
+
+export const jobs = pgTable("jobs", {
+  id: text("id").primaryKey(),
+  kind: text("kind").notNull(),
+  storeId: text("store_id")
+    .references(() => stores.id, { onDelete: "cascade" })
+    .default(sql`nullif(current_setting('app.store_id', true), '')`),
+  payload: jsonb("payload").notNull(),
+  dedupKey: text("dedup_key").unique(),
+  status: text("status", { enum: ["pending", "running", "done", "failed"] }).notNull().default("pending"),
+  attempts: integer("attempts").notNull().default(0),
+  maxAttempts: integer("max_attempts").notNull().default(8),
+  runAt: timestamp("run_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
+  lockedUntil: timestamp("locked_until", { mode: "date", withTimezone: true }),
+  lastError: text("last_error"),
+  result: jsonb("result"),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
+  finishedAt: timestamp("finished_at", { mode: "date", withTimezone: true }),
+}, (t) => ({
+  due: index("jobs_due_idx").on(t.runAt).where(sql`status in ('pending', 'running')`),
+  byStore: index("jobs_store_kind_idx").on(t.storeId, t.kind, t.createdAt),
 }));
 
 export const orderAssignments = pgTable("order_assignments", {
@@ -1456,10 +1488,10 @@ export const storePixelConfig = pgTable("store_pixel_config", {
     .notNull()
     .unique()
     .references(() => stores.id, { onDelete: "cascade" }),
-  pixelId: text("pixel_id").notNull(),
+  pixelId: text("pixel_id"),
   /** Merchant's label for the Meta ad account this pixel belongs to — reference only, never sent to Meta. */
   adAccountName: text("ad_account_name"),
-  accessToken: text("access_token").notNull(),
+  accessToken: text("access_token").notNull().default(""),
   /** Meta test event code — used during integration testing only. Set to null in production. */
   testEventCode: text("test_event_code"),
   /** Which CAPI event the merchant optimizes for — chosen explicitly in the dashboard, never defaulted by the UI. */
@@ -1481,6 +1513,16 @@ export const storePixelConfig = pgTable("store_pixel_config", {
     .default(false),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
+  tiktokPixelId: text("tiktok_pixel_id"),
+  tiktokAccessToken: text("tiktok_access_token"),
+  tiktokTestEventCode: text("tiktok_test_event_code"),
+  snapPixelId: text("snap_pixel_id"),
+  snapAccessToken: text("snap_access_token"),
+  ga4MeasurementId: text("ga4_measurement_id"),
+  ga4ApiSecret: text("ga4_api_secret"),
+  googleAdsId: text("google_ads_id"),
+  googleAdsLabel: text("google_ads_label"),
+  consentRequired: boolean("consent_required").notNull().default(false),
 });
 
 /**

@@ -56,6 +56,7 @@ export const server = {
         items: input.items,
         fbc: input.fbc,
         fbp: input.fbp,
+        attribution: input.attribution,
         otpToken: input.otpToken,
         turnstileToken: input.turnstileToken,
         landingPageSlug: input.landingPageSlug,

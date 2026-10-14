@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
   resolveConversionForStage,
-  getCapiWorkflowId,
   type ConversionMode,
   type ConversionStage,
 } from "./conversion-model";
@@ -120,22 +119,5 @@ describe("Conversion Model — resolveConversionForStage", () => {
         stage: "checkout",
       });
     });
-  });
-});
-
-describe("Conversion Model — getCapiWorkflowId", () => {
-  it("generates deterministic workflow IDs per business event", () => {
-    expect(getCapiWorkflowId("ord-123", "checkout", "Purchase")).toBe(
-      "capi-ord-123-checkout-Purchase"
-    );
-    expect(getCapiWorkflowId("ord-123", "checkout", "Lead")).toBe(
-      "capi-ord-123-checkout-Lead"
-    );
-    expect(getCapiWorkflowId("ord-123", "confirmed", "Purchase")).toBe(
-      "capi-ord-123-confirmed-Purchase"
-    );
-    expect(getCapiWorkflowId("ord-123", "delivered", "Purchase")).toBe(
-      "capi-ord-123-delivered-Purchase"
-    );
   });
 });

@@ -8,6 +8,7 @@ export interface OutboundOrderInput {
   delivery: { type: "home" | "stop_desk"; office: string | null; fee: number | null; gridVersion: number | null };
   customer: { name: string; phone: string; wilayaId: number; communeId: string; address: string | null };
   journey: "direct" | "cart";
+  campaign?: { source: string | null; medium: string | null; name: string | null; content: string | null; term: string | null } | null;
   stockNotGuaranteed: boolean;
   submittedAt: string;
   userAgent: string | null;
@@ -30,7 +31,7 @@ export function outboundOrderRow(input: OutboundOrderInput): typeof outboundOrde
         feeToConfirm: input.delivery.fee === null,
       },
       customer: input.customer,
-      journey: { kind: input.journey, campaign: null },
+      journey: { kind: input.journey, campaign: input.campaign ?? null },
       stockNotGuaranteed: input.stockNotGuaranteed,
       traces: { submittedAt: input.submittedAt, userAgent: input.userAgent, deviceId: null },
     },

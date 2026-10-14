@@ -38,7 +38,7 @@ if (!orderNumber) {
 // null when the merchant's conversion fires further down the funnel. Nothing
 // here re-derives that rule.
 const pixelId = tracking?.pixelId ?? null;
-const checkoutEvent = tracking?.event ?? null;
+const conversionEvents = tracking?.events ?? { meta: tracking?.event ?? null };
 const totalNum = total ? parseInt(total) : null;
 
 // The head must load the pixel the sale is fired at, not the store's:
@@ -46,7 +46,8 @@ const totalNum = total ? parseInt(total) : null;
 // When the lookup failed, pixelId is null and no pixel loads here — a stray
 // PageView in the wrong ad account is the exact mixing this feature removes,
 // and the server mirror arrives either way.
-const pageConfig = { ...config, pixelId };
+const pageConfig = { ...config, pixelId, trackers: tracking?.trackers };
+const firesConversion = Boolean(orderId) && Object.values(conversionEvents).some(Boolean);
 
 const steps = [
   { icon: "heroicons:phone", title: content.step1Title, sub: content.step1Sub },
@@ -164,24 +165,21 @@ const steps = [
   </div>
 </StoreLayout>
 
-{pixelId && checkoutEvent && (
-  <script type="text/javascript" set:html={`
-(function() {
-  if (typeof fbq !== 'function') return;
-  var eventId = ${JSON.stringify(orderId)};
-  // No orderId means no server mirror to deduplicate against — firing
-  // with a different id would double-count the conversion. Skip instead.
-  if (!eventId) return;
-  var total   = ${JSON.stringify(totalNum)};
-  var eventName = ${JSON.stringify(checkoutEvent)};
-  // trackSingle, not track: this sale belongs to one pixel — the one the
-  // Conversions API will mirror it to. 'track' sends to every pixel on the
-  // page, so a second one initialised here later would silently report the
-  // same sale twice, into an ad account that has no server mirror behind it.
-  fbq('trackSingle', ${JSON.stringify(pixelId)}, eventName, total ? { value: total, currency: 'DZD' } : {}, { eventID: eventId });
-})();
-  `} />
+{/* The sale, at every tracker the server says fires one for this order, with
+    the order id as the deduplication id the server-side conversion uses too.
+    No order id means no server mirror to deduplicate against: nothing fires. */}
+{firesConversion && (
+  <div id="conversion-data" hidden data-order-id={orderId} data-total={totalNum ?? ""} data-events={JSON.stringify(conversionEvents)}></div>
 )}
+<script>
+  import { track } from "@/core/tracking/track";
+
+  const data = document.getElementById("conversion-data")?.dataset;
+  if (data?.orderId) {
+    const total = Number(data.total) || undefined;
+    track("Purchase", total ? { value: total } : {}, { eventId: data.orderId, events: JSON.parse(data.events || "{}") });
+  }
+</script>
 
 <script
   is:inline

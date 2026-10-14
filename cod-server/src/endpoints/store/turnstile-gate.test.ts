@@ -22,7 +22,7 @@ import * as storeQueries from "./queries";
 import * as turnstileConfigQueries from "../../../../cod-shared/queries/turnstile-config";
 import * as turnstileLib from "../../../../cod-shared/lib/turnstile";
 import * as otpConfigQueries from "../../../../cod-shared/queries/otp-config";
-import * as capiHelpers from "@/workflows/capi-helpers";
+import * as capiHelpers from "@/tracking/capi-helpers";
 
 // The lib module is mocked wholesale for the gate; pull the real error class
 // and codes via importActual so the outage test rejects with the genuine shape.
@@ -32,10 +32,10 @@ const { TURNSTILE_ERRORS, TurnstileError } = (await vi.importActual(
 
 vi.mock("@/db", () => ({ getDb: vi.fn(() => ({})) }));
 vi.mock("./queries");
-vi.mock("@/workflows/capi-helpers", () => ({
+vi.mock("@/tracking/conversions", () => ({ enqueueConversions: vi.fn(async () => 0) }));
+vi.mock("@/tracking/capi-helpers", () => ({
   shouldTriggerCapiPurchase: vi.fn(() => false),
   shouldTriggerCapiConfirmed: vi.fn(() => false),
-  getCapiWorkflowId: vi.fn((id: string, stage: string, event: string) => `capi-${id}-${stage}-${event}`),
   resolveConversionForStage: vi.fn(() => ({ shouldFire: false })),
   resolveCapiDispatch: vi.fn(() => ({ send: false, reason: "tracking-disabled", message: "mock skip" })),
 }));

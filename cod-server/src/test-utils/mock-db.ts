@@ -258,6 +258,16 @@ export function orderRow(overrides: Record<string, unknown> = {}): Record<string
     delivery_fee_to_confirm: false,
     stock_confirmed: true,
     delivery_grid_version: null,
+    utm_source: null,
+    utm_medium: null,
+    utm_campaign: null,
+    utm_content: null,
+    utm_term: null,
+    gclid: null,
+    ttclid: null,
+    fbclid: null,
+    ad_cookies: null,
+    tracking_consent: null,
     ...overrides,
   };
 }

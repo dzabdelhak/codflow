@@ -6,6 +6,7 @@
 import { STOREFRONT_SERVICE_KEY, COD_SERVER_URL as _COD_SERVER_URL } from "astro:env/server";
 const COD_SERVER_URL = _COD_SERVER_URL ?? "http://localhost:8787";
 import type { StoreConfig, Commune, Review, StorePagePublic, LandingChannel } from "./types";
+import type { PublicTrackersInput } from "@/core/tracking/config";
 import { currentPreviewToken, currentRequestHost, memoForRequest } from "./request-host";
 
 /**
@@ -164,9 +165,16 @@ export async function fetchStorePage(slug: string): Promise<StorePagePublic | nu
  * one browser event is recoverable; reporting it to the wrong ad account is
  * not — the server mirror still arrives either way.
  */
+export interface OrderTracking {
+  pixelId: string | null;
+  event: "Purchase" | "Lead" | null;
+  trackers?: PublicTrackersInput;
+  events?: Partial<Record<"meta" | "tiktok" | "snap" | "ga4" | "googleAds", "Purchase" | "Lead" | null>>;
+}
+
 export async function fetchOrderTracking(
   orderId: string,
-): Promise<{ pixelId: string | null; event: "Purchase" | "Lead" | null } | null> {
+): Promise<OrderTracking | null> {
   if (!orderId) return null;
   try {
     const res = await fetch(
@@ -174,9 +182,7 @@ export async function fetchOrderTracking(
       { headers: storeHeaders() },
     );
     if (!res.ok) return null;
-    const json = (await res.json()) as {
-      data: { pixelId: string | null; event: "Purchase" | "Lead" | null };
-    };
+    const json = (await res.json()) as { data: OrderTracking };
     return json.data ?? null;
   } catch {
     return null;

@@ -1,5 +1,6 @@
 import { apiFetch } from "@/lib/api";
 import type {
+  ConversionEventRow,
   EmailConfig,
   EmailConnectionCheck,
   OtpConfig,
@@ -9,7 +10,9 @@ import type {
   SaveOtpConfigData,
   SavePixelConfigData,
   SaveTurnstileConfigData,
+  ServerTrackingProvider,
   StoreConfig,
+  TrackingTestResult,
   TurnstileConfig,
   UpdateStoreData,
 } from "./types";
@@ -41,6 +44,14 @@ export async function getPixelConfig() {
 
 export async function savePixelConfig(data: SavePixelConfigData) {
   return (await apiFetch<DataEnvelope<PixelConfig>>("/api/stores/pixel-config", json({ method: "POST", body: JSON.stringify(data) }))).data;
+}
+
+export async function sendTrackingTestEvent(provider: ServerTrackingProvider) {
+  return (await apiFetch<DataEnvelope<TrackingTestResult>>("/api/tracking/test", json({ method: "POST", body: JSON.stringify({ provider }) }))).data;
+}
+
+export async function getConversionEvents(limit = 30) {
+  return (await apiFetch<DataEnvelope<ConversionEventRow[]>>(`/api/tracking/events?limit=${limit}`)).data;
 }
 
 export async function getOtpConfig() {

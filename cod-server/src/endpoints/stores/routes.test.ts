@@ -86,6 +86,16 @@ function pixelConfigRow(overrides: Record<string, any> = {}) {
     perPageTrackingEnabled: false,
     createdAt: NOW,
     updatedAt: NOW,
+    tiktokPixelId: null,
+    tiktokAccessToken: null,
+    tiktokTestEventCode: null,
+    snapPixelId: null,
+    snapAccessToken: null,
+    ga4MeasurementId: null,
+    ga4ApiSecret: null,
+    googleAdsId: null,
+    googleAdsLabel: null,
+    consentRequired: false,
     ...overrides,
   };
 }
@@ -387,7 +397,7 @@ describe("Stores routes (OpenAPIHono)", () => {
       const res = await app.request("/api/stores/pixel-config", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pixelId: "123", conversionEvent: "Purchase" }),
+        body: JSON.stringify({ pixelId: "1234567890123456", conversionEvent: "Purchase" }),
       });
 
       expect(res.status).toBe(404);

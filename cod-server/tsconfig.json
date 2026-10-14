@@ -40,12 +40,9 @@
     "src/endpoints/mcp/handlers.test.ts",
     "src/endpoints/orders/dispatch-limits-e2e.test.ts",
     "src/endpoints/orders/orders.webhook-e2e.test.ts",
-    "src/endpoints/store/capi-checkout-decision.test.ts",
-    "src/endpoints/store/capi-lead-trigger.test.ts",
     "src/endpoints/webhooks/yalidine-webhook.e2e.test.ts",
     "src/mcp/authorize.test.ts",
     "src/mcp/registry.test.ts",
-    "src/mcp/server-factory.test.ts",
-    "src/workflows/capi-destination.test.ts"
+    "src/mcp/server-factory.test.ts"
   ]
 }

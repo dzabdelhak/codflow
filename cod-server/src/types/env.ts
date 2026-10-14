@@ -1,7 +1,7 @@
 /**
  * Server environment, built from process.env by the Node entry (src/node.ts).
  * Cloudflare bindings still listed here belong to code not yet ported
- * (MCP, workflows) and are absent at runtime.
+ * (MCP) and are absent at runtime.
  */
 import type { OAuthHelpers } from "@cloudflare/workers-oauth-provider";
 import type { Database } from "@/db/scope";
@@ -78,9 +78,4 @@ export interface Env {
   RATE_LIMIT?: KVNamespace;
   /** OAuth helpers injected into `env` by the OAuthProvider before handlers run. */
   OAUTH_PROVIDER?: OAuthHelpers;
-  /**
-   * Cloudflare Workflow binding for CodCapiWorkflow.
-   * Fires CAPI Purchase events at order delivery — decoupled from status handler.
-   */
-  CAPI_WORKFLOW: Workflow;
 }

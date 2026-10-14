@@ -4,12 +4,11 @@ import {
   ConversionMode,
   ConversionDecision,
   resolveConversionForStage,
-  getCapiWorkflowId,
 } from "./conversion-model";
 
 export * from "./conversion-model";
 
-// Southern wilayas with 5-10 day delivery — Workflow triggers at out_for_delivery
+// Southern wilayas with 5-10 day delivery — the conversion is queued at out_for_delivery
 // for these to stay within Meta's 7-day window.
 const LONG_HAUL_WILAYA_IDS = new Set([
   1,   // Adrar
@@ -21,7 +20,7 @@ const LONG_HAUL_WILAYA_IDS = new Set([
 ]);
 
 /**
- * Determines whether to trigger CodCapiWorkflow for a given status transition.
+ * Whether a status transition queues the delivered-stage conversion.
  * Call this after updateOrderStatus() resolves.
  */
 export function shouldTriggerCapiConfirmed(newStatus: string): boolean {

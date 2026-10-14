@@ -93,6 +93,12 @@ export const placeOrderInput = z.object({
       (v) => (v === "" || v == null ? undefined : v),
       z.string().optional()
     ),
+    // The visit's UTMs, ad click ids, ad cookies and tracking consent, as JSON
+    // filled at submit time by core/tracking/attribution.ts.
+    attribution: z.preprocess(
+      (v) => (v === "" || v == null || v === "{}" ? undefined : v),
+      z.string().max(4000).optional()
+    ),
     // WhatsApp OTP verification proof — set after the OTP step verifies.
     // Absent when the store has verification disabled (schema stays additive).
     otpToken: z.preprocess(
