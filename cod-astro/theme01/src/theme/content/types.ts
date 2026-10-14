@@ -311,4 +311,26 @@ export interface StoreFrontContent {
   notFoundCtaHome: string;
   notFoundCtaProducts: string;
   notFoundPageTitle: string;
+
+  // ── Landing channel ──────────────────────────────────────────────────────
+  landingEyebrow: string;
+  landingGalleryTitle: string;
+  landingDescriptionTitle: string;
+  landingBenefitsTitle: string;
+  landingBenefit1: string;
+  landingBenefit2: string;
+  landingBenefit3: string;
+  landingBenefit4: string;
+  landingPriceTitle: string;
+  landingDiscountLabel: string;
+  landingFaqTitle: string;
+  landingFaq1Q: string;
+  landingFaq1A: string;
+  landingFaq2Q: string;
+  landingFaq2A: string;
+  landingFaq3Q: string;
+  landingFaq3A: string;
+  landingReassuranceTitle: string;
+  landingUnavailableTitle: string;
+  landingUnavailableBody: string;
 }

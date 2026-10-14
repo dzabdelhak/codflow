@@ -1,4 +1,5 @@
-import type { ChannelType } from "../../../../cod-shared/channels/types";
+import type { ChannelType, UnavailableRule } from "../../../../cod-shared/channels/types";
+import { defaultTemplateFor } from "../../../../cod-shared/channels/templates";
 
 export const WIZARD_STEPS = ["type", "general", "products", "delivery", "template", "summary"] as const;
 export type WizardStep = (typeof WIZARD_STEPS)[number];
@@ -14,6 +15,7 @@ export interface WizardDraft {
   deliveryModes: { home: boolean; stopDesk: boolean };
   defaultShippingProfileId: string | null;
   templateId: string;
+  unavailableRule: UnavailableRule;
 }
 
 const storageKey = (userId: string) => `codflow.storeWizard.${userId}`;
@@ -31,7 +33,25 @@ export function newDraft(creationKey: string = crypto.randomUUID()): WizardDraft
     deliveryModes: { home: true, stopDesk: true },
     defaultShippingProfileId: null,
     templateId: "theme01",
+    unavailableRule: "show_unavailable",
   };
+}
+
+export function withType(draft: WizardDraft, type: ChannelType): WizardDraft {
+  return {
+    ...draft,
+    type,
+    templateId: defaultTemplateFor(type),
+    productIds: type === "landing" ? draft.productIds.slice(0, 1) : draft.productIds,
+  };
+}
+
+export function toggleProduct(draft: WizardDraft, productId: string): WizardDraft {
+  if (draft.type === "landing") return { ...draft, productIds: [productId] };
+  const productIds = draft.productIds.includes(productId)
+    ? draft.productIds.filter((id) => id !== productId)
+    : [...draft.productIds, productId];
+  return { ...draft, productIds };
 }
 
 export function loadDraft(userId: string): WizardDraft | null {
@@ -57,13 +77,14 @@ export function clearDraft(userId: string): void {
   } catch {}
 }
 
-export type StepProblem = "name_required" | "subdomain_invalid" | "no_delivery_mode" | null;
+export type StepProblem = "name_required" | "subdomain_invalid" | "main_product_required" | "no_delivery_mode" | null;
 
 export function stepProblem(draft: WizardDraft, step: WizardStep): StepProblem {
   if (step === "general") {
     if (!draft.name.trim()) return "name_required";
     if (!SUBDOMAIN.test(draft.subdomain)) return "subdomain_invalid";
   }
+  if (step === "products" && draft.type === "landing" && draft.productIds.length !== 1) return "main_product_required";
   if (step === "delivery" && !draft.deliveryModes.home && !draft.deliveryModes.stopDesk) return "no_delivery_mode";
   return null;
 }
@@ -94,6 +115,7 @@ export function creationRequest(draft: WizardDraft) {
     deliveryModes: draft.deliveryModes,
     defaultShippingProfileId: draft.defaultShippingProfileId,
     templateId: draft.templateId,
+    unavailableRule: draft.type === "landing" ? draft.unavailableRule : undefined,
   };
 }
 

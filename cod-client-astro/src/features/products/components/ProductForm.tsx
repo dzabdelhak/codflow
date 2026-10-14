@@ -5,6 +5,7 @@ import {
   useIdentity,
 } from "@/features/auth/components/RequireAuth";
 import { useT } from "@/i18n/react";
+import { useMerchantStores } from "@/features/stores/useMerchantStores";
 import { notify } from "@/lib/notify";
 import { SCOPES } from "../../../../../cod-shared/rbac/scopes";
 import {
@@ -63,6 +64,7 @@ export function ProductForm({ productId }: { productId?: string }) {
   const identity = useIdentity();
   const confirm = useConfirmDialog();
   const editing = Boolean(productId);
+  const landing = useMerchantStores().active?.type === "landing";
   const [initialLoading, setInitialLoading] = useState(editing);
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -84,6 +86,7 @@ export function ProductForm({ productId }: { productId?: string }) {
   const [trackInventory, setTrackInventory] = useState(true);
   const [showInStore, setShowInStore] = useState(true);
   const [inChannel, setInChannel] = useState(true);
+  const carried = inChannel && (!landing || editing);
   const [inventory, setInventory] = useState("0");
   const [lowStockThreshold, setLowStockThreshold] = useState("5");
 
@@ -310,7 +313,7 @@ export function ProductForm({ productId }: { productId?: string }) {
         costPrice: costPrice ? Math.round(Number(costPrice)) : undefined,
         status,
         trackInventory,
-        ...(inChannel ? { showInStore, shippingProfileId: shippingProfileId || undefined } : {}),
+        ...(carried ? { ...(landing ? {} : { showInStore }), shippingProfileId: shippingProfileId || undefined } : {}),
         ...(editing
           ? {}
           : { inventory: hasVariants ? 0 : Number(inventory) || 0 }),
@@ -450,7 +453,7 @@ export function ProductForm({ productId }: { productId?: string }) {
           setDescription={setDescription}
           setDescriptionFormat={setDescriptionFormat}
           groups={groups}
-          shippingProfiles={inChannel ? shippingProfiles : []}
+          shippingProfiles={carried ? shippingProfiles : []}
           errors={errors}
           setErrors={setErrors}
           busy={busy}
@@ -519,6 +522,7 @@ export function ProductForm({ productId }: { productId?: string }) {
           showInStore={showInStore}
           setShowInStore={setShowInStore}
           inChannel={inChannel}
+          landing={landing}
           hasVariantsSwitch={hasVariantsSwitch}
           editing={editing}
           busy={busy}

@@ -6,6 +6,7 @@
 import StoreLayout from "@/theme/layouts/StoreLayout.astro";
 import CategoryPageContent from "@/theme/components/category/CategoryPageContent.astro";
 import { getStoreContext } from "@/theme/config/store";
+import { isLandingChannel } from "@/theme/utils/landing-view";
 import { fetchCategoriesRaw } from "@/core/api/client";
 
 const { slug } = Astro.params;
@@ -15,6 +16,7 @@ const { slug } = Astro.params;
 // Category data and products are fetched inside streaming component
 // This allows layout/navigation to render immediately while data loads
 const { config, content } = await getStoreContext();
+if (isLandingChannel(config)) return Astro.redirect("/", 302);
 
 // Fetch categories for SEO meta tags (lightweight — no products)
 const categories = await fetchCategoriesRaw();

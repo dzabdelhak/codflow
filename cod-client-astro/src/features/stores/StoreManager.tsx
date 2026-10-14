@@ -241,6 +241,7 @@ export function StoreManager() {
                 <TableCell>
                   <p className="flex items-center gap-2 font-semibold">
                     {store.name}
+                    <Badge tone="neutral" size="sm">{t(`stores.wizard.type.${store.type}.name`)}</Badge>
                     {store.id === active?.id && <Badge tone="brand" size="sm">{t("stores.active")}</Badge>}
                   </p>
                   {store.hostname && (

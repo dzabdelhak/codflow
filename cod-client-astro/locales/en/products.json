@@ -324,5 +324,41 @@
       "published": "Shown in this store",
       "featured": "On this store’s home page"
     }
+  },
+  "main_product": {
+    "page_title": "Main product",
+    "page_subtitle": "The one product this landing page sells, and what the page does when it is unavailable.",
+    "store_only": "This screen is for online stores. A landing page sells one main product.",
+    "go_main_product": "Open the main product",
+    "landing_only": "Only a landing page has a main product.",
+    "none": "This landing page has no main product. Choose one.",
+    "available": "Available",
+    "unavailable": "Unavailable",
+    "unavailable_hint": "The product is archived, hidden, deleted or not shown on this landing page. Running out of stock does not make it unavailable: orders are still taken.",
+    "edit_product": "Edit the product in the catalogue",
+    "replace": "Replace the main product",
+    "replace_title": "Replace the main product",
+    "replace_hint": "The product you choose becomes the only product this landing page sells. The catalogue and your other channels are unchanged.",
+    "replace_empty": "No other catalogue product matches.",
+    "replace_confirm": "Replace",
+    "replaced": "Main product replaced",
+    "rule_title": "When the main product is unavailable",
+    "rule_hint": "What visitors of the landing page see while the product cannot be ordered.",
+    "rule_saved": "Rule saved",
+    "action_failed": "The change could not be saved. Try again.",
+    "rule": {
+      "hide_order_form": {
+        "name": "Hide the order form",
+        "description": "The page stays online and presents the product, without the order form."
+      },
+      "show_unavailable": {
+        "name": "Show “unavailable”",
+        "description": "The page stays online and replaces the order form with an unavailability notice."
+      },
+      "suspend": {
+        "name": "Suspend the page",
+        "description": "Visitors see an “unavailable” page until the product is available again."
+      }
+    }
   }
 }

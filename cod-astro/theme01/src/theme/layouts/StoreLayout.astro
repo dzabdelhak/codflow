@@ -23,12 +23,14 @@ interface Props {
   /** Marketing mode (landing pages): no header, no mobile nav, no footer —
    *  the page is images + form + sticky CTA, nothing else. */
   marketing?: boolean;
+  /** Landing channel: no header, mobile nav or cart; a footer with the legal pages only. */
+  landing?: boolean;
   /** LCP images (landing page stack top) — preloaded in <head>. */
   preloadImages?: string[];
 }
 
-const { title, description, ogImage, noindex, config: c, content, marketing = false, preloadImages } = Astro.props;
-const hideMobileNav = marketing || Astro.props.hideMobileNav;
+const { title, description, ogImage, noindex, config: c, content, marketing = false, landing = false, preloadImages } = Astro.props;
+const hideMobileNav = marketing || landing || Astro.props.hideMobileNav;
 const config = c ?? DEFAULT_CONFIG;
 
 const isRTL = config.lang === "ar";
@@ -66,25 +68,25 @@ const fontHref = config.fontUrl?.replace(/["<>]/g, "")
 
   <body class:list={[!hideMobileNav && "has-mobile-nav"]}>
     <!-- Announcement bar -->
-    {!marketing && (config.announcementBar || content?.announcementText) && (
+    {!marketing && !landing && (config.announcementBar || content?.announcementText) && (
       <div class="store-announce">
         <Icon name="heroicons:truck" class="w-3.5 h-3.5 opacity-80" />
         <span>{config.announcementBar ?? content?.announcementText}</span>
       </div>
     )}
 
-    {!marketing && <Header config={config} content={content} />}
+    {!marketing && !landing && <Header config={config} content={content} />}
 
     <main>
       <slot />
     </main>
 
-    {!marketing && <Footer config={config} content={content} />}
+    {!marketing && <Footer config={config} content={content} landing={landing} />}
 
     {/* One drawer per page, outside the main flow so its fixed positioning is
         never trapped by a transformed ancestor. Rendered only when the cart is
         on: a merchant who never enabled it ships none of this markup. */}
-    {config.cartEnabled && content && (
+    {config.cartEnabled && !landing && content && (
       <>
         <CartDrawer content={content} currency={config.currencySymbol} />
         {/* Imported for its side effect: the module self-initialises on

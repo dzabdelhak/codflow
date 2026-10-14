@@ -58,6 +58,15 @@ export function errorHandler(err: Error, c: Context): Response {
     return c.json(response, 400);
   }
 
+  if (isLandingSingleProductViolation(err)) {
+    const response: ErrorResponse = {
+      error: "A landing channel sells one main product",
+      code: ERROR_CODES.LANDING_SINGLE_PRODUCT,
+      category: ERROR_CATEGORIES.BUSINESS_LOGIC,
+    };
+    return c.json(response, 409);
+  }
+
   // Handle custom AppError instances
   if (err instanceof AppError) {
     const response: ErrorResponse = {
@@ -81,4 +90,11 @@ export function errorHandler(err: Error, c: Context): Response {
   };
 
   return c.json(response, 500);
+}
+
+function isLandingSingleProductViolation(err: unknown): boolean {
+  for (let e = err as { constraint?: string; cause?: unknown } | undefined; e; e = e.cause as typeof e) {
+    if (e.constraint === "landing_single_product") return true;
+  }
+  return false;
 }

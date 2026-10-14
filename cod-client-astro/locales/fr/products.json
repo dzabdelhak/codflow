@@ -324,5 +324,41 @@
       "published": "Affiché dans cette boutique",
       "featured": "En page d’accueil"
     }
+  },
+  "main_product": {
+    "page_title": "Produit principal",
+    "page_subtitle": "Le produit unique que vend cette landing page, et ce que fait la page quand il est indisponible.",
+    "store_only": "Cet écran concerne les boutiques en ligne. Une landing page vend un seul produit principal.",
+    "go_main_product": "Ouvrir le produit principal",
+    "landing_only": "Seule une landing page a un produit principal.",
+    "none": "Cette landing page n’a pas de produit principal. Choisissez-en un.",
+    "available": "Disponible",
+    "unavailable": "Indisponible",
+    "unavailable_hint": "Le produit est archivé, masqué, supprimé ou non affiché sur cette landing page. Une rupture de stock ne le rend pas indisponible : les commandes restent prises.",
+    "edit_product": "Modifier le produit dans le catalogue",
+    "replace": "Remplacer le produit principal",
+    "replace_title": "Remplacer le produit principal",
+    "replace_hint": "Le produit choisi devient le seul produit vendu par cette landing page. Le catalogue et vos autres canaux ne changent pas.",
+    "replace_empty": "Aucun autre produit du catalogue ne correspond.",
+    "replace_confirm": "Remplacer",
+    "replaced": "Produit principal remplacé",
+    "rule_title": "Quand le produit principal est indisponible",
+    "rule_hint": "Ce que voient les visiteurs de la landing page tant que le produit ne peut pas être commandé.",
+    "rule_saved": "Règle enregistrée",
+    "action_failed": "La modification n’a pas pu être enregistrée. Réessayez.",
+    "rule": {
+      "hide_order_form": {
+        "name": "Masquer le formulaire de commande",
+        "description": "La page reste en ligne et présente le produit, sans formulaire de commande."
+      },
+      "show_unavailable": {
+        "name": "Afficher « indisponible »",
+        "description": "La page reste en ligne et remplace le formulaire par un avis d’indisponibilité."
+      },
+      "suspend": {
+        "name": "Suspendre la page",
+        "description": "Les visiteurs voient une page « indisponible » jusqu’au retour du produit."
+      }
+    }
   }
 }

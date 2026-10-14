@@ -31,7 +31,8 @@
     "checkout_form": "Formulaire de commande",
     "whatsapp": "WhatsApp",
     "stores": "Boutiques",
-    "store_products": "Dans cette boutique"
+    "store_products": "Dans cette boutique",
+    "main_product": "Produit principal"
   },
   "navbar": {
     "search_placeholder": "Rechercher des commandes, clients...",
@@ -194,6 +195,10 @@
         "theme01": {
           "name": "Boutique classique",
           "description": "Accueil, catalogue, catégories, fiches produits, panier, commande, confirmation et pages de contenu."
+        },
+        "landing01": {
+          "name": "Landing produit",
+          "description": "Bannière, présentation du produit, galerie, bénéfices, prix, formulaire de commande, FAQ et réassurance."
         }
       },
       "summary": {
@@ -202,12 +207,14 @@
         "domain": "Adresse",
         "products": "Produits",
         "delivery": "Modes de livraison",
-        "template": "Template"
+        "template": "Template",
+        "main_product": "Produit principal"
       },
       "problem": {
         "name_required": "Donnez un nom à la boutique.",
         "subdomain_invalid": "Utilisez 3 à 40 lettres minuscules, chiffres ou tirets. Certains noms sont réservés.",
-        "no_delivery_mode": "Proposez au moins un mode de livraison."
+        "no_delivery_mode": "Proposez au moins un mode de livraison.",
+        "main_product_required": "Choisissez le produit principal de la landing page."
       },
       "next": "Continuer",
       "back": "Retour",
@@ -221,7 +228,8 @@
       "error_profile": "Ce profil de livraison n’existe plus. Choisissez-en un autre et réessayez.",
       "error_template": "Ce modèle n’est pas disponible pour ce type de canal. Choisissez-en un autre.",
       "error_forbidden": "Seul un administrateur du compte peut créer une boutique.",
-      "done_existing": "Cette boutique avait déjà été créée lors d’une tentative précédente, avec les réponses données alors. Modifiez ses réglages depuis son tableau de bord."
+      "done_existing": "Cette boutique avait déjà été créée lors d’une tentative précédente, avec les réponses données alors. Modifiez ses réglages depuis son tableau de bord.",
+      "products_hint_landing": "Choisissez le produit du catalogue que cette landing page vend. Vous pourrez le remplacer plus tard."
     }
   }
 }

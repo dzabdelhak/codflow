@@ -95,3 +95,24 @@ describe("the checkout page", () => {
     expect(scriptsOf(source).has("checkout")).toBe(true);
   });
 });
+
+describe("the landing channel", () => {
+  const LANDING = resolve(__dirname, "components/landing/LandingPage.astro");
+
+  it("takes orders with the same scripts as every other order page", () => {
+    const scripts = scriptsOf(read(LANDING));
+    for (const script of ["product", "otp-step", "turnstile-field", "track-abandonment"]) {
+      expect(scripts.has(script)).toBe(true);
+    }
+  });
+
+  it("sends a visitor of a store-only page back to its one page", () => {
+    for (const page of ["products/index.astro", "products/[slug].astro", "category/[slug].astro", "checkout.astro", "lp/[slug].astro"]) {
+      expect(read(join(PAGES, page))).toMatch(/if \(isLandingChannel\(.*\)\) return Astro\.redirect\("\/"/);
+    }
+  });
+
+  it("renders the landing on the home page", () => {
+    expect(read(join(PAGES, "index.astro"))).toMatch(/<LandingPage/);
+  });
+});

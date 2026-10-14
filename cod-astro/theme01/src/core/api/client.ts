@@ -5,7 +5,7 @@
 // ╚══════════════════════════════════════════════════════════════════════╝
 import { STOREFRONT_SERVICE_KEY, COD_SERVER_URL as _COD_SERVER_URL } from "astro:env/server";
 const COD_SERVER_URL = _COD_SERVER_URL ?? "http://localhost:8787";
-import type { StoreConfig, Commune, Review, StorePagePublic } from "./types";
+import type { StoreConfig, Commune, Review, StorePagePublic, LandingChannel } from "./types";
 import { currentRequestHost, memoForRequest } from "./request-host";
 
 /**
@@ -91,6 +91,20 @@ export function fetchProductByHandle(handle: string): Promise<any | null> {
       });
       if (!res.ok) return null;
       const json = (await res.json()) as { data: any };
+      return json.data ?? null;
+    } catch {
+      return null;
+    }
+  });
+}
+
+/** The landing channel's main product and its availability; null for a store channel. */
+export function fetchLandingChannel(): Promise<LandingChannel | null> {
+  return memoForRequest("landing-channel", async () => {
+    try {
+      const res = await fetch(`${COD_SERVER_URL}/store/landing`, { headers: storeHeaders() });
+      if (!res.ok) return null;
+      const json = (await res.json()) as { data: LandingChannel };
       return json.data ?? null;
     } catch {
       return null;

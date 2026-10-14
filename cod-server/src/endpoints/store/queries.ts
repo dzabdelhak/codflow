@@ -9,6 +9,7 @@ export {
   extendSnapshot,
   findMissingSku,
   findProductNotCarried,
+  findProductNotSellable,
   priceCartLines,
   resolveCartLines,
   type CatalogSnapshot,
@@ -30,3 +31,4 @@ export {
 } from "../../../../cod-shared/queries/landing-pages";
 export { resolvePublishedPage } from "../../../../cod-shared/queries/store-pages";
 export { getCheckoutFormPolicy } from "../../../../cod-shared/queries/checkout-form";
+export { isLandingChannel } from "../../../../cod-shared/queries/landing-channel";

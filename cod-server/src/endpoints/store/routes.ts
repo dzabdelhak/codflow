@@ -12,6 +12,7 @@ import type { AppContext } from "@/types";
 import { defineRoute } from "@/lib/route-builder";
 import * as h from "./handlers";
 import { storeOrderSchema, storeReviewSchema, validateCartSchema } from "./validation";
+import { UNAVAILABLE_RULES } from "../../../../cod-shared/channels/types";
 import {
   StoreConfigSchema,
   StoreProductListSchema,
@@ -142,6 +143,33 @@ const getStoreProductRoute = defineRoute({
     },
   },
   handler: h.getStoreProduct,
+});
+
+const getLandingChannelRoute = defineRoute({
+  method: "get",
+  path: "/landing",
+  auth: "store",
+  tags: ["Store API"],
+  summary: "Get the landing channel's main product",
+  description:
+    "For a landing channel: its one main product in the full store-product shape (variants, offers, inventory), whether it is available, and the rule its page applies while it is not (`hide_order_form`, `show_unavailable`; with `suspend` the channel answers 503 CHANNEL_UNAVAILABLE instead). The product is returned even while unavailable, so the page can still present it; `product` is null when the landing has none. 404 for a store channel.",
+  operationId: "getLandingChannel",
+  responses: {
+    200: {
+      description: "The landing's main product and its availability",
+      content: jsonContent(
+        SuccessResponseSchema(
+          z.object({
+            unavailableRule: z.enum(UNAVAILABLE_RULES),
+            available: z.boolean(),
+            product: StoreProductDetailSchema.nullable(),
+          }),
+        ),
+      ),
+    },
+    404: { description: "Not a landing channel" },
+  },
+  handler: h.getLandingChannel,
 });
 
 const getStoreLandingPageRoute = defineRoute({
@@ -482,6 +510,7 @@ const router = new OpenAPIHono<AppContext>();
 router.openapi(getStoreConfigRoute.route, getStoreConfigRoute.handler);
 router.openapi(listStoreProductsRoute.route, listStoreProductsRoute.handler);
 router.openapi(getStoreProductRoute.route, getStoreProductRoute.handler);
+router.openapi(getLandingChannelRoute.route, getLandingChannelRoute.handler);
 router.openapi(getStoreLandingPageRoute.route, getStoreLandingPageRoute.handler);
 router.openapi(getStorePageRoute.route, getStorePageRoute.handler);
 router.openapi(getStoreOrderTrackingRoute.route, getStoreOrderTrackingRoute.handler);

@@ -44,6 +44,8 @@ export const DEFAULT_CONFIG: StoreConfig = {
   pages: [],
   legalContact: null,
   whatsapp: null,
+  channelType: "store",
+  unavailableRule: "show_unavailable",
 };
 
 export interface StoreContext {

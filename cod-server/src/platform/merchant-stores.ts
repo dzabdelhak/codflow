@@ -4,7 +4,8 @@ import { getDb } from "../../../cod-shared/db/client";
 import { seedStorePages } from "../../../cod-shared/queries/store-pages";
 import type { PlanPolicy } from "./plan-policy";
 import { orderPrefixFor } from "../../../cod-shared/queries/order-numbers";
-import { isTemplateFor } from "../../../cod-shared/channels/templates";
+import { defaultTemplateFor, isTemplateFor } from "../../../cod-shared/channels/templates";
+import type { ChannelType, UnavailableRule } from "../../../cod-shared/channels/types";
 import {
   DEFAULT_CHECKOUT_FORM_POLICY,
   isDefaultCheckoutFormPolicy,
@@ -16,6 +17,7 @@ import { ACTIONS } from "@/lib/activity";
 export interface MerchantStore {
   id: string;
   name: string;
+  type: ChannelType;
   status: ChannelStatus;
   logoUrl: string | null;
   hostname: string | null;
@@ -37,7 +39,7 @@ export function normaliseSubdomain(raw: string): string | null {
   return SUBDOMAIN.test(value) && !RESERVED_SUBDOMAINS.has(value) ? value : null;
 }
 
-const STORE_COLUMNS = `s.id, s.name, s.status, s.logo_url as "logoUrl",
+const STORE_COLUMNS = `s.id, s.name, s.channel_type as type, s.status, s.logo_url as "logoUrl",
             (select d.hostname from store_domains d where d.store_id = s.id
               order by (d.kind = 'subdomain') desc, d.created_at limit 1) as hostname,
             exists (select 1 from orders o where o.store_id = s.id) as "hasOrders",
@@ -73,11 +75,14 @@ export type CreateStoreResult =
   | { ok: false; reason: "subdomain_taken" }
   | { ok: false; reason: "plan_limit"; limit: number; used: number }
   | { ok: false; reason: "unknown_products"; productIds: string[] }
+  | { ok: false; reason: "main_product_required" }
   | { ok: false; reason: "unknown_shipping_profile" }
   | { ok: false; reason: "unknown_template" };
 
 export interface CreateStoreInput {
   merchantId: string;
+  type?: ChannelType;
+  unavailableRule?: UnavailableRule;
   name: string;
   subdomain: string;
   baseDomain: string;
@@ -101,9 +106,11 @@ export async function createMerchantStore(
   const subdomain = normaliseSubdomain(input.subdomain);
   if (!subdomain) return { ok: false, reason: "invalid_subdomain" };
   const hostname = `${subdomain}.${input.baseDomain}`;
-  const templateId = input.templateId ?? "theme01";
-  if (!isTemplateFor("store", templateId)) return { ok: false, reason: "unknown_template" };
+  const type = input.type ?? "store";
+  const templateId = input.templateId ?? defaultTemplateFor(type);
+  if (!isTemplateFor(type, templateId)) return { ok: false, reason: "unknown_template" };
   const productIds = [...new Set(input.productIds ?? [])];
+  if (type === "landing" && productIds.length !== 1) return { ok: false, reason: "main_product_required" };
 
   const client = await platform.connect();
   const refuse = async <T extends CreateStoreResult>(result: T): Promise<T> => {
@@ -160,8 +167,9 @@ export async function createMerchantStore(
     const id = randomUUID();
     const now = new Date().toISOString();
     await client.query(
-      `insert into stores (id, name, merchant_id, order_prefix, theme_id, checkout_form_json, default_shipping_profile_id, creation_key, created_at, updated_at)
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $9)`,
+      `insert into stores (id, name, merchant_id, order_prefix, theme_id, checkout_form_json, default_shipping_profile_id, creation_key,
+                           channel_type, unavailable_rule, created_at, updated_at)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $10, $11, $9, $9)`,
       [
         id,
         input.name.trim(),
@@ -172,6 +180,8 @@ export async function createMerchantStore(
         input.defaultShippingProfileId ?? null,
         input.creationKey ?? null,
         now,
+        type,
+        input.unavailableRule ?? "show_unavailable",
       ],
     );
     await client.query(

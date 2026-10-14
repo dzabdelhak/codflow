@@ -146,6 +146,14 @@ other is how these drift.
   Aventy's plan check plugs in there — and is idempotent on `creationKey`
   (`stores.creation_key`, unique per merchant). `/webhooks` and `/images` still serve the deployment's
   only store until their tickets.
+- **A landing channel sells one main product** (`stores.channel_type =
+  'landing'`): its only `channel_products` row, kept single by the
+  `channel_products_landing_single` trigger; it is replaced only through
+  `PUT /api/landing-channel/main-product`. While that product is unavailable
+  (`main_product_available()` — archived, hidden, deleted or unpublished, never
+  out of stock) the page follows `stores.unavailable_rule`; `suspend` is
+  computed at channel resolution, the status stays `published`. See
+  `docs/LANDING-CHANNEL.md`.
 - **One catalogue per merchant; each store selects from it.** `products`,
   `product_variants`, `product_images`, `product_categories` and
   `stock_movements` are under merchant RLS (`app.merchant_id`), so every

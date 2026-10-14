@@ -14,6 +14,7 @@ import {
   Shield,
   ShoppingCart,
   Sparkles,
+  Crosshair,
   Star,
   Store,
   Tag,
@@ -23,6 +24,8 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { canScope, useIdentity } from "@/features/auth/components/RequireAuth";
 import { useT } from "@/i18n/react";
+import { useMerchantStores } from "@/features/stores/useMerchantStores";
+import type { ChannelType } from "../../../../cod-shared/channels/types";
 
 export type NavLeaf = {
   kind: "leaf";
@@ -31,6 +34,7 @@ export type NavLeaf = {
   href: string;
   scope?: string;
   badge?: string;
+  channel?: ChannelType;
 };
 
 export type NavGroup = {
@@ -54,6 +58,8 @@ export type NavSection = {
 export function useNavSections(): NavSection[] {
   const identity = useIdentity();
   const tN = useT("navigation");
+  const channelType = useMerchantStores().active?.type ?? "store";
+  const landing = channelType === "landing";
   const sections: NavSection[] = [
     {
       label: tN("sidebar.general"),
@@ -135,15 +141,24 @@ export function useNavSections(): NavSection[] {
           id: "products",
           label: tN("sidebar.products"),
           icon: Layers,
-          href: "/products",
+          href: landing ? "/products/main" : "/products",
           scope: "products:read",
           children: [
+            {
+              kind: "leaf",
+              href: "/products/main",
+              label: tN("sidebar.main_product"),
+              icon: Crosshair,
+              scope: "products:read",
+              channel: "landing",
+            },
             {
               kind: "leaf",
               href: "/products/store",
               label: tN("sidebar.store_products"),
               icon: Store,
               scope: "products:read",
+              channel: "store",
             },
             {
               kind: "leaf",
@@ -151,6 +166,7 @@ export function useNavSections(): NavSection[] {
               label: tN("sidebar.categories"),
               icon: FolderOpen,
               scope: "product_groups:read",
+              channel: "store",
             },
             {
               kind: "leaf",
@@ -172,6 +188,7 @@ export function useNavSections(): NavSection[] {
               label: tN("sidebar.landing_pages"),
               icon: Megaphone,
               scope: "landing_pages:read",
+              channel: "store",
             },
           ],
         },
@@ -272,10 +289,11 @@ export function useNavSections(): NavSection[] {
                 ...item,
                 children: item.children.filter(
                   (child) =>
-                    !child.scope ||
+                    (!child.channel || child.channel === channelType) &&
+                    (!child.scope ||
                     child.scope === "admin"
                       ? identity?.role === "admin"
-                      : canScope(identity, child.scope),
+                      : canScope(identity, child.scope)),
                 ),
               }
             : item,
@@ -309,7 +327,8 @@ export function isCurrentPath(currentPath: string, href: string): boolean {
       currentPath === "/products" ||
       (currentPath.startsWith("/products/") &&
         currentPath !== "/products/stock" &&
-        currentPath !== "/products/store")
+        currentPath !== "/products/store" &&
+        currentPath !== "/products/main")
     );
   }
   return currentPath === href || currentPath.startsWith(`${href}/`);

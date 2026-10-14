@@ -29,6 +29,8 @@ function storeRow(overrides: Record<string, any> = {}) {
     merchantId: "test-merchant",
     defaultShippingProfileId: null,
     creationKey: null,
+    channelType: "store" as const,
+    unavailableRule: "show_unavailable" as const,
     orderPrefix: "CMD",
     orderSeq: 0,
     id: "store_1",

@@ -21,8 +21,14 @@ In a single transaction, for the signed-in user's merchant:
 3. Saves the selected catalogue products, in display order, published.
 4. Saves the delivery modes the channel offers and, optionally, its own default
    shipping profile (otherwise the account's default profile prices it).
-5. Applies the chosen template (`theme01` is the only store template today).
+5. Applies the chosen template: `theme01` for a store, `landing01` for a
+   landing (the default for each type).
 6. Seeds the four legal pages.
+
+A `landing` channel sells one main product: `productIds` holds exactly that
+one, and `unavailableRule` (`hide_order_form`, `show_unavailable` — the
+default — or `suspend`) says what its page does while that product is
+unavailable (see `docs/LANDING-CHANNEL.md`).
 
 The channel starts as `draft` and is not reachable on its address until it is
 published (`PATCH /api/merchant/stores/{id}/status`).

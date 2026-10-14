@@ -1,5 +1,6 @@
 import { apiFetch } from "@/lib/api";
 import type { Product, ProductCategory, ProductImage, ProductStatus, ProductVariant, ShippingProfile, StockAdjustStockResult, StockHistoryResponse, StockMovement, StockOverview, StockAlertItem } from "./types";
+import type { UnavailableRule } from "../../../../cod-shared/channels/types";
 
 interface ListEnvelope<T> {
   success: boolean;
@@ -190,4 +191,39 @@ export async function reorderStoreProducts(productIds: string[]) {
 
 export async function removeStoreProduct(productId: string) {
   await apiFetch(`/api/channel-products/${encodeURIComponent(productId)}`, { method: "DELETE" });
+}
+
+export interface LandingChannel {
+  unavailableRule: UnavailableRule;
+  available: boolean;
+  mainProduct: {
+    productId: string;
+    name: string;
+    handle: string;
+    price: number;
+    status: ProductStatus;
+    visibility: boolean;
+    published: boolean;
+    deleted: boolean;
+    primaryImageSrc: string | null;
+  } | null;
+}
+
+export async function getLandingChannel() {
+  return (await apiFetch<DataEnvelope<LandingChannel>>("/api/landing-channel")).data;
+}
+
+export async function replaceMainProduct(productId: string) {
+  return (
+    await apiFetch<DataEnvelope<LandingChannel>>(
+      "/api/landing-channel/main-product",
+      json({ method: "PUT", body: JSON.stringify({ productId }) }),
+    )
+  ).data;
+}
+
+export async function setUnavailableRule(unavailableRule: UnavailableRule) {
+  return (
+    await apiFetch<DataEnvelope<LandingChannel>>("/api/landing-channel", json({ method: "PATCH", body: JSON.stringify({ unavailableRule }) }))
+  ).data;
 }

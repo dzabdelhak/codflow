@@ -6,12 +6,14 @@
 import StoreLayout from "@/theme/layouts/StoreLayout.astro";
 import ProductsListContent from "@/theme/components/products/ProductsListContent.astro";
 import { getStoreContext } from "@/theme/config/store";
+import { isLandingChannel } from "@/theme/utils/landing-view";
 
 // ── STREAMING OPTIMIZATION ──
 // Store context is fetched first (needed for layout)
 // Products and categories are fetched inside streaming component
 // This allows layout/navigation to render immediately while data loads
 const { config, content } = await getStoreContext();
+if (isLandingChannel(config)) return Astro.redirect("/", 302);
 ---
 
 <StoreLayout config={config} content={content} title={`${content.allProductsSection} — ${config.name}`}>

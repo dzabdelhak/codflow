@@ -62,6 +62,12 @@ export async function getStoreProduct(c: Context<AppContext>) {
   return c.json({ success: true, data }, 200);
 }
 
+export async function getLandingChannel(c: Context<AppContext>) {
+  const data = await queries.getLandingStorefront(c.get("db"), c.get("storeId")!);
+  if (!data) throw new NotFoundError("Landing channel", c.get("storeId")!);
+  return c.json({ success: true, data }, 200);
+}
+
 export async function getStoreLandingPage(c: Context<AppContext>) {
   const db = c.get("db");
   const slug = c.req.param("slug")!;
@@ -291,6 +297,11 @@ export async function createStoreOrder(c: Context<AppContext>) {
 
   const notCarried = queries.findProductNotCarried(snapshot, lines);
   if (notCarried) throw new NotFoundError("Product", notCarried);
+  const requirePublished =
+    lines.some((line) => !snapshot.products.get(line.productId)?.published) &&
+    (await queries.isLandingChannel(db, c.get("storeId")!));
+  const notSellable = queries.findProductNotSellable(snapshot, lines, { requirePublished });
+  if (notSellable) throw new NotFoundError("Product", notSellable);
 
   const skuMissing = queries.findMissingSku(snapshot, lines);
   if (skuMissing) {

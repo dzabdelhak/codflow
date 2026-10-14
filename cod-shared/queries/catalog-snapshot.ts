@@ -228,6 +228,26 @@ export function findProductNotCarried(snapshot: CatalogSnapshot, lines: CartLine
   return null;
 }
 
+export function findProductNotSellable(
+  snapshot: CatalogSnapshot,
+  lines: CartLine[],
+  opts: { requirePublished: boolean },
+): string | null {
+  for (const line of lines) {
+    const product = snapshot.products.get(line.productId);
+    if (
+      !product ||
+      product.deletedAt !== null ||
+      product.status !== "ACTIVE" ||
+      !product.visibility ||
+      (opts.requirePublished && !product.published)
+    ) {
+      return line.productId;
+    }
+  }
+  return null;
+}
+
 export function findMissingSku(
   snapshot: CatalogSnapshot,
   lines: CartLine[],

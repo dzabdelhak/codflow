@@ -10,7 +10,7 @@ import type { Product } from "@/features/products/types";
 import { listShippingProfiles } from "@/features/delivery/api";
 import type { ShippingProfile } from "@/features/delivery/types";
 import { CHANNEL_TEMPLATES } from "../../../../cod-shared/channels/templates";
-import { AVAILABLE_CHANNEL_TYPES, CHANNEL_TYPES, type ChannelType } from "../../../../cod-shared/channels/types";
+import { AVAILABLE_CHANNEL_TYPES, CHANNEL_TYPES, UNAVAILABLE_RULES, type ChannelType } from "../../../../cod-shared/channels/types";
 import { createStore } from "./api";
 import { baseDomainOf, suggestSubdomain, type MerchantStore } from "./store-choice";
 import { useMerchantStores } from "./useMerchantStores";
@@ -25,7 +25,9 @@ import {
   saveDraft,
   stepForError,
   stepProblem,
+  toggleProduct,
   withLiveProducts,
+  withType,
   type WizardDraft,
   type WizardStep,
 } from "./wizard-model";
@@ -79,6 +81,7 @@ function StepList({ current }: { current: WizardStep }) {
 
 export function StoreWizard({ userId }: { userId: string }) {
   const t = useT("navigation");
+  const tp = useT("products");
   const locale = useLocale();
   const { stores } = useMerchantStores();
   const [draft, setDraft] = useState<WizardDraft>(() => loadDraft(userId) ?? newDraft());
@@ -176,6 +179,7 @@ export function StoreWizard({ userId }: { userId: string }) {
   }
 
   const selected = new Set(draft.productIds);
+  const landing = draft.type === "landing";
   const visibleProducts = catalogueCandidates(catalogue ?? [], query, { includeCarried: true });
   const accountDefault = profiles?.find((p) => p.isDefault);
   const address = draft.subdomain && baseDomain ? `${draft.subdomain}.${baseDomain}` : null;
@@ -200,7 +204,7 @@ export function StoreWizard({ userId }: { userId: string }) {
                   key={type}
                   type="button"
                   disabled={!available}
-                  onClick={() => update({ type })}
+                  onClick={() => setDraft((current) => withType(current, type))}
                   className={`rounded-xl border p-4 text-start transition-colors ${
                     active ? "border-brand bg-brand/5" : "border-border hover:bg-muted/50"
                   } disabled:cursor-not-allowed disabled:opacity-60`}
@@ -252,7 +256,9 @@ export function StoreWizard({ userId }: { userId: string }) {
 
         {draft.step === "products" && (
           <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">{t("stores.wizard.products_hint")}</p>
+            <p className="text-sm text-muted-foreground">
+              {t(landing ? "stores.wizard.products_hint_landing" : "stores.wizard.products_hint")}
+            </p>
             <SearchInput value={query} onChange={setQuery} placeholder={t("stores.wizard.products_search")} />
             {catalogue === null ? (
               <p className="text-sm text-muted-foreground">{t("stores.loading")}</p>
@@ -264,15 +270,10 @@ export function StoreWizard({ userId }: { userId: string }) {
                   <li key={product.id}>
                     <label className="flex cursor-pointer items-center gap-3 px-3 py-2.5">
                       <input
-                        type="checkbox"
+                        type={landing ? "radio" : "checkbox"}
+                        name={landing ? "main-product" : undefined}
                         checked={selected.has(product.id)}
-                        onChange={() =>
-                          update({
-                            productIds: selected.has(product.id)
-                              ? draft.productIds.filter((id) => id !== product.id)
-                              : [...draft.productIds, product.id],
-                          })
-                        }
+                        onChange={() => setDraft((current) => toggleProduct(current, product.id))}
                         className="size-4 accent-primary"
                       />
                       <span className="min-w-0 flex-1 truncate text-sm font-semibold">{product.name}</span>
@@ -282,9 +283,32 @@ export function StoreWizard({ userId }: { userId: string }) {
                 ))}
               </ul>
             )}
-            <p className="text-xs text-muted-foreground">
-              {t("stores.wizard.products_selected").replace("{n}", String(draft.productIds.length))}
-            </p>
+            {!landing && (
+              <p className="text-xs text-muted-foreground">
+                {t("stores.wizard.products_selected").replace("{n}", String(draft.productIds.length))}
+              </p>
+            )}
+            {landing && (
+              <fieldset className="space-y-2 pt-2">
+                <legend className="text-sm font-semibold">{tp("main_product.rule_title")}</legend>
+                <p className="text-xs text-muted-foreground">{tp("main_product.rule_hint")}</p>
+                {UNAVAILABLE_RULES.map((rule) => (
+                  <label key={rule} className="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-3">
+                    <input
+                      type="radio"
+                      name="unavailable-rule"
+                      checked={draft.unavailableRule === rule}
+                      onChange={() => update({ unavailableRule: rule })}
+                      className="mt-0.5 size-4 accent-primary"
+                    />
+                    <span>
+                      <span className="block text-sm font-semibold">{tp(`main_product.rule.${rule}.name`)}</span>
+                      <span className="block text-xs text-muted-foreground">{tp(`main_product.rule.${rule}.description`)}</span>
+                    </span>
+                  </label>
+                ))}
+              </fieldset>
+            )}
           </div>
         )}
 
@@ -356,12 +380,22 @@ export function StoreWizard({ userId }: { userId: string }) {
               </dd>
             </div>
             <div>
-              <dt className="text-xs text-muted-foreground">{t("stores.wizard.summary.products")}</dt>
+              <dt className="text-xs text-muted-foreground">
+                {t(landing ? "stores.wizard.summary.main_product" : "stores.wizard.summary.products")}
+              </dt>
               <dd className="flex items-center gap-1.5 font-semibold">
                 <Package size={14} aria-hidden="true" />
-                {t("stores.wizard.products_selected").replace("{n}", String(draft.productIds.length))}
+                {landing
+                  ? (catalogue?.find((p) => p.id === draft.productIds[0])?.name ?? "—")
+                  : t("stores.wizard.products_selected").replace("{n}", String(draft.productIds.length))}
               </dd>
             </div>
+            {landing && (
+              <div>
+                <dt className="text-xs text-muted-foreground">{tp("main_product.rule_title")}</dt>
+                <dd className="font-semibold">{tp(`main_product.rule.${draft.unavailableRule}.name`)}</dd>
+              </div>
+            )}
             <div>
               <dt className="text-xs text-muted-foreground">{t("stores.wizard.summary.delivery")}</dt>
               <dd className="font-semibold">

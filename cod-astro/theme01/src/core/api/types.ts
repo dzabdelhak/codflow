@@ -102,6 +102,18 @@ export interface StoreConfig {
    * Optional for backwards compatibility with pre-0032 servers.
    */
   whatsapp?: StoreWhatsAppWidget | null;
+  /** "landing" renders one page around the main product (GET /store/landing). Absent on older servers: a store. */
+  channelType?: "store" | "landing";
+  unavailableRule?: UnavailableRule;
+}
+
+export type UnavailableRule = "hide_order_form" | "show_unavailable" | "suspend";
+
+/** A landing channel's main product, presented even while unavailable. */
+export interface LandingChannel {
+  unavailableRule: UnavailableRule;
+  available: boolean;
+  product: any | null;
 }
 
 export interface StoreWhatsAppWidget {

@@ -1,8 +1,10 @@
 import type { ChannelStatus } from "../../../../cod-shared/channels/lifecycle";
+import type { ChannelType } from "../../../../cod-shared/channels/types";
 
 export interface MerchantStore {
   id: string;
   name: string;
+  type: ChannelType;
   status: ChannelStatus;
   logoUrl: string | null;
   hostname: string | null;

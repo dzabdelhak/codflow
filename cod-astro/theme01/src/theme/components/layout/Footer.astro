@@ -7,8 +7,9 @@ import { Icon } from "astro-icon/components";
 interface Props {
   config: StoreConfig;
   content?: StoreFrontContent;
+  landing?: boolean;
 }
-const { config, content } = Astro.props;
+const { config, content, landing = false } = Astro.props;
 const year = new Date().getFullYear();
 
 const badges = [
@@ -46,7 +47,7 @@ const badges = [
 
       {/* Links Columns */}
       <div class="md:col-span-8 grid grid-cols-2 sm:grid-cols-3 gap-6">
-        <div>
+        {!landing && <div>
           <h3 class="text-[0.6875rem] sm:text-[0.75rem] font-black uppercase tracking-widest mb-3 sm:mb-4" style="color: var(--clr-text)">
             {content?.footerQuickLinks}
           </h3>
@@ -64,7 +65,7 @@ const badges = [
               </li>
             ))}
           </ul>
-        </div>
+        </div>}
 
         <div>
           <h3 class="text-[0.6875rem] sm:text-[0.75rem] font-black uppercase tracking-widest mb-3 sm:mb-4" style="color: var(--clr-text)">

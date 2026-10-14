@@ -4,8 +4,8 @@
 
 **Blocked by:** 07
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] A merchant creates a landing channel with one main product and takes an order on it
-- [ ] Landing channels do not show store-only screens
-- [ ] Making the main product unavailable applies the configured rule on the public page
+- [x] A merchant creates a landing channel with one main product and takes an order on it
+- [x] Landing channels do not show store-only screens
+- [x] Making the main product unavailable applies the configured rule on the public page

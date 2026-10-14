@@ -31,7 +31,8 @@
     "checkout_form": "Checkout form",
     "whatsapp": "WhatsApp",
     "stores": "Stores",
-    "store_products": "In this store"
+    "store_products": "In this store",
+    "main_product": "Main product"
   },
   "navbar": {
     "search_placeholder": "Search for orders, customers...",
@@ -194,6 +195,10 @@
         "theme01": {
           "name": "Classic store",
           "description": "Home page, catalogue, categories, product pages, cart, checkout, confirmation and content pages."
+        },
+        "landing01": {
+          "name": "Product landing page",
+          "description": "Banner, product presentation, gallery, benefits, price, order form, FAQ and reassurance."
         }
       },
       "summary": {
@@ -202,12 +207,14 @@
         "domain": "Address",
         "products": "Products",
         "delivery": "Delivery modes",
-        "template": "Template"
+        "template": "Template",
+        "main_product": "Main product"
       },
       "problem": {
         "name_required": "Give the store a name.",
         "subdomain_invalid": "Use 3 to 40 lower-case letters, digits or hyphens. Some names are reserved.",
-        "no_delivery_mode": "Offer at least one delivery mode."
+        "no_delivery_mode": "Offer at least one delivery mode.",
+        "main_product_required": "Choose the main product of the landing page."
       },
       "next": "Continue",
       "back": "Back",
@@ -221,7 +228,8 @@
       "error_profile": "This shipping profile no longer exists. Choose another one and try again.",
       "error_template": "This template is not available for this channel type. Choose another one.",
       "error_forbidden": "Only an account administrator can create a store.",
-      "done_existing": "This store had already been created by an earlier attempt, with the answers given then. Change its settings from its dashboard."
+      "done_existing": "This store had already been created by an earlier attempt, with the answers given then. Change its settings from its dashboard.",
+      "products_hint_landing": "Choose the one catalogue product this landing page sells. You can replace it later."
     }
   }
 }

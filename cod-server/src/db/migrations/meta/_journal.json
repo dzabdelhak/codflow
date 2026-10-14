@@ -64,6 +64,13 @@
       "when": 1791970394832,
       "tag": "0008_store_creation_key",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791972683068,
+      "tag": "0009_landing_channel",
+      "breakpoints": true
     }
   ]
 }

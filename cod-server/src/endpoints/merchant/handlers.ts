@@ -24,6 +24,8 @@ export async function createStore(c: Context<AppContext>) {
     c.env.DATABASE.platform,
     {
       merchantId: c.get("user").merchantId,
+      type: body.type,
+      unavailableRule: body.unavailableRule,
       name: body.name,
       subdomain: body.subdomain,
       baseDomain: c.env.STORE_BASE_DOMAIN ?? "localhost",
@@ -57,6 +59,10 @@ export async function createStore(c: Context<AppContext>) {
       throw new ValidationError("Some products are not in the catalogue", ERROR_CODES.VALIDATION_FAILED, {
         field: "productIds",
         unknown: result.productIds,
+      });
+    case "main_product_required":
+      throw new ValidationError("A landing channel sells exactly one main product", ERROR_CODES.VALIDATION_FAILED, {
+        field: "productIds",
       });
     case "unknown_shipping_profile":
       throw new ValidationError("This shipping profile is not in the account", ERROR_CODES.VALIDATION_FAILED, {

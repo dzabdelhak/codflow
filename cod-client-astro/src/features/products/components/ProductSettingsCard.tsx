@@ -16,6 +16,7 @@ interface ProductSettingsCardProps {
   showInStore: boolean;
   setShowInStore: (val: boolean) => void;
   inChannel: boolean;
+  landing: boolean;
   hasVariantsSwitch: boolean;
   editing: boolean;
   busy: boolean;
@@ -33,6 +34,7 @@ export function ProductSettingsCard({
   showInStore,
   setShowInStore,
   inChannel,
+  landing,
   hasVariantsSwitch,
   editing,
   busy,
@@ -103,7 +105,7 @@ export function ProductSettingsCard({
           />
         </label>
       </div>
-      <div className="mt-4">
+      {!landing && <div className="mt-4">
         {!inChannel ? (
           <p className="text-xs text-muted-foreground">
             {t("form.not_in_store_hint")}{" "}
@@ -132,7 +134,7 @@ export function ProductSettingsCard({
           />
         </label>
         )}
-      </div>
+      </div>}
     </Card>
   );
 }

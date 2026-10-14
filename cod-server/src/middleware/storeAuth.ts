@@ -11,7 +11,7 @@ import { timingSafeEqual } from "node:crypto";
 import type { Context } from "hono";
 import type { AppContext } from "@/types";
 import { requestScope, scopeForHost, type Scope } from "@/db/scope";
-import { publicAccess } from "../../../cod-shared/channels/lifecycle";
+import { channelPublicAccess } from "../../../cod-shared/channels/lifecycle";
 import { ERROR_CODES } from "../../../cod-shared/errors/codes";
 
 function sameSecret(given: string, expected: string): boolean {
@@ -30,7 +30,7 @@ export async function resolveStorefrontStore(c: Context<AppContext>): Promise<Sc
   if (!host) return c.json({ error: "Missing channel host" }, 400);
 
   const scope = await scopeForHost(c.env.DATABASE.platform, host);
-  const access = scope ? publicAccess(scope.status) : "hidden";
+  const access = scope ? channelPublicAccess(scope.channel) : "hidden";
   if (access === "hidden") return c.json({ error: "Unknown store" }, 404);
   if (access === "unavailable") {
     return c.json({ error: "This store is unavailable", code: ERROR_CODES.CHANNEL_UNAVAILABLE }, 503);

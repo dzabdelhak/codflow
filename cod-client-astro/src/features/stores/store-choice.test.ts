@@ -4,6 +4,7 @@ import { pickActiveStore, suggestSubdomain, baseDomainOf, filterStores, canDelet
 const store = (overrides: Partial<MerchantStore>): MerchantStore => ({
   id: "x",
   name: "X",
+  type: "store",
   status: "published",
   logoUrl: null,
   hostname: null,

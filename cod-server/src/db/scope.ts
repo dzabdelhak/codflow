@@ -7,20 +7,25 @@ import type pg from "pg";
 import type { Context, Next } from "hono";
 import { getDb } from "../../../cod-shared/db/client";
 import type { AppContext } from "@/types";
-import type { ChannelStatus } from "../../../cod-shared/channels/lifecycle";
+import type { PublicChannel } from "../../../cod-shared/channels/lifecycle";
 
 export { createPool, createDatabase, withStore, type Database, type DbRole } from "../../../cod-shared/db/pools";
 
 export async function scopeForHost(
   platform: pg.Pool,
   hostname: string,
-): Promise<(Scope & { status: ChannelStatus }) | null> {
-  const { rows } = await platform.query<{ store_id: string; merchant_id: string; status: ChannelStatus }>(
-    `select d.store_id, s.merchant_id, s.status from store_domains d join stores s on s.id = d.store_id
+): Promise<(Scope & { channel: PublicChannel }) | null> {
+  const { rows } = await platform.query<{ store_id: string; merchant_id: string } & PublicChannel>(
+    `select d.store_id, s.merchant_id, s.status, s.channel_type as type, s.unavailable_rule as "unavailableRule",
+            s.channel_type <> 'landing' or main_product_available(s.id) as "mainProductAvailable"
+       from store_domains d join stores s on s.id = d.store_id
       where d.hostname = $1`,
     [hostname.split(":")[0].toLowerCase()],
   );
-  return rows[0] ? { storeId: rows[0].store_id, merchantId: rows[0].merchant_id, status: rows[0].status } : null;
+  const row = rows[0];
+  if (!row) return null;
+  const { store_id, merchant_id, ...channel } = row;
+  return { storeId: store_id, merchantId: merchant_id, channel };
 }
 
 /**

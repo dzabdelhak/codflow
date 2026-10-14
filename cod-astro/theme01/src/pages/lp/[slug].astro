@@ -14,6 +14,7 @@ import { fetchLandingPageBySlug } from "@/core/api/client";
 import { actions } from "astro:actions";
 import { thankYouUrl } from "@/core/utils/thank-you-url";
 import { isInputError } from "astro:actions";
+import { isLandingChannel } from "@/theme/utils/landing-view";
 
 const { slug } = Astro.params;
 
@@ -25,6 +26,7 @@ const [storeCtx, lp] = await Promise.all([
   fetchLandingPageBySlug(slug ?? ""),
 ]);
 const { config, content, isRTL } = storeCtx;
+if (isLandingChannel(config)) return Astro.redirect("/", 302);
 
 // Action result (must be checked before rendering — same as product page).
 // Order success → single PRG redirect to the thank-you page. The browser

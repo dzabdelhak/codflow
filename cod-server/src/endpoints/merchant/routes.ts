@@ -9,11 +9,13 @@ import { SuccessResponseSchema } from "@/openapi/schemas";
 import * as handlers from "./handlers";
 import { changeStoreStatusSchema, createStoreSchema, deleteStoreSchema, StoreIdParamSchema } from "./validation";
 import { CHANNEL_STATUSES } from "../../../../cod-shared/channels/lifecycle";
+import { CHANNEL_TYPES } from "../../../../cod-shared/channels/types";
 
 const MerchantStoreSchema = z
   .object({
     id: z.string(),
     name: z.string(),
+    type: z.enum(CHANNEL_TYPES),
     status: z.enum(CHANNEL_STATUSES),
     logoUrl: z.string().nullable(),
     hostname: z.string().nullable(),
@@ -58,6 +60,8 @@ const createStoreRoute = defineRoute({
     "The single entry point for creating a sales channel: the dashboard's creation wizard calls it today, and Aventy's \"Créer un canal de vente\" button will call it later (through a signed token instead of a dashboard session).",
     "",
     "In one transaction it generates the channel id, gives it the free subdomain `<subdomain>.<base domain>`, saves the selected catalogue products (in display order, published), the delivery modes it offers and its default shipping profile, applies the template, and seeds its four legal pages. The channel starts as `draft`: publish it with PATCH /stores/{id}/status.",
+    "",
+    "A `landing` channel sells one main product: `productIds` holds exactly that one (400 VALIDATION_FAILED on `productIds` otherwise), and `unavailableRule` says what its page does while that product is unavailable.",
     "",
     "**Idempotent on `creationKey`.** Send the same key on every retry or resumed attempt of one creation: if a channel was already created with it, that channel is returned with 200 and `created: false`, unchanged — answers that differ from the first attempt are not applied — and nothing else is created. A new creation answers 201 with `created: true`.",
     "",

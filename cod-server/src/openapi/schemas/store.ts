@@ -6,6 +6,7 @@
 
 import { z } from "@hono/zod-openapi";
 import { CHANNEL_STATUSES } from "../../../../cod-shared/channels/lifecycle";
+import { CHANNEL_TYPES, UNAVAILABLE_RULES } from "../../../../cod-shared/channels/types";
 import { ProductCategoryRowSchema } from "./products";
 
 export const StoreSchema = z
@@ -482,6 +483,12 @@ export const StoreConfigSchema = z
       example: "0x4AAAAAAAxxxxxxxxxxxx",
     }),
     status: z.enum(CHANNEL_STATUSES),
+    channelType: z.enum(CHANNEL_TYPES).openapi({
+      description: "`store` renders the catalogue pages; `landing` renders one page around its main product (GET /store/landing).",
+    }),
+    unavailableRule: z.enum(UNAVAILABLE_RULES).openapi({
+      description: "Landing only: what the page does while the main product is unavailable.",
+    }),
     createdAt: z.string().datetime(),
     updatedAt: z.string().datetime(),
     pages: z

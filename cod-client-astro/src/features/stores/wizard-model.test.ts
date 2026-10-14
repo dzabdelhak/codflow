@@ -10,6 +10,8 @@ import {
   stepForError,
   stepProblem,
   withLiveProducts,
+  withType,
+  toggleProduct,
 } from "./wizard-model";
 
 beforeEach(() => {
@@ -37,6 +39,22 @@ describe("store creation wizard", () => {
     expect(stepProblem(draft, "general")).toBe("name_required");
     expect(stepProblem({ ...draft, name: "Nour", subdomain: "N" }, "general")).toBe("subdomain_invalid");
     expect(stepProblem({ ...draft, name: "Nour", subdomain: "nour" }, "general")).toBeNull();
+  });
+
+  it("makes a landing sell exactly one main product, chosen in the products step", () => {
+    const landing = withType({ ...newDraft("k"), productIds: ["p1", "p2"] }, "landing");
+    expect(landing).toMatchObject({ type: "landing", templateId: "landing01", productIds: ["p1"] });
+    expect(toggleProduct(landing, "p2").productIds).toEqual(["p2"]);
+    expect(stepProblem({ ...landing, productIds: [] }, "products")).toBe("main_product_required");
+    expect(stepProblem(landing, "products")).toBeNull();
+    expect(withType(landing, "store")).toMatchObject({ templateId: "theme01", productIds: ["p1"] });
+    expect(toggleProduct(withType(landing, "store"), "p2").productIds).toEqual(["p1", "p2"]);
+  });
+
+  it("sends the unavailability rule for a landing only", () => {
+    const landing = { ...withType({ ...newDraft("k"), productIds: ["p1"] }, "landing"), unavailableRule: "suspend" as const };
+    expect(creationRequest(landing)).toMatchObject({ type: "landing", unavailableRule: "suspend", templateId: "landing01" });
+    expect(creationRequest(newDraft("k")).unavailableRule).toBeUndefined();
   });
 
   it("needs at least one delivery mode", () => {

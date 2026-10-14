@@ -17,6 +17,7 @@ import {
   or,
   asc,
   inArray,
+  type SQL,
 } from "drizzle-orm";
 import {
   products,
@@ -267,18 +268,40 @@ export async function getStoreProductByHandle(
   handle: string,
   opts?: { allowUnlisted?: boolean },
 ) {
-  const conditions = [
+  return findStoreProduct(db, [
     eq(products.handle, handle),
     eq(products.status, "ACTIVE"),
     eq(products.visibility, true),
     isNull(products.deletedAt),
-  ];
-  conditions.push(
     opts?.allowUnlisted
       ? sql`exists (select 1 from channel_products cp where cp.product_id = ${products.id})`
       : sql`exists (select 1 from channel_products cp where cp.product_id = ${products.id} and cp.published)`,
-  );
+  ]);
+}
 
+/**
+ * A landing channel's main product (its one channel_products row) in the full
+ * store-product shape, whatever its state: the landing still presents it while
+ * it is unavailable, and `main_product_available` says whether it sells.
+ */
+export async function getLandingStorefront(db: AppDb, storeId: string) {
+  const channel = await db
+    .select({
+      type: stores.channelType,
+      unavailableRule: stores.unavailableRule,
+      available: sql<boolean>`main_product_available(${stores.id})`,
+    })
+    .from(stores)
+    .where(eq(stores.id, storeId))
+    .then(first);
+  if (!channel || channel.type !== "landing") return null;
+  const product = await findStoreProduct(db, [
+    sql`exists (select 1 from channel_products cp where cp.product_id = ${products.id})`,
+  ]);
+  return { unavailableRule: channel.unavailableRule, available: channel.available && product !== null, product };
+}
+
+async function findStoreProduct(db: AppDb, conditions: SQL[]) {
   const product = await db
     .select({
       ...getTableColumns(products),

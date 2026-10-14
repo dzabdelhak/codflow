@@ -13,11 +13,51 @@ import NewArrivals from "@/theme/components/home/NewArrivals.astro";
 import FeaturesBar from "@/theme/components/home/FeaturesBar.astro";
 import WhatsAppCTA from "@/theme/components/home/WhatsAppCTA.astro";
 import CustomerTestimonials from "@/theme/components/home/CustomerTestimonials.astro";
+import LandingPage from "@/theme/components/landing/LandingPage.astro";
 import { getStoreContext } from "@/theme/config/store";
+import { fetchLandingChannel } from "@/core/api/client";
+import { isLandingChannel } from "@/theme/utils/landing-view";
+import { actions, isInputError } from "astro:actions";
+import { thankYouUrl } from "@/core/utils/thank-you-url";
 
-const { config, content } = await getStoreContext();
+const { config, content, isRTL } = await getStoreContext();
+
+const landing = isLandingChannel(config) ? await fetchLandingChannel() : null;
+const result = landing ? Astro.getActionResult(actions.placeOrder) : undefined;
+if (result?.data?.orderNumber) {
+  return Astro.redirect(thankYouUrl(result.data), 303);
+}
+const fieldErrors = isInputError(result?.error) ? result.error.fields : {};
+const serverError = result?.error && !isInputError(result.error) ? result.error.message : null;
+const landingProduct = landing?.product ?? null;
+const landingTitle = config.metaTitle ?? (landingProduct ? `${landingProduct.name} — ${config.name}` : config.name);
 ---
 
+{isLandingChannel(config) ? (
+<StoreLayout
+  config={config}
+  content={content}
+  title={landingTitle}
+  ogImage={landingProduct?.images?.[0]?.src}
+  landing={true}
+>
+  {landing && landingProduct ? (
+    <LandingPage
+      landing={{ ...landing, product: landingProduct }}
+      config={config}
+      content={content}
+      isRTL={isRTL}
+      fieldErrors={fieldErrors}
+      serverError={serverError}
+    />
+  ) : (
+    <div class="flex flex-col items-center justify-center py-24 px-6 text-center" role="status">
+      <h1 class="text-2xl font-black" style="color: var(--clr-text)">{content.landingUnavailableTitle}</h1>
+      <p class="mt-2 text-sm font-bold" style="color: var(--clr-text-2)">{content.landingUnavailableBody}</p>
+    </div>
+  )}
+</StoreLayout>
+) : (
 <StoreLayout config={config} content={content}>
   <!-- Hero renders immediately (no data fetch) -->
   <Hero content={content} />
@@ -52,3 +92,4 @@ const { config, content } = await getStoreContext();
     content={content}
   />
 </StoreLayout>
+)}

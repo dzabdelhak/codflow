@@ -11,8 +11,10 @@ import { actions } from "astro:actions";
 import { thankYouUrl } from "@/core/utils/thank-you-url";
 import { fetchProductByHandle } from "@/core/api/client";
 import { isInputError } from "astro:actions";
+import { isLandingChannel } from "@/theme/utils/landing-view";
 
 const { slug } = Astro.params;
+if (isLandingChannel((await getStoreContext()).config)) return Astro.redirect("/", 302);
 if (!slug || !(await fetchProductByHandle(slug))) return Astro.rewrite("/404");
 
 // ── STREAMING ──
