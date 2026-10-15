@@ -126,9 +126,14 @@ export async function changeChannelTemplate(db: AppDb, storeId: string, template
   if (!isTemplateFor(template.channelType, templateId)) return { ok: false, reason: "unknown_template" };
   const manifest = manifestFor(templateId, template.channelType);
   const brand: DesignBrand = { logoUrl: template.logoUrl, ...templateById(templateId)!.preset.brand };
-  await db.update(stores).set({ themeId: templateId, updatedAt: new Date().toISOString() }).where(eq(stores.id, storeId));
-  const published = await latestPublished(db);
-  await writeDraft(db, templateDesign(templateId, manifest, brand), published?.version ?? null, actor);
+  const now = new Date().toISOString();
+  let baseVersion = (await latestPublished(db))?.version ?? null;
+  if (baseVersion === null) {
+    await db.insert(channelDesignVersions).values({ version: 1, document: template.fallback, publishedAt: now, publishedBy: actor });
+    baseVersion = 1;
+  }
+  await db.update(stores).set({ themeId: templateId, updatedAt: now }).where(eq(stores.id, storeId));
+  await writeDraft(db, templateDesign(templateId, manifest, brand), baseVersion, actor);
   return { ok: true };
 }
 

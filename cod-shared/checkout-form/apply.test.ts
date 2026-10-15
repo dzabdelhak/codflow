@@ -63,6 +63,11 @@ describe("the customer's name", () => {
     });
   });
 
+  it("joins the parts a page cached while the name was split still sends", () => {
+    const result = applyCheckoutPolicy(policyWith(), submit({ customerName: undefined, customerFirstName: "Samira", customerLastName: "Kaci" }));
+    expect(result.ok && result.value).toMatchObject({ customerName: "Samira Kaci" });
+  });
+
   it("still takes the full name a page cached before the split sends", () => {
     const result = applyCheckoutPolicy(policyWith({ name: "split" }), submit({ customerName: "Samira Kaci" }));
     expect(result.ok && result.value).toMatchObject({ customerName: "Samira Kaci" });

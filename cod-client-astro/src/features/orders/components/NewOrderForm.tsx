@@ -121,6 +121,13 @@ export function NewOrderForm() {
         }
         setLines(abandonedCartLines(cart).map((line) => ({ ...line, id: crypto.randomUUID() })));
         setCartCustomer(cart.customerName);
+        void listCustomers(cart.phone).then(
+          (found) => {
+            const known = found.find((customer) => customer.phone === cart.phone);
+            if (alive && known) setCustomerId(known.id);
+          },
+          () => undefined,
+        );
       },
       (cause) => alive && setMessage(cause instanceof Error ? cause.message : String(cause)),
     );

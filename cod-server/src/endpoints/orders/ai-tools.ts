@@ -13,6 +13,7 @@ import { getDb } from "@/db";
 import { toolOutput, timestampSchema } from "@/lib/tool-output-schema";
 import { first } from "../../../../cod-shared/db/client";
 import { allocateOrderNumber } from "../../../../cod-shared/queries/order-numbers";
+import { lockAbandonedOrder, markAbandonedOrderConverted } from "../../../../cod-shared/queries/abandoned-orders";
 
 /**
  * Layer-2 validation schemas, hoisted to module level and exported so the MCP
@@ -300,11 +301,19 @@ export const getOrderTools = (db: ReturnType<typeof getDb>) => ({
             `products (array min 1: [{productId, productName, quantity (int > 0), pricePerUnit (positive), lineTotal (positive), variantId?, variantLabel?}]). ` +
             `Optional: communeId (UUID), city, address, notes, ` +
             `orderType (online|offline, default online), deliveryType (home|stop_desk, default home), ` +
-            `deliveryFee (number >= 0, offline only), companyId (UUID).`,
+            `deliveryFee (number >= 0, offline only), companyId (UUID), abandonedOrderId (the abandoned cart this order recovers).`,
         };
       }
 
       try {
+        if (parsed.data.abandonedOrderId) {
+          const cart = await lockAbandonedOrder(db, parsed.data.abandonedOrderId);
+          if (!cart) return { success: false, error: `Abandoned order not found with ID: ${parsed.data.abandonedOrderId}` };
+          if (cart.status === "converted") {
+            return { success: false, error: `This abandoned cart is already order ${cart.convertedOrderNumber ?? cart.convertedOrderId}` };
+          }
+        }
+
         const date = new Date();
         const orderNumber = await allocateOrderNumber(db);
         const now = date.toISOString();
@@ -413,6 +422,7 @@ export const getOrderTools = (db: ReturnType<typeof getDb>) => ({
         }));
 
         await queries.createOrder(db, orderData, productsData, null);
+        if (parsed.data.abandonedOrderId) await markAbandonedOrderConverted(db, { id: parsed.data.abandonedOrderId }, orderId, orderNumber);
 
         return {
           success: true,

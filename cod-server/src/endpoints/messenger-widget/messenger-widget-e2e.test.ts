@@ -54,6 +54,12 @@ describe("the Messenger button", () => {
     expect(config).not.toHaveProperty("messengerWidgetJson");
   });
 
+  it("keeps its side and label while turned off", async () => {
+    await call("admin", "PUT", { enabled: false, page: "", position: "left", label: "Écrivez-nous" });
+    const res = await call("admin", "GET");
+    expect(((await res.json()) as { data: { config: unknown } }).data.config).toEqual({ enabled: false, page: "", position: "left", label: "Écrivez-nous" });
+  });
+
   it("refuses to turn on without a page, and is for admins only", async () => {
     expect((await call("admin", "PUT", { enabled: true, page: "" })).status).toBe(400);
     expect((await call("staff", "PUT", { enabled: false })).status).toBe(403);

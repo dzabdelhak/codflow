@@ -7,6 +7,7 @@ import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
 import { stores } from "../../../../cod-shared/db/schema";
 import { first } from "../../../../cod-shared/db/client";
 import {
+  DEFAULT_MESSENGER_WIDGET,
   MESSENGER_LIMITS,
   MESSENGER_POSITIONS,
   parseMessengerWidgetConfig,
@@ -27,7 +28,7 @@ export async function saveMessengerWidget(c: Context<AppContext>) {
   if (!result.ok) {
     throw new ValidationError("The Messenger button settings are not valid", ERROR_CODES.VALIDATION_FAILED, { issues: result.issues });
   }
-  const off = !result.config.enabled && result.config.page === "";
+  const off = serializeMessengerWidgetConfig(result.config) === serializeMessengerWidgetConfig(DEFAULT_MESSENGER_WIDGET);
   await c.get("db")
     .update(stores)
     .set({ messengerWidgetJson: off ? null : serializeMessengerWidgetConfig(result.config), updatedAt: new Date().toISOString() })

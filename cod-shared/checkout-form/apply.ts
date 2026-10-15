@@ -203,8 +203,9 @@ export function applyCheckoutPolicy(
     if (lastName === "") return { ok: false, rejection: { code: "NAME_REQUIRED", field: "customerLastName" } };
     names = { customerName: `${firstName} ${lastName}`, customerFirstName: firstName, customerLastName: lastName };
   } else {
-    if (fullName.length < 2) return { ok: false, rejection: { code: "NAME_REQUIRED", field: "customerName" } };
-    names = { customerName: fullName };
+    const name = fullName || [firstName, lastName].filter(Boolean).join(" ");
+    if (name.length < 2) return { ok: false, rejection: { code: "NAME_REQUIRED", field: "customerName" } };
+    names = { customerName: name };
   }
 
   const deliveryType = input.deliveryType;

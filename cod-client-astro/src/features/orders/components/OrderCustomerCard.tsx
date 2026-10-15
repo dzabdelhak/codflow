@@ -6,7 +6,7 @@ import type { OrderDetail } from "@/features/orders/types";
 interface OrderCustomerCardProps {
   order: Pick<
     OrderDetail,
-    "customerName" | "phone" | "wilaya" | "commune" | "address" | "customerEmail"
+    "customerName" | "customerFirstName" | "customerLastName" | "phone" | "wilaya" | "commune" | "address" | "customerEmail"
   >;
 }
 
@@ -25,6 +25,11 @@ export function OrderCustomerCard({ order }: OrderCustomerCardProps) {
             <p className="mt-1 text-sm font-semibold">
               {order.customerName}
             </p>
+            {(order.customerFirstName || order.customerLastName) && (
+              <p className="text-xs text-muted-foreground">
+                {t("detail.first_name")}: {order.customerFirstName ?? "—"} · {t("detail.last_name")}: {order.customerLastName ?? "—"}
+              </p>
+            )}
             <a
               href={`tel:${order.phone}`}
               className="mt-1 inline-flex items-center gap-1 text-sm text-link"

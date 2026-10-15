@@ -209,6 +209,21 @@ describe("publishing", () => {
     expect((await dashboard("PUT", "/api/channel-design/template", { templateId: "flash" })).status).toBe(400);
   });
 
+  it("keeps a never-published channel's public look while a new template waits in the draft", async () => {
+    const changed = await dashboard("PUT", "/api/channel-design/template", { templateId: "boutique" }, other);
+    expect(changed.status).toBe(200);
+    expect(changed.json.data).toMatchObject({ published: { version: 1 }, draft: { baseVersion: 1 } });
+    const { rows: [live] } = await harness.platform.query(
+      "select document->'sections'->1->>'type' as second from channel_design_versions where store_id = $1 and version = 1",
+      [other],
+    );
+    expect(live.second).toBe("categories");
+    expect((changed.json.data as State & { templateId: string }).templateId).toBe("boutique");
+    expect(changed.json.data.draft?.document.sections[1].type).toBe("new_arrivals");
+    await harness.platform.query("delete from channel_design_versions where store_id = $1", [other]);
+    await harness.platform.query("delete from channel_designs where store_id = $1", [other]);
+  });
+
   it("keeps each channel's versions to itself", async () => {
     const { json } = await dashboard("GET", "/api/channel-design", undefined, other);
     expect(json.data).toMatchObject({ published: null, versions: [] });

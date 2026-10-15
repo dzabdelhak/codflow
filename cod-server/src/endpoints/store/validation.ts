@@ -184,9 +184,6 @@ export const storeOrderSchema = z.object({
    * the seam rather than reaching an engine that would throw EMPTY_CART.
    */
   .superRefine((data, ctx) => {
-    if (!data.customerName && !(data.customerFirstName && data.customerLastName)) {
-      ctx.addIssue({ code: "custom", path: ["customerName"], message: "customerName, or customerFirstName and customerLastName, is required" });
-    }
     if (data.items && data.items.length > 0) return;
     for (const field of ["productId", "productName", "pricePerUnit"] as const) {
       if (data[field] === undefined) {

@@ -30,6 +30,7 @@ import type { LucideIcon } from "lucide-react";
 import { canScope, useIdentity } from "@/features/auth/components/RequireAuth";
 import { useT } from "@/i18n/react";
 import { useMerchantStores } from "@/features/stores/useMerchantStores";
+import { aventyManagedArea } from "@/features/stores/aventy-areas";
 import type { ChannelType } from "../../../../cod-shared/channels/types";
 
 export type NavLeaf = {
@@ -40,7 +41,6 @@ export type NavLeaf = {
   scope?: string;
   badge?: string;
   channel?: ChannelType;
-  managedInAventy?: true;
 };
 
 export type NavGroup = {
@@ -51,7 +51,6 @@ export type NavGroup = {
   href?: string;
   scope?: string;
   badge?: string;
-  managedInAventy?: true;
   children: NavLeaf[];
 };
 
@@ -120,7 +119,6 @@ export function useNavSections(): NavSection[] {
         {
           kind: "group",
           id: "customers",
-          managedInAventy: true,
           label: tN("sidebar.customers"),
           icon: Users,
           scope: "customers:read",
@@ -219,7 +217,6 @@ export function useNavSections(): NavSection[] {
         {
           kind: "group",
           id: "delivery",
-          managedInAventy: true,
           label: tN("sidebar.delivery"),
           icon: Truck,
           scope: "delivery:read",
@@ -275,7 +272,6 @@ export function useNavSections(): NavSection[] {
         {
           kind: "leaf",
           href: "/team",
-          managedInAventy: true,
           label: tN("sidebar.team"),
           icon: Shield,
           scope: "admin",
@@ -336,6 +332,7 @@ export function useNavSections(): NavSection[] {
                 ...item,
                 children: item.children.filter(
                   (child) =>
+                    !(aventy && aventyManagedArea(child.href)) &&
                     (!child.channel || child.channel === channelType) &&
                     (!child.scope ||
                     child.scope === "admin"
@@ -346,7 +343,7 @@ export function useNavSections(): NavSection[] {
             : item,
         )
         .filter((item) => {
-          if (item.managedInAventy && aventy) return false;
+          if (item.kind === "leaf" && aventy && aventyManagedArea(item.href)) return false;
           if (item.scope) {
             if (item.scope === "admin") {
               if (identity?.role !== "admin") return false;

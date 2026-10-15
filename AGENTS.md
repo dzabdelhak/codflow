@@ -323,8 +323,10 @@ to `src/types/env.ts` (cod-server) and, when production needs it, to
 - Inbound webhooks exist only for **Yalidine** and **ZR Express**. NOEST and
   EcoTrack tracking is pulled on demand via `GET /orders/:id/tracking` — there
   is no inbound receiver for them.
-- The **shopping cart is off by default, per store** (`stores.cart_enabled`).
-  A store that never enables it ships no cart markup at all. Rollback for the
+- The **shopping cart is per store** (`stores.cart_enabled`): a store channel
+  created through the creation API starts with it on, a landing channel and a
+  store made outside that API start with it off. A store with it off ships no
+  cart markup at all. Rollback for the
   whole feature is `UPDATE stores SET cart_enabled = 0` — there is no data
   migration to reverse, because a multi-line order is a valid Orestor order the
   dashboard and carriers already understand.

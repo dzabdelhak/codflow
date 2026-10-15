@@ -917,6 +917,8 @@ export async function createStoreOrder(
     delivery: { type: data.deliveryType, office: null, fee: finalDeliveryFee, gridVersion: gridVersion === null ? null : data.aventyGridVersion ?? gridVersion },
     customer: {
       name: data.customerName,
+      firstName: data.customerFirstName ?? null,
+      lastName: data.customerLastName ?? null,
       phone: data.phone,
       wilayaId: data.wilayaId,
       communeId: data.communeId,

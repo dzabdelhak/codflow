@@ -47,6 +47,9 @@ export interface OrderBase {
   orderNumber: string;
   customerId: string;
   customerName: string;
+  /** Set when the store's form asked for a first and a last name. */
+  customerFirstName?: string | null;
+  customerLastName?: string | null;
   phone: string;
   wilayaId: number | null;
   wilaya: string | null;

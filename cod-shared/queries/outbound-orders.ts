@@ -6,7 +6,7 @@ export interface OutboundOrderInput {
   orderNumber: string;
   lines: Array<{ sku: string | null; quantity: number; unitPrice: number; catalogVersion: number | null }>;
   delivery: { type: "home" | "stop_desk"; office: string | null; fee: number | null; gridVersion: number | null };
-  customer: { name: string; phone: string; wilayaId: number; communeId: string; address: string | null };
+  customer: { name: string; firstName?: string | null; lastName?: string | null; phone: string; wilayaId: number; communeId: string; address: string | null };
   journey: "direct" | "cart";
   campaign?: { source: string | null; medium: string | null; name: string | null; content: string | null; term: string | null } | null;
   stockNotGuaranteed: boolean;

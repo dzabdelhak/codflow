@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { OpenAPIHono } from "@hono/zod-openapi";
 import type { AppContext } from "@/types";
-import { createPool, type Database } from "@/db/scope";
+import { createPool, withStore, type Database } from "@/db/scope";
 import { createTestDb, TEST_MERCHANT_ID, TEST_STORE_ID, type TestDb } from "@/test-utils/pg";
 import { authMiddleware } from "@/middleware/auth";
 import { dashboardScope } from "@/middleware/dashboardScope";
@@ -9,6 +9,7 @@ import { errorHandler } from "@/middleware/error";
 import { openApiValidationHook } from "@/openapi/validation-hook";
 import ordersRoutes from "@/endpoints/orders/routes";
 import abandonedRoutes from "./routes";
+import { getOrderTools } from "@/endpoints/orders/ai-tools";
 
 let harness: TestDb;
 let database: Database;
@@ -85,6 +86,24 @@ describe("turning an abandoned cart into an order", () => {
     expect([again.status, again.json.code]).toEqual([409, "ABANDONED_ORDER_CONVERTED"]);
     const orders = await harness.platform.query("select count(*)::int as n from orders where store_id = $1", [TEST_STORE_ID]);
     expect(orders.rows[0].n).toBe(1);
+  });
+
+  it("converts a cart once through the AI agents' createOrder tool too", async () => {
+    await harness.platform.query(
+      `insert into abandoned_orders (store_id, id, session_id, customer_name, phone, wilaya_id, commune_id, product_id, product_name, price, status, created_at, updated_at)
+       values ($1, 'ab-2', 's-2', 'Nadia B', '0661234567', 16, $2, 'p-watch', 'Montre', 3000, 'abandoned', now()::text, now()::text)`,
+      [TEST_STORE_ID, communeId],
+    );
+    const order = {
+      customerId: "0661234567", customerName: "Nadia B", phone: "0661234567", wilayaId: 16, communeId, price: 3000,
+      orderType: "offline", deliveryType: "stop_desk", deliveryFee: 300, abandonedOrderId: "ab-2",
+      products: [{ productId: "p-watch", productName: "Montre", quantity: 1, pricePerUnit: 3000, lineTotal: 3000 }],
+    };
+    const run = () => withStore(database.app, TEST_STORE_ID, (db) => (getOrderTools(db).createOrder as any).execute(order, {}), TEST_MERCHANT_ID);
+    expect(await run()).toMatchObject({ success: true });
+    const { rows: [cart] } = await harness.platform.query("select status, converted_order_id from abandoned_orders where id = 'ab-2'");
+    expect(cart.status).toBe("converted");
+    expect(await run()).toMatchObject({ success: false });
   });
 
   it("refuses a cart that does not exist", async () => {

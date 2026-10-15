@@ -17,10 +17,6 @@ export const server = {
       // schema above cannot express that (form parsing needs a plain object),
       // and cod-server refuses the shape anyway — failing here turns a bare
       // 400 into a field error the form can actually render.
-      if (!input.customerName && !(input.customerFirstName && input.customerLastName)) {
-        throw new ActionError({ code: "BAD_REQUEST", message: "الاسم مطلوب" });
-      }
-
       if (!input.items?.length && (!input.productId || !input.productName || !input.pricePerUnit)) {
         throw new ActionError({
           code: "BAD_REQUEST",

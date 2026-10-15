@@ -197,12 +197,12 @@ export async function upsertAbandonedOrder(
 
 export async function markAbandonedOrderConverted(
   db: AppDb,
-  sessionId: string,
+  cart: string | { id: string },
   orderId: string,
   orderNumber: string
-): Promise<void> {
+): Promise<boolean> {
   const now = new Date().toISOString();
-  await db
+  const updated = await db
     .update(abandonedOrders)
     .set({
       status: "converted",
@@ -212,12 +212,24 @@ export async function markAbandonedOrderConverted(
     })
     .where(
       and(
-        eq(abandonedOrders.sessionId, sessionId),
+        typeof cart === "string" ? eq(abandonedOrders.sessionId, cart) : eq(abandonedOrders.id, cart.id),
         // Idempotent: don't re-update if already converted
         sql`${abandonedOrders.status} != 'converted'`,
         sql`exists (select 1 from ${orders} where ${orders.id} = ${orderId})`
       )
-    );
+    )
+    .returning({ id: abandonedOrders.id });
+  return updated.length > 0;
+}
+
+/** The cart about to become an order, locked so two conversions of it cannot both pass. */
+export async function lockAbandonedOrder(db: AppDb, id: string) {
+  return db
+    .select({ status: abandonedOrders.status, convertedOrderId: abandonedOrders.convertedOrderId, convertedOrderNumber: abandonedOrders.convertedOrderNumber })
+    .from(abandonedOrders)
+    .where(eq(abandonedOrders.id, id))
+    .for("update")
+    .then((r) => r[0]);
 }
 
 /** Cron: flip pending → abandoned for records older than 30 minutes. Returns count. */
@@ -288,15 +300,6 @@ export async function getAbandonedOrder(db: AppDb, id: string) {
   if (!row) return null;
   const { itemsJson, ...rest } = row;
   return { ...rest, items: parseAbandonedItems(itemsJson) };
-}
-
-export async function linkAbandonedOrderToOrder(db: AppDb, id: string, orderId: string, orderNumber: string): Promise<boolean> {
-  const updated = await db
-    .update(abandonedOrders)
-    .set({ status: "converted", convertedOrderId: orderId, convertedOrderNumber: orderNumber, updatedAt: new Date().toISOString() })
-    .where(and(eq(abandonedOrders.id, id), sql`${abandonedOrders.status} != 'converted'`))
-    .returning({ id: abandonedOrders.id });
-  return updated.length > 0;
 }
 
 export async function getAbandonedOrderStats(db: AppDb) {

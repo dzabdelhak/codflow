@@ -207,7 +207,9 @@
     "custom_answers": "Customer answers",
     "custom_answers_note": "Answers to your own checkout questions. They are never sent to carriers.",
     "stock_not_guaranteed": "Stock not guaranteed — confirm availability on the call",
-    "fee_to_confirm": "To confirm on the call"
+    "fee_to_confirm": "To confirm on the call",
+    "first_name": "First name",
+    "last_name": "Last name"
   },
   "next_status": {
     "new": "Confirm Order",
