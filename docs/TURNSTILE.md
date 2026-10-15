@@ -38,7 +38,7 @@ What it is **not**:
      store domain) must be listed, or the widget silently fails there.
 2. The widget gives you two keys:
    - **Site key** — public; lives in the storefront page HTML by design.
-   - **Secret key** — private; used only by the Orestore server to verify
+   - **Secret key** — private; used only by the Orestor server to verify
      tokens. It is never shown to customers and never sent to the browser.
 
 ---

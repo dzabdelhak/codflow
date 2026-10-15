@@ -1,4 +1,4 @@
-# Orestore Architecture
+# Orestor Architecture
 
 System map and technical design.
 

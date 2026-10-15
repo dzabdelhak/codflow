@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Orestore RBAC suite — per-domain runner.
+# Orestor RBAC suite — per-domain runner.
 #
 #   ./rbac.sh list                 show available domains
 #   ./rbac.sh orders               run ONE domain (~1 min)

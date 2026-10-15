@@ -10,7 +10,7 @@ interface Props {
   lang?: "ar" | "en" | "fr";
 }
 
-const { title = "Orestore", lang = "ar" } = Astro.props;
+const { title = "Orestor", lang = "ar" } = Astro.props;
 const dir = lang === "ar" ? "rtl" : "ltr";
 ---
 
@@ -53,11 +53,11 @@ const dir = lang === "ar" ? "rtl" : "ltr";
   </head>
   <body class="min-h-screen bg-background font-sans text-foreground antialiased">
     <!--
-      THESIS: Orestore is a merchant workbench, not a marketing dashboard; utility wins over decoration.
+      THESIS: Orestor is a merchant workbench, not a marketing dashboard; utility wins over decoration.
       OWN-WORLD: A quiet neutral canvas, compact bordered surfaces, and one commerce-green action color.
       STORY: Merchants scan orders, make a decision, and move shipments forward without visual noise.
       FIRST VIEWPORT: Persistent navigation at left, utility search above, page title and order work surface below.
-      FORM: Shopify Admin / Polaris-inspired operational shell, rebuilt for Orestore's COD workflow.
+      FORM: Shopify Admin / Polaris-inspired operational shell, rebuilt for Orestor's COD workflow.
       FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md
     -->
     <ToastHost client:only="react" transition:persist="codflow-toast-host" />

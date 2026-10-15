@@ -145,7 +145,7 @@ export function LegalProfileCard({ profile, onSaved, onBackToPages }: LegalProfi
                 value={legalName}
                 onChange={(e) => setLegalName(e.currentTarget.value)}
                 disabled={busy || !canManage}
-                placeholder="e.g. SARL Orestore Algérie"
+                placeholder="e.g. SARL Orestor Algérie"
               />
             </Field>
 

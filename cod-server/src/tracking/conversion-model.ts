@@ -1,5 +1,5 @@
 /**
- * Shared Meta Ads Conversion Model for Orestore.
+ * Shared Meta Ads Conversion Model for Orestor.
  *
  * Establishes one centralized business contract across:
  * - Storefront checkout (Pixel + CAPI)

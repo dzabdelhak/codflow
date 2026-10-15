@@ -25,7 +25,7 @@ export function protectedResourceMetadata(c: Context<AppContext>) {
     authorization_servers: [authorizationServerIssuer(c.env)],
     scopes_supported: ["offline_access", ...ALL_SCOPES],
     bearer_methods_supported: ["header"],
-    resource_name: "Orestore MCP",
+    resource_name: "Orestor MCP",
   });
 }
 

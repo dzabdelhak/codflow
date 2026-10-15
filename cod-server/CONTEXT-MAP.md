@@ -1,6 +1,6 @@
-# Orestore Server - Context Map
+# Orestor Server - Context Map
 
-Orestore is a cash-on-delivery (COD) e-commerce platform for Algeria. Multiple bounded contexts handle different aspects of the business.
+Orestor is a cash-on-delivery (COD) e-commerce platform for Algeria. Multiple bounded contexts handle different aspects of the business.
 
 ## Contexts
 

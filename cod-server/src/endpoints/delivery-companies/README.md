@@ -300,7 +300,7 @@ Store the secret key configured in the Yalidine dashboard for HMAC verification.
 ---
 
 ### 12. Save ZR Express Status Mapping
-Save custom mappings between ZR Express state names and Orestore order statuses.
+Save custom mappings between ZR Express state names and Orestor order statuses.
 
 * **Route:** `PATCH /api/delivery-companies/:id/webhook/mapping`
 * **Authorization:** Requires `delivery:manage` scope

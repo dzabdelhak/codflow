@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-Orestore is released software. Only the latest code on the `main` branch and
+Orestor is released software. Only the latest code on the `main` branch and
 the most recent tagged release receive security fixes. Fixes are backported to
 earlier releases only when explicitly stated in the release notes.
 

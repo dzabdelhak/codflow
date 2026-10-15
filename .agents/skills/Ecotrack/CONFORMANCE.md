@@ -152,7 +152,7 @@ closed; the rest remain open:
     auth** (pinned by test: the call carries `api_token`, not just Bearer);
     comma-separated trackings + status enum keys, defaults to `all`.
 
-## Slice 11: EcoTrack → Orestore status mapping (2026-09-01)
+## Slice 11: EcoTrack → Orestor status mapping (2026-09-01)
 
 Authoritative table (code in `providers/ecotrack/status-mapping.ts` must match
 exactly). **Rule: unmapped values surface as raw and are logged — never

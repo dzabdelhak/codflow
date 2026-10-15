@@ -1,13 +1,13 @@
-# Orestore Server
+# Orestor Server
 
-The backend engine for Orestore — a COD-first e-commerce platform for Algeria
+The backend engine for Orestor — a COD-first e-commerce platform for Algeria
 that is **agentic-ready**. It exposes the merchant REST API, the public
 storefront API, delivery-carrier webhooks, and a complete **MCP remote server**
 (RFC 9728) so AI agents can operate the store with RBAC-scoped tools. Built on
 Node.js, Hono and Drizzle ORM over PostgreSQL, with Row-Level Security per
 store and a PostgreSQL job queue for background work.
 
-This package is part of the [Orestore monorepo](../README.md). The dashboard
+This package is part of the [Orestor monorepo](../README.md). The dashboard
 (`cod-client-astro`) and storefront (`cod-astro`) live in sibling folders and
 share database schema + query logic via `cod-shared`.
 

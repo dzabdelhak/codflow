@@ -7,7 +7,7 @@ several products in one delivery.
 
 ## What It Does
 
-By default a Orestore storefront sells **one product per order**. A customer
+By default a Orestor storefront sells **one product per order**. A customer
 lands on a product page from your ad, fills the form, and you deliver that one
 item. That flow is fast and it converts, and nothing below replaces it.
 
@@ -39,7 +39,7 @@ What it is **not**:
 ## Before You Start
 
 You need nothing. No new account, no keys, no integration. The cart is part of
-Orestore and is switched on from your dashboard.
+Orestor and is switched on from your dashboard.
 
 Two things are worth deciding **before** you turn it on, because they affect
 what customers are charged:
@@ -141,7 +141,7 @@ A single-product order is never affected by this setting.
 
 You already get a list of customers who typed their phone number and left
 without ordering — **Dashboard → Abandoned orders**. That is one of the most
-valuable lists in Orestore, because those people are reachable.
+valuable lists in Orestor, because those people are reachable.
 
 With the cart on, that list now shows **the whole basket**, not just one
 product. Every line, with its quantity and its line total, right in the list —
@@ -203,7 +203,7 @@ The storefront goes back to exactly what it was: product page, one-step order
 form, no cart icon, no checkout page.
 
 **Orders already placed are completely unaffected.** A multi-product order taken
-while the cart was on stays a normal Orestore order:
+while the cart was on stays a normal Orestor order:
 
 - every line stays on it, with its quantity and price,
 - the total is exactly what the customer agreed to,

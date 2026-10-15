@@ -15,7 +15,7 @@
  *     Those are returned as a result, not thrown.
  *   - Only transport-level problems (network, timeout, non-JSON, non-200)
  *     throw TurnstileError with the TRANSIENT code — callers decide the
- *     fail-open/fail-closed policy for those (Orestore: fail-open, orders are
+ *     fail-open/fail-closed policy for those (Orestor: fail-open, orders are
  *     never blocked by a provider outage).
  *
  * Zero dependencies: fetch + URLSearchParams only.

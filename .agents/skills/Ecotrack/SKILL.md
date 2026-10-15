@@ -1,6 +1,6 @@
 ---
 name: ecotrack
-description: EcoTrack platform integration for Orestore — one API shared by 82 Algerian couriers (DHD, Conexlog, MSM Go, Packers, World Express...). Use when connecting an EcoTrack courier, auditing or fixing the adapter, verifying behavior against the official API, handling tracking/status issues, or extending EcoTrack support.
+description: EcoTrack platform integration for Orestor — one API shared by 82 Algerian couriers (DHD, Conexlog, MSM Go, Packers, World Express...). Use when connecting an EcoTrack courier, auditing or fixing the adapter, verifying behavior against the official API, handling tracking/status issues, or extending EcoTrack support.
 ---
 
 # EcoTrack Integration
@@ -107,7 +107,7 @@ POST /api/v1/create/order   (query params, Bearer auth)
    - Single create errors → HTTP 200 with `{success: false, error: 1000x}` OR
      HTTP 422 Laravel `errors` bag. Handle BOTH.
 4. **`montant` is the COD amount INCLUDING delivery fees** (official param doc).
-   Orestore currently sends `order.price` (product subtotal) at
+   Orestor currently sends `order.price` (product subtotal) at
    `dispatch.ts` createShipment call — see CONFORMANCE.md before shipping a fix;
    confirm merchant intent (delivery fee charged to customer ⇒ must be included).
 5. **`type` param**: 1=Livraison, 2=Échange, 3=PICKUP, 4=Recouvrement. Our

@@ -1,6 +1,6 @@
-# Orestore
+# Orestor
 
-![Orestore](./imgs/logo-codflow.svg)
+![Orestor](./imgs/logo-orestor.png)
 
 **The open-source, COD-first e-commerce platform for Algeria — built agentic-ready.**
 
@@ -18,7 +18,7 @@ Choose your path:
 <tr>
 <td width="50%" valign="top">
 
-### 🚀 **I want to run Orestore**
+### 🚀 **I want to run Orestor**
 
 See it in action and deploy your own store.
 
@@ -32,7 +32,7 @@ See it in action and deploy your own store.
 
 ### 💻 **I want to contribute**
 
-Build features or customize Orestore.
+Build features or customize Orestor.
 
 **[→ Contributing guide](./CONTRIBUTING.md)**  
 **[→ Architecture overview](./docs/ARCHITECTURE.md)**  
@@ -48,19 +48,19 @@ Build features or customize Orestore.
 
 Watch the step-by-step setup guide:
 
-[![Orestore Setup Guide](https://img.youtube.com/vi/rJPCGQnDZ18/maxresdefault.jpg)](https://youtu.be/rJPCGQnDZ18)
+[![Orestor Setup Guide](https://img.youtube.com/vi/rJPCGQnDZ18/maxresdefault.jpg)](https://youtu.be/rJPCGQnDZ18)
 
-**[▶️ Watch: Orestore Setup & Deployment Guide](https://youtu.be/rJPCGQnDZ18)**
+**[▶️ Watch: Orestor Setup & Deployment Guide](https://youtu.be/rJPCGQnDZ18)**
 
 ---
 
-## 🎯 The Problem Orestore Solves
+## 🎯 The Problem Orestor Solves
 
 E-commerce in Algeria is **95%+ Cash on Delivery (الدفع عند الاستلام)**. Western platforms like Shopify and local tools charge per-transaction fees and lock your data in their databases.
 
-**Orestore is the first and only open-source COD e-commerce platform built for Algeria.**
+**Orestor is the first and only open-source COD e-commerce platform built for Algeria.**
 
-| The Reality | Western/Local Platforms | Orestore |
+| The Reality | Western/Local Platforms | Orestor |
 | :--- | :--- | :--- |
 | **Transaction fees eat margins** | 2–5% per order + monthly SaaS fees | **$0 transaction fees** — pay only for your own server |
 | **Your data locked in their system** | Can't export, can't migrate, vendor lock-in | **You own everything** — PostgreSQL database, S3-compatible image storage, full control |
@@ -69,13 +69,13 @@ E-commerce in Algeria is **95%+ Cash on Delivery (الدفع عند الاستل
 | **In-house drivers ignored** | No native driver dispatch or per-wilaya pay | **Built-in driver management** with compensation and cash settlement |
 | **Ads optimize for form fills, not deliveries** | Meta Pixel fires on checkout submit (30–50% refuse at door) | **Meta CAPI fires at actual delivery** — optimize ads for real buyers |
 
-**Run Orestore on your own server. No monthly fees. No transaction cuts. 100% open-source (Apache 2.0).**
+**Run Orestor on your own server. No monthly fees. No transaction cuts. 100% open-source (Apache 2.0).**
 
 ---
 
 ## ✅ What's Included
 
-Orestore v1.1.0 — here's what works today:
+Orestor v1.1.0 — here's what works today:
 
 ### Storefront (`cod-astro/theme01`)
 - ✅ **Landing pages (`/lp/[slug]`)** — one-product marketing pages: stacked image story + COD form, no nav chrome
@@ -105,7 +105,7 @@ Orestore v1.1.0 — here's what works today:
 - ✅ Meta Pixel & CAPI configuration UI
 - ✅ Abandoned order recovery
 - ✅ MCP agent connection management
-- ✅ Legal pages editor — TipTap rich-text, per-locale (store's own language first), one-click reset to the current Orestore template, and the business-details form templates render from
+- ✅ Legal pages editor — TipTap rich-text, per-locale (store's own language first), one-click reset to the current Orestor template, and the business-details form templates render from
 - ✅ Trilingual: Arabic (RTL), French, English
 
 ### Delivery Engine
@@ -160,7 +160,7 @@ See [`docs/KNOWN_LIMITATIONS.md`](./docs/KNOWN_LIMITATIONS.md) for honest covera
 
 Run the whole stack locally with Docker Compose:
 
-> 🤖 **Using an AI Coding Assistant?** Tell your agent: *"Set up Orestore"* and it will follow the [`codflow-setup` skill](./.agents/skills/codflow-setup/SKILL.md).
+> 🤖 **Using an AI Coding Assistant?** Tell your agent: *"Set up Orestor"* and it will follow the [`codflow-setup` skill](./.agents/skills/codflow-setup/SKILL.md).
 
 ### Prerequisites
 - **Docker** with Docker Compose
@@ -199,7 +199,7 @@ Images are stored in S3-compatible storage behind cod-server — see the [image 
 
 ## 🚢 Production Deployment
 
-See [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md) for installing Orestore on a server and [`docs/CONFIGURATION.md`](./docs/CONFIGURATION.md) for every setting.
+See [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md) for installing Orestor on a server and [`docs/CONFIGURATION.md`](./docs/CONFIGURATION.md) for every setting.
 
 ---
 
@@ -284,7 +284,7 @@ astro check + tests for theme01.
 | **[AGENTS.md](./AGENTS.md)** | Repository instructions for AI coding assistants |
 ### 🎬 Video Tutorial
 
-**[▶️ Watch: How to edit your Orestore theme](https://youtu.be/zZGWdEeUXVo)**
+**[▶️ Watch: How to edit your Orestor theme](https://youtu.be/zZGWdEeUXVo)**
 
 ---
 
@@ -295,7 +295,7 @@ astro check + tests for theme01.
 - 📈 **Deeper dashboard analytics** — revenue, delivery-rate, and return-rate trends
 - 📦 **More Themes** — Additional storefront themes beyond `theme01`
 - 📘 **Theme Editing Guides** — Comprehensive guides for customizing and creating themes
-- ☁️ **Orestore Cloud** — One-click deployment from dashboard for agencies to resell Orestore
+- ☁️ **Orestor Cloud** — One-click deployment from dashboard for agencies to resell Orestor
 - 📧 **Email order notifications & admin alerts** — extend the Sendili integration beyond transactional mail
 
 ### Recently Shipped

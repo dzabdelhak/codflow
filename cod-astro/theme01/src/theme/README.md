@@ -3,7 +3,7 @@
 ✅ **SAFE TO CUSTOMIZE** ✅
 
 This directory contains all UI components, styling, and content you can
-customize without breaking the Orestore integration. Everything under
+customize without breaking the Orestor integration. Everything under
 `src/core/**` is platform-owned — see `../core/README.md`.
 
 ## What's in the Theme Layer?

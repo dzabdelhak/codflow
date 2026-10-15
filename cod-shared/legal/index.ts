@@ -1,5 +1,5 @@
 /**
- * The legal template pack: the pre-made policy documents a Orestore store is
+ * The legal template pack: the pre-made policy documents a Orestor store is
  * seeded with, and the facts they are rendered from.
  *
  * These templates are a starting point written for Algerian cash-on-delivery

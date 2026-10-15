@@ -19,7 +19,7 @@ Sources, in order of precedence:
 
 ## Decisions
 
-- **The platform replaces Orestore on Cloudflare.** No dual runtime: each ticket
+- **The platform replaces Orestor on Cloudflare.** No dual runtime: each ticket
   removes the Cloudflare code it replaces (Workers, D1, R2, KV, Workflows,
   Images, `@astrojs/cloudflare`, `better-auth-cloudflare`).
 - **One catalogue per account; channels select from it.** A product can be in the
@@ -47,7 +47,7 @@ Sources, in order of precedence:
 
 | Spec (FR) | Here | Note |
 |---|---|---|
-| canal de vente | channel | Orestore's `store` becomes a channel |
+| canal de vente | channel | Orestor's `store` becomes a channel |
 | boutique en ligne | store channel | |
 | landing page | landing channel | one main product |
 | espace externe de pilotage | channel dashboard | the merchant dashboard, scoped to the active channel |

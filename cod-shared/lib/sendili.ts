@@ -27,7 +27,7 @@
  *     from the documented HTTP status — callers branch on `err.code`, never
  *     on message text.
  *
- * All Orestore mail is transactional (invites, password resets) — `category`
+ * All Orestor mail is transactional (invites, password resets) — `category`
  * is pinned to "transactional" so it can never land in the marketing lane.
  */
 
@@ -110,7 +110,7 @@ export interface SendiliEmail {
   fromEmail: string;
   /** Optional sender display name. */
   fromName?: string;
-  /** Single recipient address. Orestore's transactional flows are one-to-one. */
+  /** Single recipient address. Orestor's transactional flows are one-to-one. */
   to: string;
   subject: string;
   html: string;

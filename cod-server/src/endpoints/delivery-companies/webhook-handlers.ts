@@ -87,7 +87,7 @@ export async function registerZrWebhook(c: Context<AppContext>) {
     headers: zrHeaders,
     body: JSON.stringify({
       url: webhookUrl,
-      description: "Orestore — parcel status updates",
+      description: "Orestor — parcel status updates",
       eventTypes: [
         "parcel.state.updated",
         "parcel.isReturn.updated",

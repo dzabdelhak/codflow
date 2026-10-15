@@ -318,7 +318,7 @@ lifecycle guards.
 
 ## Slice 11 — Status mapping + reconciliation guard
 
-**Goal**: EcoTrack status vocabulary → Orestore order statuses, safely.
+**Goal**: EcoTrack status vocabulary → Orestor order statuses, safely.
 
 - [ ] Write the mapping table (CONFORMANCE.md first, code second):
       activity keys (`livred`→delivered, `Return_received`→returned, …) and

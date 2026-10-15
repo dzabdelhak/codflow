@@ -11,7 +11,7 @@ import { StoreSwitcher } from "@/features/stores/StoreSwitcher";
 
 export function Brand() {
   return (
-    <a href="/" className="flex min-w-0 items-center" aria-label="Orestore — home">
+    <a href="/" className="flex min-w-0 items-center" aria-label="Orestor — home">
       <Logo variant="light" height={26} />
     </a>
   );

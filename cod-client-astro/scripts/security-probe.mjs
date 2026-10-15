@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Security probe for the deployed Orestore Astro dashboard (cod-client-astro).
+ * Security probe for the deployed Orestor Astro dashboard (cod-client-astro).
  *
  * Non-destructive: probes the live app for open auth surfaces and header gaps.
  * Findings are asserted against the REAL deployed instance — no assumptions.

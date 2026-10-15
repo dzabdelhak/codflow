@@ -1,7 +1,7 @@
 {
   "name": "codflow",
   "private": true,
-  "description": "Orestore — COD e-commerce platform monorepo (Node.js + PostgreSQL + Astro).",
+  "description": "Orestor — COD e-commerce platform monorepo (Node.js + PostgreSQL + Astro).",
   "workspaces": [
     "cod-shared",
     "cod-server",

@@ -1,12 +1,12 @@
-# Self-hosted in Algeria: Orestore moves off Cloudflare to Node.js + PostgreSQL, stores isolated by Row-Level Security
+# Self-hosted in Algeria: Orestor moves off Cloudflare to Node.js + PostgreSQL, stores isolated by Row-Level Security
 
 **Status:** accepted (Oct 13 2026), after the porting spike below.
 
 The Aventy store platform runs on servers we operate ourselves, because
 customer personal data must stay in Algeria (law 18-07) and for cost and
-control. Orestore today is built entirely on Cloudflare (Workers, D1, R2, KV,
+control. Orestor today is built entirely on Cloudflare (Workers, D1, R2, KV,
 Workflows, Images), so it has to be ported. The team keeps TypeScript to reuse
-Orestore's code. External SaaS is allowed for non-sensitive parts.
+Orestor's code. External SaaS is allowed for non-sensitive parts.
 
 ## Decision
 
@@ -44,7 +44,7 @@ syncs stores Aventy reports as changed.
 - **Self-host the Workers runtime (workerd)**: rejected — no D1, and Durable
   Object storage is local to one machine, which breaks the multi-server rule.
 - **Rewrite in another stack (e.g. Laravel)**: rejected — throws away
-  Orestore's code; the team knows TypeScript.
+  Orestor's code; the team knows TypeScript.
 
 ## Consequences
 
@@ -78,7 +78,7 @@ syncs stores Aventy reports as changed.
 
 Branch `spike/pg-port`, `spikes/pg-port-PROTOTYPE/README.md`. One vertical
 slice — store by hostname → product list → order creation → outbound Aventy
-queue — runs on Node.js + PostgreSQL 18 with RLS, using Orestore's real
+queue — runs on Node.js + PostgreSQL 18 with RLS, using Orestor's real
 `cod-shared` code:
 
 - All of cod-shared (69 files, 16.7k lines) typechecks against PostgreSQL
@@ -95,5 +95,5 @@ queue — runs on Node.js + PostgreSQL 18 with RLS, using Orestore's real
   are the largest items; the database is the easy part.
 - Found on the way, independent of the runtime: order numbers
   (`ORD-<date>-<4 random digits>`) collide at ~150 orders/store/day and the
-  order fails — a lost sale; and Orestore refuses orders on short stock or a
+  order fails — a lost sale; and Orestor refuses orders on short stock or a
   missing delivery rule, which the Aventy guide forbids.

@@ -1,10 +1,10 @@
-# theme01 — Orestore Storefront
+# theme01 — Orestor Storefront
 
-The default storefront theme for Orestore: a mobile-first, multi-locale,
-conversion-focused **Astro 7** storefront that talks to the Orestore backend
+The default storefront theme for Orestor: a mobile-first, multi-locale,
+conversion-focused **Astro 7** storefront that talks to the Orestor backend
 (`cod-server`) over the public `/store/*` API.
 
-theme01 is part of the [Orestore monorepo](../../README.md). It is one of three
+theme01 is part of the [Orestor monorepo](../../README.md). It is one of three
 apps that make up the platform:
 
 | App | Role |

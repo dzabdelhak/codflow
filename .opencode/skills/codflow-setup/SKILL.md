@@ -1,15 +1,15 @@
 ---
 name: codflow-setup
 description: >-
-  Set up Orestore: run the local stack with Docker Compose, install dependencies,
+  Set up Orestor: run the local stack with Docker Compose, install dependencies,
   run the typecheck and tests (PostgreSQL in Docker), seed a dashboard admin, and
   point to the production install (docs/DEPLOYMENT.md, deploy/install.sh). Use when
-  a developer wants to set up, run or test Orestore, or install it on a server.
+  a developer wants to set up, run or test Orestor, or install it on a server.
 ---
 
-# Orestore Setup
+# Orestor Setup
 
-Orestore runs on Node.js + PostgreSQL (Row-Level Security per store), Redis,
+Orestor runs on Node.js + PostgreSQL (Row-Level Security per store), Redis,
 SeaweedFS (S3-compatible image storage) and Caddy, all in Docker Compose. Read
 `AGENTS.md` for the architecture and `docs/adr/0003-self-hosted-postgres-multi-store.md`
 for the decision behind it.

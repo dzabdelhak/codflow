@@ -2,7 +2,7 @@
 
 ## Context
 Aventy (ERP) wants a module where each Aventy user creates online stores in one
-click (several stores per user, subdomain or own domain). We build it on Orestore.
+click (several stores per user, subdomain or own domain). We build it on Orestor.
 
 ## Read first
 - `docs/AVENTY-INTEGRATION.md` — Aventy's integration guide = binding contract
@@ -44,7 +44,7 @@ refusals on short stock / missing fee grid (against the Aventy guide).
 Plan published (Oct 13): `.scratch/orestor-platform/spec.md` + 17 tickets in
 `.scratch/orestor-platform/issues/`. Goal: a running self-hosted multi-channel
 platform with two seams (catalogue source, order destination) so Aventy plugs in
-later. Decisions: platform replaces Orestore on Cloudflare; one catalogue per
+later. Decisions: platform replaces Orestor on Cloudflare; one catalogue per
 account, channels select from it; MCP server kept. Functional spec
 "Orestor X Aventy 1.0" is in `docs/ORESTOR-X-AVENTY-1.0.pdf`.
 Start with ticket 01 (walking skeleton). Ticket 15 (Aventy connector) waits on

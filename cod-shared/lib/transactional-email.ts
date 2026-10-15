@@ -1,7 +1,7 @@
 /**
  * The single Sendili send path for transactional email.
  *
- * Every Orestore transactional email (team invites on cod-server, password
+ * Every Orestor transactional email (team invites on cod-server, password
  * resets on the dashboard worker) crosses this seam, so the security
  * contract lives in exactly one place:
  *

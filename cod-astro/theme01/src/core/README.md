@@ -2,7 +2,7 @@
 
 ⚠️ **DO NOT MODIFY FILES IN THIS DIRECTORY** ⚠️
 
-This directory contains the core engine logic that powers the Orestore integration. Modifying these files will break the integration with the Orestore backend and may cause order processing failures.
+This directory contains the core engine logic that powers the Orestor integration. Modifying these files will break the integration with the Orestor backend and may cause order processing failures.
 
 ## What's in the Core Layer?
 
@@ -12,7 +12,7 @@ The core layer contains all business logic, API integration, and data validation
 Astro actions for form submissions with input validation. The `placeOrder` action handles order submission with Zod schema validation.
 
 ### `api/`
-- `client.ts` - All HTTP communication with the Orestore backend
+- `client.ts` - All HTTP communication with the Orestor backend
 - `types.ts` - TypeScript interfaces for API data structures
 - `validation.ts` - Zod schemas for runtime data validation
 
@@ -20,7 +20,7 @@ Astro actions for form submissions with input validation. The `placeOrder` actio
 - `wilayas.ts` - Algeria's 58 wilayas (provinces) reference data
 
 ### `endpoints/`
-Server-side API endpoints that proxy requests to the Orestore backend:
+Server-side API endpoints that proxy requests to the Orestor backend:
 - `communes.ts` - Returns communes for a wilaya (keeps API key server-side)
 - `submit-review.ts` - Handles review submission
 - `product-reviews.ts` - Returns reviews for a product
@@ -42,7 +42,7 @@ Implements the POST/Redirect/GET pattern for Astro actions, handling form submis
 
 ## Why Can't I Modify Core Files?
 
-The core layer is tightly integrated with the Orestore backend API. Changes to:
+The core layer is tightly integrated with the Orestor backend API. Changes to:
 - API endpoints or request formats will cause 400/500 errors
 - Validation schemas will cause order submission failures
 - Type definitions will cause runtime errors

@@ -19,7 +19,7 @@
  * Source of truth: dz-otp.md (repo root). Verified facts inline.
  */
 
-// ─── Provider data shapes (subset Orestore consumes) ──────────────────────────
+// ─── Provider data shapes (subset Orestor consumes) ──────────────────────────
 
 export interface DzverifyOtpRequest {
   id: string;

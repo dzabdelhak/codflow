@@ -13,7 +13,7 @@ pages before it will run them. A store with none of these pages gets its ads
 rejected — a common, avoidable reason Algerian COD stores get blocked from
 advertising.
 
-Every Orestore store is seeded with four pages, already written for a
+Every Orestor store is seeded with four pages, already written for a
 **cash-on-delivery store selling in Algeria**:
 
 - **Terms & Conditions**
@@ -63,7 +63,7 @@ unless you want to.
 
 ### Undoing a Change
 
-**Reset to Orestore template** on any of the four legal pages discards
+**Reset to Orestor template** on any of the four legal pages discards
 whatever is currently saved for that language and puts the original wording
 back. This cannot be undone, so it asks you to confirm first. Custom pages
 you created yourself have no template to reset to.
@@ -91,7 +91,7 @@ gets four complete, publishable pages; filling in your details makes them
 more specific to your business.
 
 **Saving here does not rewrite pages you have already reviewed.** It only
-changes what a future **Reset to Orestore template** would produce. If you
+changes what a future **Reset to Orestor template** would produce. If you
 update your return window after already customizing your Refund page, that
 page keeps your wording until you explicitly reset it.
 

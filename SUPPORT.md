@@ -1,6 +1,6 @@
-# Getting help with Orestore
+# Getting help with Orestor
 
-Orestore is an open-source project. Here is where to go depending on what you
+Orestor is an open-source project. Here is where to go depending on what you
 need:
 
 ## Bugs and feature requests

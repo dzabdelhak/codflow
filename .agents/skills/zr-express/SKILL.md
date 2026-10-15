@@ -1,6 +1,6 @@
 ---
 name: zr-express
-description: ZR Express delivery platform integration for Orestore — all 129 public API endpoints (catalog, claims, customers, orders/parcels, delivery pricing, hubs, supplier, treasury, users, webhooks), organized per domain. Use when connecting ZR Express as a delivery company, auditing or fixing the zr_express adapter in cod-server, verifying behavior against the official API, pulling tracking/state, registering webhooks, or extending ZR Express support.
+description: ZR Express delivery platform integration for Orestor — all 129 public API endpoints (catalog, claims, customers, orders/parcels, delivery pricing, hubs, supplier, treasury, users, webhooks), organized per domain. Use when connecting ZR Express as a delivery company, auditing or fixing the zr_express adapter in cod-server, verifying behavior against the official API, pulling tracking/state, registering webhooks, or extending ZR Express support.
 ---
 
 # ZR Express Delivery Integration
@@ -51,7 +51,7 @@ reference + its `schemas/{domain}.json` before writing adapter code.
 - `cod-server/src/endpoints/delivery-companies/webhook-handlers.ts` — programmatic
   webhook registration (`registerZrWebhook`) against `/api/v1/webhooks/endpoints`.
 - `cod-server/src/endpoints/webhooks/zr-status-mapper.ts` — maps ZR state names
-  to Orestore statuses.
+  to Orestor statuses.
 
 ## Auth
 
@@ -74,14 +74,14 @@ reference + its `schemas/{domain}.json` before writing adapter code.
    `"Out for Delivery"`, `"In Transit"` and `"At Hub"` are documented defaults.
    Unknown names must surface as `unmapped` — never guessed into a status.
 6. **Label URLs expire (~1 hour, SAS-token based)** — from create you get a
-   deferred label token (Orestore uses `DEFERRED_LABEL_MARKER`); serve labels
+   deferred label token (Orestor uses `DEFERRED_LABEL_MARKER`); serve labels
    server-side, never expose a signed URL to the browser.
 7. **Update semantics** — `PATCH /parcels/{id}/amount`, `/customer` and
   `/deliveryAddress` apply while `canUpdateAfterValidation: true`.
 8. **Delete is unreliable** (HTTP 405 in tests) — `canDeleteBeforeValidation`/
    `AfterValidation` are both false; prefer state updates/refund flows.
 9. **Webhook registration is API-driven** — `POST /webhooks/endpoints` with
-   `X-Api-Key` + `X-Tenant`; the registered URL is Orestore's `/webhooks/zr_express`.
+   `X-Api-Key` + `X-Tenant`; the registered URL is Orestor's `/webhooks/zr_express`.
 10. All IDs (parcel, customer, address, claim, etc.) are **UUIDs** — any other
     format is an error or a legacy/alias field.
 

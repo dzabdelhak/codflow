@@ -78,13 +78,13 @@ describe("sendInviteEmail", () => {
     );
   });
 
-  it("falls back to Orestore as the store name when the store row is missing", async () => {
+  it("falls back to Orestor as the store name when the store row is missing", async () => {
     vi.mocked(getStore).mockResolvedValue(undefined as any);
 
     await sendInviteEmail(db, env, input);
 
     expect(vi.mocked(sendTransactionalEmail).mock.calls[0][1].subject).toBe(
-      "You're invited to join Orestore"
+      "You're invited to join Orestor"
     );
   });
 

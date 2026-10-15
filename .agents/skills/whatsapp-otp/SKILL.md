@@ -1,6 +1,6 @@
 ---
 name: whatsapp-otp
-description: Orestore's WhatsApp OTP phone-verification feature (dzverify provider) — optional, off by default, per-store. Use when working on OTP send/verify endpoints, the order-creation verification gate, the store_otp_config settings, theme01's checkout OTP step, or the dashboard Verification settings page.
+description: Orestor's WhatsApp OTP phone-verification feature (dzverify provider) — optional, off by default, per-store. Use when working on OTP send/verify endpoints, the order-creation verification gate, the store_otp_config settings, theme01's checkout OTP step, or the dashboard Verification settings page.
 ---
 
 # WhatsApp OTP Verification (dzverify)

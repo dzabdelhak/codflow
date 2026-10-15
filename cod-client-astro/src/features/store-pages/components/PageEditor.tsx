@@ -297,7 +297,7 @@ export function PageEditor({
   const previewDescription =
     currentDraft.metaDescription.trim() ||
     (cleanSnippet ? cleanSnippet.slice(0, 160) + (cleanSnippet.length > 160 ? "..." : "") : "");
-  const domainOnly = storefrontBaseUrl ? storefrontBaseUrl.replace(/^https?:\/\//, "") : "store.orestore.store";
+  const domainOnly = storefrontBaseUrl ? storefrontBaseUrl.replace(/^https?:\/\//, "") : "store.orestor.store";
 
   return (
     <div className="space-y-6">

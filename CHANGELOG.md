@@ -279,7 +279,7 @@ verification, EcoTrack, and the MCP SDK v2 refactor.
 
 ## [1.0.0] - 2026-08-22
 
-First stable release of Orestore.
+First stable release of Orestor.
 
 ### Added
 
@@ -323,7 +323,7 @@ First stable release of Orestore.
 
 ## [0.1.0] - 2026-08-20
 
-Initial public release of Orestore — the open-source, COD-first e-commerce +
+Initial public release of Orestor — the open-source, COD-first e-commerce +
 delivery platform for Algeria.
 
 ### Added

@@ -1,6 +1,6 @@
 # Meta Pixel & Conversions API
 
-End-user documentation for Meta ad tracking in Orestore: the **Meta Pixel**
+End-user documentation for Meta ad tracking in Orestor: the **Meta Pixel**
 (browser side) and the **Conversions API** (server side), and how they work
 together.
 
@@ -8,14 +8,14 @@ together.
 
 ## What It Does
 
-Orestore reports what happens in your store to Meta, so Meta can attribute
+Orestor reports what happens in your store to Meta, so Meta can attribute
 orders to your Facebook/Instagram ads and optimize them:
 
 - **Browser events (Meta Pixel)** — what the shopper's browser does: viewing
   a product (`ViewContent`), reaching the order form (`InitiateCheckout`),
   placing an order (`Lead`), and every page view (`PageView`).
 - **Server events (Conversions API)** — what your store *knows* server-side,
-  sent directly from Orestore to Meta with hashed customer data (phone, name,
+  sent directly from Orestor to Meta with hashed customer data (phone, name,
   city) for stronger matching. Server events survive browser restrictions
   such as ad blockers and iOS privacy limits.
 
@@ -44,7 +44,7 @@ Collect these from Meta:
    (Events Manager → Create Data Source).
 2. **Conversions API access token** — in Events Manager, open your pixel →
    Settings → Conversions API → *Generate access token*. Copy it somewhere
-   safe: **it is shown once and never displayed again by Orestore**.
+   safe: **it is shown once and never displayed again by Orestor**.
 3. **(Optional) Test event code** — from the Test Events tab of your pixel
    (e.g. `TEST12345`), for verifying your setup safely.
 
@@ -62,7 +62,7 @@ Dashboard → **Settings → Tracking & Analytics**:
    your storefront and no server events, period.
 2. **Ad Account Name** *(optional)* — your own label for the ad account this
    pixel belongs to (e.g. "My Store — Main Account"). Purely for your
-   reference in the settings page; Orestore never sends it to Meta.
+   reference in the settings page; Orestor never sends it to Meta.
 3. **Meta Pixel ID** — from step 1 above.
 4. **Conversions API Access Token** — from step 2 above. Paste it once and
    save: afterwards the field shows only a masked hint (`••••a9f2`). Leaving
@@ -98,7 +98,7 @@ To verify the setup:
 2. Save, then open your storefront in a browser and place a test order.
 3. In the Meta **Test Events** tab you should see, within ~20 minutes:
    - browser events (`PageView`, `ViewContent`, `InitiateCheckout`, `Lead`)
-   - server events (`Lead` or `Purchase` from "Orestore" / your server)
+   - server events (`Lead` or `Purchase` from "Orestor" / your server)
    - the server `Lead` and browser `Lead` arriving with the **same event ID**
      → Meta reports them as *deduplicated* (one conversion, not two).
 4. **Turn Test Mode off** and save before going live. While it is on, a
@@ -116,7 +116,7 @@ To verify the setup:
 ### The two channels
 
 ```
-Shopper's browser                     Orestore server (cod-server)
+Shopper's browser                     Orestor server (cod-server)
 ─────────────────                     ───────────────────────────
 Pixel script loaded
   └─ PageView          (every page)
@@ -148,7 +148,7 @@ Pixel script loaded
 
 ### When exactly does CAPI fire? (the trigger chain)
 
-Both server events are **conversion jobs** in Orestore's PostgreSQL queue —
+Both server events are **conversion jobs** in Orestor's PostgreSQL queue —
 queued in the same transaction as the order change, retried on failure with
 backoff (they survive a restart), and audit-logged. Nothing here depends on a
 browser still being open. The same jobs carry TikTok, Snapchat and GA4
@@ -178,12 +178,12 @@ order gets there, and both queue the same job:
 ```
 
 **What this means with webhooks:** if you dispatch orders to **Yalidine** or
-**ZR Express**, their systems call Orestore's webhook whenever the shipment
+**ZR Express**, their systems call Orestor's webhook whenever the shipment
 moves — picked up, out for delivery, delivered, returned. When the webhook
-reports *delivered*, Orestore marks the order Delivered **and** starts the
+reports *delivered*, Orestor marks the order Delivered **and** starts the
 Purchase job in the same instant: no one has to touch the dashboard.
 
-The other carriers (**NOEST, EcoTrack**) don't send webhooks to Orestore —
+The other carriers (**NOEST, EcoTrack**) don't send webhooks to Orestor —
 their status is pulled when you open the order in the dashboard — so for
 them the Purchase event starts when you (or a teammate) view or update the
 order and the status resolves to Delivered.
@@ -195,7 +195,7 @@ waiting for final delivery there can push past the 7-day limit.
 
 ### Privacy: what is sent
 
-Orestore sends Meta only what its Conversions API accepts, per Meta's spec:
+Orestor sends Meta only what its Conversions API accepts, per Meta's spec:
 
 - **Hashed (SHA-256, on our servers before sending):** phone number,
   first/last name, city, postal code, country, internal customer ID.
@@ -213,7 +213,7 @@ error. If something silently fails, the answer is there.
 
 > **Phone numbers:** checkout only accepts **Algerian mobile numbers**
 > (starting 05, 06, or 07). Shoppers can type them in any common form —
-> `0551234567`, `+213 551 23 45 67`, `00213…` — Orestore normalizes them to
+> `0551234567`, `+213 551 23 45 67`, `00213…` — Orestor normalizes them to
 > one canonical format before storing. Cleaner phone data also means a
 > higher match rate for your Meta events.
 
@@ -226,7 +226,7 @@ error. If something silently fails, the answer is there.
    conversion event. Events appear within ~20 minutes.
 2. **Event Match Quality (EMQ):** the pixel's *Diagnostics* tab scores how
    well your server events match Meta users (0–10). Higher = better
-   attribution. Because Orestore sends phone + name + city + IP + user-agent
+   attribution. Because Orestor sends phone + name + city + IP + user-agent
    + click IDs, expect a healthy score.
 3. **Test events:** the Test Events tab (with Test Mode on, as above).
 4. **Browser debugging:** install Meta's **Pixel Helper** Chrome extension —
@@ -241,7 +241,7 @@ error. If something silently fails, the answer is there.
 | No events at all in Events Manager | tracking disabled, or pixel ID / token wrong | check the switches in Settings → Tracking; re-paste values |
 | Browser events appear, server events don't | access token invalid or revoked | generate a fresh token in Events Manager, save it in Settings |
 | Server events appear only in Test Events tab | Test Mode still on | turn Test Mode **off** and save |
-| `Lead` counted twice | you send your own pixel `Lead` outside Orestore | don't add a second pixel script manually — Orestore already fires the browser Lead with the matching event ID |
+| `Lead` counted twice | you send your own pixel `Lead` outside Orestor | don't add a second pixel script manually — Orestor already fires the browser Lead with the matching event ID |
 | `Purchase` missing for a delivered order | delivery happened >7 days after placement (Meta's hard limit), or the event is still retrying | check `capi_event_log`; the skip is by design |
 | Pixel Helper shows nothing on the storefront | no Pixel ID saved, or script blocked by an ad blocker | save the Pixel ID; test in a clean browser profile |
 | Order delivered via Yalidine/ZR but no Purchase in Meta | conversion event set to Lead, or tracking/test-mode off | check Settings → Tracking first, then `capi_event_log` for a skipped row |
@@ -251,9 +251,9 @@ error. If something silently fails, the answer is there.
 
 ## FAQ
 
-**Can I run my own pixel script alongside Orestore's?**
+**Can I run my own pixel script alongside Orestor's?**
 No — the browser `Lead` and the server `Lead` share one event ID *because
-both come from Orestore*. A second, manually-installed pixel would
+both come from Orestor*. A second, manually-installed pixel would
 double-count conversions.
 
 **I chose Purchase — where did my Lead events go?**
@@ -264,7 +264,7 @@ selected.
 
 **Does my carrier need webhooks for tracking to work?**
 No — webhooks only change **how quickly** the Purchase event starts. With
-Yalidine or ZR Express, the carrier reports *delivered* to Orestore
+Yalidine or ZR Express, the carrier reports *delivered* to Orestor
 automatically and the Purchase job is queued by itself. With NOEST or
 EcoTrack, it starts when your team updates the order in the dashboard. The
 `Lead` conversion event never depends on carriers — it fires at order

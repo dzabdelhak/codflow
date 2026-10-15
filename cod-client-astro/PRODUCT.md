@@ -13,7 +13,7 @@ and delivery operations from desktop and mobile.
 
 ## Product Purpose
 
-Orestore gives COD merchants one place to move an order from customer request to
+Orestor gives COD merchants one place to move an order from customer request to
 delivery, with the information needed to make the next operational decision.
 
 ## Positioning
@@ -39,9 +39,9 @@ customer details, and delivery assignment are the core daily signals.
 
 ## Brand Commitments
 
-- The product name is Orestore.
+- The product name is Orestor.
 - The interface should feel like a serious commerce operations tool, not an AI demo or marketing site.
-- The Astro dashboard should use Shopify Admin and Polaris as its interaction and density reference while retaining Orestore terminology, branding, and COD-specific workflows.
+- The Astro dashboard should use Shopify Admin and Polaris as its interaction and density reference while retaining Orestor terminology, branding, and COD-specific workflows.
 
 ## Evidence on Hand
 

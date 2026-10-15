@@ -1,6 +1,6 @@
-# Orestore — repository instructions for coding agents
+# Orestor — repository instructions for coding agents
 
-Orestore is a cash-on-delivery (COD) e-commerce platform for Algeria. Monorepo,
+Orestor is a cash-on-delivery (COD) e-commerce platform for Algeria. Monorepo,
 TypeScript. It runs self-hosted (ADR-0003): Node.js apps on PostgreSQL, Redis,
 S3-compatible image storage (SeaweedFS) and Caddy, installed on our servers in
 Algeria with Docker Compose from `deploy/` (docs/DEPLOYMENT.md). No Cloudflare
@@ -318,7 +318,7 @@ to `src/types/env.ts` (cod-server) and, when production needs it, to
 - The **shopping cart is off by default, per store** (`stores.cart_enabled`).
   A store that never enables it ships no cart markup at all. Rollback for the
   whole feature is `UPDATE stores SET cart_enabled = 0` — there is no data
-  migration to reverse, because a multi-line order is a valid Orestore order the
+  migration to reverse, because a multi-line order is a valid Orestor order the
   dashboard and carriers already understand.
 - **An order is either a basket or a single product.** `items[]` supersedes the
   flat `productId`/`productName`/`pricePerUnit`, which are optional only when

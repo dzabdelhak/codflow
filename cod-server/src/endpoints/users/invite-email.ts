@@ -45,7 +45,7 @@ export async function sendInviteEmail(
   try {
     const store = await getStore(db);
     const email = renderInviteEmail({
-      storeName: store?.name ?? "Orestore",
+      storeName: store?.name ?? "Orestor",
       inviteeName: input.name,
       signInUrl: dashboardSignInUrl(env.BETTER_AUTH_URL),
       tempPassword: input.tempPassword,

@@ -1,5 +1,5 @@
 name: Bug report
-description: Report a bug in Orestore
+description: Report a bug in Orestor
 title: "[Bug]: "
 labels: [bug]
 body:

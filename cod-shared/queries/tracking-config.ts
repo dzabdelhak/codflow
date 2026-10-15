@@ -3,7 +3,7 @@
  *
  * WHY THIS EXISTS
  *
- * Orestore reports every sale twice on purpose: once from the shopper's browser
+ * Orestor reports every sale twice on purpose: once from the shopper's browser
  * (the Pixel) and once from our server (the Conversions API). Meta merges the
  * two into one conversion only when both were sent to the *same pixel id* —
  * `capi-deduplication.md`:

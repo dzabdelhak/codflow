@@ -3,7 +3,7 @@
  *
  * cod-server renders the team-invite email; the dashboard worker renders the
  * password-reset email. Both flow through the same base layout so every
- * Orestore email looks like one product.
+ * Orestor email looks like one product.
  *
  * Contract:
  *   - Every string that originates outside this module (store name, person
@@ -112,7 +112,7 @@ const INVITE_COPY = {
     subject: (store: string) => `You're invited to join ${store}`,
     greeting: (name: string) => `Hi ${name},`,
     intro: (store: string) =>
-      `You've been invited to join the ${store} team on Orestore. Use the link and temporary password below to sign in.`,
+      `You've been invited to join the ${store} team on Orestor. Use the link and temporary password below to sign in.`,
     button: "Sign in",
     passwordLabel: "Temporary password",
     note: "Please change your password right after signing in.",
@@ -122,7 +122,7 @@ const INVITE_COPY = {
     subject: (store: string) => `دعوة للانضمام إلى فريق ${store}`,
     greeting: (name: string) => `مرحباً ${name}،`,
     intro: (store: string) =>
-      `لقد تمت دعوتك للانضمام إلى فريق ${store} على Orestore. استخدم الرابط وكلمة المرور المؤقتة أدناه لتسجيل الدخول.`,
+      `لقد تمت دعوتك للانضمام إلى فريق ${store} على Orestor. استخدم الرابط وكلمة المرور المؤقتة أدناه لتسجيل الدخول.`,
     button: "تسجيل الدخول",
     passwordLabel: "كلمة المرور المؤقتة",
     note: "يُرجى تغيير كلمة المرور بعد تسجيل الدخول مباشرة.",

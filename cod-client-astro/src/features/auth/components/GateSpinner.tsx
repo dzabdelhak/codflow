@@ -7,7 +7,7 @@ const SIZES: Record<number, string> = {
 
 /**
  * Bare ring spinner (inline, for buttons and small waits).
- * The branded variant (`<GateSpinner branded />`) shows the Orestore logo
+ * The branded variant (`<GateSpinner branded />`) shows the Orestor logo
  * with a soft pulse for full-page loading gates — no text, per the
  * silent-gates rule.
  */
