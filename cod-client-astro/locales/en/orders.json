@@ -281,7 +281,8 @@
     "error_address": "Address is required for home delivery",
     "error_delivery_fee": "Enter the fee in DA (whole number)",
     "error_delivery_unavailable": "This delivery method is not available for the selected wilaya",
-    "new_order_subtitle": "Fill in the customer info and add products to create a new order"
+    "new_order_subtitle": "Fill in the customer info and add products to create a new order",
+    "from_abandoned": "Order prepared from {name}'s abandoned cart. Check the commune, address and fee, then create it: the cart is marked converted."
   },
   "nav_group": "Sales",
   "abandoned": {
@@ -311,6 +312,7 @@
       "title": "No abandoned checkouts",
       "description": "Shoppers who start an order but don't finish it will appear here as recovery leads."
     },
-    "recovered_order": "Order {number}"
+    "recovered_order": "Order {number}",
+    "convert_to_order": "Convert to order"
   }
 }

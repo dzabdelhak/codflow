@@ -283,6 +283,22 @@ export async function listAbandonedOrders(
   return { rows: withItems, total: countRows[0]?.count ?? 0 };
 }
 
+export async function getAbandonedOrder(db: AppDb, id: string) {
+  const row = await db.select().from(abandonedOrders).where(eq(abandonedOrders.id, id)).limit(1).then((r) => r[0]);
+  if (!row) return null;
+  const { itemsJson, ...rest } = row;
+  return { ...rest, items: parseAbandonedItems(itemsJson) };
+}
+
+export async function linkAbandonedOrderToOrder(db: AppDb, id: string, orderId: string, orderNumber: string): Promise<boolean> {
+  const updated = await db
+    .update(abandonedOrders)
+    .set({ status: "converted", convertedOrderId: orderId, convertedOrderNumber: orderNumber, updatedAt: new Date().toISOString() })
+    .where(and(eq(abandonedOrders.id, id), sql`${abandonedOrders.status} != 'converted'`))
+    .returning({ id: abandonedOrders.id });
+  return updated.length > 0;
+}
+
 export async function getAbandonedOrderStats(db: AppDb) {
   const [totalRows, convertedRows, revenueRows] = await db.batch([
     db

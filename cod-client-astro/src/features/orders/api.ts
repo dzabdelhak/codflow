@@ -159,6 +159,10 @@ export async function listAbandonedOrders(params: { limit?: number; offset?: num
   return apiFetch<{ success: boolean; data: AbandonedOrder[]; total: number; limit: number; offset: number }>(`/api/abandoned-orders?${query}`);
 }
 
+export async function getAbandonedOrder(id: string) {
+  return (await apiFetch<DataEnvelope<AbandonedOrder>>(`/api/abandoned-orders/${encodeURIComponent(id)}`)).data;
+}
+
 export async function getAbandonedStats() {
   return (await apiFetch<DataEnvelope<AbandonedStats>>("/api/abandoned-orders/stats")).data;
 }

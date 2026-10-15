@@ -17,7 +17,9 @@ import type { AppContext } from "@/types";
 import { defineRoute } from "@/lib/route-builder";
 import { SCOPES } from "../../../../cod-shared/rbac/scopes";
 import { getDb } from "@/db";
+import { NotFoundError } from "@/lib/errors/classes";
 import {
+  getAbandonedOrder,
   listAbandonedOrders,
   getAbandonedOrderStats,
   updateAbandonedOrderStatus,
@@ -64,6 +66,12 @@ async function listHandler(c: Context<AppContext>) {
   });
 
   return c.json({ success: true, data: rows, total, limit, offset }, 200);
+}
+
+async function getHandler(c: Context<AppContext>) {
+  const row = await getAbandonedOrder(c.get("db"), c.req.param("id")!);
+  if (!row) throw new NotFoundError("Abandoned order", c.req.param("id")!);
+  return c.json({ success: true, data: row }, 200);
 }
 
 async function statsHandler(c: Context<AppContext>) {
@@ -118,6 +126,21 @@ const listRoute = defineRoute({
     },
   },
   handler: listHandler,
+});
+
+const getRoute = defineRoute({
+  method: "get",
+  path: "/{id}",
+  auth: { scope: SCOPES.ABANDONED_ORDERS_READ },
+  tags: ["Abandoned Orders"],
+  summary: "Get one abandoned order",
+  description: "One abandoned checkout with its basket, to turn it into an order (POST /api/orders with `abandonedOrderId`).",
+  operationId: "getAbandonedOrder",
+  params: idParams,
+  responses: {
+    200: { description: "The abandoned order", content: jsonContent(z.object({ success: z.boolean(), data: AbandonedOrderSchema })) },
+  },
+  handler: getHandler,
 });
 
 const statsRoute = defineRoute({
@@ -187,6 +210,7 @@ const router = new OpenAPIHono<AppContext>();
 
 router.openapi(listRoute.route, listRoute.handler);
 router.openapi(statsRoute.route, statsRoute.handler);
+router.openapi(getRoute.route, getRoute.handler);
 router.openapi(updateStatusRoute.route, updateStatusRoute.handler);
 router.openapi(deleteRoute.route, deleteRoute.handler);
 

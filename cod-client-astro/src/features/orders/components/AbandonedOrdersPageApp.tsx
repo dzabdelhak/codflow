@@ -7,6 +7,7 @@ import {
   PackageX,
   Phone,
   RefreshCw,
+  ShoppingCart,
   Trash2,
   TrendingUp,
   Wallet,
@@ -248,6 +249,7 @@ function AbandonedDesktopRow({
         {formatDate(row.createdAt, locale)}
       </TableCell>
       <TableCell className="text-end">
+        <ConvertToOrder row={row} />
         {canManage && (
           <IconButton
             type="button"
@@ -262,6 +264,21 @@ function AbandonedDesktopRow({
         )}
       </TableCell>
     </TableRow>
+  );
+}
+
+function ConvertToOrder({ row }: { row: AbandonedOrder }) {
+  const t = useT("orders");
+  const identity = useIdentity();
+  if (row.status === "converted" || !canScope(identity, "orders:create")) return null;
+  return (
+    <a
+      href={`/orders/new?abandoned=${encodeURIComponent(row.id)}`}
+      className="me-1 inline-flex h-8 items-center gap-1.5 rounded-lg border border-border px-2.5 text-xs font-semibold text-foreground hover:bg-muted"
+    >
+      <ShoppingCart size={14} aria-hidden="true" />
+      {t("abandoned.convert_to_order")}
+    </a>
   );
 }
 
@@ -294,6 +311,7 @@ function AbandonedMobileCard({
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <StatusControl row={row} busy={busy} onChange={(status) => onStatusChange(row, status)} />
+          <ConvertToOrder row={row} />
           {canManage && (
             <IconButton
               type="button"

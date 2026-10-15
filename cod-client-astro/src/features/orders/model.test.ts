@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  abandonedCartLines,
   ALLOWED_TRANSITIONS,
   detailStatusActions,
   dispatchFieldSupport,
@@ -375,5 +376,30 @@ describe("abandonedBasketView", () => {
     expect(abandonedBasketView({ items: null, productName: null, variantLabel: null })).toEqual({
       kind: "unknown",
     });
+  });
+});
+
+describe("abandonedCartLines", () => {
+  const empty = { items: null, productId: null, productName: null, variantId: null, variantLabel: null, price: null };
+
+  it("turns a basket into order lines at the prices the shopper saw", () => {
+    expect(abandonedCartLines({
+      ...empty,
+      items: [
+        { productId: "p1", productName: "Montre", variantId: "v1", variantLabel: "Noir", quantity: 2, unitPrice: 3000 },
+        { productId: "p2", productName: "Sac", quantity: 1, unitPrice: 4800 },
+      ],
+    })).toEqual([
+      { productId: "p1", productName: "Montre", variantId: "v1", variantLabel: "Noir", quantity: 2, pricePerUnit: 3000, lineTotal: 6000 },
+      { productId: "p2", productName: "Sac", quantity: 1, pricePerUnit: 4800, lineTotal: 4800 },
+    ]);
+  });
+
+  it("uses the single product of a one-product checkout, and nothing when the price is unknown", () => {
+    expect(abandonedCartLines({ ...empty, productId: "p1", productName: "Montre", price: 3000 })).toEqual([
+      { productId: "p1", productName: "Montre", quantity: 1, pricePerUnit: 3000, lineTotal: 3000 },
+    ]);
+    expect(abandonedCartLines({ ...empty, productId: "p1", productName: "Montre" })).toEqual([]);
+    expect(abandonedCartLines(empty)).toEqual([]);
   });
 });

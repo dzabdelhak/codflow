@@ -41,6 +41,8 @@ export const createOrderSchema = z.object({
   /** Optional explicit fee — for offline/dashboard orders. Online orders ignore this and auto-resolve from shipping profile. */
   deliveryFee: z.number().min(0).optional(),
   companyId: z.string().min(1).nullish(),
+  /** The abandoned checkout this order recovers: it is marked converted and linked to the order, in the same transaction. */
+  abandonedOrderId: z.string().min(1).optional(),
   products: z.array(
     z.object({
       productId: z.string().min(1),

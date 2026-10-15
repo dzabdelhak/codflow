@@ -7,6 +7,7 @@ import { useLocale, useT } from "@/i18n/react";
 import { notify } from "@/lib/notify";
 import {
   createOrder,
+  getAbandonedOrder,
   getDefaultShippingRules,
   getShippingRules,
   listCommunes,
@@ -21,13 +22,14 @@ import type {
   ShippingRule,
   Wilaya,
 } from "@/features/orders/types";
-import { PageHeader } from "@/components/ui";
+import { Alert, PageHeader } from "@/components/ui";
 import { NewOrderCustomerCard } from "@/features/orders/components/NewOrderCustomerCard";
 import { NewOrderDeliveryCard } from "@/features/orders/components/NewOrderDeliveryCard";
 import {
   NewOrderProductsCard,
   type LineItem,
 } from "@/features/orders/components/NewOrderProductsCard";
+import { abandonedCartLines } from "@/features/orders/model";
 import { NewOrderSummaryCard } from "@/features/orders/components/NewOrderSummaryCard";
 
 export function NewOrderForm() {
@@ -64,6 +66,8 @@ export function NewOrderForm() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const pendingCommuneId = useRef<string | null>(null);
+  const [fromCart] = useState(() => new URLSearchParams(window.location.search).get("abandoned"));
+  const [cartCustomer, setCartCustomer] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -101,6 +105,29 @@ export function NewOrderForm() {
       alive = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!fromCart || loading) return;
+    let alive = true;
+    getAbandonedOrder(fromCart).then(
+      (cart) => {
+        if (!alive) return;
+        setCustomerName(cart.customerName);
+        setPhone(cart.phone);
+        if (cart.deliveryType) setDeliveryType(cart.deliveryType);
+        if (cart.wilayaId) {
+          pendingCommuneId.current = cart.communeId;
+          setWilayaId(String(cart.wilayaId));
+        }
+        setLines(abandonedCartLines(cart).map((line) => ({ ...line, id: crypto.randomUUID() })));
+        setCartCustomer(cart.customerName);
+      },
+      (cause) => alive && setMessage(cause instanceof Error ? cause.message : String(cause)),
+    );
+    return () => {
+      alive = false;
+    };
+  }, [fromCart, loading]);
 
   useEffect(() => {
     if (!customerSearch.trim()) return;
@@ -263,6 +290,7 @@ export function NewOrderForm() {
         deliveryType,
         deliveryFee,
         products: lines.map(({ id: _id, ...line }) => line),
+        ...(fromCart ? { abandonedOrderId: fromCart } : {}),
       });
     } catch (cause) {
       setMessage(cause instanceof Error ? cause.message : String(cause));
@@ -298,6 +326,10 @@ export function NewOrderForm() {
         backHref="/orders"
         backLabel={t("detail.back_to_orders")}
       />
+
+      {cartCustomer && (
+        <Alert tone="info">{t("form.from_abandoned").replace("{name}", cartCustomer)}</Alert>
+      )}
 
       {message && (
         <div

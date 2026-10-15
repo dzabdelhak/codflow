@@ -281,7 +281,8 @@
     "error_address": "L'adresse est obligatoire pour la livraison à domicile",
     "error_delivery_fee": "Saisissez les frais en DA (nombre entier)",
     "error_delivery_unavailable": "Cette méthode de livraison n'est pas disponible pour la wilaya sélectionnée",
-    "new_order_subtitle": "Remplissez les informations du client et ajoutez des produits pour créer une nouvelle commande"
+    "new_order_subtitle": "Remplissez les informations du client et ajoutez des produits pour créer une nouvelle commande",
+    "from_abandoned": "Commande préparée depuis le panier abandonné de {name}. Vérifiez la commune, l'adresse et les frais, puis créez-la : le panier sera marqué converti."
   },
   "nav_group": "Ventes",
   "abandoned": {
@@ -311,6 +312,7 @@
       "title": "Aucun panier abandonné",
       "description": "Les clients qui commencent une commande sans la terminer apparaîtront ici comme des leads à récupérer."
     },
-    "recovered_order": "Commande {number}"
+    "recovered_order": "Commande {number}",
+    "convert_to_order": "Convertir en commande"
   }
 }

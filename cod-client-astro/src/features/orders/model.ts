@@ -466,3 +466,23 @@ export function filterAbandonedOrders(
     return true;
   });
 }
+
+/** The order lines an abandoned cart becomes: its basket, else its one product at the price it showed. */
+export function abandonedCartLines(
+  cart: Pick<AbandonedOrder, "items" | "productId" | "productName" | "variantId" | "variantLabel" | "price">,
+): Array<{ productId: string; productName: string; variantId?: string; variantLabel?: string; quantity: number; pricePerUnit: number; lineTotal: number }> {
+  const items = cart.items ?? (cart.productId && cart.productName
+    ? [{ productId: cart.productId, productName: cart.productName, variantId: cart.variantId, variantLabel: cart.variantLabel, quantity: 1, unitPrice: cart.price ?? 0 }]
+    : []);
+  return items
+    .filter((item) => item.unitPrice > 0 && item.quantity > 0)
+    .map((item) => ({
+      productId: item.productId,
+      productName: item.productName,
+      ...(item.variantId ? { variantId: item.variantId } : {}),
+      ...(item.variantLabel ? { variantLabel: item.variantLabel } : {}),
+      quantity: item.quantity,
+      pricePerUnit: item.unitPrice,
+      lineTotal: item.unitPrice * item.quantity,
+    }));
+}

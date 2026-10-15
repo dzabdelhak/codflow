@@ -15,7 +15,8 @@ import * as validation from "./validation";
 import { resolveDeliveryFee, applyFreeShippingOffer } from "./resolve-fee";
 import { logActivity, ACTIONS } from "@/lib/activity";
 import { getDeliveryCompanyById } from "@/endpoints/delivery-companies/queries";
-import { NotFoundError, ValidationError, BusinessLogicError } from "@/lib/errors/classes";
+import { NotFoundError, ValidationError, BusinessLogicError, ConflictError } from "@/lib/errors/classes";
+import { getAbandonedOrder, linkAbandonedOrderToOrder } from "../../../../cod-shared/queries/abandoned-orders";
 import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
 import { first } from "../../../../cod-shared/db/client";
 import { allocateOrderNumber } from "../../../../cod-shared/queries/order-numbers";
@@ -90,6 +91,14 @@ export async function createOrder(c: Context<AppContext>) {
 
     const now = date.toISOString();
     const orderId = crypto.randomUUID();
+
+    if (validated.abandonedOrderId) {
+      const cart = await getAbandonedOrder(db, validated.abandonedOrderId);
+      if (!cart) throw new NotFoundError("Abandoned order", validated.abandonedOrderId);
+      if (cart.status === "converted") {
+        throw new ConflictError("This abandoned cart is already an order", ERROR_CODES.ABANDONED_ORDER_CONVERTED, { orderId: cart.convertedOrderId });
+      }
+    }
 
     // Validate companyId if provided — it references a delivery_companies FK
     if (validated.companyId) {
@@ -215,6 +224,9 @@ export async function createOrder(c: Context<AppContext>) {
     await logActivity(db, actor, ACTIONS.ORDER_CREATED, {
       type: "order", id: orderId, label: orderNumber,
     });
+    if (validated.abandonedOrderId && !(await linkAbandonedOrderToOrder(db, validated.abandonedOrderId, orderId, orderNumber))) {
+      throw new ConflictError("This abandoned cart is already an order", ERROR_CODES.ABANDONED_ORDER_CONVERTED);
+    }
 
     return c.json(
       {
