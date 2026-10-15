@@ -3,6 +3,8 @@ import { ArrowDown, ArrowUp, ExternalLink, Monitor, Pencil, RefreshCw, Smartphon
 import { Alert, Badge, Button, Card, Field, IconButton, Input, Select, Textarea, useConfirmDialog } from "@/components/ui";
 import { ColorField } from "@/features/settings/components/SettingsSection";
 import { ImageField } from "./ImageField";
+import { TemplatePreview } from "@/features/stores/TemplatePreview";
+import { CHANNEL_TEMPLATES, templateById } from "../../../../cod-shared/channels/templates";
 import { useLocale, useT } from "@/i18n/react";
 import { ApiError } from "@/lib/api";
 import { notify } from "@/lib/notify";
@@ -15,6 +17,7 @@ import {
   publishDesign,
   restoreDesignVersion,
   saveDesignDraft,
+  changeChannelTemplate,
   type DesignState,
 } from "./api";
 import {
@@ -33,6 +36,11 @@ import {
 const DESKTOP_WIDTH = 1280;
 const MOBILE_WIDTH = 390;
 const PREVIEW_HEIGHT = 760;
+
+function templatesLike(templateId: string) {
+  const type = templateById(templateId)?.type;
+  return CHANNEL_TEMPLATES.filter((template) => template.type === (type ?? "store"));
+}
 
 function designErrors(cause: unknown): DesignError[] | null {
   if (!(cause instanceof ApiError)) return null;
@@ -111,6 +119,7 @@ function Preview({ url, onRefresh }: { url: string | null; onRefresh: () => void
 
 export function DesignEditor() {
   const t = useT("design");
+  const tn = useT("navigation");
   const uiLocale = useLocale();
   const confirm = useConfirmDialog();
   const [state, setState] = useState<DesignState | null>(null);
@@ -118,7 +127,7 @@ export function DesignEditor() {
   const [design, setDesign] = useState<DesignDocument | null>(null);
   const [locale, setLocale] = useState<DesignLocale>(uiLocale as DesignLocale);
   const [open, setOpen] = useState<string | null>(null);
-  const [busy, setBusy] = useState<"save" | "publish" | "discard" | "restore" | null>(null);
+  const [busy, setBusy] = useState<"save" | "publish" | "discard" | "restore" | "template" | null>(null);
   const [errors, setErrors] = useState<DesignError[] | null>(null);
   const [preview, setPreview] = useState<{ url: string; nonce: number } | null>(null);
 
@@ -197,6 +206,18 @@ export function DesignEditor() {
     await run("discard", discardDesignDraft, () => t("discarded"));
   }
 
+  async function applyTemplate(templateId: string) {
+    if (
+      !(await confirm({
+        title: t("template_confirm_title").replace("{name}", tn(`stores.wizard.template.${templateId}.name`)),
+        description: t(dirty ? "template_confirm_body_unsaved" : "template_confirm_body"),
+        confirmLabel: t("template_use"),
+      }))
+    )
+      return;
+    await run("template", () => changeChannelTemplate(templateId), () => t("template_changed"));
+  }
+
   async function restore(version: number) {
     if (
       dirty &&
@@ -250,6 +271,26 @@ export function DesignEditor() {
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
         <div className="space-y-4">
+          <Card title={t("template_title")} subtitle={t("template_hint")}>
+            <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2">
+              {templatesLike(state.templateId).map((template) => {
+                const current = template.id === state.templateId;
+                return (
+                  <div key={template.id} className={`rounded-xl border p-3 ${current ? "border-brand bg-brand/5" : "border-border"}`}>
+                    <TemplatePreview template={template} />
+                    <p className="mt-2 text-sm font-bold">{tn(`stores.wizard.template.${template.id}.name`)}</p>
+                    {current ? (
+                      <Badge tone="brand" size="sm" className="mt-2">{t("template_current")}</Badge>
+                    ) : (
+                      <Button type="button" variant="secondary" size="sm" className="mt-2" disabled={busy !== null} onClick={() => void applyTemplate(template.id)}>
+                        {t("template_use")}
+                      </Button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
           <Card title={t("brand_title")}>
             <div className="space-y-4 p-4">
               <Field label={t("logo_label")} hint={t("logo_hint")}>

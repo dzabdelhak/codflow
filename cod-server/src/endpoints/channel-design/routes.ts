@@ -3,12 +3,13 @@ import type { AppContext } from "@/types";
 import { defineRoute } from "@/lib/route-builder";
 import { SuccessResponseSchema } from "@/openapi/schemas";
 import * as h from "./handlers";
-import { draftSchema, restoreSchema } from "./validation";
+import { draftSchema, restoreSchema, templateSchema } from "./validation";
 
 const jsonContent = <T extends z.ZodType>(schema: T) => ({ "application/json": { schema } });
 
 const DesignStateSchema = z
   .object({
+    templateId: z.string().openapi({ description: "The channel's ready-made template", example: "theme01" }),
     manifest: z.object({}).passthrough().openapi({ description: "The template manifest: the sections it renders, their settings, and the fonts it allows" }),
     current: z.object({}).passthrough().openapi({ description: "What the editor shows: the draft, else the published document, else the template default" }),
     draft: z.object({}).passthrough().nullable(),
@@ -83,6 +84,20 @@ const restoreRoute = defineRoute({
   handler: h.restore,
 });
 
+const templateRoute = defineRoute({
+  method: "put",
+  path: "/template",
+  auth: "admin",
+  tags: ["Channel Design"],
+  summary: "Change the channel's template",
+  description:
+    "Switches the channel to another ready-made template of its type and loads that template's design (colours, font, sections and texts; the logo is kept) into the draft. The public pages keep the published design until the draft is published; discarding the draft returns to it. 400 VALIDATION_FAILED on `templateId` for a template of another type or an unknown one.",
+  operationId: "changeChannelTemplate",
+  body: templateSchema,
+  responses: stateResponse,
+  handler: h.changeTemplate,
+});
+
 const previewRoute = defineRoute({
   method: "post",
   path: "/preview",
@@ -107,6 +122,7 @@ router.openapi(draftRoute.route, draftRoute.handler);
 router.openapi(discardRoute.route, discardRoute.handler);
 router.openapi(publishRoute.route, publishRoute.handler);
 router.openapi(restoreRoute.route, restoreRoute.handler);
+router.openapi(templateRoute.route, templateRoute.handler);
 router.openapi(previewRoute.route, previewRoute.handler);
 
 export default router;

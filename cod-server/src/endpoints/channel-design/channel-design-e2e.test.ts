@@ -192,6 +192,23 @@ describe("publishing", () => {
     expect((await dashboard("GET", "/api/channel-design")).json.data.current.brand.primaryColor).toBe("#222222");
   });
 
+  it("switches to another ready-made template as a draft, live only once published", async () => {
+    const changed = await dashboard("PUT", "/api/channel-design/template", { templateId: "electro" });
+    expect(changed.status).toBe(200);
+    const state = changed.json.data as State & { templateId: string };
+    expect(state.templateId).toBe("electro");
+    expect(state.draft?.document.brand).toMatchObject({ primaryColor: "#0f62fe", fontId: "ibm-plex" });
+    expect(state.draft?.document.sections[0]).toMatchObject({ type: "hero", settings: { heroTitle: { fr: "La technologie livrée chez vous" } } });
+    expect((await publicConfig()).data!.primaryColor).toBe("#222222");
+
+    await dashboard("POST", "/api/channel-design/publish");
+    const live = await publicConfig();
+    expect(live.data).toMatchObject({ primaryColor: "#0f62fe", fontFamily: "'IBM Plex Sans Arabic', sans-serif" });
+    expect(live.data!.design.sections[0].settings.heroTitle).toBeTruthy();
+
+    expect((await dashboard("PUT", "/api/channel-design/template", { templateId: "flash" })).status).toBe(400);
+  });
+
   it("keeps each channel's versions to itself", async () => {
     const { json } = await dashboard("GET", "/api/channel-design", undefined, other);
     expect(json.data).toMatchObject({ published: null, versions: [] });

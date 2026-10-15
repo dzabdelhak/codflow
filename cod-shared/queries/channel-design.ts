@@ -3,7 +3,7 @@ import { channelDesigns, channelDesignVersions, storeDomains, stores } from "../
 import type { AppDb } from "../db/client";
 import { first } from "../db/client";
 import { manifestFor, type TemplateManifest } from "../channels/manifests";
-import { templateDesign } from "../channels/templates";
+import { isTemplateFor, templateById, templateDesign } from "../channels/templates";
 import {
   brandFromStore,
   storefrontBrand,
@@ -22,6 +22,7 @@ export interface PublishedDesign {
 }
 
 export interface DesignEditorState {
+  templateId: string;
   manifest: TemplateManifest;
   current: DesignDocument;
   draft: { document: DesignDocument; baseVersion: number | null; updatedAt: string; updatedBy: string | null } | null;
@@ -45,7 +46,13 @@ async function storeTemplate(db: AppDb, storeId: string) {
     .then(first);
   if (!store) return null;
   const manifest = manifestFor(store.themeId, store.channelType);
-  return { manifest, fallback: templateDesign(store.themeId, manifest, brandFromStore(store, manifest)) };
+  return {
+    templateId: store.themeId,
+    channelType: store.channelType,
+    logoUrl: store.logoUrl,
+    manifest,
+    fallback: templateDesign(store.themeId, manifest, brandFromStore(store, manifest)),
+  };
 }
 
 async function latestPublished(db: AppDb): Promise<PublishedDesign | null> {
@@ -75,6 +82,7 @@ export async function getDesignEditorState(db: AppDb, storeId: string): Promise<
     ? { document: row.draft as DesignDocument, baseVersion: row.draftBaseVersion, updatedAt: row.updatedAt, updatedBy: row.updatedBy }
     : null;
   return {
+    templateId: template.templateId,
     manifest: template.manifest,
     current: draft?.document ?? { ...(published?.document ?? template.fallback), brand: template.fallback.brand },
     draft,
@@ -108,6 +116,20 @@ export async function saveDesignDraft(db: AppDb, storeId: string, input: unknown
 
 export async function discardDesignDraft(db: AppDb): Promise<void> {
   await db.update(channelDesigns).set({ draft: null, draftBaseVersion: null, updatedAt: new Date().toISOString() });
+}
+
+export type TemplateChangeResult = { ok: true } | { ok: false; reason: "not_found" | "unknown_template" };
+
+export async function changeChannelTemplate(db: AppDb, storeId: string, templateId: string, actor: string | null): Promise<TemplateChangeResult> {
+  const template = await storeTemplate(db, storeId);
+  if (!template) return { ok: false, reason: "not_found" };
+  if (!isTemplateFor(template.channelType, templateId)) return { ok: false, reason: "unknown_template" };
+  const manifest = manifestFor(templateId, template.channelType);
+  const brand: DesignBrand = { logoUrl: template.logoUrl, ...templateById(templateId)!.preset.brand };
+  await db.update(stores).set({ themeId: templateId, updatedAt: new Date().toISOString() }).where(eq(stores.id, storeId));
+  const published = await latestPublished(db);
+  await writeDraft(db, templateDesign(templateId, manifest, brand), published?.version ?? null, actor);
+  return { ok: true };
 }
 
 export type RestoreResult = DesignWriteResult | { ok: false; reason: "unknown_version" };

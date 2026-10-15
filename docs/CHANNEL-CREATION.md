@@ -57,6 +57,10 @@ and a channel with no published design renders the template's document
 (`templateDesign`), until the merchant publishes their own from the Design
 screen. `templates.test.ts` checks every template against its base manifest.
 
+A channel changes template from the Design screen (`PUT /api/channel-design/template`):
+`theme_id` switches at once and the template's design, keeping the logo,
+becomes the draft; the public pages change when it is published.
+
 ## Idempotency
 
 Send a `creationKey` that stays the same for every attempt of one creation (a

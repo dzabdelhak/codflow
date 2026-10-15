@@ -145,5 +145,13 @@
   "restore_confirm": "Restore",
   "upload": "Upload",
   "uploading": "Uploading…",
-  "upload_failed": "The image could not be uploaded. Try again."
+  "upload_failed": "The image could not be uploaded. Try again.",
+  "template_title": "Template",
+  "template_hint": "Change templates at any time: it arrives as a draft for you to preview and publish.",
+  "template_current": "Current template",
+  "template_use": "Use this template",
+  "template_confirm_title": "Switch to the “{name}” template?",
+  "template_confirm_body": "Its colours, font, sections and texts replace your draft (your logo is kept). The public site changes only when you publish.",
+  "template_confirm_body_unsaved": "Your unsaved changes will be lost. Its colours, font, sections and texts replace your draft (your logo is kept). The public site changes only when you publish.",
+  "template_changed": "Template applied to the draft. Preview it, then publish."
 }

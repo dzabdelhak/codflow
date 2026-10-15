@@ -145,5 +145,13 @@
   "restore_confirm": "Restaurer",
   "upload": "Téléverser",
   "uploading": "Téléversement…",
-  "upload_failed": "L’image n’a pas pu être téléversée. Réessayez."
+  "upload_failed": "L’image n’a pas pu être téléversée. Réessayez.",
+  "template_title": "Template",
+  "template_hint": "Changez de template à tout moment : il arrive en brouillon, vous le prévisualisez puis le publiez.",
+  "template_current": "Template actuel",
+  "template_use": "Utiliser ce template",
+  "template_confirm_title": "Passer au template « {name} » ?",
+  "template_confirm_body": "Ses couleurs, sa police, ses sections et ses textes remplacent votre brouillon (le logo est conservé). Le site public ne change qu'à la publication.",
+  "template_confirm_body_unsaved": "Vos modifications non enregistrées seront perdues. Ses couleurs, sa police, ses sections et ses textes remplacent votre brouillon (le logo est conservé). Le site public ne change qu'à la publication.",
+  "template_changed": "Template appliqué au brouillon. Prévisualisez puis publiez."
 }

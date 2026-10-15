@@ -8,6 +8,7 @@ interface DataEnvelope<T> {
 }
 
 export interface DesignState {
+  templateId: string;
   manifest: TemplateManifest;
   current: DesignDocument;
   draft: { document: DesignDocument; baseVersion: number | null; updatedAt: string; updatedBy: string | null } | null;
@@ -31,6 +32,10 @@ export async function discardDesignDraft(): Promise<DesignState> {
 
 export async function publishDesign(): Promise<DesignState> {
   return (await apiFetch<DataEnvelope<DesignState>>("/api/channel-design/publish", { method: "POST" })).data;
+}
+
+export async function changeChannelTemplate(templateId: string): Promise<DesignState> {
+  return (await apiFetch<DataEnvelope<DesignState>>("/api/channel-design/template", json({ method: "PUT", body: JSON.stringify({ templateId }) }))).data;
 }
 
 export async function restoreDesignVersion(version: number): Promise<DesignState> {

@@ -13,3 +13,9 @@ export const restoreSchema = z.object({
 });
 
 export type RestoreInput = z.infer<typeof restoreSchema>;
+
+export const templateSchema = z.object({
+  templateId: z.string().min(1).max(40).openapi({ description: "A ready-made template of the channel's type", example: "electro" }),
+});
+
+export type TemplateInput = z.infer<typeof templateSchema>;

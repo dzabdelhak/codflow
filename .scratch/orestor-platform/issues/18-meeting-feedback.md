@@ -11,7 +11,7 @@ Decisions: hiding and locking apply to Aventy merchants only; orders gain `custo
 - [x] 1.1 The domain field reads "Domain Name" (ar/fr/en)
 - [x] 1.2 The create button reads "+ Créer un canal"
 - [x] 1.3 Aventy merchants see neither Clients nor Livraison; their delivery grid is read-only
-- [ ] 1.4 A channel's template can be changed from the Design screen, as a draft to preview and publish
+- [x] 1.4 A channel's template can be changed from the Design screen, as a draft to preview and publish
 - [x] 2.1 A store channel starts with the cart on
 - [ ] 2.2 An abandoned cart becomes an order (priced, stock-checked, sent) from the abandoned carts screen
 - [x] 3.1 Aventy merchants manage their team in Aventy: Équipe is hidden, members come in through Aventy's button

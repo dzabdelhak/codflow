@@ -7,6 +7,7 @@ import { signPreviewToken } from "@/platform/design-preview";
 import { ERROR_CODES } from "../../../../cod-shared/errors/codes";
 import type { DesignError } from "../../../../cod-shared/channels/design";
 import {
+  changeChannelTemplate,
   channelHostname,
   discardDesignDraft,
   getDesignEditorState,
@@ -14,7 +15,7 @@ import {
   restoreDesignVersion,
   saveDesignDraft,
 } from "../../../../cod-shared/queries/channel-design";
-import type { DraftInput, RestoreInput } from "./validation";
+import type { DraftInput, RestoreInput, TemplateInput } from "./validation";
 
 function invalid(errors: DesignError[]): never {
   throw new ValidationError("The design document does not match the template", ERROR_CODES.VALIDATION_FAILED, { errors });
@@ -54,6 +55,17 @@ export async function publish(c: Context<AppContext>) {
     throw new NotFoundError("Store", c.get("storeId")!);
   }
   schedulePurge(c.env, c.get("storeId"));
+  return state(c);
+}
+
+export async function changeTemplate(c: Context<AppContext>) {
+  const result = await changeChannelTemplate(c.get("db"), c.get("storeId")!, jsonBody<TemplateInput>(c).templateId, actor(c));
+  if (!result.ok) {
+    if (result.reason === "unknown_template") {
+      throw new ValidationError("This template is not available for this channel type", ERROR_CODES.VALIDATION_FAILED, { field: "templateId" });
+    }
+    throw new NotFoundError("Store", c.get("storeId")!);
+  }
   return state(c);
 }
 
