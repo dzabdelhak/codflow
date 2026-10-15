@@ -1,0 +1,6033 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Aventy",
+    "version": "1.0.0",
+    "description": "Aventy public API v1. Authenticate every request with an API token created in Settings → API tokens, sent as `Authorization: Bearer <token>`. Tokens carry scopes (orders:read, orders:write, products:read, products:write, geo:read, webhooks:manage); requests missing the required scope get a 403. Errors always use the envelope `{\"error\": {\"code\", \"message\", \"details\"}}`. Monetary amounts are numbers in Algerian dinars (DA). Lists use cursor pagination. AI assistants can also connect over MCP at `/mcp` (OAuth 2.1, store-bound, two-phase writes) — see `/llms.txt` for the primer."
+  },
+  "servers": [
+    {
+      "url": "https://dashboard.aventy.app/api/v1"
+    }
+  ],
+  "security": [
+    {
+      "http": []
+    }
+  ],
+  "paths": {
+    "/webhooks/sales-channels/{channel}/ayor": {
+      "post": {
+        "operationId": "webhooks.sales-channels.ayor",
+        "tags": [
+          "AyorWebhook"
+        ],
+        "parameters": [
+          {
+            "name": "channel",
+            "in": "path",
+            "required": true,
+            "description": "The channel UUID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Acknowledge: a malformed envelope will not become valid on retry.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "type": "string",
+                          "const": "acknowledged"
+                        }
+                      },
+                      "required": [
+                        "status"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "type": "string",
+                          "const": "duplicate"
+                        }
+                      },
+                      "required": [
+                        "status"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "type": "string",
+                          "const": "decode_failed"
+                        }
+                      },
+                      "required": [
+                        "status"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "type": "string",
+                          "const": "plan_not_allowed"
+                        }
+                      },
+                      "required": [
+                        "status"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "type": "string",
+                          "const": "channel_inactive"
+                        }
+                      },
+                      "required": [
+                        "status"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "const": "Forbidden"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "const": "Unauthorized"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/ModelNotFoundException"
+          }
+        },
+        "security": []
+      }
+    },
+    "/carts": {
+      "post": {
+        "operationId": "cart.store",
+        "description": "**Required scope:** `orders:write`",
+        "tags": [
+          "Cart"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "session_id": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/CartResource"
+                    },
+                    "message": {
+                      "type": "string",
+                      "const": "Cart created."
+                    },
+                    "errors": {
+                      "type": "null"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "message",
+                    "errors"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/carts/{cart}": {
+      "get": {
+        "operationId": "cart.show",
+        "description": "**Required scope:** `orders:read`",
+        "tags": [
+          "Cart"
+        ],
+        "parameters": [
+          {
+            "name": "cart",
+            "in": "path",
+            "required": true,
+            "description": "The cart ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/CartResource"
+                    },
+                    "message": {
+                      "type": "null"
+                    },
+                    "errors": {
+                      "type": "null"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "message",
+                    "errors"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "description": "Error overview.",
+                      "example": "Forbidden."
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/ModelNotFoundException"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "cart.destroy",
+        "description": "**Required scope:** `orders:write`",
+        "tags": [
+          "Cart"
+        ],
+        "parameters": [
+          {
+            "name": "cart",
+            "in": "path",
+            "required": true,
+            "description": "The cart ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/CartResource"
+                    },
+                    "message": {
+                      "type": "string",
+                      "const": "Cart emptied."
+                    },
+                    "errors": {
+                      "type": "null"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "message",
+                    "errors"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "description": "Error overview.",
+                      "example": "Forbidden."
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "description": "Error overview.",
+                      "example": "Cannot modify a converted cart."
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/ModelNotFoundException"
+          }
+        }
+      }
+    },
+    "/carts/{cart}/items": {
+      "post": {
+        "operationId": "cartItem.store",
+        "description": "**Required scope:** `orders:write`",
+        "tags": [
+          "CartItem"
+        ],
+        "parameters": [
+          {
+            "name": "cart",
+            "in": "path",
+            "required": true,
+            "description": "The cart ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoreCartItemRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/CartItemResource"
+                    },
+                    "message": {
+                      "type": "string",
+                      "const": "Item added to cart."
+                    },
+                    "errors": {
+                      "type": "null"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "message",
+                    "errors"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "description": "Error overview.",
+                      "example": "Forbidden."
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationException"
+          },
+          "404": {
+            "$ref": "#/components/responses/ModelNotFoundException"
+          }
+        }
+      }
+    },
+    "/carts/{cart}/items/{item}": {
+      "patch": {
+        "operationId": "cartItem.update",
+        "description": "**Required scope:** `orders:write`",
+        "tags": [
+          "CartItem"
+        ],
+        "parameters": [
+          {
+            "name": "cart",
+            "in": "path",
+            "required": true,
+            "description": "The cart ID",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "item",
+            "in": "path",
+            "required": true,
+            "description": "The item ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCartItemRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/CartItemResource"
+                    },
+                    "message": {
+                      "type": "string",
+                      "const": "Item updated."
+                    },
+                    "errors": {
+                      "type": "null"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "message",
+                    "errors"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "description": "Error overview.",
+                      "example": "Forbidden."
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationException"
+          },
+          "404": {
+            "$ref": "#/components/responses/ModelNotFoundException"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "cartItem.destroy",
+        "description": "**Required scope:** `orders:write`",
+        "tags": [
+          "CartItem"
+        ],
+        "parameters": [
+          {
+            "name": "cart",
+            "in": "path",
+            "required": true,
+            "description": "The cart ID",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "item",
+            "in": "path",
+            "required": true,
+            "description": "The item ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "null"
+                    },
+                    "message": {
+                      "type": "string",
+                      "const": "Item removed."
+                    },
+                    "errors": {
+                      "type": "null"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "message",
+                    "errors"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "description": "Error overview.",
+                      "example": "Forbidden."
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "description": "Error overview.",
+                      "example": "Cannot modify a converted cart."
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/ModelNotFoundException"
+          }
+        }
+      }
+    },
+    "/delivery/types": {
+      "get": {
+        "operationId": "delivery.types",
+        "description": "Each type keeps `slug` and `name`, and adds `kind` (`home` or\n`stopdesk`), `storefront_orderable` and `order_delivery_type` — the\n`delivery_type` value to send to POST /orders to order this type, or\nnull when the type cannot be ordered through the API. `meta.free_shipping`\nis true when the calling linked site offers delivery (SAT-SITES-1: set\nper site, false for every other key).\n\n**Required scope:** `geo:read|storefront:geo.read`",
+        "summary": "List the delivery types available for this store",
+        "tags": [
+          "Delivery"
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "anyOf": [
+                        {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "slug": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "kind": {
+                                "type": "string"
+                              },
+                              "storefront_orderable": {
+                                "type": "boolean"
+                              },
+                              "order_delivery_type": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "slug",
+                              "name",
+                              "kind",
+                              "storefront_orderable",
+                              "order_delivery_type"
+                            ]
+                          }
+                        },
+                        {
+                          "type": "array",
+                          "prefixItems": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "slug": {
+                                  "type": "string",
+                                  "const": "home"
+                                },
+                                "name": {
+                                  "type": "string",
+                                  "const": "Domicile"
+                                },
+                                "kind": {
+                                  "type": "string"
+                                },
+                                "storefront_orderable": {
+                                  "type": "boolean"
+                                },
+                                "order_delivery_type": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "slug",
+                                "name",
+                                "kind",
+                                "storefront_orderable",
+                                "order_delivery_type"
+                              ]
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "slug": {
+                                  "type": "string",
+                                  "const": "express"
+                                },
+                                "name": {
+                                  "type": "string",
+                                  "const": "Express"
+                                },
+                                "kind": {
+                                  "type": "string"
+                                },
+                                "storefront_orderable": {
+                                  "type": "boolean"
+                                },
+                                "order_delivery_type": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "slug",
+                                "name",
+                                "kind",
+                                "storefront_orderable",
+                                "order_delivery_type"
+                              ]
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "slug": {
+                                  "type": "string",
+                                  "const": "stopdesk"
+                                },
+                                "name": {
+                                  "type": "string",
+                                  "const": "Stop desk"
+                                },
+                                "kind": {
+                                  "type": "string"
+                                },
+                                "storefront_orderable": {
+                                  "type": "boolean"
+                                },
+                                "order_delivery_type": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "slug",
+                                "name",
+                                "kind",
+                                "storefront_orderable",
+                                "order_delivery_type"
+                              ]
+                            }
+                          ],
+                          "minItems": 3,
+                          "maxItems": 3,
+                          "additionalItems": false
+                        }
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "free_shipping": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "free_shipping"
+                      ]
+                    },
+                    "message": {
+                      "type": "null"
+                    },
+                    "errors": {
+                      "type": "null"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta",
+                    "message",
+                    "errors"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/delivery/fees": {
+      "get": {
+        "operationId": "delivery.fees",
+        "description": "`price_home` / `price_express` / `price_stopdesk` are the grid rates,\nunchanged. Added: `free_shipping`, `types[]` (each type's rate and the\n`amount` the customer pays — 0 when the calling site offers delivery), and, when\n`stopdesk_id` names one of the store's pickup offices in that wilaya,\n`stopdesk` with that office's own price and amount. An unknown office, or\none of another wilaya, is a 422.\n\n**Required scope:** `geo:read|storefront:geo.read`",
+        "summary": "Delivery fees towards a wilaya (home, express and stopdesk prices)",
+        "tags": [
+          "Delivery"
+        ],
+        "parameters": [
+          {
+            "name": "wilaya_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 58
+            }
+          },
+          {
+            "name": "stopdesk_id",
+            "in": "query",
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ZIMOU-DEFAULT-CARRIER-1 — no grid and no usable carrier: refused\nby name, without any carrier call. Same success envelope and\n`data` shape as a priced answer (prices null), so a storefront\nreading `data.price_*` keeps working, plus a stable machine\ncode. It used to be a 500: DeliveryManager built a Yalidine\nclient on empty credentials and the carrier's 400 escaped.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "wilaya_id": {
+                              "type": "integer"
+                            },
+                            "price_home": {
+                              "type": [
+                                "number",
+                                "null"
+                              ]
+                            },
+                            "price_express": {
+                              "type": [
+                                "number",
+                                "null"
+                              ]
+                            },
+                            "price_stopdesk": {
+                              "type": [
+                                "number",
+                                "null"
+                              ]
+                            },
+                            "free_shipping": {
+                              "type": "boolean"
+                            },
+                            "types": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "": {
+                                    "type": "string"
+                                  },
+                                  "price": {
+                                    "type": [
+                                      "number",
+                                      "null"
+                                    ]
+                                  },
+                                  "amount": {
+                                    "type": [
+                                      "number",
+                                      "null"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  null,
+                                  "price",
+                                  "amount"
+                                ]
+                              }
+                            },
+                            "stopdesk": {
+                              "type": [
+                                "object",
+                                "null"
+                              ],
+                              "properties": {
+                                "id": {
+                                  "type": "integer"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "price": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                },
+                                "amount": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "name",
+                                "price",
+                                "amount"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "wilaya_id",
+                            "price_home",
+                            "price_express",
+                            "price_stopdesk",
+                            "free_shipping",
+                            "types",
+                            "stopdesk"
+                          ]
+                        },
+                        "message": {
+                          "type": "null"
+                        },
+                        "errors": {
+                          "type": "null"
+                        }
+                      },
+                      "required": [
+                        "data",
+                        "message",
+                        "errors"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "wilaya_id": {
+                              "type": "integer"
+                            },
+                            "price_home": {
+                              "type": "null"
+                            },
+                            "price_express": {
+                              "type": "null"
+                            },
+                            "price_stopdesk": {
+                              "type": "null"
+                            },
+                            "free_shipping": {
+                              "type": "boolean"
+                            },
+                            "types": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "": {
+                                    "type": "string"
+                                  },
+                                  "price": {
+                                    "type": [
+                                      "number",
+                                      "null"
+                                    ]
+                                  },
+                                  "amount": {
+                                    "type": [
+                                      "number",
+                                      "null"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  null,
+                                  "price",
+                                  "amount"
+                                ]
+                              }
+                            },
+                            "stopdesk": {
+                              "type": [
+                                "object",
+                                "null"
+                              ],
+                              "properties": {
+                                "id": {
+                                  "type": "integer"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "price": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                },
+                                "amount": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "name",
+                                "price",
+                                "amount"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "wilaya_id",
+                            "price_home",
+                            "price_express",
+                            "price_stopdesk",
+                            "free_shipping",
+                            "types",
+                            "stopdesk"
+                          ]
+                        },
+                        "message": {
+                          "type": "string",
+                          "const": "لم يتم إعداد أي شركة توصيل لهذا المتجر، لذا لا يمكن حساب أي رسوم توصيل."
+                        },
+                        "errors": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "const": "carrier_not_configured"
+                            }
+                          },
+                          "required": [
+                            "code"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "data",
+                        "message",
+                        "errors"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationException"
+          }
+        }
+      }
+    },
+    "/delivery/stopdesks": {
+      "get": {
+        "operationId": "delivery.stopdesks",
+        "description": "`id` is the office's carrier id — stable across the weekly resync, and the\nvalue to send as `stopdesk_id` to POST /orders. `commune_id` is the\nplatform's commune (null when the referential has no match), `price` the\namount the customer pays for this office (0 when the calling site offers\ndelivery, null when no rate is stored).\n\n`name` is the carrier's own name and may repeat across a whole wilaya\n(Zimou Express): `partner_name` — the company operating the counter, null\nwhen the carrier publishes none — and `address` are what tells offices\napart. Sorted by commune, then price, then partner.\n\n**Required scope:** `geo:read|storefront:geo.read`",
+        "summary": "Pickup offices of a wilaya for this store, from the stored list only —\nnever a live carrier call: a wilaya without an office answers an empty\nlist",
+        "tags": [
+          "Delivery"
+        ],
+        "parameters": [
+          {
+            "name": "wilaya_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 58
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "partner_name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "address": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "wilaya_id": {
+                            "type": "integer"
+                          },
+                          "commune_id": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "commune_name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "price": {
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "partner_name",
+                          "address",
+                          "wilaya_id",
+                          "commune_id",
+                          "commune_name",
+                          "price"
+                        ]
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "free_shipping": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "free_shipping"
+                      ]
+                    },
+                    "message": {
+                      "type": "null"
+                    },
+                    "errors": {
+                      "type": "null"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta",
+                    "message",
+                    "errors"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationException"
+          }
+        }
+      }
+    },
+    "/webhooks/delivery/{token}": {
+      "post": {
+        "operationId": "webhooks.delivery",
+        "description": "Receives status-update webhooks from Yalidine, Economiqua or Zimou Express.\nThe {token} is the store's webhook_token — no other authentication needed.\n\nWhich dialect a body is read in comes from the STORE the token resolves\nto, never from sniffing the payload: `delivery_provider` is the one fact\nwe hold that the caller cannot influence.\n\nZimou Express (see {@see self::handleZimouEvent()}):\n\n    { \"event\": \"package.status.changed\",\n      \"package\": { \"tracking_code\": \"ZIM-…\", \"order_id\": \"…\",\n                   \"status\": \"LIVRÉ\", \"status_id\": 8,\n                   \"reason\": null, \"reason_id\": null } }\n\nYalidine family — two payload shapes are accepted:\n\n  Nested + batched (observed contract):\n    { \"type\": \"parcel_status_updated\",\n      \"events\": [ { \"event_id\": \"...\", \"occurred_at\": \"...\",\n                    \"data\": { \"tracking\": \"...\", \"status\": \"...\", \"reason\": null } } ] }\n\n  Flat (what this endpoint accepted before):\n    { \"tracking\": \"YLD-XXXX\", \"status\": \"Livré\", ... }\n\nAn EMPTY raw body is the carrier's URL-validation ping, not a malformed\nwebhook.",
+        "summary": "POST /api/v1/webhooks/delivery/{token}",
+        "tags": [
+          "DeliveryWebhook"
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      },
+      "get": {
+        "operationId": "webhooks.delivery.probe",
+        "description": "Two jobs, both strictly read-only:\n\n 1. CRC challenge. Yalidine validates a webhook URL by calling it with\n    `?subscribe=1&crc_token=<50 chars>` and demands the raw token back as\n    the entire body. Anything else — JSON, quotes, a trailing newline —\n    reads as \"n'a pas répondu avec la bonne valeur du crc_token\".\n    `subscribe` is answered when present but never required.\n 2. Liveness probe, so a carrier checking the URL does not read a 405 as\n    a broken endpoint.\n\nThe {token} is never resolved and never used beyond a 6-char log prefix:\nthe response is byte-identical whether the token exists or not, so this\nis no oracle for enumerating tokens. A real merchant token has already\nleaked to facebookexternalhit through a webhook URL pasted into a\nmessaging app; echoing a caller-supplied value mutates nothing, but\nnothing that mutates may ever be added here.",
+        "summary": "GET|HEAD /api/v1/webhooks/delivery/{token}",
+        "tags": [
+          "DeliveryWebhook"
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/geo/wilayas": {
+      "get": {
+        "operationId": "geo.wilayas",
+        "description": "**Required scope:** `geo:read|storefront:geo.read`",
+        "summary": "List the 58 Algerian wilayas",
+        "tags": [
+          "Geo"
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "message": {
+                      "type": "null"
+                    },
+                    "errors": {
+                      "type": "null"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "message",
+                    "errors"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/geo/communes": {
+      "get": {
+        "operationId": "geo.communes",
+        "description": "**Required scope:** `geo:read|storefront:geo.read`",
+        "summary": "List the communes of a wilaya",
+        "tags": [
+          "Geo"
+        ],
+        "parameters": [
+          {
+            "name": "wilaya_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 58
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "message": {
+                      "type": "null"
+                    },
+                    "errors": {
+                      "type": "null"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "message",
+                    "errors"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationException"
+          }
+        }
+      }
+    },
+    "/webhooks/gsheets/{storeId}": {
+      "post": {
+        "operationId": "googleSheetsWebhook.handle",
+        "description": "Called by the Apps Script installed on the user's Google Sheet.\nPayload: { spreadsheet_id, rows: [...], from_row }\nSignature: HMAC-SHA256 in X-GSheets-Signature header.\n\nGating + signature are checked synchronously (security first); the import\nitself is queued so a large pushed batch never times out the webhook.",
+        "summary": "POST /api/v1/webhooks/gsheets/{storeId}",
+        "tags": [
+          "GoogleSheetsWebhook"
+        ],
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "const": "Accepted for processing."
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "const": "No column mapping configured."
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "const": "No rows."
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "const": "Invalid signature."
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "const": "Not found or sync disabled."
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/integrations/shopify/{token}/webhook": {
+      "post": {
+        "operationId": "integration.shopifyWebhook",
+        "description": "Shopify sends the HMAC-SHA256 signature in X-Shopify-Hmac-Sha256.\nWe verify it against the store's shopify_webhook_secret.\nOnly processes \"orders/create\" topic.\n\nSHOPIFY-WEBHOOK-ID-1: every notification leaves one `[webhook.shopify]`\ntrace line (store, topic, webhook id, content type, HTTP status, order\ncreated). A signed orders/create whose body names no order — not JSON,\nor JSON without `id` — is refused with a 400 instead of crashing into a\n500: Shopify then exhausts its retries and drops the useless\nsubscription. Never the body in a log line, only its size.",
+        "summary": "POST /api/v1/integrations/shopify/{token}/webhook",
+        "tags": [
+          "Integration"
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "message": {
+                          "type": "string",
+                          "const": "Topic ignored."
+                        }
+                      },
+                      "required": [
+                        "message"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "null"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "type": "object",
+                      "properties": {
+                        "order": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": [
+                        "order"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "message",
+                    "errors"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "const": "Store has no users configured."
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "null"
+                    },
+                    "message": {
+                      "type": "string",
+                      "const": "Unreadable notification: the body names no Shopify order."
+                    },
+                    "errors": {
+                      "type": "null"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "message",
+                    "errors"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "const": "Invalid signature."
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/integrations/woocommerce/{token}/webhook": {
+      "post": {
+        "operationId": "integration.woocommerceWebhook",
+        "description": "WooCommerce sends the HMAC-SHA256 in X-WC-Webhook-Signature.\nTopic is in X-WC-Webhook-Topic (e.g. \"order.created\").",
+        "summary": "POST /api/v1/integrations/woocommerce/{token}/webhook",
+        "tags": [
+          "Integration"
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "message": {
+                          "type": "string",
+                          "const": "Topic ignored."
+                        }
+                      },
+                      "required": [
+                        "message"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "message": {
+                          "type": "string",
+                          "const": "Webhook ping accepted."
+                        }
+                      },
+                      "required": [
+                        "message"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "null"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "type": "object",
+                      "properties": {
+                        "order": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": [
+                        "order"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "message",
+                    "errors"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "const": "Store has no users configured."
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "const": "Invalid signature."
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/integrations/gsheets/import": {
+      "post": {
+        "operationId": "integration.googleSheetsImport",
+        "description": "Body: { url: \"https://docs.google.com/spreadsheets/.../pub?output=csv\", error_strategy? }\n\nThe sheet must be published as CSV (File → Share → Publish to web → CSV).\n\n**Required scope:** `orders:write`",
+        "summary": "POST /api/v1/integrations/gsheets/import",
+        "tags": [
+          "Integration"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "url": {
+                    "type": "string",
+                    "format": "uri"
+                  },
+                  "error_strategy": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "enum": [
+                      "stop",
+                      "continue"
+                    ]
+                  }
+                },
+                "required": [
+                  "url"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "batch_id": {
+                          "type": "integer"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "total_rows": {
+                          "type": "integer"
+                        },
+                        "imported_count": {
+                          "type": "integer"
+                        },
+                        "failed_count": {
+                          "type": "integer"
+                        },
+                        "duplicate_count": {
+                          "type": "integer"
+                        },
+                        "skipped_count": {
+                          "type": "integer"
+                        },
+                        "report": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": {}
+                          }
+                        }
+                      },
+                      "required": [
+                        "batch_id",
+                        "status",
+                        "total_rows",
+                        "imported_count",
+                        "failed_count",
+                        "duplicate_count",
+                        "skipped_count",
+                        "report"
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "type": "null"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "message",
+                    "errors"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationException"
+          }
+        }
+      }
+    },
+    "/webhooks/sales-channels/{channel}/lightfunnels": {
+      "post": {
+        "operationId": "webhooks.sales-channels.lightfunnels",
+        "tags": [
+          "LightfunnelsWebhook"
+        ],
+        "parameters": [
+          {
+            "name": "channel",
+            "in": "path",
+            "required": true,
+            "description": "The channel UUID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Acknowledge to LF anyway so it doesn't retry on a non-retriable error.\nThe failure is captured in the events log.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "type": "string",
+                          "const": "acknowledged"
+                        }
+                      },
+                      "required": [
+                        "status"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "type": "string",
+                          "const": "handler_error"
+                        }
+                      },
+                      "required": [
+                        "status"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "type": "string",
+                          "const": "duplicate"
+                        }
+                      },
+                      "required": [
+                        "status"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "type": "string",
+                          "const": "plan_not_allowed"
+                        }
+                      },
+                      "required": [
+                        "status"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "type": "string",
+                          "const": "channel_inactive"
+                        }
+                      },
+                      "required": [
+                        "status"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "const": "Invalid signature"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "const": "Missing signature"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/ModelNotFoundException"
+          }
+        },
+        "security": []
+      }
+    },
+    "/orders": {
+      "get": {
+        "operationId": "order.index",
+        "description": "`from` and `to` (YYYY-MM-DD, inclusive) are calendar days in the\nstore's timezone (Africa/Algiers): an order created at 23:30 UTC on\n30/09 is a 01/10 order. Timestamps in the response stay in UTC (…Z).\n\n**Required scope:** `orders:read`",
+        "summary": "List orders (cursor-paginated). Filters: source, status, from, to,\nsearch (order number, customer name or phone)",
+        "tags": [
+          "Order"
+        ],
+        "parameters": [
+          {
+            "name": "source",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/OrderResource"
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "per_page": {
+                          "type": "integer"
+                        },
+                        "next_cursor": {
+                          "type": "string"
+                        },
+                        "prev_cursor": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "per_page",
+                        "next_cursor",
+                        "prev_cursor"
+                      ]
+                    },
+                    "message": {
+                      "type": "null"
+                    },
+                    "errors": {
+                      "type": "null"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta",
+                    "message",
+                    "errors"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "order.store",
+        "description": "**Required scope:** `orders:write|storefront:orders.write`",
+        "summary": "Create an order from a direct payload (items inline, geo by id or\nname). Idempotent on external_id: replaying the same (source,\nexternal_id) returns the existing order with a 200 instead of a 201.\nAlso supports the Idempotency-Key header (exact response replay, 24h)",
+        "tags": [
+          "Order"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoreOrderRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationException"
+          }
+        }
+      }
+    },
+    "/orders/import": {
+      "post": {
+        "operationId": "order.import",
+        "description": "Body (multipart/form-data):\n  - file            : required, CSV or XLSX file (max 5 MB)\n  - error_strategy  : optional — \"continue\" (default) | \"stop\"\n  - duplicate_strategy : optional — \"skip\" (default) | \"accept\"\n\n**Required scope:** `orders:write`",
+        "summary": "Import orders from a CSV or XLSX file",
+        "tags": [
+          "Order"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "contentMediaType": "application/octet-stream",
+                    "description": "txt: a semicolon CSV (Excel FR export) is sniffed text/plain —\nsame widening as the merchant upload wizard (COMMA-IMPORT-1).",
+                    "maxLength": 5120
+                  },
+                  "error_strategy": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "enum": [
+                      "stop",
+                      "continue"
+                    ]
+                  },
+                  "duplicate_strategy": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "enum": [
+                      "skip",
+                      "accept"
+                    ]
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "batch_id": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "total_rows": {
+                          "type": "string"
+                        },
+                        "imported_count": {
+                          "type": "string"
+                        },
+                        "failed_count": {
+                          "type": "string"
+                        },
+                        "duplicate_count": {
+                          "type": "string"
+                        },
+                        "skipped_count": {
+                          "type": "string"
+                        },
+                        "report": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "batch_id",
+                        "status",
+                        "total_rows",
+                        "imported_count",
+                        "failed_count",
+                        "duplicate_count",
+                        "skipped_count",
+                        "report"
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "type": "null"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "message",
+                    "errors"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationException"
+          }
+        }
+      }
+    },
+    "/orders/import/template": {
+      "get": {
+        "operationId": "order.importTemplate",
+        "description": "Query param: format=csv (default) | xlsx\n\n**Required scope:** `orders:read`",
+        "summary": "Download the import template (CSV or XLSX)",
+        "tags": [
+          "Order"
+        ],
+        "parameters": [
+          {
+            "name": "format",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "text/csv; charset=UTF-8": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "headers": {
+              "Transfer-Encoding": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "chunked"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/orders/{order}": {
+      "get": {
+        "operationId": "order.show",
+        "description": "**Required scope:** `orders:read`",
+        "tags": [
+          "Order"
+        ],
+        "parameters": [
+          {
+            "name": "order",
+            "in": "path",
+            "required": true,
+            "description": "The order ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/OrderResource"
+                    },
+                    "message": {
+                      "type": "null"
+                    },
+                    "errors": {
+                      "type": "null"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "message",
+                    "errors"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "description": "Error overview.",
+                      "example": "Forbidden."
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/ModelNotFoundException"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "order.update",
+        "description": "`commune_id` must be an existing commune of the order's wilaya — the\n`wilaya_id` sent in the same call, or else the one the order already\nhas. Otherwise the call fails with 422 and `commune_id` names the reason.\n\nChanging `wilaya_id` without sending `commune_id` keeps the current\ncommune only if it belongs to the new wilaya; otherwise the commune is\ncleared and the order comes back with `needs_review: true` (200, never\na refusal).\n\n**Required scope:** `orders:write`",
+        "summary": "Update customer/delivery details. Only pending or confirmed orders can\nchange; anything further in the pipeline is a 409",
+        "tags": [
+          "Order"
+        ],
+        "parameters": [
+          {
+            "name": "order",
+            "in": "path",
+            "required": true,
+            "description": "The order ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateOrderRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/OrderResource"
+                    },
+                    "message": {
+                      "type": "string",
+                      "const": "Order updated."
+                    },
+                    "errors": {
+                      "type": "null"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "message",
+                    "errors"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "description": "Error overview.",
+                      "example": "Forbidden."
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "description": "Error overview.",
+                      "example": "Only pending or confirmed orders can be updated."
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/ModelNotFoundException"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationException"
+          }
+        }
+      }
+    },
+    "/orders/{order}/history": {
+      "get": {
+        "operationId": "order.history",
+        "description": "**Required scope:** `orders:read`",
+        "summary": "Status timeline: order_created, status_changed, shipment_created…",
+        "tags": [
+          "Order"
+        ],
+        "parameters": [
+          {
+            "name": "order",
+            "in": "path",
+            "required": true,
+            "description": "The order ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "event": {
+                            "type": "string"
+                          },
+                          "old_value": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "new_value": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "note": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "created_at": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        },
+                        "required": [
+                          "event",
+                          "old_value",
+                          "new_value",
+                          "note",
+                          "created_at"
+                        ]
+                      }
+                    },
+                    "message": {
+                      "type": "null"
+                    },
+                    "errors": {
+                      "type": "null"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "message",
+                    "errors"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "description": "Error overview.",
+                      "example": "Forbidden."
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/ModelNotFoundException"
+          }
+        }
+      }
+    },
+    "/orders/{order}/status": {
+      "patch": {
+        "operationId": "order.updateStatus",
+        "description": "SF-UNRESOLVED: moving an order INTO the confirmed funnel (`confirmed`,\n`shipped`, `delivered`, `returned`) requires every cart line to name an\narticle of the catalog. An order still holding an unidentified line\nanswers 422 with code `incomplete_cart` and the references at fault;\n`pending` and `cancelled` are unaffected.\n\n**Required scope:** `orders:write`",
+        "summary": "Manually set an order status",
+        "tags": [
+          "Order"
+        ],
+        "parameters": [
+          {
+            "name": "order",
+            "in": "path",
+            "required": true,
+            "description": "The order ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateOrderStatusRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/OrderResource"
+                        },
+                        "message": {
+                          "type": "string",
+                          "const": "Order status updated."
+                        },
+                        "errors": {
+                          "type": "null"
+                        }
+                      },
+                      "required": [
+                        "data",
+                        "message",
+                        "errors"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/OrderResource"
+                        },
+                        "message": {
+                          "type": "string",
+                          "const": "Order confirmed."
+                        },
+                        "errors": {
+                          "type": "null"
+                        }
+                      },
+                      "required": [
+                        "data",
+                        "message",
+                        "errors"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationException"
+          },
+          "403": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "description": "Error overview.",
+                      "example": "Forbidden."
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/ModelNotFoundException"
+          }
+        }
+      }
+    },
+    "/orders/{order}/ship": {
+      "post": {
+        "operationId": "order.ship",
+        "description": "**Required scope:** `orders:write`",
+        "tags": [
+          "Order"
+        ],
+        "parameters": [
+          {
+            "name": "order",
+            "in": "path",
+            "required": true,
+            "description": "The order ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/OrderResource"
+                    },
+                    "message": {
+                      "type": "string",
+                      "const": "Shipment created successfully."
+                    },
+                    "errors": {
+                      "type": "null"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "message",
+                    "errors"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/OrderResource"
+                        },
+                        "message": {
+                          "type": "string",
+                          "const": "The Zimou warehouse refused this parcel: out of stock. Order flagged for review."
+                        },
+                        "errors": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "const": "warehouse_out_of_stock"
+                            },
+                            "tracking": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "tracking"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "data",
+                        "message",
+                        "errors"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/OrderResource"
+                        },
+                        "message": {
+                          "type": "string",
+                          "const": "The carrier call did not complete; the parcel may exist. Order flagged for review — do not retry."
+                        },
+                        "errors": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "const": "ambiguous_dispatch_failure"
+                            },
+                            "provider_message": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "provider_message"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "data",
+                        "message",
+                        "errors"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/OrderResource"
+                        },
+                        "message": {
+                          "type": "string",
+                          "const": "Carrier reports this order_id as already created. Order flagged for review."
+                        },
+                        "errors": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "const": "duplicate_order_id"
+                            },
+                            "provider_message": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "provider_message"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "data",
+                        "message",
+                        "errors"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "message": {
+                          "type": "string",
+                          "description": "Error overview.",
+                          "example": "Order is flagged for dispatch review; please reconcile before retrying."
+                        }
+                      },
+                      "required": [
+                        "message"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "An error\n\nAn error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "enum": [
+                                "order_cancelled",
+                                "confirmation_required",
+                                "incomplete_cart"
+                              ]
+                            },
+                            "message": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "details": {
+                              "type": "null"
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "message",
+                            "details"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "message": {
+                          "type": "string",
+                          "description": "Error overview."
+                        }
+                      },
+                      "required": [
+                        "message"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "message": {
+                          "type": "string",
+                          "description": "Error overview.",
+                          "example": "No delivery carrier is configured for this store. Configure your carrier credentials before shipping."
+                        }
+                      },
+                      "required": [
+                        "message"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "description": "Error overview.",
+                      "example": "Forbidden."
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "description": "Error overview.",
+                      "example": "Invalid response from delivery provider: tracking number missing."
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/ModelNotFoundException"
+          }
+        }
+      }
+    },
+    "/orders/{order}/cancel": {
+      "post": {
+        "operationId": "order.cancel",
+        "description": "**Required scope:** `orders:write`",
+        "tags": [
+          "Order"
+        ],
+        "parameters": [
+          {
+            "name": "order",
+            "in": "path",
+            "required": true,
+            "description": "The order ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/OrderResource"
+                    },
+                    "message": {
+                      "type": "string",
+                      "const": "Order cancelled and stock restored."
+                    },
+                    "errors": {
+                      "type": "null"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "message",
+                    "errors"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "description": "Error overview.",
+                      "example": "Forbidden."
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "description": "Error overview.",
+                      "example": "This order cannot be cancelled."
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/ModelNotFoundException"
+          }
+        }
+      }
+    },
+    "/products": {
+      "get": {
+        "operationId": "product.index",
+        "description": "`view=storefront` (SF-PRODUCTS) swaps the merchant payload for the\nshop-window one, defaults the listing to active products, and turns the\nresponse into a cacheable resource (ETag + Cache-Control) so a satellite\npolling every 5 minutes mostly gets 304s.\n\n**Required scope:** `products:read|storefront:products.read`",
+        "summary": "List products (cursor-paginated). Filters: q (name or sku),\ncategory_id, is_active",
+        "tags": [
+          "Product"
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "maxLength": 100
+            }
+          },
+          {
+            "name": "category_id",
+            "in": "query",
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "is_active",
+            "in": "query",
+            "schema": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "enum": [
+                "storefront"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationException"
+          }
+        }
+      },
+      "post": {
+        "operationId": "product.store",
+        "description": "**Required scope:** `products:write`",
+        "summary": "Create a product. Initial stock, when given, goes through the stock\nledger (StockService) — never written directly",
+        "tags": [
+          "Product"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoreProductRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ProductResource"
+                    },
+                    "message": {
+                      "type": "string",
+                      "const": "Product created successfully."
+                    },
+                    "errors": {
+                      "type": "null"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "message",
+                    "errors"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationException"
+          }
+        }
+      }
+    },
+    "/products/{product}": {
+      "get": {
+        "operationId": "product.show",
+        "description": "**Required scope:** `products:read|storefront:products.read`",
+        "tags": [
+          "Product"
+        ],
+        "parameters": [
+          {
+            "name": "product",
+            "in": "path",
+            "required": true,
+            "description": "The product ID",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "enum": [
+                "storefront"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "description": "Error overview.",
+                      "example": "Forbidden."
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationException"
+          },
+          "404": {
+            "$ref": "#/components/responses/ModelNotFoundException"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "product.update",
+        "description": "**Required scope:** `products:write`",
+        "tags": [
+          "Product"
+        ],
+        "parameters": [
+          {
+            "name": "product",
+            "in": "path",
+            "required": true,
+            "description": "The product ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProductRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ProductResource"
+                    },
+                    "message": {
+                      "type": "string",
+                      "const": "Product updated."
+                    },
+                    "errors": {
+                      "type": "null"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "message",
+                    "errors"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "description": "Error overview.",
+                      "example": "Forbidden."
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/ModelNotFoundException"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationException"
+          }
+        }
+      }
+    },
+    "/products/{product}/stock": {
+      "get": {
+        "operationId": "product.stock",
+        "description": "**Required scope:** `products:read|storefront:products.read`",
+        "summary": "Stock detail: aggregate, damaged bucket and per-location breakdown",
+        "tags": [
+          "Product"
+        ],
+        "parameters": [
+          {
+            "name": "product",
+            "in": "path",
+            "required": true,
+            "description": "The product ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "product_id": {
+                          "type": "integer"
+                        },
+                        "sku": {
+                          "type": "string"
+                        },
+                        "stock": {
+                          "type": "integer"
+                        },
+                        "stock_damaged": {
+                          "type": "integer"
+                        },
+                        "is_low_stock": {
+                          "type": "boolean"
+                        },
+                        "locations": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/LocationStockResource"
+                          }
+                        }
+                      },
+                      "required": [
+                        "product_id",
+                        "sku",
+                        "stock",
+                        "stock_damaged",
+                        "is_low_stock",
+                        "locations"
+                      ]
+                    },
+                    "message": {
+                      "type": "null"
+                    },
+                    "errors": {
+                      "type": "null"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "message",
+                    "errors"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "description": "Error overview.",
+                      "example": "Forbidden."
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/ModelNotFoundException"
+          }
+        }
+      }
+    },
+    "/products/{product}/stock/adjust": {
+      "post": {
+        "operationId": "product.adjustStock",
+        "description": "**Required scope:** `products:write`",
+        "summary": "Adjust stock (positive or negative delta) through StockService —\nthe only legal write path (adjustment ledger entry)",
+        "tags": [
+          "Product"
+        ],
+        "parameters": [
+          {
+            "name": "product",
+            "in": "path",
+            "required": true,
+            "description": "The product ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "delta": {
+                    "type": "integer"
+                  },
+                  "reason": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 255
+                  },
+                  "location_id": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "variant_id": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "delta"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "product_id": {
+                          "type": "integer"
+                        },
+                        "stock": {
+                          "type": "integer"
+                        },
+                        "movement_id": {
+                          "type": "integer"
+                        },
+                        "location_stock_after": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "variant_id": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "variant_stock_after": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "product_id",
+                        "stock",
+                        "movement_id",
+                        "location_stock_after",
+                        "variant_id",
+                        "variant_stock_after"
+                      ]
+                    },
+                    "message": {
+                      "type": "string",
+                      "const": "Stock adjusted."
+                    },
+                    "errors": {
+                      "type": "null"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "message",
+                    "errors"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationException"
+          },
+          "404": {
+            "$ref": "#/components/responses/ModelNotFoundException"
+          },
+          "403": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "description": "Error overview.",
+                      "example": "Forbidden."
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/track/touchpoint": {
+      "post": {
+        "operationId": "track.touchpoint",
+        "tags": [
+          "Touchpoint"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "visitor_id": {
+                    "type": "string",
+                    "maxLength": 64
+                  },
+                  "session_id": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 64
+                  },
+                  "utm_source": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 128
+                  },
+                  "utm_medium": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 128
+                  },
+                  "utm_campaign": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 191
+                  },
+                  "utm_content": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 191
+                  },
+                  "utm_term": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 128
+                  },
+                  "referrer_url": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 2048
+                  },
+                  "landing_page": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 2048
+                  },
+                  "device_type": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "enum": [
+                      "mobile",
+                      "desktop",
+                      "tablet"
+                    ]
+                  },
+                  "country": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 2,
+                    "maxLength": 2
+                  }
+                },
+                "required": [
+                  "visitor_id"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "integer"
+                        },
+                        "campaign_id": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "channel": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "campaign_id",
+                        "channel"
+                      ]
+                    },
+                    "message": {
+                      "type": "string",
+                      "const": "Touchpoint enregistré."
+                    },
+                    "errors": {
+                      "type": "null"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "message",
+                    "errors"
+                  ]
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "null"
+                    },
+                    "message": {
+                      "type": "string",
+                      "const": "Trop de requêtes."
+                    },
+                    "errors": {
+                      "type": "null"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "message",
+                    "errors"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "null"
+                        },
+                        "message": {
+                          "type": "string",
+                          "const": "Tracking key invalide."
+                        },
+                        "errors": {
+                          "type": "null"
+                        }
+                      },
+                      "required": [
+                        "data",
+                        "message",
+                        "errors"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "null"
+                        },
+                        "message": {
+                          "type": "string",
+                          "const": "Tracking key requise."
+                        },
+                        "errors": {
+                          "type": "null"
+                        }
+                      },
+                      "required": [
+                        "data",
+                        "message",
+                        "errors"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationException"
+          }
+        },
+        "security": []
+      }
+    },
+    "/webhooks": {
+      "get": {
+        "operationId": "webhookEndpoint.index",
+        "description": "**Required scope:** `webhooks:manage`",
+        "summary": "List webhook endpoints (cursor-paginated)",
+        "tags": [
+          "WebhookEndpoint"
+        ],
+        "parameters": [
+          {
+            "name": "per_page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 25
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer"
+                          },
+                          "url": {
+                            "type": "string"
+                          },
+                          "events": {
+                            "type": "array",
+                            "items": {}
+                          },
+                          "is_active": {
+                            "type": "boolean"
+                          },
+                          "consecutive_failures": {
+                            "type": "integer"
+                          },
+                          "last_success_at": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "date-time"
+                          },
+                          "created_at": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "date-time"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "url",
+                          "events",
+                          "is_active",
+                          "consecutive_failures",
+                          "last_success_at",
+                          "created_at"
+                        ]
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "per_page": {
+                          "type": "integer"
+                        },
+                        "next_cursor": {
+                          "type": "string"
+                        },
+                        "prev_cursor": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "per_page",
+                        "next_cursor",
+                        "prev_cursor"
+                      ]
+                    },
+                    "message": {
+                      "type": "null"
+                    },
+                    "errors": {
+                      "type": "null"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta",
+                    "message",
+                    "errors"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "webhookEndpoint.store",
+        "description": "**Required scope:** `webhooks:manage`",
+        "summary": "Register a webhook endpoint. The response contains the signing\nsecret — copy it now, it is never shown again",
+        "tags": [
+          "WebhookEndpoint"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoreWebhookRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string",
+                      "const": "Webhook endpoint created. Store the secret now: it will not be shown again."
+                    },
+                    "errors": {
+                      "type": "null"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "message",
+                    "errors"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationException"
+          }
+        }
+      }
+    },
+    "/webhooks/{webhook}": {
+      "delete": {
+        "operationId": "webhookEndpoint.destroy",
+        "description": "**Required scope:** `webhooks:manage`",
+        "tags": [
+          "WebhookEndpoint"
+        ],
+        "parameters": [
+          {
+            "name": "webhook",
+            "in": "path",
+            "required": true,
+            "description": "The webhook ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "null"
+                    },
+                    "message": {
+                      "type": "string",
+                      "const": "Webhook endpoint deleted."
+                    },
+                    "errors": {
+                      "type": "null"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "message",
+                    "errors"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "description": "Error overview.",
+                      "example": "Forbidden."
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/ModelNotFoundException"
+          }
+        }
+      }
+    },
+    "/webhooks/{webhook}/test": {
+      "post": {
+        "operationId": "webhookEndpoint.test",
+        "description": "**Required scope:** `webhooks:manage`",
+        "summary": "Send a signed ping delivery to this endpoint (event \"ping\")",
+        "tags": [
+          "WebhookEndpoint"
+        ],
+        "parameters": [
+          {
+            "name": "webhook",
+            "in": "path",
+            "required": true,
+            "description": "The webhook ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "delivery_id": {
+                          "type": "integer"
+                        },
+                        "uuid": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "delivery_id",
+                        "uuid"
+                      ]
+                    },
+                    "message": {
+                      "type": "string",
+                      "const": "Test delivery queued."
+                    },
+                    "errors": {
+                      "type": "null"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "message",
+                    "errors"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "description": "Error overview.",
+                      "example": "Forbidden."
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/ModelNotFoundException"
+          }
+        }
+      }
+    },
+    "/yalidine/wilayas": {
+      "get": {
+        "operationId": "yalidine.wilayas",
+        "description": "Use GET /api/v1/geo/wilayas instead.\n\n**Required scope:** `geo:read`",
+        "summary": "List wilayas (legacy alias)",
+        "deprecated": true,
+        "tags": [
+          "Yalidine"
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": {}
+                      }
+                    },
+                    "message": {
+                      "type": "null"
+                    },
+                    "errors": {
+                      "type": "null"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "message",
+                    "errors"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/yalidine/communes": {
+      "get": {
+        "operationId": "yalidine.communes",
+        "description": "Use GET /api/v1/geo/communes instead.\n\n**Required scope:** `geo:read`",
+        "summary": "List communes of a wilaya (legacy alias)",
+        "deprecated": true,
+        "tags": [
+          "Yalidine"
+        ],
+        "parameters": [
+          {
+            "name": "wilaya_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": {}
+                      }
+                    },
+                    "message": {
+                      "type": "null"
+                    },
+                    "errors": {
+                      "type": "null"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "message",
+                    "errors"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationException"
+          }
+        }
+      }
+    },
+    "/yalidine/centers": {
+      "get": {
+        "operationId": "yalidine.centers",
+        "description": "Will move under /api/v1/delivery in a future version.\n\n**Required scope:** `geo:read`",
+        "summary": "List stop-desk centers of a wilaya (legacy path — no /geo replacement yet)",
+        "deprecated": true,
+        "tags": [
+          "Yalidine"
+        ],
+        "parameters": [
+          {
+            "name": "wilaya_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "additionalProperties": {}
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "center_id": {
+                                    "type": "integer"
+                                  },
+                                  "name": {
+                                    "type": "string"
+                                  },
+                                  "partner_name": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ],
+                                    "description": "The company actually operating the pickup point, verbatim:\nthe carrier's own label for a third party, never normalised.\nPresent on 778/778 offices of the reference account across 9\ncompanies, so the merchant knows whose door to send the\ncustomer to. Empty string → null, so the UI omits the line\nrather than rendering a blank badge."
+                                  },
+                                  "wilaya_id": {
+                                    "type": "integer"
+                                  },
+                                  "commune_id": {
+                                    "type": "integer",
+                                    "description": "The CARRIER's commune numbering, as everywhere else in\nstore_delivery_centers (YAL-STOPDESK-2). The local commune is\nresolved from the name by StopdeskCommuneResolver."
+                                  },
+                                  "commune_name": {
+                                    "type": "string"
+                                  },
+                                  "address": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "gps": {
+                                    "type": "null"
+                                  },
+                                  "price": {
+                                    "type": [
+                                      "number",
+                                      "null"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "center_id",
+                                  "name",
+                                  "partner_name",
+                                  "wilaya_id",
+                                  "commune_id",
+                                  "commune_name",
+                                  "address",
+                                  "gps",
+                                  "price"
+                                ]
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "center_id": {
+                                    "type": "string"
+                                  },
+                                  "name": {
+                                    "type": "string",
+                                    "const": "Zimou Office Centre"
+                                  },
+                                  "partner_name": {
+                                    "type": "string",
+                                    "const": "Anderson Alger"
+                                  },
+                                  "wilaya_id": {
+                                    "type": "integer"
+                                  },
+                                  "commune_id": {
+                                    "type": "string"
+                                  },
+                                  "commune_name": {
+                                    "type": "string",
+                                    "const": "Centre"
+                                  },
+                                  "address": {
+                                    "type": "string",
+                                    "const": "Bureau Zimou Centre"
+                                  },
+                                  "gps": {
+                                    "type": "null"
+                                  },
+                                  "price": {
+                                    "type": "number",
+                                    "const": 400
+                                  }
+                                },
+                                "required": [
+                                  "center_id",
+                                  "name",
+                                  "partner_name",
+                                  "wilaya_id",
+                                  "commune_id",
+                                  "commune_name",
+                                  "address",
+                                  "gps",
+                                  "price"
+                                ]
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "center_id": {
+                                    "type": "integer",
+                                    "const": 1
+                                  },
+                                  "name": {
+                                    "type": "string",
+                                    "const": "Demo Desk Centre-ville"
+                                  },
+                                  "wilaya_id": {
+                                    "type": "integer"
+                                  },
+                                  "commune_id": {
+                                    "type": "integer",
+                                    "const": 1
+                                  },
+                                  "commune_name": {
+                                    "type": "string",
+                                    "const": "Centre-ville"
+                                  },
+                                  "address": {
+                                    "type": "string",
+                                    "const": "Adresse de démonstration"
+                                  },
+                                  "gps": {
+                                    "type": "string",
+                                    "const": "36.7635,3.0471"
+                                  }
+                                },
+                                "required": [
+                                  "center_id",
+                                  "name",
+                                  "wilaya_id",
+                                  "commune_id",
+                                  "commune_name",
+                                  "address",
+                                  "gps"
+                                ]
+                              }
+                            ]
+                          }
+                        },
+                        "message": {
+                          "type": "null"
+                        },
+                        "errors": {
+                          "type": "null"
+                        }
+                      },
+                      "required": [
+                        "data",
+                        "message",
+                        "errors"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "minItems": 0,
+                          "maxItems": 0,
+                          "additionalItems": false
+                        },
+                        "message": {
+                          "type": "string",
+                          "const": "لم يتم إعداد أي شركة توصيل لهذا المتجر. أدخل بيانات اعتماد شركة التوصيل في الإعدادات ← التوصيل قبل الشحن."
+                        },
+                        "errors": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "const": "carrier_not_configured"
+                            }
+                          },
+                          "required": [
+                            "code"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "data",
+                        "message",
+                        "errors"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationException"
+          }
+        }
+      }
+    },
+    "/yalidine/fees": {
+      "get": {
+        "operationId": "yalidine.fees",
+        "description": "Use GET /api/v1/delivery/fees instead.\n\n**Required scope:** `geo:read`",
+        "summary": "Delivery fees towards a wilaya (legacy alias)",
+        "deprecated": true,
+        "tags": [
+          "Yalidine"
+        ],
+        "parameters": [
+          {
+            "name": "to",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ZIMOU-DEFAULT-CARRIER-1 — same refusal as GET /delivery/fees:\nprices null, stable code, no carrier call.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "additionalProperties": {}
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "price": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                },
+                                "price_express": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                },
+                                "price_stopdesk": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "price",
+                                "price_express",
+                                "price_stopdesk"
+                              ]
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "from_wilaya_id": {
+                                  "type": "integer"
+                                },
+                                "to_wilaya_id": {
+                                  "type": "integer"
+                                },
+                                "price": {
+                                  "type": "integer",
+                                  "enum": [
+                                    400,
+                                    700
+                                  ]
+                                },
+                                "price_stopdesk": {
+                                  "type": "integer",
+                                  "const": 350
+                                }
+                              },
+                              "required": [
+                                "from_wilaya_id",
+                                "to_wilaya_id",
+                                "price",
+                                "price_stopdesk"
+                              ]
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "from_wilaya_id": {
+                                  "type": "integer"
+                                },
+                                "to_wilaya_id": {
+                                  "type": "integer"
+                                },
+                                "price": {
+                                  "anyOf": [
+                                    {
+                                      "type": "null"
+                                    },
+                                    {
+                                      "type": "number"
+                                    },
+                                    {
+                                      "type": "object"
+                                    }
+                                  ]
+                                },
+                                "price_express": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                },
+                                "price_stopdesk": {
+                                  "anyOf": [
+                                    {
+                                      "type": "null"
+                                    },
+                                    {
+                                      "type": "number"
+                                    },
+                                    {
+                                      "type": "object"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "from_wilaya_id",
+                                "to_wilaya_id",
+                                "price",
+                                "price_express",
+                                "price_stopdesk"
+                              ]
+                            }
+                          ]
+                        },
+                        "message": {
+                          "type": "null"
+                        },
+                        "errors": {
+                          "type": "null"
+                        }
+                      },
+                      "required": [
+                        "data",
+                        "message",
+                        "errors"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "from_wilaya_id": {
+                              "type": "integer"
+                            },
+                            "to_wilaya_id": {
+                              "type": "integer"
+                            },
+                            "price": {
+                              "type": "null"
+                            },
+                            "price_express": {
+                              "type": "null"
+                            },
+                            "price_stopdesk": {
+                              "type": "null"
+                            }
+                          },
+                          "required": [
+                            "from_wilaya_id",
+                            "to_wilaya_id",
+                            "price",
+                            "price_express",
+                            "price_stopdesk"
+                          ]
+                        },
+                        "message": {
+                          "type": "string",
+                          "const": "لم يتم إعداد أي شركة توصيل لهذا المتجر، لذا لا يمكن حساب أي رسوم توصيل."
+                        },
+                        "errors": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "const": "carrier_not_configured"
+                            }
+                          },
+                          "required": [
+                            "code"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "data",
+                        "message",
+                        "errors"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationException"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "http": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "CartItemResource": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "product_id": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "product": {
+            "$ref": "#/components/schemas/ProductResource"
+          },
+          "quantity": {
+            "type": "integer"
+          },
+          "unit_price": {
+            "type": "number"
+          },
+          "subtotal": {
+            "type": "number"
+          },
+          "price_known": {
+            "type": "boolean",
+            "description": "CART-RAWTEXT-1: false when the imported line carried no price —\nunit_price and subtotal then read 0 as a placeholder, not a price."
+          },
+          "created_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "product_id",
+          "quantity",
+          "unit_price",
+          "subtotal",
+          "price_known",
+          "created_at"
+        ],
+        "title": "CartItemResource"
+      },
+      "CartResource": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "session_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "user_id": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CartItemResource"
+            }
+          },
+          "totals": {
+            "type": "object",
+            "properties": {
+              "items_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "subtotal": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "items_count",
+              "subtotal"
+            ]
+          },
+          "created_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "session_id",
+          "user_id",
+          "status",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "CartResource"
+      },
+      "CategoryResource": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description"
+        ],
+        "title": "CategoryResource"
+      },
+      "LocationStockResource": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string"
+          },
+          "location_name": {
+            "type": "string"
+          },
+          "location_type": {
+            "type": "string"
+          },
+          "is_default": {
+            "type": "boolean"
+          },
+          "quantity": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "location_id",
+          "location_name",
+          "location_type",
+          "is_default",
+          "quantity"
+        ],
+        "title": "LocationStockResource"
+      },
+      "OrderResource": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "order_number": {
+            "type": "string"
+          },
+          "external_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "needs_review": {
+            "type": "boolean"
+          },
+          "customer_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "customer_phone": {
+            "type": "string"
+          },
+          "customer_email": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "shipping_address": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "wilaya_id": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "wilaya_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "commune_id": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "commune_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "is_stopdesk": {
+            "type": "boolean"
+          },
+          "stopdesk_id": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "stopdesk_name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "SAT-PILOT-1 — the office's name as it was when the order was placed."
+          },
+          "stopdesk_partner_name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "SAT-RELAIS-1 — what tells the office apart: its operating company and address, frozen too."
+          },
+          "stopdesk_address": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "delivery_type": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "subtotal": {
+            "type": "number"
+          },
+          "items_discount": {
+            "type": "number"
+          },
+          "shipping_cost": {
+            "type": "number"
+          },
+          "shipping_discount": {
+            "type": "number"
+          },
+          "total": {
+            "type": "number"
+          },
+          "yalidine_tracking": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "yalidine_label_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "fulfillment_source": {
+            "type": "string",
+            "description": "ZE-WH-AUTOSHIP-1 (T6) — `local` | `zimou_warehouse` | `mixed`.\nPosé ici plutôt que dans chaque consommateur : cette ressource\nsert l'API v1 ET les outils MCP, donc un seul point à tenir."
+          },
+          "imported_from": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "CARRIER-IMPORT-1 (T1) — `zimou` | `yalidine` | null, au même\nendroit et pour la même raison : un consommateur d'API ou un\noutil MCP qui additionne des commandes doit pouvoir écarter\ncelles qui ne sont pas nées ici, sans avoir à le déduire de\n`source`. `imported_at` accompagne la valeur parce que\n`created_at` porte, lui, la date du COLIS chez le transporteur."
+          },
+          "imported_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "dispatch_review": {
+            "type": "object",
+            "properties": {
+              "reason": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "message": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "flagged_at": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "reason",
+              "message",
+              "flagged_at"
+            ]
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "assigned_agent_id": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "assigned_agents": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "name"
+              ]
+            }
+          },
+          "cart": {
+            "$ref": "#/components/schemas/CartResource"
+          },
+          "shipment": {
+            "$ref": "#/components/schemas/ShipmentResource"
+          },
+          "created_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "order_number",
+          "external_id",
+          "source",
+          "status",
+          "needs_review",
+          "customer_name",
+          "customer_phone",
+          "customer_email",
+          "shipping_address",
+          "wilaya_id",
+          "wilaya_name",
+          "commune_id",
+          "commune_name",
+          "is_stopdesk",
+          "stopdesk_id",
+          "stopdesk_name",
+          "stopdesk_partner_name",
+          "stopdesk_address",
+          "delivery_type",
+          "subtotal",
+          "items_discount",
+          "shipping_cost",
+          "shipping_discount",
+          "total",
+          "yalidine_tracking",
+          "yalidine_label_url",
+          "fulfillment_source",
+          "imported_from",
+          "imported_at",
+          "notes",
+          "assigned_agent_id",
+          "assigned_agents",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "OrderResource"
+      },
+      "ProductImageResource": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "url": {
+            "type": "string"
+          },
+          "position": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "url",
+          "position"
+        ],
+        "title": "ProductImageResource"
+      },
+      "ProductResource": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sku": {
+            "type": "string"
+          },
+          "short_description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "price": {
+            "type": "number"
+          },
+          "cost_price": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "stock": {
+            "type": "integer"
+          },
+          "stock_damaged": {
+            "type": "integer"
+          },
+          "low_stock_threshold": {
+            "type": "integer"
+          },
+          "is_low_stock": {
+            "type": "boolean"
+          },
+          "weight": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "dimensions": {
+            "type": "object",
+            "properties": {
+              "length": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "width": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "height": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "length",
+              "width",
+              "height"
+            ]
+          },
+          "is_active": {
+            "type": "boolean"
+          },
+          "category": {
+            "$ref": "#/components/schemas/CategoryResource"
+          },
+          "images": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProductImageResource"
+            }
+          },
+          "variants": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProductVariantResource"
+            }
+          },
+          "created_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "sku",
+          "short_description",
+          "description",
+          "price",
+          "cost_price",
+          "stock",
+          "stock_damaged",
+          "low_stock_threshold",
+          "is_low_stock",
+          "weight",
+          "dimensions",
+          "is_active",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ProductResource"
+      },
+      "ProductVariantResource": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sku": {
+            "type": "string"
+          },
+          "price": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "NULL = inherits the parent product price"
+          },
+          "stock": {
+            "type": "integer",
+            "description": "Variant aggregate (VARIANTS-2/C); may be negative while the\nmerchant still owes a ventilation covered by the product's\nnon-ventilé stock."
+          },
+          "is_active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "sku",
+          "price",
+          "stock",
+          "is_active"
+        ],
+        "title": "ProductVariantResource"
+      },
+      "ShipmentResource": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "yalidine_tracking": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "last_status_update": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "created_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "yalidine_tracking",
+          "status",
+          "last_status_update",
+          "created_at"
+        ],
+        "title": "ShipmentResource"
+      },
+      "StoreCartItemRequest": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "integer"
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "product_id",
+          "quantity"
+        ],
+        "title": "StoreCartItemRequest"
+      },
+      "StoreOrderRequest": {
+        "type": "object",
+        "properties": {
+          "customer_name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "A lead often holds nothing but a phone number — the customer\nstopped before the name field. OrderIntakeService already falls\nback to the phone number for the display name.",
+            "maxLength": 255
+          },
+          "customer_first_name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 100
+          },
+          "customer_last_name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 100
+          },
+          "customer_phone": {
+            "type": "string",
+            "maxLength": 20
+          },
+          "customer_phone_2": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 20
+          },
+          "customer_email": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "email",
+            "maxLength": 255
+          },
+          "shipping_address": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 500
+          },
+          "wilaya": {
+            "type": "string"
+          },
+          "commune": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "delivery_type": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "home",
+              "express",
+              "stopdesk"
+            ]
+          },
+          "is_stopdesk": {
+            "type": "boolean"
+          },
+          "stopdesk_id": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "shipping_cost": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "free_shipping": {
+            "type": "boolean"
+          },
+          "shipping_fee_to_confirm": {
+            "type": "boolean",
+            "description": "SAT-PILOT-1 — the storefront had no fee grid to show the customer\n(\"fees confirmed by phone\"): the order is taken, priced by the\nplatform and flagged for the agent. Never a reason to invent an\namount on either side."
+          },
+          "shown_shipping_fee": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "SAT-SITES-1 (2d, decision 8) — on an abandoned cart captured by a\nlinked site's key: the delivery fee the site SHOWED the customer\n(whole DA) and the delivery type it belonged to. Optional, stored\non the cart as sent, compared at conversion; never billed.",
+            "minimum": 0,
+            "maximum": 100000
+          },
+          "shown_delivery_type": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "home",
+              "express",
+              "stopdesk"
+            ]
+          },
+          "external_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 100
+          },
+          "abandoned_external_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The `external_id` of the abandoned cart this order comes from,\ncarried by the REAL order: the platform then marks that lead\nrecovered, links the two and drops it from the callback list.\nSatellites prefix lead ids (\"ABN-…\") so a lead and the order the\nsame visitor later places never collide on the idempotence key —\nwhich is also why matching on an identical external_id would\nnever fire, and why this field is the link. SF-ABANDONED (D5).",
+            "maxLength": 100
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 2000
+          },
+          "source": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "How the storefront satellite tags what it posts: `storefront`\nfiles a real order, `storefront_abandoned` files an abandoned\ncart — a callback lead with relaxed fields, inert in every flow\n(see /llms-full.txt). Omitting it files the order under `api`.\nThe whitelist is closed on purpose: a free-form source would let\na caller impersonate a sales channel, and dodge the blacklist net\nthe OrderObserver hangs on storefront traffic. SF-SPLIT-1,\nwidened by exactly one value in SF-ABANDONED.",
+            "enum": [
+              "storefront",
+              "storefront_abandoned"
+            ]
+          },
+          "landing_page_uuid": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "product_id": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "sku": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 100
+                },
+                "quantity": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "unit_price": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "quantity"
+              ]
+            },
+            "minItems": 1
+          }
+        },
+        "required": [
+          "customer_phone",
+          "wilaya",
+          "items"
+        ],
+        "title": "StoreOrderRequest"
+      },
+      "StoreProductRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "sku": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "short_description": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 500
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "price": {
+            "type": "number",
+            "minimum": 0
+          },
+          "cost_price": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "initial_stock": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "low_stock_threshold": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "weight": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "length": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "width": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "height": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "category_id": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "is_active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "sku",
+          "price"
+        ],
+        "title": "StoreProductRequest"
+      },
+      "StoreWebhookRequest": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "maxLength": 500
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "order.created",
+                "order.status_changed",
+                "order.cancelled",
+                "stock.updated",
+                "product.created",
+                "product.updated",
+                "product.deleted",
+                "page.published",
+                "page.updated",
+                "page.unpublished"
+              ]
+            },
+            "minItems": 1
+          }
+        },
+        "required": [
+          "url",
+          "events"
+        ],
+        "title": "StoreWebhookRequest"
+      },
+      "UpdateCartItemRequest": {
+        "type": "object",
+        "properties": {
+          "quantity": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "quantity"
+        ],
+        "title": "UpdateCartItemRequest"
+      },
+      "UpdateOrderRequest": {
+        "type": "object",
+        "properties": {
+          "customer_name": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "customer_first_name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 100
+          },
+          "customer_last_name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 100
+          },
+          "customer_phone": {
+            "type": "string",
+            "maxLength": 20
+          },
+          "customer_phone_2": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 20
+          },
+          "customer_email": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "email",
+            "maxLength": 255
+          },
+          "shipping_address": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 500
+          },
+          "wilaya_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 58
+          },
+          "commune_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1
+          },
+          "is_stopdesk": {
+            "type": "boolean"
+          },
+          "stopdesk_id": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "delivery_type": {
+            "type": "string",
+            "enum": [
+              "home",
+              "express",
+              "stopdesk"
+            ]
+          },
+          "shipping_cost": {
+            "type": "number",
+            "minimum": 0
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 2000
+          }
+        },
+        "title": "UpdateOrderRequest"
+      },
+      "UpdateOrderStatusRequest": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "confirmed",
+              "shipped",
+              "delivered",
+              "cancelled",
+              "returned"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "UpdateOrderStatusRequest"
+      },
+      "UpdateProductRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "sku": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "short_description": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 500
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "price": {
+            "type": "number",
+            "minimum": 0
+          },
+          "cost_price": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "low_stock_threshold": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "weight": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "length": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "width": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "height": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "category_id": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "is_active": {
+            "type": "boolean"
+          }
+        },
+        "title": "UpdateProductRequest"
+      }
+    },
+    "responses": {
+      "ModelNotFoundException": {
+        "description": "Not found",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "message": {
+                  "type": "string",
+                  "description": "Error overview."
+                }
+              },
+              "required": [
+                "message"
+              ]
+            }
+          }
+        }
+      },
+      "ValidationException": {
+        "description": "Validation error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "message": {
+                  "type": "string",
+                  "description": "Errors overview."
+                },
+                "errors": {
+                  "type": "object",
+                  "description": "A detailed description of each field that failed validation.",
+                  "additionalProperties": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "required": [
+                "message",
+                "errors"
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}

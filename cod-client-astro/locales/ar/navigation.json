@@ -93,12 +93,12 @@
     "switcher_label": "تبديل المتجر",
     "loading": "جارٍ تحميل المتاجر…",
     "none": "لا يوجد متجر بعد",
-    "create": "إنشاء متجر",
-    "create_title": "إنشاء متجر",
+    "create": "إنشاء قناة",
+    "create_title": "إنشاء قناة بيع",
     "create_description": "متجر جديد بمنتجاته ونطاقه وإعداداته الخاصة.",
     "name_label": "اسم المتجر",
     "name_placeholder": "مثال: بوتيك نور",
-    "subdomain_label": "العنوان",
+    "subdomain_label": "اسم النطاق",
     "subdomain_hint": "سيكون متجرك على العنوان {address}",
     "subdomain_rule": "أحرف لاتينية صغيرة وأرقام وشرطات.",
     "create_submit": "إنشاء المتجر",
@@ -220,7 +220,7 @@
       "summary": {
         "type": "النوع",
         "name": "الاسم",
-        "domain": "العنوان",
+        "domain": "اسم النطاق",
         "products": "المنتجات",
         "delivery": "طرق التوصيل",
         "template": "القالب",
@@ -260,6 +260,20 @@
       "error_domain_taken": "هذا النطاق مستعمل من قناة أخرى.",
       "done_live": "المتجر متاح الآن على عنوانه.",
       "done_domain": "{domain} في انتظار DNS: وجّهه إلى المنصة ثم تحقّق منه من صفحة النطاقات."
+    }
+  },
+  "aventy_managed": {
+    "customers": {
+      "title": "عملاؤك يُدارون في Aventy.",
+      "body": "اطّلع عليهم وعدّلهم من حسابك على Aventy."
+    },
+    "delivery": {
+      "title": "التوصيل يُدار في Aventy.",
+      "body": "الأسعار وشركات التوصيل والمكاتب تُضبط في Aventy وتُطبَّق هنا تلقائيًا."
+    },
+    "team": {
+      "title": "فريقك يُدار في Aventy.",
+      "body": "يفتح كل عضو Orestor من الزر الموجود في حسابه على Aventy."
     }
   }
 }

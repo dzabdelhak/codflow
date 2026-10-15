@@ -93,12 +93,12 @@
     "switcher_label": "Switch store",
     "loading": "Loading stores…",
     "none": "No store yet",
-    "create": "Create store",
-    "create_title": "Create a store",
+    "create": "Create channel",
+    "create_title": "Create a channel",
     "create_description": "A new store with its own products, domain and settings.",
     "name_label": "Store name",
     "name_placeholder": "e.g. Boutique Nour",
-    "subdomain_label": "Address",
+    "subdomain_label": "Domain name",
     "subdomain_hint": "Your store will be at {address}",
     "subdomain_rule": "Lower-case letters, digits and hyphens.",
     "create_submit": "Create store",
@@ -220,7 +220,7 @@
       "summary": {
         "type": "Type",
         "name": "Name",
-        "domain": "Address",
+        "domain": "Domain name",
         "products": "Products",
         "delivery": "Delivery modes",
         "template": "Template",
@@ -260,6 +260,20 @@
       "error_domain_taken": "This domain is already used by another channel.",
       "done_live": "It is online at its address.",
       "done_domain": "{domain} is waiting for its DNS: point it at the platform, then verify it from the Domains page."
+    }
+  },
+  "aventy_managed": {
+    "customers": {
+      "title": "Your customers are managed in Aventy.",
+      "body": "View and edit them from your Aventy account."
+    },
+    "delivery": {
+      "title": "Your delivery is managed in Aventy.",
+      "body": "Rates, carriers and pickup offices are set in Aventy and apply here automatically."
+    },
+    "team": {
+      "title": "Your team is managed in Aventy.",
+      "body": "Each member opens Orestor from the button in their Aventy account."
     }
   }
 }

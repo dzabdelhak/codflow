@@ -175,7 +175,10 @@ to `src/types/env.ts` (cod-server) and, when production needs it, to
   under `/api/products` and `/api/product-groups` with 403
   `CATALOGUE_MANAGED_BY_AVENTY`, except a product PATCH that only sets the
   active store's `showInStore` / `storeFeatured` / `shippingProfileId`;
-  MCP drops the `catalogueWrite` tools. Choosing a store's products
+  MCP drops the `catalogueWrite` tools. The delivery grid
+  (`/api/shipping-profiles`) and the team (`/api/users`, except a user's own
+  API key) are read-only for them the same way (`src/middleware/aventyOwned.ts`),
+  and the dashboard hides Clients, Livraison and Équipe. Choosing a store's products
   (`/api/channel-products`, the landing main product) stays open. A new
   catalogue write route belongs under one of those prefixes.
 - **A duplicate is PostgreSQL error 23505**, often wrapped by Drizzle: test

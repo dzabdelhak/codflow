@@ -177,8 +177,8 @@ export async function createMerchantStore(
     await client.query(
       `insert into stores (id, name, merchant_id, order_prefix, theme_id, checkout_form_json, default_shipping_profile_id, creation_key,
                            channel_type, unavailable_rule, domain, primary_color, accent_color, bg_color, font_family, font_url,
-                           created_at, updated_at)
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $10, $11, $12, $13, $14, $15, $16, $17, $9, $9)`,
+                           cart_enabled, created_at, updated_at)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $10, $11, $12, $13, $14, $15, $16, $17, $18, $9, $9)`,
       [
         id,
         input.name.trim(),
@@ -197,6 +197,7 @@ export async function createMerchantStore(
         brand.bgColor,
         brand.fontFamily,
         brand.fontUrl,
+        type === "store",
       ],
     );
     await client.query(

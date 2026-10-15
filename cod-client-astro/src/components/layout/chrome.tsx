@@ -5,6 +5,9 @@ import { DashboardSidebar } from "@/components/layout/Sidebar";
 import { DashboardTopbar } from "@/components/layout/Topbar";
 import { MobileChrome } from "@/components/layout/MobileChrome";
 import { TransmissionBanner } from "@/features/transmission/TransmissionBanner";
+import { Alert } from "@/components/ui";
+import { aventyManagedArea } from "@/features/stores/aventy-areas";
+import { useAventyCatalogue } from "@/features/stores/useMerchantStores";
 
 export function DashboardChrome({
   currentPath,
@@ -16,6 +19,8 @@ export function DashboardChrome({
   wide?: boolean;
 }) {
   const tN = useT("navigation");
+  const aventy = useAventyCatalogue();
+  const aventyArea = aventyManagedArea(currentPath);
   return (
     <ConfirmDialogProvider>
       <div className="flex h-[100dvh] flex-col overflow-hidden bg-background text-foreground">
@@ -40,7 +45,15 @@ export function DashboardChrome({
           >
             <div className={`mx-auto ${wide ? "max-w-[1600px]" : "max-w-[1120px]"}`}>
               <TransmissionBanner currentPath={currentPath} />
-              {children}
+              {aventyArea && aventy ? (
+                <Alert tone="info">
+                  <span>
+                    <span className="font-semibold">{tN(`aventy_managed.${aventyArea}.title`)}</span> {tN(`aventy_managed.${aventyArea}.body`)}
+                  </span>
+                </Alert>
+              ) : (
+                children
+              )}
             </div>
           </div>
         </div>

@@ -11,7 +11,7 @@ import type { AppContext, Env } from "@/types";
 import { corsMiddleware } from "@/middleware/cors";
 import { authMiddleware } from "@/middleware/auth";
 import { dashboardScope } from "@/middleware/dashboardScope";
-import { aventyCatalogue } from "@/middleware/aventyCatalogue";
+import { aventyCatalogue, aventyDelivery, aventyTeam } from "@/middleware/aventyOwned";
 import merchantRoutes from "@/endpoints/merchant/routes";
 import channelProductsRoutes from "@/endpoints/channel-products/routes";
 import landingChannelRoutes from "@/endpoints/landing-channel/routes";
@@ -122,6 +122,8 @@ app.use("/api/*", authMiddleware);
 app.use("/api/*", dashboardScope);
 app.use("/api/products/*", aventyCatalogue);
 app.use("/api/product-groups/*", aventyCatalogue);
+app.use("/api/shipping-profiles/*", aventyDelivery);
+app.use("/api/users/*", aventyTeam);
 
 // Mount endpoint routes
 app.route("/api/images", uploadRouter);

@@ -140,10 +140,12 @@ describe("creating a store channel", () => {
     expect(res.status).toBe(201);
     const { data } = (await res.json()) as { data: { id: string } };
     const { rows: [store] } = await harness.platform.query(
-      "select theme_id, primary_color, accent_color, bg_color, font_family from stores where id = $1",
+      "select theme_id, primary_color, accent_color, bg_color, font_family, cart_enabled from stores where id = $1",
       [data.id],
     );
-    expect(store).toEqual({ theme_id: "boutique", primary_color: "#1f2937", accent_color: "#c9a227", bg_color: "#faf7f2", font_family: "Tajawal, sans-serif" });
+    expect(store).toEqual({
+      theme_id: "boutique", primary_color: "#1f2937", accent_color: "#c9a227", bg_color: "#faf7f2", font_family: "Tajawal, sans-serif", cart_enabled: true,
+    });
     const config = await withStore(database.app, data.id, (db) => getStoreConfig(db, data.id), merchant);
     expect(config?.design.sections.map((s) => s.type).slice(0, 2)).toEqual(["hero", "new_arrivals"]);
     expect(config?.design.sections.find((s) => s.type === "hero")?.settings.heroTitle).toBeTruthy();

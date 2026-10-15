@@ -13,7 +13,9 @@ import productsRoutes from "@/endpoints/products/routes";
 import { productStockRouter } from "@/endpoints/stock/routes";
 import channelProductsRoutes from "@/endpoints/channel-products/routes";
 import productGroupsRoutes from "@/endpoints/product-groups/routes";
-import { aventyCatalogue } from "@/middleware/aventyCatalogue";
+import shippingProfilesRoutes from "@/endpoints/shipping-profiles/routes";
+import usersRoutes from "@/endpoints/users/routes";
+import { aventyCatalogue, aventyDelivery, aventyTeam } from "@/middleware/aventyOwned";
 import { DEMO_CATALOGUE, demoAventyClient } from "./demo-client";
 
 let harness: TestDb;
@@ -25,6 +27,10 @@ app.use("/api/*", authMiddleware);
 app.use("/api/*", dashboardScope);
 app.use("/api/products/*", aventyCatalogue);
 app.use("/api/product-groups/*", aventyCatalogue);
+app.use("/api/shipping-profiles/*", aventyDelivery);
+app.use("/api/users/*", aventyTeam);
+app.route("/api/shipping-profiles", shippingProfilesRoutes);
+app.route("/api/users", usersRoutes);
 app.route("/api/product-groups", productGroupsRoutes);
 app.route("/api/aventy", aventyRoutes);
 app.route("/api/products", productsRoutes);
@@ -137,6 +143,19 @@ describe("a merchant arriving from Aventy", () => {
     const { rows: [state] } = await harness.platform.query("select published from channel_products where store_id = $1 and product_id = $2", [store.id, product.id]);
     expect(state.published).toBe(false);
     expect((await harness.platform.query("select price from products where id = $1", [product.id])).rows[0].price).toBe(7500);
+  });
+
+  it("leaves an Aventy merchant's delivery grid and team to Aventy, but not its own API key", async () => {
+    const code = async (res: Response) => ((await res.json()) as { code?: string }).code;
+    const profile = await call("key-lina", "POST", "/api/shipping-profiles", { name: "Local" });
+    expect([profile.status, await code(profile)]).toEqual([403, "DELIVERY_MANAGED_BY_AVENTY"]);
+    expect((await call("key-lina", "GET", "/api/shipping-profiles")).status).toBe(200);
+    const invite = await call("key-lina", "POST", "/api/users", { name: "Agent", email: "agent@x.test", role: "staff" });
+    expect([invite.status, await code(invite)]).toEqual([403, "TEAM_MANAGED_BY_AVENTY"]);
+    expect((await call("key-lina", "POST", "/api/users/u-aventy-lina/api-key/rotate")).status).toBe(200);
+
+    const { rows } = await harness.platform.query("select channel_type, cart_enabled from stores where merchant_id = 'aventy-lina' order by channel_type");
+    expect(rows).toEqual([{ channel_type: "landing", cart_enabled: false }, { channel_type: "store", cart_enabled: true }]);
   });
 
   it("lets a merchant that did not come from Aventy create products", async () => {
