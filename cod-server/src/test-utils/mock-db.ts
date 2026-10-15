@@ -277,6 +277,8 @@ export function orderRow(overrides: Record<string, unknown> = {}): Record<string
     ad_cookies: null,
     tracking_consent: null,
     device_id: null,
+    customer_first_name: null,
+    customer_last_name: null,
     ...overrides,
   };
 }
