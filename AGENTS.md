@@ -197,6 +197,11 @@ to `src/types/env.ts` (cod-server) and, when production needs it, to
   sent only on a recognised answer. The destination is pluggable
   (`ORDER_DESTINATION`, `test` today). Never mark an entry sent elsewhere, and
   never log its payload. See `docs/ORDER-TRANSMISSION.md`.
+- **Chat buttons are per channel and resolved server-side**: WhatsApp
+  (`stores.whatsapp_widget_json`, cod-shared/whatsapp-widget) and Messenger
+  (`stores.messenger_widget_json`, cod-shared/messenger-widget, an m.me link).
+  `/store/config` exposes only their resolved projections; `getStoreConfig`
+  must drop every raw `*_json` column by name.
 - **The visitor's IP is `X-Visitor-IP`, set by Caddy from the connection.**
   The storefront trusts it only when `TRUSTED_PROXY_IP_HEADER` names it and
   forwards it to cod-server, which reads it only on `/store/*` (behind the

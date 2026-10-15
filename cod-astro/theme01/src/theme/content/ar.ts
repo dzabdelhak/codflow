@@ -83,6 +83,7 @@ export const ar: StoreFrontContent = {
   orderCtaSubtext: "الدفع عند الاستلام",
   formTitle: "أكمل طلبك",
   formDeliverySection: "معلومات التوصيل",
+  messengerAria: "راسلنا على ماسنجر",
   formNameLabel: "الاسم الكامل",
   formFirstNameLabel: "الاسم",
   formLastNameLabel: "اللقب",

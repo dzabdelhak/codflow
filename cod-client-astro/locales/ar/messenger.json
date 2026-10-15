@@ -1,0 +1,21 @@
+{
+  "page_title": "ماسنجر",
+  "page_subtitle": "زر ماسنجر في متجرك: يراسلك الزوار على صفحة فيسبوك التي تختارها.",
+  "enabled": "إظهار زر ماسنجر",
+  "page_label": "صفحة فيسبوك",
+  "page_hint": "اسم مستخدم الصفحة (facebook.com/الاسم) أو رابطها أو معرّفها.",
+  "page_placeholder": "facebook.com/MyPage",
+  "position_label": "الموضع",
+  "position_right": "يمين",
+  "position_left": "يسار",
+  "label_label": "نص الزر (اختياري)",
+  "label_hint": "اتركه فارغًا لإظهار الأيقونة فقط.",
+  "label_placeholder": "راسلنا",
+  "save": "حفظ",
+  "saving": "جارٍ الحفظ…",
+  "saved": "تم حفظ زر ماسنجر",
+  "save_failed": "تعذّر الحفظ. تحقّق من صفحة فيسبوك.",
+  "load_failed": "تعذّر تحميل إعدادات ماسنجر.",
+  "preview_link": "تجربة الرابط",
+  "stacked_note": "إذا كان زر واتساب في الجهة نفسها، يظهر ماسنجر فوقه مباشرة."
+}

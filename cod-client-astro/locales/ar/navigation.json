@@ -36,7 +36,8 @@
     "design": "التصميم",
     "domains": "النطاقات",
     "orders_blocked": "المحاولات المحظورة",
-    "orders_transmission": "إرسال الطلبات"
+    "orders_transmission": "إرسال الطلبات",
+    "messenger": "ماسنجر"
   },
   "navbar": {
     "search_placeholder": "البحث عن طلبات، عملاء...",

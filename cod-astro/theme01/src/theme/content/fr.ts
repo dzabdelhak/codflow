@@ -83,6 +83,7 @@ export const fr: StoreFrontContent = {
   orderCtaSubtext: "Paiement à la livraison",
   formTitle: "Complétez votre commande",
   formDeliverySection: "Informations de livraison",
+  messengerAria: "Écrivez-nous sur Messenger",
   formNameLabel: "Nom complet",
   formFirstNameLabel: "Prénom",
   formLastNameLabel: "Nom",

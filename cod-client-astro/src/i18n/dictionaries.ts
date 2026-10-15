@@ -28,6 +28,7 @@ import arDesign from "../../locales/ar/design.json";
 import arDomains from "../../locales/ar/domains.json";
 import arOrderProtection from "../../locales/ar/order-protection.json";
 import arTransmission from "../../locales/ar/transmission.json";
+import arMessenger from "../../locales/ar/messenger.json";
 
 import enOrders from "../../locales/en/orders.json";
 import enAuth from "../../locales/en/auth.json";
@@ -55,6 +56,7 @@ import enDesign from "../../locales/en/design.json";
 import enDomains from "../../locales/en/domains.json";
 import enOrderProtection from "../../locales/en/order-protection.json";
 import enTransmission from "../../locales/en/transmission.json";
+import enMessenger from "../../locales/en/messenger.json";
 
 import frOrders from "../../locales/fr/orders.json";
 import frAuth from "../../locales/fr/auth.json";
@@ -82,17 +84,18 @@ import frDesign from "../../locales/fr/design.json";
 import frDomains from "../../locales/fr/domains.json";
 import frOrderProtection from "../../locales/fr/order-protection.json";
 import frTransmission from "../../locales/fr/transmission.json";
+import frMessenger from "../../locales/fr/messenger.json";
 
 import type { Locale } from "./config";
 
-export const NAMESPACES = ["orders", "auth", "common", "navigation", "dashboard", "customers", "customer-groups", "customer-tags", "reviews", "products", "product-groups", "offers", "landing-pages", "delivery", "delivery_companies", "settings", "team", "mcp", "profile", "store-pages", "checkout-form", "whatsapp", "design", "domains", "order-protection", "transmission"] as const;
+export const NAMESPACES = ["orders", "auth", "common", "navigation", "dashboard", "customers", "customer-groups", "customer-tags", "reviews", "products", "product-groups", "offers", "landing-pages", "delivery", "delivery_companies", "settings", "team", "mcp", "profile", "store-pages", "checkout-form", "whatsapp", "design", "domains", "order-protection", "transmission", "messenger"] as const;
 export type Namespace = (typeof NAMESPACES)[number];
 export type Dict = Record<string, unknown>;
 
 const DICTS: Record<Locale, Partial<Record<Namespace, Dict>>> = {
-  ar: { orders: arOrders, auth: arAuth, common: arCommon, navigation: arNavigation, dashboard: arDashboard, customers: arCustomers, "customer-groups": arCustomerGroups, "customer-tags": arCustomerTags, reviews: arReviews, products: arProducts, "product-groups": arProductGroups, offers: arOffers, "landing-pages": arLandingPages, delivery: arDelivery, delivery_companies: arDeliveryCompanies, settings: arSettings, team: arTeam, mcp: arMcp, profile: arProfile, "store-pages": arStorePages, "checkout-form": arCheckoutForm, whatsapp: arWhatsapp, design: arDesign, domains: arDomains, "order-protection": arOrderProtection, transmission: arTransmission },
-  en: { orders: enOrders, auth: enAuth, common: enCommon, navigation: enNavigation, dashboard: enDashboard, customers: enCustomers, "customer-groups": enCustomerGroups, "customer-tags": enCustomerTags, reviews: enReviews, products: enProducts, "product-groups": enProductGroups, offers: enOffers, "landing-pages": enLandingPages, delivery: enDelivery, delivery_companies: enDeliveryCompanies, settings: enSettings, team: enTeam, mcp: enMcp, profile: enProfile, "store-pages": enStorePages, "checkout-form": enCheckoutForm, whatsapp: enWhatsapp, design: enDesign, domains: enDomains, "order-protection": enOrderProtection, transmission: enTransmission },
-  fr: { orders: frOrders, auth: frAuth, common: frCommon, navigation: frNavigation, dashboard: frDashboard, customers: frCustomers, "customer-groups": frCustomerGroups, "customer-tags": frCustomerTags, reviews: frReviews, products: frProducts, "product-groups": frProductGroups, offers: frOffers, "landing-pages": frLandingPages, delivery: frDelivery, delivery_companies: frDeliveryCompanies, settings: frSettings, team: frTeam, mcp: frMcp, profile: frProfile, "store-pages": frStorePages, "checkout-form": frCheckoutForm, whatsapp: frWhatsapp, design: frDesign, domains: frDomains, "order-protection": frOrderProtection, transmission: frTransmission },
+  ar: { orders: arOrders, auth: arAuth, common: arCommon, navigation: arNavigation, dashboard: arDashboard, customers: arCustomers, "customer-groups": arCustomerGroups, "customer-tags": arCustomerTags, reviews: arReviews, products: arProducts, "product-groups": arProductGroups, offers: arOffers, "landing-pages": arLandingPages, delivery: arDelivery, delivery_companies: arDeliveryCompanies, settings: arSettings, team: arTeam, mcp: arMcp, profile: arProfile, "store-pages": arStorePages, "checkout-form": arCheckoutForm, whatsapp: arWhatsapp, design: arDesign, domains: arDomains, "order-protection": arOrderProtection, transmission: arTransmission, messenger: arMessenger },
+  en: { orders: enOrders, auth: enAuth, common: enCommon, navigation: enNavigation, dashboard: enDashboard, customers: enCustomers, "customer-groups": enCustomerGroups, "customer-tags": enCustomerTags, reviews: enReviews, products: enProducts, "product-groups": enProductGroups, offers: enOffers, "landing-pages": enLandingPages, delivery: enDelivery, delivery_companies: enDeliveryCompanies, settings: enSettings, team: enTeam, mcp: enMcp, profile: enProfile, "store-pages": enStorePages, "checkout-form": enCheckoutForm, whatsapp: enWhatsapp, design: enDesign, domains: enDomains, "order-protection": enOrderProtection, transmission: enTransmission, messenger: enMessenger },
+  fr: { orders: frOrders, auth: frAuth, common: frCommon, navigation: frNavigation, dashboard: frDashboard, customers: frCustomers, "customer-groups": frCustomerGroups, "customer-tags": frCustomerTags, reviews: frReviews, products: frProducts, "product-groups": frProductGroups, offers: frOffers, "landing-pages": frLandingPages, delivery: frDelivery, delivery_companies: frDeliveryCompanies, settings: frSettings, team: frTeam, mcp: frMcp, profile: frProfile, "store-pages": frStorePages, "checkout-form": frCheckoutForm, whatsapp: frWhatsapp, design: frDesign, domains: frDomains, "order-protection": frOrderProtection, transmission: frTransmission, messenger: frMessenger },
 };
 
 export function getDict(locale: Locale, ns: Namespace): Dict {

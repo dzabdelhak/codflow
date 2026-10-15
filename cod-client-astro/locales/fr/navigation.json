@@ -36,7 +36,8 @@
     "design": "Design",
     "domains": "Domaines",
     "orders_blocked": "Tentatives bloquées",
-    "orders_transmission": "Transmission"
+    "orders_transmission": "Transmission",
+    "messenger": "Messenger"
   },
   "navbar": {
     "search_placeholder": "Rechercher des commandes, clients...",

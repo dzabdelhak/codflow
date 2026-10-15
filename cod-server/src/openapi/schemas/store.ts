@@ -586,6 +586,14 @@ export const StoreConfigSchema = z
           "hidden field posted from an edge-cached page is dropped and a required one " +
           "refuses the order. The raw stored column is never exposed.",
       }),
+    messenger: z
+      .object({
+        url: z.string().openapi({ example: "https://m.me/MaisonLina" }),
+        position: z.enum(["right", "left"]),
+        label: z.string().nullable(),
+      })
+      .nullable()
+      .openapi({ description: "The Messenger chat button, or null when the channel shows none." }),
     whatsapp: StoreWhatsAppWidgetSchema.nullable().openapi({
       description:
         "The WhatsApp contact widget, already resolved — or null, which is what a store " +

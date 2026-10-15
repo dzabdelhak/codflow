@@ -4,7 +4,7 @@
 
 **Blocked by:** 07, 08, 15
 
-**Status:** in progress
+**Status:** done
 
 Decisions: hiding and locking apply to Aventy merchants only; orders gain `customer_first_name` / `customer_last_name`; stores gain `messenger_widget_json`.
 
@@ -16,4 +16,4 @@ Decisions: hiding and locking apply to Aventy merchants only; orders gain `custo
 - [x] 2.2 An abandoned cart becomes an order (priced, stock-checked, sent) from the abandoned carts screen
 - [x] 3.1 Aventy merchants manage their team in Aventy: Équipe is hidden, members come in through Aventy's button
 - [x] 3.2 The order form asks for one full name or first + last name, and the merchant chooses its optional fields
-- [ ] 4.1 A Messenger chat button on the store, set up in the dashboard
+- [x] 4.1 A Messenger chat button on the store, set up in the dashboard

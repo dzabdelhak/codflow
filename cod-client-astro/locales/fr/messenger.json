@@ -1,0 +1,21 @@
+{
+  "page_title": "Messenger",
+  "page_subtitle": "Un bouton Messenger sur votre boutique : les visiteurs vous écrivent sur la page Facebook de votre choix.",
+  "enabled": "Afficher le bouton Messenger",
+  "page_label": "Page Facebook",
+  "page_hint": "Le nom d'utilisateur de la page (facebook.com/nom) ou son lien, ou son identifiant.",
+  "page_placeholder": "facebook.com/MaPage",
+  "position_label": "Position",
+  "position_right": "À droite",
+  "position_left": "À gauche",
+  "label_label": "Texte du bouton (facultatif)",
+  "label_hint": "Laissez vide pour n'afficher que l'icône.",
+  "label_placeholder": "Écrivez-nous",
+  "save": "Enregistrer",
+  "saving": "Enregistrement…",
+  "saved": "Bouton Messenger enregistré",
+  "save_failed": "Enregistrement impossible. Vérifiez la page Facebook.",
+  "load_failed": "Impossible de charger les réglages Messenger.",
+  "preview_link": "Tester le lien",
+  "stacked_note": "Si le bouton WhatsApp est du même côté, Messenger s'affiche juste au-dessus."
+}

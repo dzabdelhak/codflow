@@ -9,6 +9,7 @@ import {
   Megaphone,
   Palette,
   MessageCircle,
+  MessagesSquare,
   LayoutDashboard,
   Package,
   PackageX,
@@ -306,6 +307,13 @@ export function useNavSections(): NavSection[] {
           label: tN("sidebar.whatsapp"),
           icon: MessageCircle,
           scope: "whatsapp_widget:read",
+        },
+        {
+          kind: "leaf",
+          href: "/messenger",
+          label: tN("sidebar.messenger"),
+          icon: MessagesSquare,
+          scope: "admin",
         },
         {
           kind: "leaf",

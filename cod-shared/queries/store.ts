@@ -64,6 +64,7 @@ import {
 import { resolveCartOffers } from "./offers-cart";
 import { parseCheckoutFormPolicy } from "../checkout-form/policy";
 import { resolveStorefrontWidget } from "../whatsapp-widget/config";
+import { resolveStorefrontMessenger } from "../messenger-widget/config";
 import {
   serializeCustomFieldAnswers,
   type CustomFieldAnswer,
@@ -154,7 +155,7 @@ export async function getStoreConfig(db: AppDb, storeId: string, opts: { preview
   // whole store row, so a column is public the moment it exists unless it is
   // removed by name here — the storefront gets the resolved projection instead,
   // which is also the only shape a theme should ever have to understand.
-  const { checkoutFormJson, whatsappWidgetJson, orderSeq: _seq, merchantId: _merchant, creationKey: _creationKey, ...publicStore } = store;
+  const { checkoutFormJson, whatsappWidgetJson, messengerWidgetJson, orderSeq: _seq, merchantId: _merchant, creationKey: _creationKey, ...publicStore } = store;
   const preview = opts.preview === true;
   const manifest = manifestFor(store.themeId, store.channelType);
   const design = await storefrontDesignSource(db, preview);
@@ -170,6 +171,7 @@ export async function getStoreConfig(db: AppDb, storeId: string, opts: { preview
     // feature: render it, or don't. Costs no extra query: the column rides the
     // store row this function already selected in full.
     whatsapp: resolveStorefrontWidget(whatsappWidgetJson),
+    messenger: resolveStorefrontMessenger(messengerWidgetJson),
     pixelId: preview ? null : tracking.pixelId,
     conversionEvent: tracking.conversionEvent,
     trackers: preview ? publicTrackersFrom(null) : tracking.trackers,

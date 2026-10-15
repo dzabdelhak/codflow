@@ -81,6 +81,7 @@ export interface StoreFrontContent {
   orderCtaSubtext: string;
   formTitle: string;
   formDeliverySection: string;
+  messengerAria: string;
   formNameLabel: string;
   formFirstNameLabel: string;
   formLastNameLabel: string;

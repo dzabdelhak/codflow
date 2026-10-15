@@ -107,6 +107,8 @@ export interface StoreConfig {
    * Optional for backwards compatibility with pre-0032 servers.
    */
   whatsapp?: StoreWhatsAppWidget | null;
+  /** The Messenger chat button, or null; absent from servers before it. */
+  messenger?: StoreMessengerWidget | null;
   channelType?: "store" | "landing";
   primaryHostname?: string | null;
   design?: StorefrontDesign;
@@ -210,4 +212,10 @@ export interface Review {
   title: string | null;
   body: string;
   createdAt: string;
+}
+
+export interface StoreMessengerWidget {
+  url: string;
+  position: "right" | "left";
+  label: string | null;
 }

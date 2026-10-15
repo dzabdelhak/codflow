@@ -6,6 +6,7 @@ import Footer from "@/theme/components/layout/Footer.astro";
 import CartDrawer from "@/theme/components/cart/CartDrawer.astro";
 import MobileNav from "@/theme/components/layout/MobileNav.astro";
 import WhatsAppWidget from "@/theme/components/chat/WhatsAppWidget.astro";
+import MessengerWidget from "@/theme/components/chat/MessengerWidget.astro";
 import ConsentBanner from "@/theme/components/layout/ConsentBanner.astro";
 import { hasTrackers, pageTrackers } from "@/core/tracking/config";
 import { showsWidgetOn } from "@/theme/utils/shows-widget-on";
@@ -117,6 +118,14 @@ const fontHref = config.fontUrl?.replace(/["<>]/g, "")
           import "@/theme/scripts/whatsapp-widget";
         </script>
       </>
+    )}
+
+    {config.messenger && content && Astro.url.pathname !== "/thank-you" && (
+      <MessengerWidget
+        widget={config.messenger}
+        ariaLabel={content.messengerAria}
+        stacked={Boolean(config.whatsapp && widgetShown && config.whatsapp.position === config.messenger.position)}
+      />
     )}
 
     {consentAsked && content && <ConsentBanner content={content} />}

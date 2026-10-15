@@ -1,0 +1,21 @@
+{
+  "page_title": "Messenger",
+  "page_subtitle": "A Messenger button on your store: visitors message you on the Facebook page you choose.",
+  "enabled": "Show the Messenger button",
+  "page_label": "Facebook page",
+  "page_hint": "The page's username (facebook.com/name), its link, or its id.",
+  "page_placeholder": "facebook.com/MyPage",
+  "position_label": "Position",
+  "position_right": "Right",
+  "position_left": "Left",
+  "label_label": "Button text (optional)",
+  "label_hint": "Leave empty to show the icon alone.",
+  "label_placeholder": "Message us",
+  "save": "Save",
+  "saving": "Saving…",
+  "saved": "Messenger button saved",
+  "save_failed": "Could not save. Check the Facebook page.",
+  "load_failed": "Could not load the Messenger settings.",
+  "preview_link": "Test the link",
+  "stacked_note": "When the WhatsApp button is on the same side, Messenger sits just above it."
+}

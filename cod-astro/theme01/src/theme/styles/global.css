@@ -96,6 +96,7 @@
 
   /* WhatsApp brand tokens */
   --clr-whatsapp: #25d366;
+  --clr-messenger: #0866ff;
   --clr-whatsapp-deep: #128c7e;
   --wa-gap: 0.75rem;
 }
@@ -340,45 +341,54 @@ textarea.form-input {
 .text-pretty { text-wrap: pretty; }
 
 /* ── WhatsApp Widget Layering & Collisions ───────────────────────────────── */
-.wa-widget {
+:is(.wa-widget, .ms-widget) {
   --wa-bottom: calc(var(--safe-bottom) + var(--wa-gap));
   position: fixed;
   bottom: var(--wa-bottom);
   z-index: 40;
 }
 
-.wa-widget[data-position="right"] {
+:is(.wa-widget, .ms-widget)[data-position="right"] {
   right: var(--wa-gap);
   left: auto;
 }
 
-.wa-widget[data-position="left"] {
+:is(.wa-widget, .ms-widget)[data-position="left"] {
   left: var(--wa-gap);
   right: auto;
 }
 
-body.has-mobile-nav .wa-widget {
+body.has-mobile-nav :is(.wa-widget, .ms-widget) {
   --wa-bottom: calc(4rem + var(--safe-bottom) + var(--wa-gap));
 }
 
 @media (min-width: 640px) {
-  body.has-mobile-nav .wa-widget {
+  body.has-mobile-nav :is(.wa-widget, .ms-widget) {
     --wa-bottom: calc(var(--safe-bottom) + var(--wa-gap));
   }
 }
 
-body[data-sticky-cta="visible"] .wa-widget {
+body[data-sticky-cta="visible"] :is(.wa-widget, .ms-widget) {
   --wa-bottom: calc(var(--safe-bottom) + var(--wa-gap) + 3.5rem);
 }
 
-body.has-mobile-nav[data-sticky-cta="visible"] .wa-widget {
+body.has-mobile-nav[data-sticky-cta="visible"] :is(.wa-widget, .ms-widget) {
   --wa-bottom: calc(4rem + var(--safe-bottom) + var(--wa-gap) + 3.5rem);
 }
 
 @media (min-width: 1024px) {
-  body[data-sticky-cta="visible"] .wa-widget {
+  body[data-sticky-cta="visible"] :is(.wa-widget, .ms-widget) {
     --wa-bottom: calc(var(--safe-bottom) + var(--wa-gap));
   }
+
+.ms-widget[data-stacked="true"] {
+  bottom: calc(var(--wa-bottom) + 4.25rem);
+}
+
+.ms-launcher {
+  background: var(--clr-messenger);
+}
+
   body.has-mobile-nav[data-sticky-cta="visible"] .wa-widget {
     --wa-bottom: calc(var(--safe-bottom) + var(--wa-gap));
   }
