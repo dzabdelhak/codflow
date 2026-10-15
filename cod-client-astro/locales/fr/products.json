@@ -360,5 +360,12 @@
         "description": "Les visiteurs voient une page « indisponible » jusqu’au retour du produit."
       }
     }
+  },
+  "aventy": {
+    "title": "Vos produits sont gérés dans Aventy.",
+    "body": "Noms, prix, photos, déclinaisons, catégories et stock se modifient là-bas et arrivent ici automatiquement. Ici, vous choisissez les produits que chaque boutique affiche.",
+    "store_link": "Choisir les produits de la boutique",
+    "view_product": "Voir le produit",
+    "back_to_products": "Retour aux produits"
   }
 }

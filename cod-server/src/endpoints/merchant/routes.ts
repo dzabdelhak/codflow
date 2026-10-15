@@ -47,7 +47,9 @@ const listStoresRoute = defineRoute({
   responses: {
     200: {
       description: "The merchant's stores, and the base domain their free subdomains live under",
-      content: jsonContent(SuccessResponseSchema(z.array(MerchantStoreSchema)).extend({ baseDomain: z.string().openapi({ example: "codflow.app" }) })),
+      content: jsonContent(SuccessResponseSchema(z.array(MerchantStoreSchema)).extend({ baseDomain: z.string().openapi({ example: "orestore.app" }),
+        catalogue: z.enum(["aventy", "platform"]).openapi({ description: "Who manages the merchant's products: `aventy` (read-only here, except each store's selection) or `platform`" }),
+      })),
     },
   },
   handler: handlers.listStores,

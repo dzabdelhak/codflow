@@ -11,11 +11,18 @@ import {
 } from "@/platform/merchant-stores";
 import { schedulePurge } from "@/platform/storefront-cache";
 import { localPlanPolicy } from "@/platform/plan-policy";
+import { isAventyMerchant } from "../../../../cod-shared/aventy/merchant";
 import type { ChangeStoreStatusInput, CreateStoreInput, DeleteStoreInput } from "./validation";
 
 export async function listStores(c: Context<AppContext>) {
-  const data = await listMerchantStores(c.env.DATABASE.platform, c.get("user").merchantId);
-  return c.json({ success: true, data, baseDomain: c.env.STORE_BASE_DOMAIN ?? "localhost" }, 200);
+  const merchantId = c.get("user").merchantId;
+  const data = await listMerchantStores(c.env.DATABASE.platform, merchantId);
+  return c.json({
+    success: true,
+    data,
+    baseDomain: c.env.STORE_BASE_DOMAIN ?? "localhost",
+    catalogue: isAventyMerchant(merchantId) ? "aventy" : "platform",
+  }, 200);
 }
 
 export async function createStore(c: Context<AppContext>) {

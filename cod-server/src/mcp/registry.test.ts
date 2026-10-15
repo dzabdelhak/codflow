@@ -343,6 +343,19 @@ describe("buildToolsForUser — scope gating", () => {
     expect(names(makeProps({ role: "admin", scopes: [SCOPES.CUSTOMERS_READ] }))).not.toContain("deleteCustomer");
   });
 
+  it("an Aventy merchant sees no tool that writes the catalogue, which Aventy owns", () => {
+    const seen = names(makeProps({ merchantId: "aventy-lina", scopes: [...ALL_SCOPES] }));
+    const catalogueWrites = [
+      "createNewProduct", "updateProductDetails", "updateProductStatus", "deleteProduct",
+      "createProductVariant", "updateVariant", "deleteProductVariant",
+      "adjustProductStock", "adjustVariantStock", "updateProductStockThreshold", "updateVariantStockThreshold",
+      "createProductGroup", "updateProductGroup", "deleteProductGroup",
+    ];
+    expect(seen.filter((tool) => catalogueWrites.includes(tool))).toEqual([]);
+    expect(seen).toEqual(expect.arrayContaining(["listProducts", "getProductDetails", "listProductVariants", "getStockOverview"]));
+    expect(seen).toHaveLength(ALL_TOOLS.length - catalogueWrites.length);
+  });
+
   it("empty-scope staff sees zero tools", () => {
     expect(names(makeProps({ scopes: [] }))).toEqual([]);
   });

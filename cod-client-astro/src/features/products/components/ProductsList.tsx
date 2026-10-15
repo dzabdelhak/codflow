@@ -40,6 +40,7 @@ import type {
   ProductStatus,
 } from "@/features/products/types";
 import { ProductDesktopRow, ProductMobileCard } from "@/features/products/components/ProductRow";
+import { useAventyCatalogue } from "@/features/stores/useMerchantStores";
 
 const EMPTY_FILTERS: ProductFilters = {
   query: "",
@@ -79,6 +80,7 @@ export function ProductsList() {
   const common = useT("common");
   const auth = useT("auth");
   const identity = useIdentity();
+  const aventy = useAventyCatalogue();
   const confirm = useConfirmDialog();
   const [products, setProducts] = useState<Product[] | null>(null);
   const [categories, setCategories] = useState<ProductCategory[]>([]);
@@ -147,8 +149,8 @@ export function ProductsList() {
     filters.query.trim() !== "" ||
     filters.category !== "all" ||
     filters.status !== "all";
-  const canManage = canScope(identity, SCOPES.PRODUCTS_MANAGE);
-  const canCreate = canScope(identity, SCOPES.PRODUCTS_CREATE);
+  const canManage = canScope(identity, SCOPES.PRODUCTS_MANAGE) && !aventy;
+  const canCreate = canScope(identity, SCOPES.PRODUCTS_CREATE) && !aventy;
 
   function onSort(key: string) {
     const cast = key as ProductSortKey;

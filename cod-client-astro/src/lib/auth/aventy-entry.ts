@@ -3,7 +3,8 @@ import type pg from "pg";
 import type { BetterAuthPlugin } from "better-auth";
 import { createAuthEndpoint } from "better-auth/api";
 import { setSessionCookie } from "better-auth/cookies";
-import { aventyMerchantId, verifyLinkToken, type AventyLinkClaims } from "../../../../cod-shared/aventy/link-token";
+import { verifyLinkToken, type AventyLinkClaims } from "../../../../cod-shared/aventy/link-token";
+import { aventyMerchantId } from "../../../../cod-shared/aventy/merchant";
 
 export type ProvisionResult = { ok: true; userId: string } | { ok: false; reason: "email_taken" | "inactive" };
 

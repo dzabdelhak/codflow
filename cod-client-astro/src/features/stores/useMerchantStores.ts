@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { activeStoreId, setActiveStoreId } from "@/lib/active-store";
-import { listMyStoresWithBase } from "./api";
+import { listMyStoresWithBase, type CatalogueOwner } from "./api";
 import { pickActiveStore, type MerchantStore } from "./store-choice";
 
-let loading: Promise<{ stores: MerchantStore[]; baseDomain: string }> | undefined;
+let loading: Promise<{ stores: MerchantStore[]; baseDomain: string; catalogue: CatalogueOwner }> | undefined;
 const listeners = new Set<() => void>();
 
 export function refreshMerchantStores(): void {
@@ -15,6 +15,7 @@ export function refreshMerchantStores(): void {
 export function useMerchantStores() {
   const [stores, setStores] = useState<MerchantStore[] | null>(null);
   const [baseDomain, setBaseDomain] = useState<string | null>(null);
+  const [catalogue, setCatalogue] = useState<CatalogueOwner | null>(null);
   const [failed, setFailed] = useState(false);
   const [version, setVersion] = useState(0);
 
@@ -37,6 +38,7 @@ export function useMerchantStores() {
         if (!alive) return;
         setStores(list.stores);
         setBaseDomain(list.baseDomain);
+        setCatalogue(list.catalogue);
       },
       () => alive && setFailed(true),
     );
@@ -46,7 +48,12 @@ export function useMerchantStores() {
   }, [version]);
 
   const active = stores ? pickActiveStore(stores, activeStoreId()) : null;
-  return { stores, active, failed, baseDomain };
+  return { stores, active, failed, baseDomain, catalogue };
+}
+
+/** True when Aventy manages the merchant's products: they are read-only here, except each store's selection. */
+export function useAventyCatalogue(): boolean {
+  return useMerchantStores().catalogue === "aventy";
 }
 
 /** Make `storeId` the active store and reload, so every screen reads it. */

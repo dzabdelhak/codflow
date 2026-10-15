@@ -11,6 +11,8 @@ import { productGroupErrorMessage, toSlug } from "@/features/product-groups/mode
 import type { ProductCategory, ProductCategoryFormValues } from "@/features/product-groups/types";
 import { Button, Alert, LinkButton, PageHeader, Select, Card, StickyFormActions } from "@/components/ui";
 import { CategoryImageUploader } from "@/features/product-groups/components/CategoryImageUploader";
+import { useAventyCatalogue } from "@/features/stores/useMerchantStores";
+import { AventyCatalogueNotice } from "@/features/products/components/AventyCatalogueNotice";
 
 const EMPTY_FORM: ProductCategoryFormValues = { name: "", slug: "", description: "", parentId: "", imageUrl: "", metaTitle: "", metaDescription: "", metaKeywords: "" };
 
@@ -27,7 +29,8 @@ function ProductGroupForm({ groupId }: { groupId?: string }) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<string | null>(null);
 
-  const canManage = canScope(identity, SCOPES.PRODUCT_GROUPS_MANAGE);
+  const aventy = useAventyCatalogue();
+  const canManage = canScope(identity, SCOPES.PRODUCT_GROUPS_MANAGE) && !aventy;
   const canSave = editing ? canScope(identity, SCOPES.PRODUCT_GROUPS_READ) && canManage : canManage;
 
   useEffect(() => { if (!editing && form.name) setForm((current) => ({ ...current, slug: toSlug(form.name) })); }, [form.name, editing]);
@@ -78,6 +81,7 @@ function ProductGroupForm({ groupId }: { groupId?: string }) {
       setBusy(false);
     }
   }
+  if (aventy) return <AventyCatalogueNotice />;
   if (!canSave || (editing && message && !form.name)) return <Alert role="alert" tone="critical">{message ?? auth("no_access")}</Alert>;
   if (loading) return <div role="status" aria-busy="true" className="space-y-4"><div className="h-20 animate-pulse rounded-xl bg-muted" /><div className="h-72 animate-pulse rounded-xl bg-muted" /></div>;
 

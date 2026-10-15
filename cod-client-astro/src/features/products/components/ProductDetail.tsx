@@ -45,6 +45,8 @@ import type {
 import { StockHistoryDrawer } from "@/features/products/components/StockHistoryDrawer";
 import { ProductVariantsTableCard } from "@/features/products/components/ProductVariantsTableCard";
 import { ProductImagesCard } from "@/features/products/components/ProductImagesCard";
+import { useAventyCatalogue } from "@/features/stores/useMerchantStores";
+import { AventyCatalogueNotice } from "@/features/products/components/AventyCatalogueNotice";
 
 function Loading() {
   return (
@@ -80,7 +82,8 @@ export function ProductDetail({ productId }: { productId: string }) {
     variantLabel?: string | null;
   }>({ open: false });
 
-  const canManage = canScope(identity, SCOPES.PRODUCTS_MANAGE);
+  const aventy = useAventyCatalogue();
+  const canManage = canScope(identity, SCOPES.PRODUCTS_MANAGE) && !aventy;
 
   async function load() {
     setError(null);
@@ -173,6 +176,7 @@ export function ProductDetail({ productId }: { productId: string }) {
           ) : undefined
         }
       />
+      <AventyCatalogueNotice />
       {error && (
         <Alert role="alert" tone="critical">
           <AlertCircle size={18} className="shrink-0" />

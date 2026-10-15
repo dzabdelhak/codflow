@@ -61,4 +61,3 @@ export function verifyLinkToken(secret: string, token: string, nowSeconds = Math
   return { ok: true, claims };
 }
 
-export const aventyMerchantId = (ref: string) => `aventy-${ref}`;

@@ -11,6 +11,7 @@ import type { AppContext, Env } from "@/types";
 import { corsMiddleware } from "@/middleware/cors";
 import { authMiddleware } from "@/middleware/auth";
 import { dashboardScope } from "@/middleware/dashboardScope";
+import { aventyCatalogue } from "@/middleware/aventyCatalogue";
 import merchantRoutes from "@/endpoints/merchant/routes";
 import channelProductsRoutes from "@/endpoints/channel-products/routes";
 import landingChannelRoutes from "@/endpoints/landing-channel/routes";
@@ -119,6 +120,8 @@ app.get("/health", (c) => {
 // Dashboard: the user's merchant, then the store chosen in the header (X-Store-Id).
 app.use("/api/*", authMiddleware);
 app.use("/api/*", dashboardScope);
+app.use("/api/products/*", aventyCatalogue);
+app.use("/api/product-groups/*", aventyCatalogue);
 
 // Mount endpoint routes
 app.route("/api/images", uploadRouter);

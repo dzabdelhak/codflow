@@ -6,10 +6,9 @@ import { first } from "../../../cod-shared/db/client";
 import { shippingProfiles, shippingRules } from "../../../cod-shared/db/schema";
 import type { AventyClient, AventyDeliveryGrid } from "./client";
 import { applyCatalogueCopies } from "./apply";
+import { aventyRefOf } from "../../../cod-shared/aventy/merchant";
 
 export type MerchantCatalogueImport = { linked: false } | { linked: true; listed: number; applied: number };
-
-const AVENTY_MERCHANT = /^aventy-(.+)$/;
 
 async function seedDeliveryGrid(db: AppDb, grid: AventyDeliveryGrid) {
   if (await db.select({ id: shippingProfiles.id }).from(shippingProfiles).limit(1).then(first)) return;
@@ -30,7 +29,7 @@ async function seedDeliveryGrid(db: AppDb, grid: AventyDeliveryGrid) {
 }
 
 export async function importMerchantCatalogue(app: pg.Pool, client: AventyClient | null, merchantId: string): Promise<MerchantCatalogueImport> {
-  const ref = AVENTY_MERCHANT.exec(merchantId)?.[1];
+  const ref = aventyRefOf(merchantId);
   if (!ref || !client?.merchantSnapshot) return { linked: false };
   const { products, grid } = await client.merchantSnapshot(ref);
   const applied = await withStore(app, null, async (db) => {

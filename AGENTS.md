@@ -169,6 +169,15 @@ to `src/types/env.ts` (cod-server) and, when production needs it, to
   `aventy-` merchant id prefix is what marks an Aventy merchant (no column).
   `AVENTY_DEMO=1` swaps in the demo client (`src/aventy/demo-client.ts`);
   compose runs it with a mock Aventy at http://aventy.localhost:8090.
+- **Aventy owns an Aventy merchant's catalogue** (guide §2): products,
+  variants, images, categories (product groups), prices and stock are
+  read-only for it. `src/middleware/aventyCatalogue.ts` refuses every write
+  under `/api/products` and `/api/product-groups` with 403
+  `CATALOGUE_MANAGED_BY_AVENTY`, except a product PATCH that only sets the
+  active store's `showInStore` / `storeFeatured` / `shippingProfileId`;
+  MCP drops the `catalogueWrite` tools. Choosing a store's products
+  (`/api/channel-products`, the landing main product) stays open. A new
+  catalogue write route belongs under one of those prefixes.
 - **A duplicate is PostgreSQL error 23505**, often wrapped by Drizzle: test
   it with `violatesUnique(err, "<constraint>")` (`cod-shared/db/errors.ts`),
   never by matching SQLite's "UNIQUE constraint failed".

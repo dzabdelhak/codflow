@@ -9,6 +9,11 @@ import { errorHandler } from "@/middleware/error";
 import { openApiValidationHook } from "@/openapi/validation-hook";
 import aventyRoutes from "@/endpoints/aventy/routes";
 import merchantRoutes from "@/endpoints/merchant/routes";
+import productsRoutes from "@/endpoints/products/routes";
+import { productStockRouter } from "@/endpoints/stock/routes";
+import channelProductsRoutes from "@/endpoints/channel-products/routes";
+import productGroupsRoutes from "@/endpoints/product-groups/routes";
+import { aventyCatalogue } from "@/middleware/aventyCatalogue";
 import { DEMO_CATALOGUE, demoAventyClient } from "./demo-client";
 
 let harness: TestDb;
@@ -18,14 +23,24 @@ const app = new OpenAPIHono<AppContext>({ defaultHook: openApiValidationHook });
 app.onError(errorHandler);
 app.use("/api/*", authMiddleware);
 app.use("/api/*", dashboardScope);
+app.use("/api/products/*", aventyCatalogue);
+app.use("/api/product-groups/*", aventyCatalogue);
+app.route("/api/product-groups", productGroupsRoutes);
 app.route("/api/aventy", aventyRoutes);
+app.route("/api/products", productsRoutes);
+app.route("/api/products", productStockRouter);
+app.route("/api/channel-products", channelProductsRoutes);
 app.route("/api/merchant", merchantRoutes);
 
 const client = demoAventyClient();
-const call = (apiKey: string, method: string, path: string, body?: unknown) =>
+const call = (apiKey: string, method: string, path: string, body?: unknown, storeId?: string) =>
   app.request(
     path,
-    { method, headers: { "X-API-Key": apiKey, ...(body ? { "Content-Type": "application/json" } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}) },
+    {
+      method,
+      headers: { "X-API-Key": apiKey, ...(storeId ? { "X-Store-Id": storeId } : {}), ...(body ? { "Content-Type": "application/json" } : {}) },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    },
     { DATABASE: database, AVENTY_CLIENT: client, STORE_BASE_DOMAIN: "codflow.test" } as never,
   );
 
@@ -91,6 +106,42 @@ describe("a merchant arriving from Aventy", () => {
     expect(results.map((r) => r.status)).toEqual([200, 200, 200]);
     const applied = await Promise.all(results.map(async (r) => ((await r.json()) as { data: { applied: number } }).data.applied));
     expect(applied.sort((a, b) => a - b)).toEqual([0, 0, DEMO_CATALOGUE.length]);
+  });
+
+  it("lets an Aventy merchant read its products and choose them per store, but not change them", async () => {
+    const { rows: [store] } = await harness.platform.query<{ id: string }>("select id from stores where merchant_id = 'aventy-lina' and channel_type = 'store'");
+    const { rows: [product] } = await harness.platform.query<{ id: string; has_variants: boolean }>(
+      "select id from products where merchant_id = 'aventy-lina' and aventy_id = 'av-1002'",
+    );
+    const { rows: [variant] } = await harness.platform.query<{ product_id: string; id: string }>(
+      "select v.product_id, v.id from product_variants v join products p on p.id = v.product_id where p.merchant_id = 'aventy-lina' limit 1",
+    );
+    const refused = async (method: string, path: string, body?: unknown) => {
+      const res = await call("key-lina", method, path, body, store.id);
+      return { status: res.status, code: ((await res.json()) as { code?: string }).code };
+    };
+    const managed = { status: 403, code: "CATALOGUE_MANAGED_BY_AVENTY" };
+
+    expect((await call("key-lina", "GET", "/api/products", undefined, store.id)).status).toBe(200);
+    expect(await refused("POST", "/api/products", { name: "Local", price: 1000 })).toEqual(managed);
+    expect(await refused("PATCH", `/api/products/${product.id}`, { price: 1 })).toEqual(managed);
+    expect(await refused("PATCH", `/api/products/${product.id}`, { showInStore: true, price: 1 })).toEqual(managed);
+    expect(await refused("PATCH", `/api/products/${product.id}/status`, { status: "ARCHIVED" })).toEqual(managed);
+    expect(await refused("DELETE", `/api/products/${product.id}`)).toEqual(managed);
+    expect(await refused("POST", `/api/products/${product.id}/stock/adjust`, { quantity: 5, type: "IN" })).toEqual(managed);
+    expect(await refused("PATCH", `/api/products/${variant.product_id}/variants/${variant.id}`, { price: 1 })).toEqual(managed);
+    expect(await refused("POST", "/api/product-groups", { name: "Promo" })).toEqual(managed);
+
+    const hide = await call("key-lina", "PATCH", `/api/products/${product.id}`, { showInStore: false }, store.id);
+    expect(hide.status).toBe(200);
+    const { rows: [state] } = await harness.platform.query("select published from channel_products where store_id = $1 and product_id = $2", [store.id, product.id]);
+    expect(state.published).toBe(false);
+    expect((await harness.platform.query("select price from products where id = $1", [product.id])).rows[0].price).toBe(7500);
+  });
+
+  it("lets a merchant that did not come from Aventy create products", async () => {
+    const res = await call("key-plain", "POST", "/api/products", { name: "Local", handle: "local", price: 1000, sku: "LOCAL-1" });
+    expect(res.status).toBe(201);
   });
 
   it("imports nothing for a merchant that did not come from Aventy", async () => {

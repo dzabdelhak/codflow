@@ -10,6 +10,8 @@ import { filterStockItems, formatMoneyValue, formatStockDate, groupStockByProduc
 import type { StockAlertItem, StockOverview } from "@/features/products/types";
 import { StockHistoryDrawer } from "@/features/products/components/StockHistoryDrawer";
 import { StockAdjustmentDialog } from "@/features/products/components/StockAdjustmentDialog";
+import { AventyCatalogueNotice } from "@/features/products/components/AventyCatalogueNotice";
+import { useAventyCatalogue } from "@/features/stores/useMerchantStores";
 
 function Loading() { return <div role="status" aria-busy="true" className="space-y-4"><div className="h-24 animate-pulse rounded-xl bg-muted" /><div className="h-64 animate-pulse rounded-xl bg-muted" /></div>; }
 
@@ -37,7 +39,7 @@ function StockMeta({ item }: { item: StockAlertItem }) {
   </p>;
 }
 
-function StockRow({ item, isVariant, onAdjust, onHistory }: { item: StockAlertItem; isVariant: boolean; onAdjust: (item: StockAlertItem) => void; onHistory: (item: StockAlertItem) => void }) {
+function StockRow({ item, isVariant, onAdjust, onHistory }: { item: StockAlertItem; isVariant: boolean; onAdjust?: (item: StockAlertItem) => void; onHistory: (item: StockAlertItem) => void }) {
   const t = useT("products");
   const tone = stockAlertTone(item);
   const stripeColor = tone === "out" ? "bg-destructive" : tone === "low" ? "bg-amber-500" : "bg-transparent";
@@ -52,12 +54,12 @@ function StockRow({ item, isVariant, onAdjust, onHistory }: { item: StockAlertIt
     <StockChip item={item} />
     <div className="flex shrink-0 items-center gap-1">
       <IconButton type="button" aria-label={t("actions.stock_history")} title={t("actions.stock_history")} onClick={() => onHistory(item)} className="hidden sm:grid"><History size={15} /></IconButton>
-      <Button type="button" variant="secondary" onClick={() => onAdjust(item)} className="h-9 px-3 text-xs"><Pencil size={14} />{t("actions.adjust_stock")}</Button>
+      {onAdjust && <Button type="button" variant="secondary" onClick={() => onAdjust(item)} className="h-9 px-3 text-xs"><Pencil size={14} />{t("actions.adjust_stock")}</Button>}
     </div>
   </div>;
 }
 
-function ProductGroupBlock({ group, onAdjust, onHistory }: { group: StockGroup; onAdjust: (item: StockAlertItem) => void; onHistory: (item: StockAlertItem) => void }) {
+function ProductGroupBlock({ group, onAdjust, onHistory }: { group: StockGroup; onAdjust?: (item: StockAlertItem) => void; onHistory: (item: StockAlertItem) => void }) {
   const [open, setOpen] = useState(true);
   const hasMultiple = group.items.length > 1;
   if (!hasMultiple && !group.items[0].variantLabel) {
@@ -91,6 +93,7 @@ function StockOverviewList() {
   const [sortKey, setSortKey] = useState<StockSortKey>("inventory");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [adjustItem, setAdjustItem] = useState<StockAlertItem | null>(null);
+  const aventy = useAventyCatalogue();
   const [historyItem, setHistoryItem] = useState<StockAlertItem | null>(null);
   const deferredQuery = useDeferredValue(query);
 
@@ -124,6 +127,7 @@ function StockOverviewList() {
   const directionLabel = sortDirection === "asc" ? t("stock_overview.sort_asc") : t("stock_overview.sort_desc");
 
   return <div className="space-y-5">
+    <AventyCatalogueNotice />
     {actionError && <Alert role="alert" tone="critical"><AlertCircle size={18} className="shrink-0" /><span className="flex-1">{actionError}</span><button type="button" onClick={() => setActionError(null)} aria-label={common("cancel")}><X size={16} /></button></Alert>}
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-4"><StatCard label={t("stock_overview.total_skus")} value={overview.totalSkus.toLocaleString(locale === "ar" ? "ar-DZ" : "en")} icon={<Package size={20} />} /><StatCard label={t("stock_overview.out_of_stock")} value={overview.outOfStockCount.toLocaleString(locale === "ar" ? "ar-DZ" : "en")} icon={<XCircle size={20} />} tone={overview.outOfStockCount > 0 ? "critical" : "neutral"} /><StatCard label={t("stock_overview.low_stock")} value={overview.lowStockCount.toLocaleString(locale === "ar" ? "ar-DZ" : "en")} icon={<AlertTriangle size={20} />} tone={overview.lowStockCount > 0 ? "warning" : "neutral"} /><StatCard label={t("stock_overview.stock_value")} value={formatMoneyValue(overview.totalInventoryValue, locale)} icon={<Wallet size={20} />} /></div>
     <div className="flex gap-1.5 rounded-xl border border-border bg-muted/40 p-1">{tabs.map((item) => <button key={item.key} type="button" onClick={() => setTab(item.key)} aria-pressed={tab === item.key} className={`flex min-h-10 flex-1 items-center justify-center gap-2 rounded-lg px-3 text-[13px] font-bold transition-all ${tab === item.key ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>{item.label}{item.count !== undefined && item.count > 0 && <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-muted px-1.5 text-[10px] font-bold tabular-nums text-muted-foreground ring-1 ring-inset ring-border/60">{item.count}</span>}</button>)}</div>
@@ -137,7 +141,7 @@ function StockOverviewList() {
       </div>
       <span className="shrink-0 text-xs font-medium text-muted-foreground" aria-live="polite">{matched.length.toLocaleString(locale === "ar" ? "ar-DZ" : "en")} {t("stock_overview.results_count")}</span>
     </div>
-    {groups.length === 0 ? <EmptyState icon={emptyConfig.icon} title={emptyConfig.title} description={emptyConfig.desc} /> : <div className="space-y-2.5">{groups.map((group) => <ProductGroupBlock key={group.productId} group={group} onAdjust={setAdjustItem} onHistory={setHistoryItem} />)}</div>}
+    {groups.length === 0 ? <EmptyState icon={emptyConfig.icon} title={emptyConfig.title} description={emptyConfig.desc} /> : <div className="space-y-2.5">{groups.map((group) => <ProductGroupBlock key={group.productId} group={group} onAdjust={aventy ? undefined : setAdjustItem} onHistory={setHistoryItem} />)}</div>}
     {adjustItem && <StockAdjustmentDialog productId={adjustItem.productId} variantId={adjustItem.variantId} variantDisplayLabel={adjustItem.variantLabel} simpleInventory={adjustItem.inventory} onClose={() => setAdjustItem(null)} onSuccess={() => { setAdjustItem(null); void load(); }} />}
     {historyItem && <StockHistoryDrawer productId={historyItem.productId} variantId={historyItem.variantId ?? undefined} productName={historyItem.productName} variantLabel={historyItem.variantLabel} open onClose={() => setHistoryItem(null)} />}
   </div>;

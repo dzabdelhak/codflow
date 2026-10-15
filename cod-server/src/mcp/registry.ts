@@ -28,6 +28,7 @@ import type { AppDb } from "../../../cod-shared/db/client";
 import type { Tool } from "ai";
 import { hasPermission } from "../../../cod-shared/rbac/utils";
 import { SCOPES } from "../../../cod-shared/rbac/scopes";
+import { isAventyMerchant } from "../../../cod-shared/aventy/merchant";
 import type { Env } from "@/types/env";
 import type { McpProps } from "./props";
 
@@ -63,6 +64,8 @@ export interface ToolRegistryEntry {
    * For "any of these scopes" semantics split into multiple entries.
    */
   requires: string[];
+  /** Writes the catalogue, which Aventy owns for its merchants: not offered to them. */
+  catalogueWrite?: true;
   /**
    * Factory that returns one or more tool definitions. Called only when
    * scopes pass. Receives the server env so tool domains can reach the image
@@ -175,6 +178,7 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
   },
   {
     requires: [SCOPES.PRODUCTS_MANAGE],
+    catalogueWrite: true,
     build: (db) => pick(getProductTools(db), [
       "createNewProduct",
       "updateProductDetails",
@@ -193,6 +197,7 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
   },
   {
     requires: [SCOPES.PRODUCT_GROUPS_MANAGE],
+    catalogueWrite: true,
     build: (db) => pick(getProductGroupTools(db), [
       "createProductGroup",
       "updateProductGroup",
@@ -254,6 +259,7 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
   },
   {
     requires: [SCOPES.PRODUCTS_MANAGE],
+    catalogueWrite: true,
     build: (db) => pick(getVariantTools(db), [
       "createProductVariant",
       "updateVariant",
@@ -290,6 +296,7 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
   },
   {
     requires: [SCOPES.PRODUCTS_MANAGE],
+    catalogueWrite: true,
     build: (db) => pick(getStockTools(db), [
       "adjustProductStock",
       "adjustVariantStock",
@@ -410,10 +417,11 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
  */
 export function buildToolsForUser(env: Env, props: McpProps, db: AppDb): Record<string, Tool> {
   const out: Record<string, Tool> = {};
+  const aventyCatalogue = isAventyMerchant(props.merchantId);
 
   for (const entry of TOOL_REGISTRY) {
     const allowed = entry.requires.every((s) => hasPermission(props.scopes, s));
-    if (!allowed) continue;
+    if (!allowed || (entry.catalogueWrite && aventyCatalogue)) continue;
     Object.assign(out, entry.build(db, env, props));
   }
 

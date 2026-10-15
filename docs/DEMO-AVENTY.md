@@ -45,6 +45,8 @@ an email already used by another merchant is refused.
    maintenant**, then **Ouvrir la boutique**. The channel is live on its
    address.
 
+Products cannot be created or edited in Orestore: open **Produits** to show the notice ("Vos produits sont gérés dans Aventy"), no "Ajouter un produit" button and read-only product pages. The merchant only chooses what each store shows.
+
 A good pairing: a **High-tech** store with the headphones, watches and
 earbuds, then an **Offre flash** landing page for the noise-cancelling
 headphones.

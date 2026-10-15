@@ -8,9 +8,13 @@ interface DataEnvelope<T> {
   data: T;
 }
 
-export async function listMyStoresWithBase(): Promise<{ stores: MerchantStore[]; baseDomain: string }> {
-  const { data, baseDomain } = await apiFetch<DataEnvelope<MerchantStore[]> & { baseDomain: string }>("/api/merchant/stores");
-  return { stores: data, baseDomain };
+export type CatalogueOwner = "aventy" | "platform";
+
+export async function listMyStoresWithBase(): Promise<{ stores: MerchantStore[]; baseDomain: string; catalogue: CatalogueOwner }> {
+  const { data, baseDomain, catalogue } = await apiFetch<DataEnvelope<MerchantStore[]> & { baseDomain: string; catalogue: CatalogueOwner }>(
+    "/api/merchant/stores",
+  );
+  return { stores: data, baseDomain, catalogue };
 }
 
 export async function listMyStores(): Promise<MerchantStore[]> {

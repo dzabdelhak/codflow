@@ -10,17 +10,20 @@ import { useT } from "@/i18n/react";
 import { ChannelOnly } from "@/features/stores/ChannelOnly";
 import { SCOPES } from "../../../../../cod-shared/rbac/scopes";
 import { ProductsList } from "@/features/products/components/ProductsList";
+import { AventyCatalogueNotice } from "@/features/products/components/AventyCatalogueNotice";
+import { useAventyCatalogue } from "@/features/stores/useMerchantStores";
 
 function Gated() {
   const t = useT("products");
   const identity = useIdentity();
+  const aventy = useAventyCatalogue();
   return (
     <DashboardChrome currentPath="/products">
       <ChannelOnly type="store">
         <PageHeader
           title={t("page_title")}
           actions={
-            canScope(identity, SCOPES.PRODUCTS_CREATE) ? (
+            canScope(identity, SCOPES.PRODUCTS_CREATE) && !aventy ? (
               <LinkButton href="/products/new">
                 <Plus size={16} />
                 {t("add_product")}
@@ -28,6 +31,9 @@ function Gated() {
             ) : undefined
           }
         />
+        <div className="mb-3">
+          <AventyCatalogueNotice withStoreLink />
+        </div>
         <ProductsList />
       </ChannelOnly>
     </DashboardChrome>

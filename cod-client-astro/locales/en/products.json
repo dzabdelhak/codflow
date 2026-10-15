@@ -360,5 +360,12 @@
         "description": "Visitors see an “unavailable” page until the product is available again."
       }
     }
+  },
+  "aventy": {
+    "title": "Your products are managed in Aventy.",
+    "body": "Names, prices, photos, variants, categories and stock are changed there and arrive here automatically. Here you choose which products each store shows.",
+    "store_link": "Choose this store's products",
+    "view_product": "View the product",
+    "back_to_products": "Back to products"
   }
 }

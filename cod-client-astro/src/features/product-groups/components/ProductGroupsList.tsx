@@ -41,6 +41,7 @@ import {
   GroupDesktopRow,
   GroupMobileCard,
 } from "@/features/product-groups/components/ProductGroupRow";
+import { useAventyCatalogue } from "@/features/stores/useMerchantStores";
 
 const PAGE_SIZE = 10;
 
@@ -70,6 +71,7 @@ function GroupSkeleton() {
 export function ProductGroupsList() {
   const t = useT("product-groups");
   const common = useT("common");
+  const aventy = useAventyCatalogue();
   const auth = useT("auth");
   const identity = useIdentity();
   const confirm = useConfirmDialog();
@@ -130,7 +132,7 @@ export function ProductGroupsList() {
   const safePage = Math.min(page, totalPages);
   const visible = paginateGroups(sorted, safePage, PAGE_SIZE);
   const hasQuery = query.trim() !== "";
-  const canManage = canScope(identity, SCOPES.PRODUCT_GROUPS_MANAGE);
+  const canManage = canScope(identity, SCOPES.PRODUCT_GROUPS_MANAGE) && !aventy;
 
   function onSort(key: ProductGroupSortKey) {
     if (sortKey === key)
