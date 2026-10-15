@@ -1,6 +1,6 @@
-# Getting help with CodFlow
+# Getting help with Orestore
 
-CodFlow is an open-source project. Here is where to go depending on what you
+Orestore is an open-source project. Here is where to go depending on what you
 need:
 
 ## Bugs and feature requests

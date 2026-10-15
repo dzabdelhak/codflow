@@ -195,7 +195,7 @@ export async function dispatchToCompany(c: Context<AppContext>) {
   // Carrier value ceiling, checked BEFORE the provider call so the merchant
   // gets an actionable message instead of a raw carrier rejection. The order
   // survives: they can split it into two parcels or dispatch it with another
-  // carrier, both of which CodFlow already supports. See plan Q3.
+  // carrier, both of which Orestore already supports. See plan Q3.
   const carrierLimits = limitsFor(company.code);
   const parcelAmount = order.price + (order.deliveryFee ?? 0);
   if (exceedsAmountCeiling(parcelAmount, carrierLimits)) {

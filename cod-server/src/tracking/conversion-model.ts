@@ -1,5 +1,5 @@
 /**
- * Shared Meta Ads Conversion Model for CodFlow.
+ * Shared Meta Ads Conversion Model for Orestore.
  *
  * Establishes one centralized business contract across:
  * - Storefront checkout (Pixel + CAPI)

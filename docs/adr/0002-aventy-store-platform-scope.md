@@ -1,8 +1,8 @@
-# CodFlow becomes a multi-store e-commerce layer for Aventy ERP
+# Orestore becomes a multi-store e-commerce layer for Aventy ERP
 
 Aventy ERP is adding a module that lets any Aventy user create online stores
 in one click — several stores per user. Instead of building it from scratch we
-build it on CodFlow, which already covers the storefront, COD checkout, cart,
+build it on Orestore, which already covers the storefront, COD checkout, cart,
 anti-fraud, tracking, legal pages and landing pages. The integration contract
 is Aventy's guide (`docs/AVENTY-INTEGRATION.md`, Oct 8 2026); where the
 functional spec (`docs/CAHIER-DES-CHARGES-ZIMOU-MARKET-V2.md`) disagrees with
@@ -44,7 +44,7 @@ and the merchant-wide phone blocklist.
 
 ## Considered Options
 
-- **Build from scratch**: rejected — CodFlow already implements most of the
+- **Build from scratch**: rejected — Orestore already implements most of the
   storefront requirements.
 - **Spec V2 as written** (product selection and template editing in our
   back-office, manual Aventy connection setup): rejected where it contradicts
@@ -54,12 +54,12 @@ and the merchant-wide phone blocklist.
 
 ## Consequences
 
-- CodFlow is single-tenant today: core tables (`products`, `orders`,
+- Orestore is single-tenant today: core tables (`products`, `orders`,
   `customers`, `users`, …) have no `store_id`. Multi-store isolation is the
   largest piece of work. The approach — database per store vs shared
   database with `store_id` — is **not decided yet** and gets its own ADR
   after a spike.
-- Much of CodFlow's merchant dashboard (product, stock, shipping-fee,
+- Much of Orestore's merchant dashboard (product, stock, shipping-fee,
   carrier, order-processing screens) is unused for Aventy stores.
 - `cod-astro/theme01` must render pages from Aventy's section data and
   publish a manifest, instead of hardcoded component sequences.

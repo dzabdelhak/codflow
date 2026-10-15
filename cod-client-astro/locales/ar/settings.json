@@ -112,7 +112,7 @@
     "email_title": "إرسال البريد الإلكتروني",
     "email_subtitle": "رسائل المعاملات عبر Sendili (دعوات الفريق، إعادة تعيين كلمة المرور)",
     "email_enabled_label": "تفعيل إرسال البريد الإلكتروني",
-    "email_enabled_hint": "عند التفعيل، يرسل CodFlow رسائل المعاملات (الدعوات وإعادة تعيين كلمة المرور) عبر Sendili.",
+    "email_enabled_hint": "عند التفعيل، يرسل Orestore رسائل المعاملات (الدعوات وإعادة تعيين كلمة المرور) عبر Sendili.",
     "email_key_label": "مفتاح Sendili API",
     "email_key_hint": "أنشئ مفتاح API من لوحة تحكم Sendili بعد التحقق من نطاق الإرسال الخاص بك.",
     "email_key_placeholder": "sk_live_…",

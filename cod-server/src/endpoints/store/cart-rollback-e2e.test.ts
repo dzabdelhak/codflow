@@ -12,7 +12,7 @@
  * the cart off after a bad morning must not discover that yesterday's
  * three-product orders have become unreadable, unpickable, or wrongly priced.
  *
- * A multi-line order is an ordinary CodFlow order. Nothing about it depends on
+ * A multi-line order is an ordinary Orestore order. Nothing about it depends on
  * the switch that allowed a shopper to build it.
  */
 

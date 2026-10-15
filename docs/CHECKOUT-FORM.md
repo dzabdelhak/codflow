@@ -145,7 +145,7 @@ Every store reads that as the original form. The three columns added by
 migration `0031` (`stores.checkout_form_json`, `orders.customer_email`,
 `orders.custom_fields_json`) are additive and nullable, so no down-migration is
 needed for a code rollback — an order placed under a configuration is an
-ordinary CodFlow order.
+ordinary Orestore order.
 
 ## Not included
 

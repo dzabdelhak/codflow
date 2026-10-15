@@ -54,7 +54,7 @@ On cod-server:
 
 | Variable | Meaning |
 |---|---|
-| `CUSTOM_DOMAIN_TARGET` | Hostname merchants CNAME their subdomains to (e.g. `stores.codflow.app`). |
+| `CUSTOM_DOMAIN_TARGET` | Hostname merchants CNAME their subdomains to (e.g. `stores.orestore.app`). |
 | `CUSTOM_DOMAIN_IPV4` | Comma-separated public IPv4 addresses root domains point their A records to. |
 | `DNS_SERVERS` | Optional resolvers for the check (default: the system's). |
 | `TLS_PROBE_HOST`, `TLS_PROBE_PORT` | Where to reach Caddy to read a domain's certificate. Default: `CUSTOM_DOMAIN_TARGET`, else the first `CUSTOM_DOMAIN_IPV4`, port 443. The probe never connects to the merchant's own DNS answer. |

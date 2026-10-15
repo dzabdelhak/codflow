@@ -112,7 +112,7 @@
     "email_title": "Envoi d'e-mails",
     "email_subtitle": "E-mails transactionnels via Sendili (invitations, réinitialisation du mot de passe)",
     "email_enabled_label": "Activer l'envoi d'e-mails",
-    "email_enabled_hint": "Lorsqu'activé, CodFlow envoie les e-mails transactionnels (invitations, réinitialisations) via Sendili.",
+    "email_enabled_hint": "Lorsqu'activé, Orestore envoie les e-mails transactionnels (invitations, réinitialisations) via Sendili.",
     "email_key_label": "Clé API Sendili",
     "email_key_hint": "Créez une clé API dans votre tableau de bord Sendili après avoir vérifié votre domaine d'envoi.",
     "email_key_placeholder": "sk_live_…",

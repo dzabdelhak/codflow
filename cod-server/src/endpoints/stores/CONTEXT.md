@@ -81,7 +81,7 @@ The sending address; its domain must be verified in the merchant's Sendili works
 _Avoid_: Sender account, reply address
 
 **Accepted, Not Delivered**:
-A Sendili 200 means the message was queued, not that it arrived — delivery is the receiving mail server's decision. Nothing in CodFlow ever claims "delivered" from a send response.
+A Sendili 200 means the message was queued, not that it arrived — delivery is the receiving mail server's decision. Nothing in Orestore ever claims "delivered" from a send response.
 _Avoid_: Delivery confirmation
 
 **Suppressed Recipient**:

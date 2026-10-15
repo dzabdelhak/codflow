@@ -8,7 +8,7 @@
   "email_label": "Email address",
   "email_hint": "Your sign-in email — contact an admin to change it",
   "language_label": "Email language",
-  "language_hint": "The language CodFlow emails you in (invite and password-reset emails)",
+  "language_hint": "The language Orestore emails you in (invite and password-reset emails)",
   "language_ar": "العربية (Arabic)",
   "language_en": "English",
   "saved": "Profile saved",

@@ -1,11 +1,11 @@
-# CodFlow Astro Dashboard Design System
+# Orestore Astro Dashboard Design System
 
 ## Direction
 
-CodFlow is a merchant workbench for Algerian cash-on-delivery operations. Its
+Orestore is a merchant workbench for Algerian cash-on-delivery operations. Its
 visual source is the supplied Shopify Admin references: a charcoal global
 utility bar, light navigation rail, cool-gray workspace, white operational
-surfaces, compact typography, and restrained semantic color. CodFlow keeps its
+surfaces, compact typography, and restrained semantic color. Orestore keeps its
 own identity, terminology, Arabic-first behavior, and delivery workflows.
 
 The interface is operational, compact, and calm. It should feel reliable when
@@ -19,7 +19,7 @@ blobs, gradient surfaces, or oversized rounded compositions.
 - Workspace: cool gray `#F6F6F7`; navigation rail `#EBEBEB`; surfaces white `#FFFFFF`.
 - Structural border: `#E1E3E5`; input border: `#8C9196`; primary text: `#202223`; secondary text: `#6D7175`.
 - Primary actions: charcoal `#202223` with white text. Links: blue `#2C6ECB`.
-- CodFlow mark: luxury amethyst `#6D28D9`; do not use it as a general action color.
+- Orestore mark: luxury amethyst `#6D28D9`; do not use it as a general action color.
 - Status colors are semantic only: green success, yellow pending, blue information, red return/error, gray neutral.
 
 ### Dark mode — "Midnight Amethyst"
@@ -61,7 +61,7 @@ purple-tinted charcoal scale so surfaces step visibly lighter as they elevate:
 
 - Desktop: full-width 56px charcoal utility bar above a 240px persistent navigation rail and scrollable content column.
 - Sidebar: grouped navigation on `#EBEBEB`; active item is a white 8px-radius row with restrained shadow.
-- Utility bar: CodFlow mark at the start, centered global search, locale/appearance/account controls at the end.
+- Utility bar: Orestore mark at the start, centered global search, locale/appearance/account controls at the end.
 - Mobile: the same 56px utility bar plus an accessible light navigation drawer.
 - Auth screen: one centered rounded card split into a form panel and a media panel.
   The form panel carries the brand mark top-start, a locale selector top-end, and a

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# CodFlow RBAC suite — per-domain runner.
+# Orestore RBAC suite — per-domain runner.
 #
 #   ./rbac.sh list                 show available domains
 #   ./rbac.sh orders               run ONE domain (~1 min)

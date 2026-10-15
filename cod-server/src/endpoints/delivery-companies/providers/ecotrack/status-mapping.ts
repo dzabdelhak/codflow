@@ -1,5 +1,5 @@
 /**
- * EcoTrack → CodFlow Status Mapping
+ * EcoTrack → Orestore Status Mapping
  *
  * Authoritative table lives in CONFORMANCE.md (Slice 11) — code and doc must
  * match exactly. Rule: unmapped values return undefined and are surfaced raw

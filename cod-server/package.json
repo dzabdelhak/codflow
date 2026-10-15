@@ -1,7 +1,7 @@
 {
   "name": "codflow-server",
   "version": "1.1.0",
-  "description": "CodFlow API — Hono on Node.js + PostgreSQL (ADR-0003)",
+  "description": "Orestore API — Hono on Node.js + PostgreSQL (ADR-0003)",
   "main": "src/node.ts",
   "scripts": {
     "dev": "tsx watch src/node.ts",

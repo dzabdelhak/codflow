@@ -1,6 +1,6 @@
 # cod-client-astro
 
-The CodFlow merchant dashboard, built with Astro 7 as a prerendered static app
+The Orestore merchant dashboard, built with Astro 7 as a prerendered static app
 served by Astro's Node adapter. Pages carry no data; the server routes are
 `/api/auth/*` (better-auth), the OAuth discovery documents, the MCP channel
 choice, password reset and the SPA fallback.

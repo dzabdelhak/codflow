@@ -7,7 +7,7 @@ End-user documentation for the optional email-sending feature, powered by the
 
 ## What It Does
 
-When enabled, CodFlow sends **transactional emails** on your behalf:
+When enabled, Orestore sends **transactional emails** on your behalf:
 
 1. **Team-invite emails** — when an admin invites a team member, the member
    receives an email with their sign-in link and temporary password, in the
@@ -26,7 +26,7 @@ What it is **not**:
 
 - Not customer-facing order notifications or admin alerts (planned — the
   same integration will carry them when they ship).
-- Not a mailing-list or marketing tool — Sendili sends every CodFlow email
+- Not a mailing-list or marketing tool — Sendili sends every Orestore email
   on its `transactional` lane.
 - Not a replacement for the admin's one-time display of the API key — the
   API key is **never emailed**.
@@ -38,7 +38,7 @@ What it is **not**:
 1. **Create a Sendili account** at [sendili.com](https://sendili.com) and buy
    credits (one credit = one recipient; credits never expire, no monthly fee).
 2. **Verify your sending domain** in the Sendili dashboard (add the DNS
-   records they show you and wait for confirmation). Every CodFlow email is
+   records they show you and wait for confirmation). Every Orestore email is
    sent **from an address on a domain you verified** — this is required, not
    cosmetic: Sendili refuses sends from unverified domains.
 3. **Create an API key** (looks like `sk_live_…`). Copy it somewhere safe.
@@ -151,7 +151,7 @@ account, key, and credits are untouched; re-enabling is instant.
 
 ---
 
-## Platform Notes (for whoever deploys CodFlow)
+## Platform Notes (for whoever deploys Orestore)
 
 - **Setup:** the `store_email_config` table comes with the database
   migrations (`npm run db:migrate` in `cod-server`, run by `npm run db:setup`

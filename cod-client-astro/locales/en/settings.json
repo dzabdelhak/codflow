@@ -112,7 +112,7 @@
     "email_title": "Email Sending",
     "email_subtitle": "Transactional emails via Sendili (team invites, password resets)",
     "email_enabled_label": "Enable email sending",
-    "email_enabled_hint": "When on, CodFlow sends transactional email (invites, password resets) through Sendili.",
+    "email_enabled_hint": "When on, Orestore sends transactional email (invites, password resets) through Sendili.",
     "email_key_label": "Sendili API Key",
     "email_key_hint": "Create an API key in your Sendili dashboard after verifying your sending domain.",
     "email_key_placeholder": "sk_live_…",

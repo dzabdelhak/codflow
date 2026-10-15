@@ -155,7 +155,7 @@ reversible by re-enabling.
 
 ---
 
-## Platform Notes (for whoever deploys CodFlow)
+## Platform Notes (for whoever deploys Orestore)
 
 - **Setup:** the `store_otp_config` table comes with the database migrations
   (`npm run db:migrate` in `cod-server`, run by `npm run db:setup` and by the

@@ -1,4 +1,4 @@
-# CodFlow Architecture
+# Orestore Architecture
 
 System map and technical design.
 

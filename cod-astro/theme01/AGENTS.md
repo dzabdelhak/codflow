@@ -1,9 +1,9 @@
 # theme01 — repository instructions for coding agents
 
-`cod-astro/theme01` is the swappable storefront theme for CodFlow (Astro on
+`cod-astro/theme01` is the swappable storefront theme for Orestore (Astro on
 Node.js, AR/FR/EN). One running storefront serves every channel: the
 visitor's hostname picks it. It is a **theme layer, not a platform package**:
-engine logic lives in the CodFlow platform (see `cod-server`). Read the root
+engine logic lives in the Orestore platform (see `cod-server`). Read the root
 `AGENTS.md` too — this file only overrides what differs here.
 
 ## Layout

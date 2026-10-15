@@ -1,6 +1,6 @@
 # EcoTrack Integration — Codebase Map
 
-Where CodFlow's EcoTrack integration lives, and how a parcel flows through it.
+Where Orestore's EcoTrack integration lives, and how a parcel flows through it.
 All paths relative to repo root. Audit date: 2026-09-01.
 
 ## Files

@@ -1,6 +1,6 @@
-# CodFlow Server - Context Map
+# Orestore Server - Context Map
 
-CodFlow is a cash-on-delivery (COD) e-commerce platform for Algeria. Multiple bounded contexts handle different aspects of the business.
+Orestore is a cash-on-delivery (COD) e-commerce platform for Algeria. Multiple bounded contexts handle different aspects of the business.
 
 ## Contexts
 

@@ -1,11 +1,11 @@
 ---
 name: meta-ads
-description: Official Meta (Facebook) Pixel and Conversions API reference docs for CodFlow's tracking stack — standard events, event parameters, deduplication, advanced matching, test events, and best practices. Use whenever working on Meta Pixel integration, CAPI server events, conversion tracking, event deduplication, attribution, or reviewing PRs that touch tracking (cod-server/src/tracking/, cod-server/src/lib/capi.ts, capi_event_log, theme01's src/core/tracking/, store_pixel_config).
+description: Official Meta (Facebook) Pixel and Conversions API reference docs for Orestore's tracking stack — standard events, event parameters, deduplication, advanced matching, test events, and best practices. Use whenever working on Meta Pixel integration, CAPI server events, conversion tracking, event deduplication, attribution, or reviewing PRs that touch tracking (cod-server/src/tracking/, cod-server/src/lib/capi.ts, capi_event_log, theme01's src/core/tracking/, store_pixel_config).
 ---
 
 # Meta Ads — Pixel & Conversions API Official Documentation
 
-CodFlow's tracking stack (Meta Pixel in theme01 + Conversions API in
+Orestore's tracking stack (Meta Pixel in theme01 + Conversions API in
 cod-server) must always match **Meta's official behavior**. This skill
 vendors the official documentation so every change — ours or a
 contributor's — can be grounded against the real spec instead of guesses,
@@ -44,13 +44,13 @@ the relevant reference here first and cite it.
 | `references/conversions-api/capi-custom-data-parameters.md` | `value`, `currency`, `contents`, `content_ids`, `order_id`, `num_items` |
 | `references/conversions-api/capi-original-event-parameters.md` | Original-event dedup fields (aggregated/merged events) |
 | `references/conversions-api/capi-main-body-parameters.md` | `data[]`, `test_event_code` wrapper |
-| `references/conversions-api/capi-deduplication.md` | **Pixel ↔ CAPI dedup: browser `eventID` must equal CAPI `event_id` AND names must match.** The rule behind CodFlow's eventID = orderId pattern |
+| `references/conversions-api/capi-deduplication.md` | **Pixel ↔ CAPI dedup: browser `eventID` must equal CAPI `event_id` AND names must match.** The rule behind Orestore's eventID = orderId pattern |
 | `references/conversions-api/capi-best-practices.md` | Meta's recommended architecture, timing, and matching quality guidance |
 | `references/conversions-api/capi-verifying-setup.md` | Events Manager validation, Test Events |
 | `references/conversions-api/capi-offline-events.md` | Offline conversion semantics (delayed events — the category our purchase-on-delivery model lives in) |
 | `references/conversions-api/capi-payload-helper.md` | Meta's interactive payload builder (for debugging shapes) |
 
-## How CodFlow maps onto these docs (quick orientation)
+## How Orestore maps onto these docs (quick orientation)
 
 - **Browser:** theme01 fires every tracker through
   `src/core/tracking/track.ts` (never `fbq` directly); `thank-you.astro`
@@ -67,7 +67,7 @@ the relevant reference here first and cite it.
 - **Dedup contract:** browser `eventID` === CAPI `event_id` === orderId,
   same `event_name` on both sides. Any tracking change that breaks this
   equality double-counts conversions (see capi-deduplication.md).
-- **Standard-event semantics:** which CodFlow moment maps to which Meta
+- **Standard-event semantics:** which Orestore moment maps to which Meta
   event is governed by pixel-reference-standard-events.md — notably
   `Purchase` is defined as at-checkout ("lands on thank you or
   confirmation page") and `Lead` as a completed sign-up. COD

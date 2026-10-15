@@ -1,6 +1,6 @@
-# Contributing to CodFlow
+# Contributing to Orestore
 
-Thanks for wanting to help! CodFlow is a COD-first e-commerce platform for the
+Thanks for wanting to help! Orestore is a COD-first e-commerce platform for the
 Algerian market, built as a monorepo of four packages running on Node.js +
 PostgreSQL (see [ADR-0003](./docs/adr/0003-self-hosted-postgres-multi-store.md)).
 
@@ -88,7 +88,7 @@ New here? Here's the shortest path to a merged change:
 > The repo's `.nvmrc` pins Node 24; CI runs Node 24. Astro 7 (the storefront)
 > requires Node 22.12+.
 
-> 🤖 **Working with an AI Coding Assistant?** Instruct your agent: *"Set up CodFlow"* and it will follow the [`codflow-setup` skill](./.agents/skills/codflow-setup/SKILL.md).
+> 🤖 **Working with an AI Coding Assistant?** Instruct your agent: *"Set up Orestore"* and it will follow the [`codflow-setup` skill](./.agents/skills/codflow-setup/SKILL.md).
 
 #### 1. Install dependencies
 

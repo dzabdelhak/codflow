@@ -145,7 +145,7 @@ function buildAuth(env: ServerEnv) {
                   const store = await getStore(storeDb);
                   const language = (user as { language?: string }).language === "ar" ? "ar" : "en";
                   const email = renderPasswordResetEmail({
-                    storeName: store?.name ?? "CodFlow",
+                    storeName: store?.name ?? "Orestore",
                     userName: user.name,
                     resetUrl: url,
                     language,
@@ -218,7 +218,7 @@ function buildAuth(env: ServerEnv) {
             loginPage: "/sign-in",
             consentPage: "/mcp/consent",
             scopes: ["offline_access", ...ALL_SCOPES],
-            resources: [{ identifier: mcpResourceUrl(env.PUBLIC_API_URL), name: "CodFlow MCP" }],
+            resources: [{ identifier: mcpResourceUrl(env.PUBLIC_API_URL), name: "Orestore MCP" }],
             enforcePerClientResources: false,
             allowDynamicClientRegistration: true,
             allowUnauthenticatedClientRegistration: true,

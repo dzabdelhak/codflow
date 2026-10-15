@@ -1,11 +1,11 @@
 ---
 name: codflow-governance
-description: CodFlow repository workflow — the process for making and shipping a change that meets this repo's standards. Use when making ANY change to CodFlow (cod-server, cod-client-astro, cod-shared, cod-astro/theme01, README, docs, CI), before committing or opening a PR, writing README feature claims, touching migrations or the database schema, adding dependencies, or reviewing contributions. Loads and defers to AGENTS.md for the repo contract; this skill is the step-by-step workflow, not a duplicate of it.
+description: Orestore repository workflow — the process for making and shipping a change that meets this repo's standards. Use when making ANY change to Orestore (cod-server, cod-client-astro, cod-shared, cod-astro/theme01, README, docs, CI), before committing or opening a PR, writing README feature claims, touching migrations or the database schema, adding dependencies, or reviewing contributions. Loads and defers to AGENTS.md for the repo contract; this skill is the step-by-step workflow, not a duplicate of it.
 ---
 
-# CodFlow Governance — change workflow
+# Orestore Governance — change workflow
 
-CodFlow is an Apache-2.0, self-hosted, cash-on-delivery (COD) e-commerce
+Orestore is an Apache-2.0, self-hosted, cash-on-delivery (COD) e-commerce
 platform for Algeria, open-sourced for the first time. This skill is the
 **workflow** for landing a change. The repo contract (layout, commands,
 verification, boundaries, traps, security rules) lives in the root

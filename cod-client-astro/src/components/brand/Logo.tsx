@@ -9,7 +9,7 @@ const VARIANT_SRC = {
 export type LogoVariant = keyof typeof VARIANT_SRC;
 
 /**
- * CodFlow wordmark logo (icon + "codflow" text, intrinsic 2172×724).
+ * Orestore wordmark logo (icon + "codflow" text, intrinsic 2172×724).
  *
  * - `dark`  — purple mark + purple text, for light backgrounds
  * - `light` — purple mark + near-white text, for dark/brand backgrounds
@@ -22,7 +22,7 @@ export type LogoVariant = keyof typeof VARIANT_SRC;
 export function Logo({
   variant = "dark",
   height = 28,
-  alt = "CodFlow",
+  alt = "Orestore",
   className,
 }: {
   variant?: LogoVariant;

@@ -19,7 +19,7 @@ function sourceFiles(directory: string): string[] {
 }
 
 describe("browser-native dialogs", () => {
-  it("keeps application feedback inside the CodFlow UI", () => {
+  it("keeps application feedback inside the Orestore UI", () => {
     const violations = sourceFiles(SOURCE_ROOT).flatMap((path) => {
       const source = readFileSync(path, "utf8");
       return /window\.(?:alert|confirm|prompt)\s*\(/.test(source)

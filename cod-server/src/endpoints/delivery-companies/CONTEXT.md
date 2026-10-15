@@ -1,6 +1,6 @@
 # Delivery Context
 
-How CodFlow hands orders to third-party carriers in Algeria: company connections, shipment creation and validation, tracking, and stop-desk pickup.
+How Orestore hands orders to third-party carriers in Algeria: company connections, shipment creation and validation, tracking, and stop-desk pickup.
 
 ## Language
 
@@ -77,7 +77,7 @@ Count of failed doorstep attempts (Yalidine's failed-attempt event). The order s
 _Avoid_: Failed deliveries, retries
 
 **Status Mapping**:
-Translation of carrier state names into CodFlow order statuses. Yalidine uses a fixed system-wide French enum; ZR Express state names are free text, so admins layer custom mappings over a small default set.
+Translation of carrier state names into Orestore order statuses. Yalidine uses a fixed system-wide French enum; ZR Express state names are free text, so admins layer custom mappings over a small default set.
 _Avoid_: Translation table, sync rules
 
 **Regression Guard**:

@@ -1,6 +1,6 @@
 # theme01 — Multi-Niche Storefront
 
-The original CodFlow storefront. Friendly, approachable, conversion-
+The original Orestore storefront. Friendly, approachable, conversion-
 focused. Multi-language by design (Arabic / French / English) and
 neutral enough to fit any niche — beauty, electronics, supplements,
 home goods, general retail. The default theme every new partner gets

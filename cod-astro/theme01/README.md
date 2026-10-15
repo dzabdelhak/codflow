@@ -1,10 +1,10 @@
-# theme01 — CodFlow Storefront
+# theme01 — Orestore Storefront
 
-The default storefront theme for CodFlow: a mobile-first, multi-locale,
-conversion-focused **Astro 7** storefront that talks to the CodFlow backend
+The default storefront theme for Orestore: a mobile-first, multi-locale,
+conversion-focused **Astro 7** storefront that talks to the Orestore backend
 (`cod-server`) over the public `/store/*` API.
 
-theme01 is part of the [CodFlow monorepo](../../README.md). It is one of three
+theme01 is part of the [Orestore monorepo](../../README.md). It is one of three
 apps that make up the platform:
 
 | App | Role |

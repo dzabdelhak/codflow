@@ -19,7 +19,7 @@
  * Source of truth: dz-otp.md (repo root). Verified facts inline.
  */
 
-// ─── Provider data shapes (subset CodFlow consumes) ──────────────────────────
+// ─── Provider data shapes (subset Orestore consumes) ──────────────────────────
 
 export interface DzverifyOtpRequest {
   id: string;

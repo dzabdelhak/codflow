@@ -106,7 +106,7 @@ export const ProductCategoryRowSchema = z.object({
   imageUrl: z.string().url().nullable().openapi({ example: "https://example.com/img.jpg" }),
   metaTitle: z.string().nullable().openapi({
     description: "SEO page title (max 60 chars)",
-    example: "Electronics | CodFlow",
+    example: "Electronics | Orestore",
   }),
   metaDescription: z.string().nullable().openapi({
     description: "SEO description (max 160 chars)",

@@ -36,7 +36,7 @@ interface ToolRegistration {
  * zero tools — fail closed by construction.
  */
 export function createCodMcpServer(env: Env, props: McpProps | null, db: AppDb, redis: Redis | null): McpServer {
-  const server = new McpServer({ name: "CodFlow CRM", version: "1.0.0" });
+  const server = new McpServer({ name: "Orestore CRM", version: "1.0.0" });
   if (!props) {
     return server;
   }
