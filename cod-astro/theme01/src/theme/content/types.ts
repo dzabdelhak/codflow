@@ -82,6 +82,8 @@ export interface StoreFrontContent {
   formTitle: string;
   formDeliverySection: string;
   formNameLabel: string;
+  formFirstNameLabel: string;
+  formLastNameLabel: string;
   formNamePlaceholder: string;
   formPhoneLabel: string;
   formPhonePlaceholder: string;

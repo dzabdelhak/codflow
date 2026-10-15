@@ -74,6 +74,8 @@ import { outboundOrderRow } from "./outbound-orders";
 
 export interface StoreOrderData {
   customerName: string;
+  customerFirstName?: string | null;
+  customerLastName?: string | null;
   phone: string;
   wilayaId: number;
   communeId: string;
@@ -932,6 +934,8 @@ export async function createStoreOrder(
       orderNumber,
       customerId: data.customerId,
       customerName: data.customerName,
+      customerFirstName: data.customerFirstName ?? null,
+      customerLastName: data.customerLastName ?? null,
       phone: data.phone,
       wilayaId: data.wilayaId,
       communeId: data.communeId,

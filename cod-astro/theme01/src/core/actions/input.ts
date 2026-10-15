@@ -56,7 +56,20 @@ export const placeOrderInput = z.object({
         variantLabel: z.string().optional(),
       })).optional()
     ),
-    customerName: z.string().min(2, "الاسم مطلوب"),
+    // One full name, or a first and a last name when the merchant split it:
+    // which one is present is the action's check and cod-server's ruling.
+    customerName: z.preprocess(
+      (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
+      z.string().min(2, "الاسم مطلوب").optional()
+    ),
+    customerFirstName: z.preprocess(
+      (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
+      z.string().max(60).optional()
+    ),
+    customerLastName: z.preprocess(
+      (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
+      z.string().max(60).optional()
+    ),
     phone: z
       .string()
       .min(9, "رقم الهاتف غير صحيح")

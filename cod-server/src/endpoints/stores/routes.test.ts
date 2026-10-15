@@ -32,6 +32,7 @@ function storeRow(overrides: Record<string, any> = {}) {
     channelType: "store" as const,
     unavailableRule: "show_unavailable" as const,
     orderLimitMinutes: 10,
+    messengerWidgetJson: null,
     orderPrefix: "CMD",
     orderSeq: 0,
     id: "store_1",

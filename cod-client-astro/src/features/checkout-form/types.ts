@@ -29,6 +29,7 @@ export interface CustomFieldDraft {
 }
 
 export interface CheckoutFormDraft {
+  name: CheckoutFormPolicy["name"];
   address: CheckoutFormPolicy["address"];
   notes: CheckoutFormPolicy["notes"];
   email: CheckoutFormPolicy["email"];

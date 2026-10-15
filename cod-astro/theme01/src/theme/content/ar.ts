@@ -84,6 +84,8 @@ export const ar: StoreFrontContent = {
   formTitle: "أكمل طلبك",
   formDeliverySection: "معلومات التوصيل",
   formNameLabel: "الاسم الكامل",
+  formFirstNameLabel: "الاسم",
+  formLastNameLabel: "اللقب",
   formNamePlaceholder: "مثال: أحمد بن علي",
   formPhoneLabel: "رقم الهاتف",
   formPhonePlaceholder: "0XX XX XX XX XX",

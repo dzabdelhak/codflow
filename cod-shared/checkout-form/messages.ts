@@ -19,6 +19,7 @@ type MessageTemplate = string | ((label: string) => string);
 
 const MESSAGES: Record<StoreLanguage, Record<CheckoutPolicyRejectionCode, MessageTemplate>> = {
   ar: {
+    NAME_REQUIRED: "الاسم مطلوب",
     DELIVERY_OPTION_UNAVAILABLE:
       "طريقة التوصيل المختارة لم تعد متاحة — يرجى تحديث الصفحة واختيار طريقة أخرى",
     ADDRESS_REQUIRED: "العنوان مطلوب للتوصيل إلى المنزل",
@@ -30,6 +31,7 @@ const MESSAGES: Record<StoreLanguage, Record<CheckoutPolicyRejectionCode, Messag
     CUSTOM_FIELD_TOO_LONG: (label) => `${label} طويل جداً`,
   },
   fr: {
+    NAME_REQUIRED: "Le nom est obligatoire",
     DELIVERY_OPTION_UNAVAILABLE:
       "Ce mode de livraison n'est plus disponible — actualisez la page et choisissez-en un autre",
     ADDRESS_REQUIRED: "L'adresse est obligatoire pour la livraison à domicile",
@@ -41,6 +43,7 @@ const MESSAGES: Record<StoreLanguage, Record<CheckoutPolicyRejectionCode, Messag
     CUSTOM_FIELD_TOO_LONG: (label) => `${label} est trop long`,
   },
   en: {
+    NAME_REQUIRED: "Your name is required",
     DELIVERY_OPTION_UNAVAILABLE:
       "That delivery option is no longer available — refresh the page and pick another",
     ADDRESS_REQUIRED: "An address is required for home delivery",

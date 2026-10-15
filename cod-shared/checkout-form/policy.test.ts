@@ -41,6 +41,7 @@ describe("parseCheckoutFormPolicy — defaults are today's form", () => {
   it("defaults describe the storefront as it behaves without this feature", () => {
     // If any of these change, every existing store's checkout changes with it.
     expect(DEFAULT_CHECKOUT_FORM_POLICY).toEqual({
+      name: "full",
       address: "optional",
       notes: "optional",
       email: "hidden",
@@ -161,9 +162,19 @@ describe("parseCheckoutFormPolicy — custom fields", () => {
   });
 });
 
+describe("name mode", () => {
+  it("asks for one full name unless the merchant chose first and last name", () => {
+    expect(parseCheckoutFormPolicy(JSON.stringify({ name: "split" })).name).toBe("split");
+    expect(parseCheckoutFormPolicy(JSON.stringify({ name: "weird" })).name).toBe("full");
+    expect(parseCheckoutFormPolicy(null).name).toBe("full");
+    expect(isDefaultCheckoutFormPolicy({ ...DEFAULT_CHECKOUT_FORM_POLICY, name: "split" })).toBe(false);
+  });
+});
+
 describe("serialize / isDefault", () => {
   it("round-trips a customised policy", () => {
     const policy: CheckoutFormPolicy = {
+      name: "split",
       address: "required",
       notes: "hidden",
       email: "required",

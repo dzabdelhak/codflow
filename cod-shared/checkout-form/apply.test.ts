@@ -30,6 +30,7 @@ const policyWith = (over: Partial<CheckoutFormPolicy> = {}): CheckoutFormPolicy 
 });
 
 const submit = (over: Partial<CheckoutFormInput> = {}): CheckoutFormInput => ({
+  customerName: "Ahmed Benali",
   deliveryType: "home",
   ...over,
 });
@@ -44,12 +45,37 @@ const custom = (over: Partial<CustomField> = {}): CustomField => ({
 
 const responses = (answers: Array<{ id: string; value: unknown }>) => JSON.stringify(answers);
 
+describe("the customer's name", () => {
+  it("takes one full name by default, and refuses a missing one", () => {
+    const result = applyCheckoutPolicy(policyWith(), submit({ customerName: "  Samira   Kaci " }));
+    expect(result.ok && result.value).toMatchObject({ customerName: "Samira Kaci" });
+    expect(result.ok && result.value.customerFirstName).toBeUndefined();
+    const missing = applyCheckoutPolicy(policyWith(), submit({ customerName: " " }));
+    expect(missing).toEqual({ ok: false, rejection: { code: "NAME_REQUIRED", field: "customerName" } });
+  });
+
+  it("asks for a first and a last name when the merchant split it, and keeps both", () => {
+    const split = policyWith({ name: "split" });
+    const result = applyCheckoutPolicy(split, submit({ customerName: undefined, customerFirstName: "Samira", customerLastName: "Kaci" }));
+    expect(result.ok && result.value).toMatchObject({ customerName: "Samira Kaci", customerFirstName: "Samira", customerLastName: "Kaci" });
+    expect(applyCheckoutPolicy(split, submit({ customerName: undefined, customerFirstName: "Samira" }))).toEqual({
+      ok: false, rejection: { code: "NAME_REQUIRED", field: "customerLastName" },
+    });
+  });
+
+  it("still takes the full name a page cached before the split sends", () => {
+    const result = applyCheckoutPolicy(policyWith({ name: "split" }), submit({ customerName: "Samira Kaci" }));
+    expect(result.ok && result.value).toMatchObject({ customerName: "Samira Kaci" });
+  });
+});
+
 describe("the default policy leaves today's order untouched", () => {
   it("passes name-and-phone-only orders through", () => {
     const result = applyCheckoutPolicy(DEFAULT_CHECKOUT_FORM_POLICY, submit());
     expect(result).toEqual({
       ok: true,
       value: {
+        customerName: "Ahmed Benali",
         deliveryType: "home",
         address: undefined,
         notes: undefined,

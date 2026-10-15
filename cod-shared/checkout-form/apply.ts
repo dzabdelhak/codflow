@@ -41,6 +41,9 @@ export interface CustomFieldAnswer {
 }
 
 export interface CheckoutFormInput {
+  customerName?: string | null;
+  customerFirstName?: string | null;
+  customerLastName?: string | null;
   deliveryType: DeliveryType;
   address?: string | null;
   notes?: string | null;
@@ -50,6 +53,9 @@ export interface CheckoutFormInput {
 }
 
 export interface CheckoutFormApplied {
+  customerName: string;
+  customerFirstName?: string;
+  customerLastName?: string;
   deliveryType: DeliveryType;
   address?: string;
   notes?: string;
@@ -58,6 +64,7 @@ export interface CheckoutFormApplied {
 }
 
 export type CheckoutPolicyRejectionCode =
+  | "NAME_REQUIRED"
   | "DELIVERY_OPTION_UNAVAILABLE"
   | "ADDRESS_REQUIRED"
   | "EMAIL_REQUIRED"
@@ -187,6 +194,19 @@ export function applyCheckoutPolicy(
   policy: CheckoutFormPolicy,
   input: CheckoutFormInput,
 ): CheckoutPolicyResult {
+  const fullName = trimmed(input.customerName).replace(/\s+/g, " ");
+  const firstName = trimmed(input.customerFirstName);
+  const lastName = trimmed(input.customerLastName);
+  let names: Pick<CheckoutFormApplied, "customerName" | "customerFirstName" | "customerLastName">;
+  if (policy.name === "split" && (firstName !== "" || lastName !== "" || fullName === "")) {
+    if (firstName === "") return { ok: false, rejection: { code: "NAME_REQUIRED", field: "customerFirstName" } };
+    if (lastName === "") return { ok: false, rejection: { code: "NAME_REQUIRED", field: "customerLastName" } };
+    names = { customerName: `${firstName} ${lastName}`, customerFirstName: firstName, customerLastName: lastName };
+  } else {
+    if (fullName.length < 2) return { ok: false, rejection: { code: "NAME_REQUIRED", field: "customerName" } };
+    names = { customerName: fullName };
+  }
+
   const deliveryType = input.deliveryType;
   const allowed =
     deliveryType === "home" ? policy.deliveryOptions.home : policy.deliveryOptions.stopDesk;
@@ -256,6 +276,7 @@ export function applyCheckoutPolicy(
   return {
     ok: true,
     value: {
+      ...names,
       deliveryType,
       address: address === "" ? undefined : address,
       notes: notes === "" ? undefined : notes,

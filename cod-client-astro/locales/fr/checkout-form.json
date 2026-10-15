@@ -27,7 +27,10 @@
     "notes": "Notes de commande",
     "notes_hint": "La masquer raccourcit le formulaire, et le client ne peut plus laisser d'instructions de livraison.",
     "email": "E-mail",
-    "email_hint": "Enregistré sur la commande. Devient obligatoire automatiquement si vous vendez des produits numériques."
+    "email_hint": "Enregistré sur la commande. Devient obligatoire automatiquement si vous vendez des produits numériques.",
+    "name_title": "Nom du client",
+    "name_full": "Nom complet",
+    "name_split": "Prénom + Nom"
   },
   "delivery": {
     "section_title": "Modes de livraison",

@@ -98,7 +98,8 @@ function initAbandonmentTracking() {
   }
 
   function collectFormData() {
-    const name = (document.querySelector<HTMLInputElement>("#f-name")?.value ?? "").trim();
+    const field = (id: string) => (document.querySelector<HTMLInputElement>(id)?.value ?? "").trim();
+    const name = field("#f-name") || [field("#f-first-name"), field("#f-last-name")].filter(Boolean).join(" ");
     const phone = (document.querySelector<HTMLInputElement>("#f-phone")?.value ?? "").trim();
     const wilayaRaw = document.querySelector<HTMLSelectElement>("#f-wilaya")?.value;
     const wilayaId = wilayaRaw ? parseInt(wilayaRaw) || undefined : undefined;

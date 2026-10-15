@@ -283,8 +283,11 @@ export async function createStoreOrder(c: Context<AppContext>) {
 
   // Everything downstream reads the APPLIED values, never the wire: a hidden
   // field is gone by here, and an email is already trimmed and lowercased.
-  const data: import("./validation").StoreOrderInput = {
+  const data = {
     ...submitted,
+    customerName: applied.value.customerName,
+    customerFirstName: applied.value.customerFirstName,
+    customerLastName: applied.value.customerLastName,
     deliveryType: applied.value.deliveryType,
     address: applied.value.address,
     notes: applied.value.notes,

@@ -15,6 +15,8 @@
 
 import {
   BUILT_IN_FIELDS,
+  NAME_MODES,
+  type NameMode,
   CHECKOUT_FORM_LIMITS,
   CUSTOM_FIELD_ID_PATTERN,
   CUSTOM_FIELD_TYPES,
@@ -62,6 +64,7 @@ export interface ValidatePolicyOptions {
 }
 
 const TOP_LEVEL_KEYS = new Set([
+  "name",
   "address",
   "notes",
   "email",
@@ -288,6 +291,11 @@ export function validateCheckoutFormPolicyInput(
     }
   }
 
+  let name: NameMode = DEFAULT_CHECKOUT_FORM_POLICY.name;
+  if (input.name !== undefined) {
+    if (typeof input.name === "string" && (NAME_MODES as readonly string[]).includes(input.name)) name = input.name as NameMode;
+    else issues.push({ path: "name", code: "INVALID_STATE", message: `name must be one of: ${NAME_MODES.join(", ")}` });
+  }
   const address = readStateStrict(input, "address", issues) as CheckoutFormPolicy["address"];
   const notes = readStateStrict(input, "notes", issues) as CheckoutFormPolicy["notes"];
   const email = readStateStrict(input, "email", issues);
@@ -373,6 +381,6 @@ export function validateCheckoutFormPolicyInput(
 
   return {
     ok: true,
-    policy: { address, notes, email, deliveryOptions: { home, stopDesk }, customFields },
+    policy: { name, address, notes, email, deliveryOptions: { home, stopDesk }, customFields },
   };
 }

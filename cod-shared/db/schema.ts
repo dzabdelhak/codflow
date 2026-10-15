@@ -628,6 +628,9 @@ export const orders = pgTable("orders", {
   adCookies: jsonb("ad_cookies").$type<{ ttp?: string; scid?: string; gaClientId?: string }>(),
   trackingConsent: boolean("tracking_consent"),
   deviceId: text("device_id"),
+  /** Set when the store's order form asks for a first and a last name; customer_name stays the full name. Last: positional fixtures. */
+  customerFirstName: text("customer_first_name"),
+  customerLastName: text("customer_last_name"),
 }, (t) => ({
   orderNumberPerStore: uniqueIndex("orders_store_order_number_unique").on(t.storeId, t.orderNumber),
   recentByPhone: index("orders_store_phone_created_idx").on(t.storeId, t.phone, t.createdAt),
@@ -1169,6 +1172,8 @@ export const stores = pgTable("stores", {
   channelType: text("channel_type", { enum: CHANNEL_TYPES }).notNull().default("store"),
   unavailableRule: text("unavailable_rule", { enum: UNAVAILABLE_RULES }).notNull().default("show_unavailable"),
   orderLimitMinutes: integer("order_limit_minutes").notNull().default(10),
+  /** The Messenger chat button (cod-shared/messenger-widget); NULL means none. Raw, never sent to the storefront. */
+  messengerWidgetJson: text("messenger_widget_json"),
 }, (t) => ({
   merchantIdx: index("stores_merchant_idx").on(t.merchantId),
   creationKeyPerMerchant: uniqueIndex("stores_merchant_creation_key_unique").on(t.merchantId, t.creationKey),

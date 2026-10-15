@@ -40,6 +40,7 @@ export function newDraftKey(): string {
 
 export function toDraft(policy: CheckoutFormPolicy): CheckoutFormDraft {
   return {
+    name: policy.name ?? "full",
     address: policy.address,
     notes: policy.notes,
     email: policy.email,
@@ -65,6 +66,7 @@ export function toDraft(policy: CheckoutFormPolicy): CheckoutFormDraft {
  */
 export function toPayload(draft: CheckoutFormDraft) {
   return {
+    name: draft.name,
     address: draft.address,
     notes: draft.notes,
     email: draft.email,

@@ -39,6 +39,7 @@ const draft = (over: Partial<CheckoutFormDraft> = {}): CheckoutFormDraft => ({
 describe("toDraft / toPayload", () => {
   it("round-trips a saved policy without changing it", () => {
     const saved = policy({
+      name: "split",
       address: "required",
       notes: "hidden",
       email: "optional",
@@ -48,6 +49,7 @@ describe("toDraft / toPayload", () => {
       ],
     });
     expect(toPayload(toDraft(saved))).toEqual({
+      name: "split",
       address: "required",
       notes: "hidden",
       email: "optional",

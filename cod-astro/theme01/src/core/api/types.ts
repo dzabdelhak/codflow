@@ -28,6 +28,8 @@ export type Offer = z.infer<typeof OfferSchema>;
  * without an address is a platform decision, enforced at dispatch — not here.
  */
 export interface CheckoutFormPolicy {
+  /** One full name, or a first and a last name. Absent from servers before it. */
+  name?: "full" | "split";
   address: "required" | "optional" | "hidden";
   notes: "optional" | "hidden";
   email: "required" | "optional" | "hidden";

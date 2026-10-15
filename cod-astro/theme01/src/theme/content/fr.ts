@@ -84,6 +84,8 @@ export const fr: StoreFrontContent = {
   formTitle: "Complétez votre commande",
   formDeliverySection: "Informations de livraison",
   formNameLabel: "Nom complet",
+  formFirstNameLabel: "Prénom",
+  formLastNameLabel: "Nom",
   formNamePlaceholder: "Exemple: Ahmed Ben Ali",
   formPhoneLabel: "Numéro de téléphone",
   formPhonePlaceholder: "0XX XX XX XX XX",

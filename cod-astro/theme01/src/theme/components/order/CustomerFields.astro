@@ -22,6 +22,7 @@ interface Props {
 const { content, fieldErrors, isRTL, formPolicy } = Astro.props;
 
 const policy: CheckoutFormPolicy = {
+  name: "full",
   address: "optional",
   notes: "optional",
   email: "hidden",
@@ -33,6 +34,7 @@ const policy: CheckoutFormPolicy = {
 // A hidden field ships no markup at all — the same choice the cart makes when a
 // merchant leaves it off. Rendering it disabled would still put it in the DOM,
 // where a script or a curious shopper can turn it back on.
+const splitName = policy.name === "split";
 const showEmail = policy.email !== "hidden";
 const showNotes = policy.notes !== "hidden";
 const showAddress = policy.address !== "hidden";
@@ -72,8 +74,31 @@ const wilayaOptions = WILAYAS.map((w) => ({
   <!-- Name + Phone — paired so the two shortest answers cost one row, not two.
        Each label is kept for assistive tech and shown inside the field, which is
        what removes roughly a third of the scroll to the submit button. -->
-  <div class="grid grid-cols-1 min-[360px]:grid-cols-2 gap-3">
-    <div>
+  {splitName && (
+    <div class="grid grid-cols-1 min-[360px]:grid-cols-2 gap-3">
+      <div>
+        <label for="f-first-name" class="sr-only">{content.formFirstNameLabel}</label>
+        <input
+          id="f-first-name" type="text" name="customerFirstName"
+          required autocomplete="given-name" maxlength="60"
+          placeholder={`${content.formFirstNameLabel} *`}
+          class:list={["form-input", fieldErrors.customerFirstName && "error"]}
+        />
+      </div>
+      <div>
+        <label for="f-last-name" class="sr-only">{content.formLastNameLabel}</label>
+        <input
+          id="f-last-name" type="text" name="customerLastName"
+          required autocomplete="family-name" maxlength="60"
+          placeholder={`${content.formLastNameLabel} *`}
+          class:list={["form-input", fieldErrors.customerLastName && "error"]}
+        />
+      </div>
+    </div>
+  )}
+
+  <div class:list={["grid grid-cols-1 gap-3", !splitName && "min-[360px]:grid-cols-2"]}>
+    {!splitName && <div>
       <label for="f-name" class="sr-only">{content.formNameLabel}</label>
       <input
         id="f-name" type="text" name="customerName"
@@ -84,7 +109,7 @@ const wilayaOptions = WILAYAS.map((w) => ({
       {fieldErrors.customerName && (
         <p class="text-[0.75rem] text-red-500 font-bold mt-2 ps-1">{fieldErrors.customerName[0]}</p>
       )}
-    </div>
+    </div>}
 
     <div>
       <label for="f-phone" class="sr-only">{content.formPhoneLabel}</label>

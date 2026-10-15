@@ -37,7 +37,9 @@ export const cartItemSchema = z.object({
 });
 
 export const storeOrderSchema = z.object({
-  customerName: z.string().min(2).max(100),
+  customerName: z.string().trim().min(2).max(100).optional(),
+  customerFirstName: z.string().trim().min(1).max(60).optional(),
+  customerLastName: z.string().trim().min(1).max(60).optional(),
   // Algerian mobile only, normalized to the canonical local form "05XXXXXXXX".
   // Accepts 05…, +2135…, 2135…, 002135… with separators; rejects landlines,
   // foreign numbers, and short/long garbage. Canonical form keeps customer
@@ -182,6 +184,9 @@ export const storeOrderSchema = z.object({
    * the seam rather than reaching an engine that would throw EMPTY_CART.
    */
   .superRefine((data, ctx) => {
+    if (!data.customerName && !(data.customerFirstName && data.customerLastName)) {
+      ctx.addIssue({ code: "custom", path: ["customerName"], message: "customerName, or customerFirstName and customerLastName, is required" });
+    }
     if (data.items && data.items.length > 0) return;
     for (const field of ["productId", "productName", "pricePerUnit"] as const) {
       if (data[field] === undefined) {

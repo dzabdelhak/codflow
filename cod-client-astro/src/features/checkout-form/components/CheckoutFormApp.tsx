@@ -172,9 +172,31 @@ function CheckoutFormContent() {
             <div className="divide-y divide-border/70">
               {/* Locked first, so the merchant sees what the platform holds and
                   why before reaching what they control. */}
+              <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center">
+                <div className="flex min-w-0 flex-1 items-start gap-3">
+                  <UserRound size={18} className="mt-0.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold">{t("fields.name_title")}</p>
+                    <p className="text-xs text-muted-foreground">{t("fields.customerName_why")}</p>
+                  </div>
+                </div>
+                <div role="radiogroup" aria-label={t("fields.name_title")} className="flex gap-1 rounded-lg border border-border p-1">
+                  {(["full", "split"] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      role="radio"
+                      aria-checked={draft.name === mode}
+                      onClick={() => patch({ name: mode })}
+                      className={`rounded-md px-3 py-1.5 text-xs font-semibold ${draft.name === mode ? "bg-brand text-white" : "text-muted-foreground hover:bg-muted"}`}
+                    >
+                      {t(`fields.name_${mode}`)}
+                    </button>
+                  ))}
+                </div>
+              </div>
               {(
                 [
-                  ["customerName", UserRound],
                   ["phone", Phone],
                   ["wilaya", MapPin],
                   ["commune", MapPin],

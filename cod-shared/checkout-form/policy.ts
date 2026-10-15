@@ -51,7 +51,13 @@ export interface CustomField {
   options?: string[];
 }
 
+/** One "full name" field, or a first name and a last name. */
+export type NameMode = "full" | "split";
+
+export const NAME_MODES: readonly NameMode[] = ["full", "split"];
+
 export interface CheckoutFormPolicy {
+  name: NameMode;
   /**
    * Asked for home delivery only, and "hidden" is allowed: some merchants take
    * the address by phone after the order lands. Hiding it is safe because the
@@ -129,6 +135,7 @@ export const CUSTOM_FIELD_ID_PATTERN = /^cf_[a-z0-9]{8}$/;
  * of the process.
  */
 export const DEFAULT_CHECKOUT_FORM_POLICY: CheckoutFormPolicy = {
+  name: "full",
   address: "optional",
   notes: "optional",
   email: "hidden",
@@ -233,6 +240,7 @@ export function parseCheckoutFormPolicy(json: string | null | undefined): Checko
   }
 
   return {
+    name: raw.name === "split" ? "split" : "full",
     address: readState(raw, "address"),
     notes: readState(raw, "notes"),
     email: readState(raw, "email"),
@@ -254,6 +262,7 @@ export function parseCheckoutFormPolicy(json: string | null | undefined): Checko
  */
 export function isDefaultCheckoutFormPolicy(policy: CheckoutFormPolicy): boolean {
   return (
+    policy.name === DEFAULT_CHECKOUT_FORM_POLICY.name &&
     policy.address === DEFAULT_CHECKOUT_FORM_POLICY.address &&
     policy.notes === DEFAULT_CHECKOUT_FORM_POLICY.notes &&
     policy.email === DEFAULT_CHECKOUT_FORM_POLICY.email &&
@@ -266,6 +275,7 @@ export function isDefaultCheckoutFormPolicy(policy: CheckoutFormPolicy): boolean
 /** Canonical JSON for storage — key order fixed so a no-op save is a no-op diff. */
 export function serializeCheckoutFormPolicy(policy: CheckoutFormPolicy): string {
   return JSON.stringify({
+    name: policy.name,
     address: policy.address,
     notes: policy.notes,
     email: policy.email,

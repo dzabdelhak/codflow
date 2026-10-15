@@ -534,3 +534,20 @@ describe("GET /store/config", () => {
     expect(body.data.checkoutForm).toEqual(DEFAULT_CHECKOUT_FORM_POLICY);
   });
 });
+
+describe("the name fields", () => {
+  it("stores a first and a last name, and the full name from both, when the merchant split it", async () => {
+    await setPolicy({ name: "split" });
+    const { status } = await postOrder(orderBody({ customerName: undefined, customerFirstName: "Samira", customerLastName: "Kaci" }));
+    expect(status).toBe(201);
+    const order = await onlyOrder();
+    expect(order).toMatchObject({ customerName: "Samira Kaci", customerFirstName: "Samira", customerLastName: "Kaci" });
+  });
+
+  it("refuses a split name with no last name", async () => {
+    await setPolicy({ name: "split" });
+    const { status, json } = await postOrder(orderBody({ customerName: undefined, customerFirstName: "Samira" }));
+    expect(status).toBe(400);
+    expect(json.context?.field ?? json.context?.fields?.[0]?.path).toMatch(/customer/);
+  });
+});

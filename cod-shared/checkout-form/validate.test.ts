@@ -31,9 +31,17 @@ describe("shape", () => {
     expect(codes(validate(input))).toEqual(["NOT_AN_OBJECT"]);
   });
 
+  it("accepts a full or split name, and nothing else", () => {
+    const split = validate({ name: "split" });
+    expect(split.ok && split.policy.name).toBe("split");
+    const wrong = validate({ name: "first" });
+    expect(wrong.ok ? [] : wrong.issues.map((i) => i.path)).toEqual(["name"]);
+  });
+
   it("accepts an empty document as 'reset to the defaults' (PUT replaces)", () => {
     const result = validate({});
     expect(result.ok && result.policy).toEqual({
+      name: "full",
       address: "optional",
       notes: "optional",
       email: "hidden",

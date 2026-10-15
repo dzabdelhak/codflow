@@ -27,7 +27,10 @@
     "notes": "Order notes",
     "notes_hint": "Hiding this makes checkout shorter, and customers can no longer leave delivery instructions.",
     "email": "Email",
-    "email_hint": "Saved on the order. Becomes required automatically if you start selling digital products."
+    "email_hint": "Saved on the order. Becomes required automatically if you start selling digital products.",
+    "name_title": "Customer name",
+    "name_full": "Full name",
+    "name_split": "First + last name"
   },
   "delivery": {
     "section_title": "Delivery options",

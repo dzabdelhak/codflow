@@ -12,6 +12,7 @@ import type { CheckoutPolicyRejectionCode } from "./apply";
 const LANGS: StoreLanguage[] = ["ar", "fr", "en"];
 
 const ALL_CODES: CheckoutPolicyRejectionCode[] = [
+  "NAME_REQUIRED",
   "DELIVERY_OPTION_UNAVAILABLE",
   "ADDRESS_REQUIRED",
   "EMAIL_REQUIRED",
